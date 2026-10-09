@@ -7,7 +7,7 @@ import type { Rng } from './rand';
 export type Moment =
   | 'attack' | 'clash' | 'mounted' | 'light' | 'darken' | 'leadership' | 'ambush' | 'rally' | 'counter' | 'spartacus'
   | 'doubleTime' | 'line' | 'advance' | 'regroup' | 'hold' | 'firstStrike' | 'evade' | 'leaderEscape' | 'momentum' | 'gained'
-  | 'lost' | 'nearVictory' | 'desperate' | 'exit' | 'camp';
+  | 'lost' | 'nearVictory' | 'desperate' | 'exit' | 'camp' | 'stallBreak';
 
 type Lines = Partial<Record<Voice | 'any', string[]>>;
 
@@ -122,7 +122,15 @@ const LINES: Record<Moment, Lines> = {
     any: ['Through! Break through to safety!', 'Out of the trap, march!'],
   },
   camp: {
-    any: ['Their camp is ours!', 'Into their camp!'],
+    any: ['Their camp is ours!', 'Into their camp!', 'The camp is taken. Plunder later, fight now!'],
+  },
+  stallBreak: {
+    any: ['Enough waiting!', 'We have stood here long enough. Forward!', 'Time favours them, not us. Attack!'],
+    bold: ['Enough of this. At them!'],
+    methodical: ['Patience has its limits. Advance, carefully.'],
+    reckless: ['Finally! Charge!'],
+    cunning: ['They will not come to us. So we go to them.'],
+    stoic: ['The waiting is over. Advance.'],
   },
 };
 
@@ -160,7 +168,7 @@ export function cardMoment(kind: CardKind | null, attacking: boolean, regrouping
     case 'mountedCharge':
     case 'orderMounted': return attacking || advancing ? 'mounted' : quiet;
     case 'orderLight':
-    case 'moveFireMove': return 'light';
+    case 'moveFireMove': return attacking ? 'light' : quiet;
     case 'darken': return 'darken';
     case 'inspiredL':
     case 'inspiredC':

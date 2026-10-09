@@ -14,7 +14,7 @@ import { orderCandidates, pieceBenefits, type OrderCandidate } from './ordering'
 import { greedyBattle, pickAttack, reactiveFast } from './policies';
 import { Rng } from './rand';
 import { determinize, resumeTurn, runTurn, runTurnUntil, type Policy } from './sim';
-import { tweak, type Difficulty, type Weights } from './values';
+import { WIN_SCORE, tweak, type Difficulty, type Weights } from './values';
 
 /** Search settings per difficulty level. */
 export interface DiffCfg {
@@ -52,20 +52,24 @@ export interface DiffCfg {
   refine: number;
   /** Experimental (off): judge simulated outcomes with exact enemy movement in the threat model (3x slower eval); no measured gain. */
   exactEval: boolean;
+  /** Leftover budget: keep sampling the top plans while they are statistically close, up to this many samples (0 = off). */
+  topUp: number;
 }
 
 export const DIFFICULTY: Record<Difficulty, DiffCfg> = {
   recruit: {
     budgetMs: 150, maxSims: 90, orderCands: 1, moveVariants: 1, topCards: 2, k0: 2, evalNoise: 0.6, pickTemp: 0.3,
-    battleRollouts: 0, battleCands: 0, battleNoise: 0.3, lookahead: 0, mistakeRate: 0.3, kMax: 4, extraVariants: 0, refine: 0, exactEval: false,
+    battleRollouts: 0, battleCands: 0, battleNoise: 0.3, lookahead: 0, mistakeRate: 0.3, kMax: 4, extraVariants: 0, refine: 0, exactEval: false, topUp: 0,
   },
   tribune: {
     budgetMs: 800, maxSims: 1200, orderCands: 2, moveVariants: 3, topCards: 3, k0: 4, evalNoise: 0, pickTemp: 0,
-    battleRollouts: 6, battleCands: 3, battleNoise: 0, lookahead: 0, mistakeRate: 0, kMax: 16, extraVariants: 2, refine: 0, exactEval: false,
+    battleRollouts: 24, battleCands: 3, battleNoise: 0, lookahead: 0, mistakeRate: 0, kMax: 16, extraVariants: 2, refine: 0, exactEval: false,
+    topUp: 48,
   },
   consul: {
     budgetMs: 2000, maxSims: 5000, orderCands: 4, moveVariants: 5, topCards: 6, k0: 12, evalNoise: 0, pickTemp: 0,
-    battleRollouts: 16, battleCands: 6, battleNoise: 0, lookahead: 0, mistakeRate: 0, kMax: 64, extraVariants: 16, refine: 0, exactEval: false,
+    battleRollouts: 32, battleCands: 6, battleNoise: 0, lookahead: 0, mistakeRate: 0, kMax: 64, extraVariants: 16, refine: 0, exactEval: false,
+    topUp: 64,
   },
 };
 
@@ -83,6 +87,10 @@ export interface PlanCtx {
   seeds: number[];
   /** Weights used to judge simulated outcomes. */
   judgeW: Weights;
+  /** Scale on a card's keep value (card hoarding decay); default 1. */
+  keepScale?: (card: number) => number;
+  /** Plan without simulations: quick card score, first order selection, greedy moves (recruit's hasty turns). */
+  hasty?: boolean;
 }
 
 export const now = (): number => (globalThis.performance ? globalThis.performance.now() : Date.now());
@@ -110,6 +118,8 @@ export interface Cand {
   laN: number;
   laSum: number;
   oc?: OrderCandidate | null;
+  /** Per-sample evaluations in seed order (paired comparisons between candidates). */
+  vals: number[];
 }
 
 export function candMean(c: Cand): number {
@@ -150,6 +160,7 @@ interface Variant {
   noise: number;
   hold?: boolean;
   orderNoise?: number;
+  strikeFirst?: boolean;
 }
 
 function variants(W: Weights, n: number): Variant[] {
@@ -192,14 +203,14 @@ function buildCand(root: GameState, ctx: PlanCtx, card: number, effective: CardK
   }
   const kind = cardKind(card);
   const base = {
-    card, kind, effective, orders, ambush: oc?.ambush, retention: cardRetention(root, ctx.me, kind, ctx.W),
-    n: 0, sum: 0, laN: 0, laSum: 0, oc,
+    card, kind, effective, orders, ambush: oc?.ambush, retention: cardRetention(root, ctx.me, kind, ctx.W) * (ctx.keepScale?.(card) ?? 1),
+    n: 0, sum: 0, laN: 0, laSum: 0, oc, vals: [] as number[],
   };
   const label = `${kind}${effective && effective !== kind ? `->${effective}` : ''}${oc?.ambush ? ` ambush:${oc.ambush}` : ''} [${(orders ?? []).join(',')}] ${v.tag}`;
   if (st.cur && (st.cur.kind === 'rally' || st.cur.kind === 'spartacus')) return { ...base, moves: null, label };
   const moves: Answer[] = [];
   if (st.cur?.kind === 'move' && !v.hold) {
-    const mc: MoveCtx = { me: ctx.me, W: v.W, rng, noise: v.noise, decided: new Set(), orderNoise: v.orderNoise };
+    const mc: MoveCtx = { me: ctx.me, W: v.W, rng, noise: v.noise, decided: new Set(), orderNoise: v.orderNoise, strikeFirst: v.strikeFirst };
     let guard = 0;
     while (st.cur && st.cur.kind === 'move' && st.cur.stage === 1 && guard++ < 40) {
       const a = greedyMoveStep(st.s, 1, mc);
@@ -260,7 +271,7 @@ function refineCands(root: GameState, ctx: PlanCtx, best: Cand, maxAlts: number)
         if (!st2.answer(a)) break;
         moves.push(a);
       }
-      out.push({ ...best, moves, label: `${best.label} ref${i}${alt.hex === null ? 'stay' : ''}`, n: 0, sum: 0, laN: 0, laSum: 0 });
+      out.push({ ...best, moves, label: `${best.label} ref${i}${alt.hex === null ? 'stay' : ''}`, n: 0, sum: 0, laN: 0, laSum: 0, vals: [] });
     }
   }
   return out;
@@ -353,7 +364,9 @@ function sampleCand(root: GameState, ctx: PlanCtx, cand: Cand): void {
   determinize(s, ctx.me, rng);
   runTurn(s, simPolicy(ctx, cand, rng), rng);
   ctx.sims++;
-  cand.sum += evaluate(s, ctx.me, other(ctx.me), ctx.judgeW);
+  const v = evaluate(s, ctx.me, other(ctx.me), ctx.judgeW);
+  cand.sum += v;
+  cand.vals.push(v);
   cand.n++;
 }
 
@@ -376,6 +389,53 @@ function sampleTo(root: GameState, ctx: PlanCtx, cands: Cand[], n: number): void
       sampleCand(root, ctx, c);
     }
   }
+}
+
+/** Paired comparison over common seeds: is the gap between a and b smaller than 2.5 standard errors? */
+function closeCall(a: Cand, b: Cand, ctx: PlanCtx): boolean {
+  const m = Math.min(a.vals.length, b.vals.length);
+  if (m < 4) return true;
+  let sum = 0;
+  let sum2 = 0;
+  for (let i = 0; i < m; i++) {
+    const d = a.vals[i] - b.vals[i];
+    sum += d;
+    sum2 += d * d;
+  }
+  const mean = sum / m;
+  const sd = Math.sqrt(Math.max(0, sum2 / m - mean * mean));
+  const gap = mean - (a.retention - b.retention);
+  return Math.abs(gap) < 2.5 * (sd / Math.sqrt(m) + 1e-9);
+}
+
+/**
+ * Spend the leftover budget where it matters: re-admit plans cut early whose mean beats the leader, then keep sampling
+ * the top plans while they are statistically indistinguishable (within the simulation cap, so deterministic mode holds).
+ */
+function topUp(root: GameState, ctx: PlanCtx, cands: Cand[], pool: Cand[]): Cand[] {
+  const byScore = (a: Cand, b: Cand) => candScore(b, ctx) - candScore(a, ctx);
+  pool.sort(byScore);
+  const lead0 = pool[0];
+  for (const c of cands) {
+    if (pool.includes(c) || timeUp(ctx)) continue;
+    if (c.n > 0 && candScore(c, ctx) > candScore(lead0, ctx)) {
+      sampleTo(root, ctx, [c], lead0.n);
+      pool.push(c);
+    }
+  }
+  pool.sort(byScore);
+  const top = pool.slice(0, 3);
+  for (let guard = 0; guard < 24 && !timeUp(ctx); guard++) {
+    top.sort(byScore);
+    const lead = top[0];
+    const close = top.slice(1).filter((c) => closeCall(lead, c, ctx));
+    if (!close.length) break;
+    const group = [lead, ...close].filter((c) => c.n < ctx.cfg.topUp);
+    if (!group.length) break;
+    const target = Math.min(ctx.cfg.topUp, Math.max(...[lead, ...close].map((c) => c.n)) + 8);
+    sampleTo(root, ctx, group, target);
+  }
+  return [...top, ...pool.filter((c) => !top.includes(c))].sort(byScore);
 }
 
 export interface PlanResult {
@@ -401,15 +461,16 @@ export function planTurn(root: GameState, ctx: PlanCtx): PlanResult {
     (c as Cand & { key?: string }).key = key;
     cands.push(c);
   };
-  if (forcedDiceLeft() > 0) {
-    // Test hook active: never touch the dice (no simulations, no generator steps). Pick by quick card scores.
+  if (forcedDiceLeft() > 0 || ctx.hasty) {
+    // No simulations: pick by quick card scores; orders and moves are then chosen greedily when asked.
+    // (Used while the forceDice test hook is active, so no dice are touched, and for a recruit's hasty turns.)
     const ben = pieceBenefits(root, me, null, ctx.W);
     let best: Cand | null = null;
     let bv = -Infinity;
     for (const [kind, id] of byKind) {
       const c: Cand = {
-        card: id, kind, effective: kind, orders: null, moves: null, label: `${kind} (quick)`,
-        retention: cardRetention(root, me, kind, ctx.W), n: 1, sum: 0, laN: 0, laSum: 0,
+        card: id, kind, effective: kind, orders: null, moves: null, label: `${kind} (${ctx.hasty ? 'hasty' : 'quick'})`,
+        retention: cardRetention(root, me, kind, ctx.W) * (ctx.keepScale?.(id) ?? 1), n: 1, sum: 0, laN: 0, laSum: 0, vals: [],
       };
       const v = quickCardScore(root, me, kind, ben) - c.retention;
       c.sum = v;
@@ -442,6 +503,8 @@ export function planTurn(root: GameState, ctx: PlanCtx): PlanResult {
     const ocs = inf.ocs ?? [null];
     ocs.slice(0, cfg.orderCands).forEach((oc, oi) => {
       const vs = variants(ctx.W, oi === 0 ? cfg.moveVariants : Math.min(2, cfg.moveVariants));
+      // strike first: plan the units with the best immediate attacks before the line closes up
+      if (oi === 0) vs.push({ tag: 'strike', W: ctx.W, noise: 0, strikeFirst: true });
       for (const v of vs) {
         if (oi === 0 && v.tag === 'base') continue;
         if (timeUp(ctx)) break;
@@ -463,7 +526,7 @@ export function planTurn(root: GameState, ctx: PlanCtx): PlanResult {
       tag: `var${i}`,
       W: tweak(ctx.W, { riskSelf: ctx.W.riskSelf * (0.65 + 0.7 * r.next()), adv: ctx.W.adv * (0.4 + 1.2 * r.next()), attackNow: 0.7 + 0.35 * r.next() }),
       noise: 0.03 + 0.04 * r.next(),
-      orderNoise: i % 2 === 1 ? 1.5 : 0,
+      orderNoise: i === 0 || i % 2 === 1 ? 1.5 : 0,
     };
     const before = cands.length;
     add(buildCand(root, ctx, lead.card, lead.effective, lead.oc ?? null, v));
@@ -480,10 +543,11 @@ export function planTurn(root: GameState, ctx: PlanCtx): PlanResult {
     pool.sort((a, b) => candScore(b, ctx) - candScore(a, ctx));
   }
   if (pool.length >= 2 && !timeUp(ctx)) {
-    pool = pool.slice(0, 2);
-    sampleTo(root, ctx, pool, cfg.kMax);
+    pool = pool.slice(0, Math.min(3, pool.length));
+    sampleTo(root, ctx, pool.slice(0, 2), cfg.kMax);
     pool.sort((a, b) => candScore(b, ctx) - candScore(a, ctx));
   }
+  if (cfg.topUp > 0 && pool.length) pool = topUp(root, ctx, cands, pool);
   // Local refinement of the leading plan (consul).
   if (cfg.refine > 0 && pool.length && !timeUp(ctx)) {
     const lead = pool[0];
@@ -574,13 +638,30 @@ export function decideBattle(s: GameState, ctx: PlanCtx): Answer {
   if (answers.length === 1) return answers[0];
   const sums = answers.map(() => 0);
   const ns = answers.map(() => 0);
+  let terminal = false;
   for (let r = 0; r < ctx.cfg.battleRollouts; r++) {
     if (r >= 3 && now() > ctx.deadline) break;
     const seed = ctx.rng.u32();
     answers.forEach((a, i) => {
-      sums[i] += battleRollout(s, ctx, a, seed);
+      const v = battleRollout(s, ctx, a, seed);
+      if (Math.abs(v) >= WIN_SCORE / 2) terminal = true;
+      sums[i] += v;
       ns[i]++;
     });
+  }
+  // Game-deciding phase: look harder at the two best answers (rare catastrophes and wins need more samples).
+  const T = s.bannersToWin;
+  const matchPoint = s.players[ctx.me].banners >= T - 1 || s.players[other(ctx.me)].banners >= T - 1;
+  if ((terminal || matchPoint) && answers.length >= 2) {
+    const order = answers.map((_, i) => i).sort((a, b) => sums[b] / ns[b] - sums[a] / ns[a]).slice(0, 2);
+    for (let r = 0; r < ctx.cfg.battleRollouts; r++) {
+      if (r >= 4 && now() > ctx.deadline + 0.5 * (ctx.deadline - ctx.start)) break;
+      const seed = ctx.rng.u32();
+      for (const i of order) {
+        sums[i] += battleRollout(s, ctx, answers[i], seed);
+        ns[i]++;
+      }
+    }
   }
   let best = 0;
   let bv = -Infinity;

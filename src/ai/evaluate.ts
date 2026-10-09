@@ -284,7 +284,7 @@ function nearestDist(u: Unit, enemies: Unit[]): number {
   return best;
 }
 
-function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side: Side, W: Weights): number {
+function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side: Side, W: Weights, own: boolean): number {
   let v = 0;
   const near = new Map<Unit, number>();
   for (const u of units) {
@@ -303,13 +303,32 @@ function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side
   for (const l of s.leaders) {
     if (l.side !== side || l.hex < 0) continue;
     const lu = occ.unit[l.hex];
+    const sacred = own && s.special.sacredLeaderId === l.id;
     if (lu && lu.side === side) {
       const d = near.get(lu) ?? 99;
       const health = lu.blocks / lu.maxBlocks;
       // attached: bolsters morale, enables bonus combat and cannot be attacked directly
       v += LEADER_ATTACHED * health;
+      if (sacred) {
+        // the instant-loss leader commands from behind the line, on a healthy unit
+        if (d <= 1) v -= 0.25;
+        else if (d <= 2) v -= 0.08;
+        if (d <= 3) v -= 0.12 * (lu.maxBlocks - lu.blocks);
+        continue;
+      }
       if (d <= 2) v += W.leaderFront * health * (lu.type === 'EL' ? 0.2 : 1);
       continue;
+    }
+    if (sacred) {
+      // a lone instant-loss leader is a standing invitation: worse the more enemies (horse counts double) are near
+      let threat = 0;
+      let closest = 99;
+      for (const e of enemies) {
+        const d = hexDist(e.hex, l.hex);
+        closest = Math.min(closest, d);
+        if (d <= 6) threat += UNIT_STATS[e.type].mounted ? 2 : 1;
+      }
+      v -= Math.min(0.6, (closest <= 3 ? 0.2 : 0.1) + 0.04 * threat);
     }
     if (friendlyUnitsAdjacent(occ, l.hex, side) === 0) v -= W.lonelyLeader;
     let aura = 0;
@@ -406,7 +425,7 @@ export function evaluate(s: GameState, me: Side, next: Side, W: Weights, breakdo
   const riskTheirs = sideRisk(s, occ, theirs, mine, opp, W);
   const wMine = W.riskSelf * (next === opp ? W.now : W.later);
   const wTheirs = W.riskEnemy * (next === me ? W.now : W.later);
-  const pos = positional(s, occ, mine, theirs, me, W) - positional(s, occ, theirs, mine, opp, W);
+  const pos = positional(s, occ, mine, theirs, me, W, true) - positional(s, occ, theirs, mine, opp, W, false);
   const adv = advancePenalty(mine, theirs, W);
   const obj = objectives(s, me, W);
   const total = banners + material - wMine * riskMine + wTheirs * riskTheirs + pos - adv + obj;

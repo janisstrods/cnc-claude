@@ -19,6 +19,8 @@ export interface MoveCtx {
   decided: Set<string>;
   /** Random perturbation of the order in which pieces are planned (plan diversity). */
   orderNoise?: number;
+  /** Plan the pieces with the biggest immediate strike first (so a shooter's only firing hex is not taken). */
+  strikeFirst?: boolean;
 }
 
 function nearestEnemy(s: GameState, hex: HexId, side: Side): number {
@@ -112,12 +114,37 @@ function orderKey(s: GameState, id: string, me: Side): number {
   return nearestEnemy(s, u.hex, me);
 }
 
+/** Best attack a unit could make this turn after one of its moves (strike-first ordering). */
+function strikeKey(s: GameState, id: string, stage: 1 | 2, W: Weights): number {
+  const u = unitById(s, id);
+  if (!u || u.hex < 0 || stage !== 1) return 0;
+  const op = s.turn.ordered[id];
+  if (!op || !op.canBattle || op.battlesLeft <= 0) return 0;
+  const old = u.hex;
+  const l = attachedLeader(s, u);
+  let best = 0;
+  try {
+    for (const m of pieceMoves(s, id, stage)) {
+      if (m.hex < 0 || !m.canBattle) continue;
+      u.hex = m.hex;
+      if (l) l.hex = m.hex;
+      const v = attackNowValue(s, new Occ(s), u, m.dist, true, m.mustBattle, W);
+      if (v > best) best = v;
+    }
+  } finally {
+    u.hex = old;
+    if (l) l.hex = old;
+  }
+  return best;
+}
+
 /** Next move of the greedy planner (front units first, then supports, lone leaders last). */
 export function greedyMoveStep(s: GameState, stage: 1 | 2, mc: MoveCtx): Answer {
   const ids = movablePieces(s, stage).filter((id) => !mc.decided.has(id));
   if (!ids.length) return { kind: 'endMove' };
   const jitter = () => (mc.orderNoise && mc.rng ? mc.orderNoise * mc.rng.normal() : 0);
-  const keys = new Map(ids.map((id) => [id, orderKey(s, id, mc.me) + jitter()]));
+  const strike = (id: string) => (mc.strikeFirst && !isLeaderId(id) ? 10 * strikeKey(s, id, stage, mc.W) : 0);
+  const keys = new Map(ids.map((id) => [id, orderKey(s, id, mc.me) + jitter() - strike(id)]));
   ids.sort((a, b) => keys.get(a)! - keys.get(b)!);
   for (const id of ids) {
     mc.decided.add(id);

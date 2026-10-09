@@ -10,7 +10,7 @@ import { UNIT_STATS, forestFighter } from '../engine/units';
 import {
   OFF_BOARD, type Answer, type Decision, type DieFace, type GameState, type HexId, type RetreatOption, type Side, type Unit,
 } from '../engine/types';
-import { Occ, attachedLeaderOcc, enemyUnitsAdjacent } from './board';
+import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist } from './board';
 import { pAnyHelmet } from './dice';
 import {
   attackOptions, closeAttackEV, closeProfile, dmgValue, evadeEV, leaderAttackEV, momentumValue, standEV, strikeValue, type AttackOpt,
@@ -59,7 +59,11 @@ export function greedyBattle(s: GameState, W: Weights, rng?: Rng, noise = 0): An
 // defence
 // ---------------------------------------------------------------------------
 
-export function defendChoice(s: GameState, d: D<'defend'>, W: Weights): 'stand' | 'evade' | 'firstStrike' {
+/**
+ * Stand, evade or play First Strike. `fsKeepScale` scales the value of keeping First Strike for later (it shrinks the
+ * longer the card has sat in hand and the fewer sound units are in contact to use it on).
+ */
+export function defendChoice(s: GameState, d: D<'defend'>, W: Weights, fsKeepScale = 1): 'stand' | 'evade' | 'firstStrike' {
   const a = unitById(s, d.attacker);
   const t = unitById(s, d.target);
   if (!a || !t) return 'stand';
@@ -85,7 +89,7 @@ export function defendChoice(s: GameState, d: D<'defend'>, W: Weights): 'stand' 
     const fs = strikeValue(s, occ, t, a, closeProfile(s, occ, t, a, nb), 'close');
     const pStop = Math.min(1, fs.pElim + fs.pRetreat);
     const after = standEV(s, occ, a, t, n, mom, 0).ev; // attacker strikes, no battle back
-    const keep = 0.3 * W.retention;
+    const keep = 0.3 * W.retention * fsKeepScale;
     const val = fs.ev - (1 - pStop) * after - keep;
     if (val > bestVal + 0.02) {
       best = 'firstStrike';
@@ -160,12 +164,40 @@ function escapeDice(u: Unit): number {
   return UNIT_STATS[u.type].cc + (u.type === 'WA' && u.blocks === u.maxBlocks ? 1 : 0);
 }
 
+/**
+ * Chance a lone leader standing on `h` survives the rest of the enemy's current battle phase: ordered enemy units that
+ * can still battle and are adjacent (or in range), plus a unit that just won a close combat next to the hex the leader
+ * is leaving (it may advance into it and make a bonus close combat against him).
+ */
+function survivesActiveTurn(s: GameState, l: { side: Side; hex: HexId }, h: HexId, from: HexId): number {
+  if (s.active === l.side) return 1;
+  let surv = 1;
+  const occ = new Occ(s);
+  for (const id in s.turn.ordered) {
+    const op = s.turn.ordered[id];
+    if (op.isLeader) continue;
+    const e = unitById(s, id);
+    if (!e || e.hex < 0 || e.side === l.side) continue;
+    const dNow = hexDist(e.hex, h);
+    if (op.battlesLeft > 0 && op.canBattle) {
+      if (dNow === 1 && !s.turn.mods.noClose) surv *= 1 - pAnyHelmet(escapeDice(e));
+      else if (dNow > 1 && UNIT_STATS[e.type].range >= dNow && !s.turn.mods.noRanged) surv *= 1 - pAnyHelmet(1);
+    } else if (from >= 0 && hexDist(e.hex, from) === 1 && hexDist(h, from) === 1 && !s.turn.mods.noClose) {
+      const st = UNIT_STATS[e.type];
+      const bonusOk = e.type === 'WA' || st.mounted || (st.foot && !!attachedLeaderOcc(occ, e));
+      if (bonusOk) surv *= 1 - 0.7 * pAnyHelmet(escapeDice(e));
+    }
+  }
+  return surv;
+}
+
 export function chooseLeaderEvade(s: GameState, d: D<'leaderEvade'>, W: Weights): number {
   const l = leaderById(s, d.leader);
   if (!l || d.options.length <= 1) return 0;
   const from = l.hex;
   const next = other(l.side);
   const deathCost = nextBanner(s, other(l.side)) + leaderVal(s, l);
+  const sacred = s.special.sacredLeaderId === l.id;
   let best = 0;
   let bestV = -Infinity;
   d.options.forEach((o: RetreatOption, i) => {
@@ -175,6 +207,7 @@ export function chooseLeaderEvade(s: GameState, d: D<'leaderEvade'>, W: Weights)
       if (e) surv *= 1 - pAnyHelmet(escapeDice(e));
     }
     for (const h of o.path) if (h >= 0 && terrainAt(s, h) === 'marsh') surv *= 5 / 6;
+    if (!o.offBoard && !o.attachLeader) surv *= survivesActiveTurn(s, l, o.end, from);
     l.hex = o.offBoard ? OFF_BOARD : o.end;
     let v = evaluate(s, l.side, next, W);
     l.hex = from;
@@ -182,6 +215,8 @@ export function chooseLeaderEvade(s: GameState, d: D<'leaderEvade'>, W: Weights)
     if (!o.offBoard && o.attachLeader) {
       const u = unitById(s, o.attachLeader);
       if (u && u.blocks === 1) v -= 0.05;
+      // the instant-loss leader (Castulo) takes cover in a sound unit, preferably one out of contact
+      if (u && sacred && u.blocks >= 2) v += enemyUnitsAdjacent(new Occ(s), u.hex, u.side) > 0 ? 0.2 : 0.4;
     }
     v = surv * v + (1 - surv) * (v - deathCost);
     if (v > bestV) {
@@ -273,16 +308,26 @@ function valueAt(s: GameState, u: Unit, hex: HexId, W: Weights, withBonus: boole
   return v;
 }
 
+/**
+ * Baecula: value of a Roman unit ending its attack on hex h when that is an uncaptured Carthaginian camp (the engine
+ * credits the camp only where the unit finally stops, so riding on out of it forfeits the banner).
+ */
+export function campBanner(s: GameState, u: Unit, h: HexId): number {
+  if (!s.special.rules.includes('baeculaCamps') || h < 0) return 0;
+  if (s.players[u.side].army !== 'Roman' || !isCamp(s, h) || s.special.campsCaptured.includes(h)) return 0;
+  if (s.players[u.side].banners + 1 >= s.bannersToWin) return WIN_SCORE;
+  return nextBanner(s, u.side);
+}
+
 export function chooseMomentum(s: GameState, d: D<'momentum'>, W: Weights, bonusPossible = true): boolean {
   if (d.bonus) bonusPossible = false;
   const u = unitById(s, d.unit);
   if (!u) return false;
-  const stay = valueAt(s, u, u.hex, W, false, false);
-  let adv = valueAt(s, u, d.hex, W, bonusPossible, bonusPossible);
+  const stay = valueAt(s, u, u.hex, W, false, false) + campBanner(s, u, u.hex);
+  let adv = valueAt(s, u, d.hex, W, bonusPossible, bonusPossible) + campBanner(s, u, d.hex);
   if (terrainAt(s, d.hex) === 'marsh') adv -= blockVal(u) / 6;
-  if (s.special.rules.includes('baeculaCamps') && isCamp(s, d.hex) && !s.special.campsCaptured.includes(d.hex) &&
-    s.players[u.side].army === 'Roman') adv += 1;
-  if (adv >= WIN_SCORE / 2) return true;
+  if (adv >= WIN_SCORE / 2 && adv > stay) return true;
+  if (stay >= WIN_SCORE / 2) return false;
   return adv + W.momentumBias > stay;
 }
 
@@ -290,9 +335,9 @@ export function chooseCavalryExtra(s: GameState, d: D<'cavalryExtra'>, W: Weight
   const u = unitById(s, d.unit);
   if (!u) return null;
   let best: HexId | null = null;
-  let bestV = valueAt(s, u, u.hex, W, true, false);
+  let bestV = valueAt(s, u, u.hex, W, true, false) + campBanner(s, u, u.hex);
   for (const h of d.options) {
-    let v = valueAt(s, u, h, W, true, false);
+    let v = valueAt(s, u, h, W, true, false) + campBanner(s, u, h);
     if (terrainAt(s, h) === 'marsh') v -= blockVal(u) / 6;
     if (v > bestV + 0.005) {
       bestV = v;
@@ -498,8 +543,8 @@ function bonusAt(s: GameState, u: Unit, hex: HexId, W: Weights): { bonus: number
 export function quickMomentum(s: GameState, d: D<'momentum'>, W: Weights): boolean {
   const u = unitById(s, d.unit);
   if (!u) return false;
-  if (s.special.rules.includes('baeculaCamps') && isCamp(s, d.hex) && !s.special.campsCaptured.includes(d.hex) &&
-    s.players[u.side].army === 'Roman') return true;
+  if (campBanner(s, u, u.hex) > 0) return false; // already standing in a camp that will be credited
+  if (campBanner(s, u, d.hex) > 0) return true;
   const r = d.bonus ? { bonus: 0, enemies: enemyUnitsAdjacent(new Occ(s), d.hex, u.side) } : bonusAt(s, u, d.hex, W);
   if (r.bonus > W.bonusThreshold + 0.02) return true;
   if (battered(u) || terrainAt(s, d.hex) === 'marsh') return false;
@@ -509,6 +554,9 @@ export function quickMomentum(s: GameState, d: D<'momentum'>, W: Weights): boole
 export function quickCavalryExtra(s: GameState, d: D<'cavalryExtra'>, W: Weights): HexId | null {
   const u = unitById(s, d.unit);
   if (!u) return null;
+  if (campBanner(s, u, u.hex) > 0) return null;
+  const camp = d.options.find((h) => campBanner(s, u, h) > 0);
+  if (camp !== undefined) return camp;
   let best: HexId | null = null;
   let bestV = bestBonusHere(s, u, W) + 0.03;
   for (const h of d.options) {

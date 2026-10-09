@@ -91,7 +91,11 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
       // a leader riding with a battered unit near the enemy should move to a healthier one
       const lu = leaderUnit(s, l)!;
       let b = 0;
-      if (battered(lu) && nearestEnemy(s, lu.hex, side) <= 3) {
+      if (s.special.sacredLeaderId === l.id && lu.blocks < lu.maxBlocks && nearestEnemy(s, lu.hex, side) <= 3) {
+        // the instant-loss leader leaves a damaged unit near the enemy for a full-strength one
+        const refuge = unitsOf(s, side).some((u) => u !== lu && u.blocks === u.maxBlocks && hexDist(u.hex, l.hex) <= 3 && !occ.leader[u.hex]);
+        if (refuge) b = 0.4;
+      } else if (battered(lu) && nearestEnemy(s, lu.hex, side) <= 3) {
         const refuge = unitsOf(s, side).some((u) => u !== lu && !battered(u) && hexDist(u.hex, l.hex) <= 3 && !occ.leader[u.hex]);
         if (refuge) b = 0.15;
       }
@@ -107,6 +111,9 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
       if (g > b) b = g;
     }
     if (nearestEnemy(s, l.hex, side) <= 1) b += 0.15; // in danger: must move
+    if (s.special.sacredLeaderId === l.id && unitsOf(s, side).some((u) => u.blocks >= 2 && hexDist(u.hex, l.hex) <= 3 && !occ.leader[u.hex])) {
+      b = Math.max(b, 0.3); // a lone instant-loss leader always wants to rejoin a sound unit
+    }
     out.set(l.id, b);
   }
   return out;

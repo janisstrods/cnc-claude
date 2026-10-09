@@ -1,10 +1,15 @@
 // AI match runner / tournament.
 // Usage: npx vite-node scripts/ai-match.ts -- --a tribune --b recruit [--games 2] [--scenarios 001,005] [--scale 1]
-//        [--shard 0/4] [--random]   (--random: side B plays uniformly random legal answers)
+//        [--shard 0/4] [--random] [--bot greedy|turtle|sniper] [--det]
+//   --random: side B plays uniformly random legal answers; --bot: side B is a scripted bot (tests/ai/bots.ts);
+//   --det: deterministic AI (simulation counts bound the search). Opt-in regression check: tribune should beat the
+//   greedy bot about 65% or more over 30 games. Strength A/Bs need a same-seed baseline (old-vs-old on the same
+//   seeds): side and seed imbalance in this game is large.
 import { GameDriver, createGame, randomAnswer, type Side } from '../src/engine';
 import { SCENARIOS } from '../src/scenarios';
 import { chooseAnswer, newMemory, personalityById, personalityFor, type AiMemory, type AiOptions, type Difficulty } from '../src/ai';
 import { weightsFor } from '../src/ai/values';
+import { Bot, type Strategy } from '../tests/ai/bots';
 
 function arg(name: string, def: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -20,6 +25,8 @@ const scaleB = Number(arg('scaleB', arg('scale', '1')));
 const scen = arg('scenarios', SCENARIOS.map((s) => s.id).join(',')).split(',');
 const [shard, shards] = arg('shard', '0/1').split('/').map(Number);
 const randomB = flag('random');
+const botB = arg('bot', '') as Strategy | '';
+const det = flag('det');
 const seedOffset = Number(arg('seedOffset', '0'));
 // --tuneA '{"riskSelf":0.5}' --tuneB '{...}' : weight overrides; values in the form "*0.5" multiply the default.
 const tuneA = arg('tuneA', '');
@@ -53,6 +60,7 @@ for (const job of mine) {
   const bSide: Side = job.aSide === 'top' ? 'bottom' : 'top';
   const mk = (side: Side, diff: Difficulty, sc: number): AiOptions => ({
     side, difficulty: diff, personality: personalityFor(info.setup[side].commander, info.setup[side].army), seed: seed * 3 + (side === 'top' ? 1 : 2), budgetScale: sc,
+    deterministic: det,
   });
   const optA = mk(job.aSide, A, scale);
   const optB = mk(bSide, B, scaleB);
@@ -68,11 +76,13 @@ for (const job of mine) {
   const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
   let steps = 0;
   let rejects = 0;
-  while (!d.over && steps++ < 20000) {
+  const bot = botB ? new Bot(botB, rnd) : null;
+  while (!d.over && steps++ < 20000 && d.state.turn.number <= 200) {
     const dec = d.pending!;
     const isA = dec.side === job.aSide;
     let ans;
-    if (!isA && randomB) ans = randomAnswer(d.state, dec, rnd);
+    if (!isA && bot) ans = bot.answer(d.state, dec);
+    else if (!isA && randomB) ans = randomAnswer(d.state, dec, rnd);
     else {
       const t0 = performance.now();
       ans = chooseAnswer(d.state, dec, isA ? optA : optB, isA ? memA : memB).answer;
@@ -88,10 +98,10 @@ for (const job of mine) {
   if (w === job.aSide) aWins++;
   else if (w === bSide) bWins++;
   const ps = d.state.players;
-  console.log(`${job.sc} A(${A})=${job.aSide} vs B(${randomB ? 'random' : B}) -> ${w === job.aSide ? 'A' : w === bSide ? 'B' : 'none'} ` +
+  console.log(`${job.sc} A(${A})=${job.aSide} vs B(${botB || (randomB ? 'random' : B)}) -> ${w === job.aSide ? 'A' : w === bSide ? 'B' : 'none'} ` +
     `${ps[job.aSide].banners}-${ps[bSide].banners} turns=${d.state.turn.number}${rejects ? ` rejects=${rejects}` : ''}`);
 }
 const avg = (x: number[]) => (x.length ? x.reduce((a, b) => a + b, 0) / x.length : 0);
 const max = (x: number[]) => (x.length ? Math.max(...x) : 0);
-console.log(`RESULT A=${A} wins ${aWins}, B=${randomB ? 'random' : B} wins ${bWins}, games ${mine.length}`);
+console.log(`RESULT A=${A} wins ${aWins}, B=${botB || (randomB ? 'random' : B)} wins ${bWins}, games ${mine.length}`);
 console.log(`TIME A playCard avg ${avg(timeA).toFixed(0)}ms max ${max(timeA).toFixed(0)}ms; B avg ${avg(timeB).toFixed(0)}ms max ${max(timeB).toFixed(0)}ms`);

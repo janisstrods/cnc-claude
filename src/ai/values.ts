@@ -41,8 +41,21 @@ export function nextBanner(s: GameState, side: Side): number {
   return bannerStep(s.players[side].banners + 1, s.bannersToWin);
 }
 
+/**
+ * Losing this leader loses the battle outright (Castulo's Scipio). His own side prices him far above a winning banner
+ * (the threat model underrates a targeted hunt); the enemy keeps the winning-banner value, so it does not turn reckless.
+ */
+export const SACRED_LEADER_VALUE = 20;
+
+let viewer: Side | null = null;
+
+/** The side the AI is currently deciding for (set around each decision; null = owner's view). */
+export function setViewer(side: Side | null): void {
+  viewer = side;
+}
+
 export function leaderVal(s: GameState, l: Leader): number {
-  if (s.special.sacredLeaderId === l.id) return WINNING_BANNER;
+  if (s.special.sacredLeaderId === l.id) return viewer === null || viewer === l.side ? SACRED_LEADER_VALUE : WINNING_BANNER;
   return LEADER_VALUE;
 }
 
