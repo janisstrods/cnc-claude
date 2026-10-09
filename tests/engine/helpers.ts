@@ -13,8 +13,8 @@ export function setupOf(p: Pos): ScenarioSetup {
   return {
     id: 'test',
     name: 'Test',
-    top: { army: 'Carthaginian', faction: 'carthage', commander: 'T', cards: p.cards ?? 5 },
-    bottom: { army: 'Roman', faction: 'rome', commander: 'B', cards: p.cards ?? 5 },
+    top: { army: 'Carthaginian', blocks: 'car', look: 'carthaginian', commander: 'T', cards: p.cards ?? 5 },
+    bottom: { army: 'Roman', blocks: 'rom', look: 'roman', commander: 'B', cards: p.cards ?? 5 },
     first: p.first ?? 'bottom',
     banners: 99,
     terrain: (p.terrain ?? []).map((t) => ({ r: t.at[0], c: t.at[1], t: t.t, ford: t.ford })),

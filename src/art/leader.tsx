@@ -1,8 +1,8 @@
 // Leaders: a compact portrait medallion when attached to a unit, or a mounted general with a standard when alone.
 import { memo } from 'react';
-import type { Faction } from '../engine/types';
+import type { ArmyLook, Blocks } from '../engine/types';
 import { darken, lighten } from './color';
-import { FACTION_PALETTES, type Palette } from './palettes';
+import { paletteFor, type Palette } from './palettes';
 import { FacingRightCtx, Head, Hi, Line2, OL, Paint, Shape, makeFig, type Fig } from './parts';
 import { HORSE_GEOM, Horse, Rider, type RiderKit } from './mounted';
 import { BasePlate } from './token';
@@ -33,9 +33,9 @@ export function Standard({ p, x1 = -3.8, y1 = 6, x2 = -0.6, y2 = -41 }: { p: Pal
       <circle cx={l - 1} cy={top} r={0.8} fill={p.gold} stroke={OL} strokeWidth={0.4} />
       <circle cx={r + 1} cy={top} r={0.8} fill={p.gold} stroke={OL} strokeWidth={0.4} />
       {/* finial */}
-      {p.faction === 'rome' ? (
+      {p.kit === 'roman' ? (
         <path d={`M${x2 - 2.6} ${y2 + 0.6} C${x2 - 1.6} ${y2 - 1.4} ${x2 - 0.6} ${y2 - 1} ${x2} ${y2 - 3} C${x2 + 0.6} ${y2 - 1} ${x2 + 1.6} ${y2 - 1.4} ${x2 + 2.6} ${y2 + 0.6} C${x2 + 1.4} ${y2 + 0.2} ${x2 + 0.6} ${y2 + 1} ${x2} ${y2 + 1.6} C${x2 - 0.6} ${y2 + 1} ${x2 - 1.4} ${y2 + 0.2} ${x2 - 2.6} ${y2 + 0.6} Z`} fill={p.gold} stroke={OL} strokeWidth={0.5} />
-      ) : p.faction === 'carthage' ? (
+      ) : p.kit === 'punic' ? (
         <g fill={p.gold} stroke={OL} strokeWidth={0.45}>
           <circle cx={x2} cy={y2 - 1.6} r={1.4} />
           <path d={`M${x2 - 2.4} ${y2 + 0.2} A 2.4 2.2 0 0 0 ${x2 + 2.4} ${y2 + 0.2} A 1.9 1.4 0 0 1 ${x2 - 2.4} ${y2 + 0.2} Z`} />
@@ -48,7 +48,7 @@ export function Standard({ p, x1 = -3.8, y1 = 6, x2 = -0.6, y2 = -41 }: { p: Pal
 }
 
 function BannerDevice({ p, cx, cy }: { p: Palette; cx: number; cy: number }) {
-  if (p.faction === 'carthage') {
+  if (p.kit === 'punic') {
     return (
       <g fill={p.bannerEmblem} stroke={darken(p.bannerEmblem, 0.5)} strokeWidth={0.35}>
         <circle cx={cx} cy={cy - 1.6} r={1.5} />
@@ -56,7 +56,7 @@ function BannerDevice({ p, cx, cy }: { p: Palette; cx: number; cy: number }) {
       </g>
     );
   }
-  if (p.faction === 'syracuse') {
+  if (p.kit === 'greek') {
     return (
       <g>
         <circle cx={cx} cy={cy} r={3} fill="none" stroke={p.bannerEmblem} strokeWidth={1.1} />
@@ -80,7 +80,7 @@ const GENERAL_KIT: RiderKit = {
 /** Mounted general with cloak and standard, facing right, hooves at y = 0. */
 export function MountedGeneral({ p }: { p: Palette }) {
   const f = makeFig(generalPalette(p), 1);
-  const horse = p.faction === 'syracuse' ? p.horses[0] : { coat: '#e6dfd0', shade: '#aea592', mane: '#8c8272' };
+  const horse = p.kit === 'greek' ? p.horses[0] : { coat: '#e6dfd0', shade: '#aea592', mane: '#8c8272' };
   return (
     <g>
       <g transform={`scale(${HORSE_GEOM.scale})`}>
@@ -107,7 +107,7 @@ function Bust({ f }: { f: Fig }) {
   return (
     <>
       <g transform="translate(-0.75 24.4) scale(1.05)">
-        <Head f={f} helmet="atticOpen" crest="horsehair" beard={p.faction !== 'rome'} />
+        <Head f={f} helmet="atticOpen" crest="horsehair" beard={p.kit !== 'roman'} />
       </g>
       {/* cloak across the shoulders */}
       <Shape d="M-7.63 2.4 C-5.8 1.4 -3.4 1.2 0 1.5 C3.4 1.7 5.8 2 7.63 2.4 A 8 8 0 0 1 -7.63 2.4 Z" f={p.cloak} sw={0.6} />
@@ -122,7 +122,8 @@ function Bust({ f }: { f: Fig }) {
 }
 
 export interface LeaderTokenProps {
-  faction: Faction;
+  look: ArmyLook;
+  blockColor: Blocks;
   facing: 'left' | 'right';
   attached: boolean;
   name?: string;
@@ -141,8 +142,8 @@ function NameRibbon({ name, y, p }: { name: string; y: number; p: Palette }) {
   );
 }
 
-function LeaderTokenImpl({ faction, facing, attached, name, showName }: LeaderTokenProps) {
-  const p = FACTION_PALETTES[faction];
+function LeaderTokenImpl({ look, blockColor, facing, attached, name, showName }: LeaderTokenProps) {
+  const p = paletteFor(look, blockColor);
   const flip = facing === 'left' ? -1 : 1;
   if (attached) {
     const f = makeFig(generalPalette(p), 1);

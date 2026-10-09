@@ -33,12 +33,12 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
           <svg viewBox="-52 -48 524 96" width="620" height="114">
             {MENU_ARMY_L.map((t, i) => (
               <g key={t} transform={`translate(${i * 80}, ${i % 2 ? 4 : 0})`}>
-                <UnitToken type={t} faction="rome" blocks={UNIT_STATS[t].blocks} maxBlocks={UNIT_STATS[t].blocks} facing="right" />
+                <UnitToken type={t} look="roman" blockColor="rom" blocks={UNIT_STATS[t].blocks} maxBlocks={UNIT_STATS[t].blocks} facing="right" />
               </g>
             ))}
             {MENU_ARMY_R.map((t, i) => (
               <g key={t} transform={`translate(${420 - i * 80}, ${i % 2 ? 4 : 0})`}>
-                <UnitToken type={t} faction="carthage" blocks={UNIT_STATS[t].blocks} maxBlocks={UNIT_STATS[t].blocks} facing="left" />
+                <UnitToken type={t} look="carthaginian" blockColor="car" blocks={UNIT_STATS[t].blocks} maxBlocks={UNIT_STATS[t].blocks} facing="left" />
               </g>
             ))}
           </svg>
@@ -79,7 +79,7 @@ function SetupPreview({ state, flipped, humanSide }: { state: GameState; flipped
         const { x, y } = hexCenterId(u.hex, flipped);
         return (
           <g key={u.id} transform={`translate(${x}, ${y})`}>
-            <UnitToken type={u.type} faction={state.players[u.side].faction} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={u.side === humanSide ? 'right' : 'left'} elite={u.elite} />
+            <UnitToken type={u.type} look={state.players[u.side].look} blockColor={state.players[u.side].blocks} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={u.side === humanSide ? 'right' : 'left'} elite={u.elite} />
           </g>
         );
       })}
@@ -88,7 +88,7 @@ function SetupPreview({ state, flipped, humanSide }: { state: GameState; flipped
         const att = !!leaderUnit(state, l);
         return (
           <g key={l.id} transform={`translate(${x + (att ? LEADER_ATTACH_OFFSET.x : 0)}, ${y + (att ? LEADER_ATTACH_OFFSET.y : 0)})`}>
-            <LeaderToken faction={state.players[l.side].faction} facing={l.side === humanSide ? 'right' : 'left'} attached={att} name={l.name} showName={!att} />
+            <LeaderToken look={state.players[l.side].look} blockColor={state.players[l.side].blocks} facing={l.side === humanSide ? 'right' : 'left'} attached={att} name={l.name} showName={!att} />
           </g>
         );
       })}

@@ -1,7 +1,7 @@
 // UnitIcon: a single representative miniature for panels and tooltips.
 import { memo } from 'react';
-import type { Faction, UnitType } from '../engine/types';
-import { FACTION_PALETTES } from './palettes';
+import type { ArmyLook, Blocks, UnitType } from '../engine/types';
+import { paletteFor } from './palettes';
 import { FacingRightCtx } from './parts';
 import { Miniature, figureKind } from './token';
 
@@ -21,8 +21,8 @@ const BOX: Record<UnitType, [top: number, bottom: number, left: number, right: n
   HCH: [-43.3, 0.8, -27.8, 31],
 };
 
-function UnitIconImpl({ type, faction, size }: { type: UnitType; faction: Faction; size: number }) {
-  const p = FACTION_PALETTES[faction];
+function UnitIconImpl({ type, look, blockColor, size }: { type: UnitType; look: ArmyLook; blockColor: Blocks; size: number }) {
+  const p = paletteFor(look, blockColor);
   const [top, bottom, left, right] = BOX[type];
   const s = size / Math.max(bottom - top, right - left);
   const cx = (left + right) / 2;
@@ -40,6 +40,6 @@ function UnitIconImpl({ type, faction, size }: { type: UnitType; faction: Factio
 const UnitIconMemo = memo(UnitIconImpl);
 
 /** One representative miniature (facing right), centred on (0,0) and scaled to fit a `size` x `size` box. */
-export function UnitIcon(props: { type: UnitType; faction: Faction; size: number }): JSX.Element {
+export function UnitIcon(props: { type: UnitType; look: ArmyLook; blockColor: Blocks; size: number }): JSX.Element {
   return <UnitIconMemo {...props} />;
 }

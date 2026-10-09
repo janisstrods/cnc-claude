@@ -5,12 +5,14 @@
   "top": {
     "army": "Carthaginian",
     "blocks": "car",
+    "look": "carthaginian",
     "commander": "Himilco",
     "cards": 5
   },
   "bottom": {
     "army": "Syracusan",
     "blocks": "rom",
+    "look": "syracusan",
     "commander": "Daphnaeus",
     "cards": 6
   },

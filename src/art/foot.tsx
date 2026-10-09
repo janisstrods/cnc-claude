@@ -1,6 +1,6 @@
 // Foot soldier miniatures (LI, LB, LS, AX, WA, MI, HI). Drawn facing right, feet at (0,0), ~30 units tall.
-import type { Faction, UnitType } from '../engine/types';
-import { TRIBAL_HAIR, TRIBAL_SKIN, type Palette } from './palettes';
+import type { UnitType } from '../engine/types';
+import { TRIBAL_HAIR, TRIBAL_SKIN, type Kit, type Palette } from './palettes';
 import {
   Arm, Body, Head, Hi, Line2, LegsEl, OL, Shape, Shield, Spear, makeFig,
   type Crest, type Fig, type Hair, type Helmet, type Legs, type ShieldKind, type Torso,
@@ -33,9 +33,9 @@ export interface FootKit {
   falcata?: boolean;
 }
 
-export function footKit(type: UnitType, faction: Faction, i: number): FootKit {
-  const greek = faction === 'syracuse';
-  const punic = faction === 'carthage';
+export function footKit(type: UnitType, kit: Kit, i: number): FootKit {
+  const greek = kit === 'greek';
+  const punic = kit === 'punic';
   switch (type) {
     case 'LI':
       return {

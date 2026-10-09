@@ -1,6 +1,6 @@
 // Battle-log flavour lines in the commander's voice. Lines never reveal hidden information: card lines are spoken
 // only after the card is played (it is revealed anyway), and nothing refers to cards still in hand.
-import type { CardKind, Faction, GameState, Side, UnitType } from '../engine/types';
+import type { ArmyLook, CardKind, GameState, Side, UnitType } from '../engine/types';
 import type { Personality, Voice } from './personality';
 import type { Rng } from './rand';
 
@@ -134,16 +134,17 @@ const LINES: Record<Moment, Lines> = {
   },
 };
 
-const TROOPS: Record<Faction, Partial<Record<UnitType, string>>> = {
-  rome: {
+/** Troop names by army look; a look without an entry (or a type without a name) is just "men". */
+const TROOPS: Partial<Record<ArmyLook, Partial<Record<UnitType, string>>>> = {
+  roman: {
     LI: 'velites', LB: 'archers', LS: 'slingers', AX: 'auxilia', WA: 'Gallic allies', MI: 'hastati', HI: 'legionaries',
     LC: 'light horse', MC: 'equites', HC: 'heavy horse', EL: 'elephants', HCH: 'chariots',
   },
-  carthage: {
+  carthaginian: {
     LI: 'skirmishers', LB: 'archers', LS: 'Balearic slingers', AX: 'Iberian foot', WA: 'Gauls', MI: 'Libyan spearmen',
     HI: 'Libyan veterans', LC: 'Numidians', MC: 'Iberian horse', HC: 'Carthaginian horse', EL: 'elephants', HCH: 'war chariots',
   },
-  syracuse: {
+  syracusan: {
     LI: 'peltasts', LB: 'Cretan archers', LS: 'slingers', AX: 'mercenary peltasts', WA: 'Campanians', MI: 'mercenary spearmen',
     HI: 'hoplites', LC: 'light horse', MC: 'Greek horse', HC: 'heavy horse', EL: 'elephants', HCH: 'chariots',
   },
@@ -151,7 +152,7 @@ const TROOPS: Record<Faction, Partial<Record<UnitType, string>>> = {
 
 export function troopName(s: GameState, side: Side, t: UnitType | undefined): string {
   if (!t) return 'men';
-  return TROOPS[s.players[side].faction][t] ?? 'men';
+  return TROOPS[s.players[side].look]?.[t] ?? 'men';
 }
 
 export interface VoiceMemory {

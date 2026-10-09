@@ -1,11 +1,29 @@
-import type { CardGroup, Faction } from '../../engine/types';
+import type { ArmyLook, Blocks, CardGroup } from '../../engine/types';
 
-/** Faction army colours (rome crimson, carthage tyrian purple, syracuse deep blue). */
-export const FACTION_COLORS: Record<Faction, { main: string; light: string; dark: string }> = {
-  rome: { main: '#9b1f1c', light: '#c9483a', dark: '#5a0f0e' },
-  carthage: { main: '#6a1e5c', light: '#9c4f8c', dark: '#3a0c33' },
-  syracuse: { main: '#1f417e', light: '#4b72b6', dark: '#0f2149' },
+/** Cloth colours of a captured banner. */
+export interface BannerCloth {
+  main: string;
+  light: string;
+  dark: string;
+}
+
+/** Banner cloth of each block set (rom crimson, car tyrian purple). Greek and Eastern blocks arrive with Expansion #1. */
+export const BANNER_CLOTH: Partial<Record<Blocks, BannerCloth>> = {
+  rom: { main: '#9b1f1c', light: '#c9483a', dark: '#5a0f0e' },
+  car: { main: '#6a1e5c', light: '#9c4f8c', dark: '#3a0c33' },
 };
+
+/** Looks that keep their own banner cloth whatever blocks they fight on (the Syracusans' deep blue; see `sideColors` in art/palettes). */
+const LOOK_CLOTH: Partial<Record<ArmyLook, BannerCloth>> = {
+  syracusan: { main: '#1f417e', light: '#4b72b6', dark: '#0f2149' },
+};
+
+/** Cloth colour of the banners an army captured; throws when its blocks have none. */
+export function bannerCloth(look: ArmyLook, blocks: Blocks): BannerCloth {
+  const c = LOOK_CLOTH[look] ?? BANNER_CLOTH[blocks];
+  if (!c) throw new Error(`No banner colour for blocks "${blocks}"`);
+  return c;
+}
 
 /** Colour coding of the four card groups. */
 export const GROUP_COLORS: Record<CardGroup, { main: string; light: string; dark: string; label: string }> = {
@@ -52,7 +70,7 @@ export const theme = {
     ivory: '#f6efdc',
   },
   group: GROUP_COLORS,
-  faction: FACTION_COLORS,
+  banner: BANNER_CLOTH,
   radius: { sm: 4, md: 8, lg: 14 },
   shadow: {
     soft: '0 2px 6px rgba(0,0,0,.35)',

@@ -1,7 +1,7 @@
 // Horses and riders (LC, MC, HC, leaders). Facing right, hooves at y = 0.
 import type { UnitType } from '../engine/types';
 import { darken, lighten } from './color';
-import type { Palette } from './palettes';
+import type { Kit, Palette } from './palettes';
 import {
   Arm, Body, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, makeFig,
   type Crest, type Fig, type Helmet, type ShieldKind, type Torso,
@@ -191,9 +191,9 @@ export function Rider({ kit, f, standard }: { kit: RiderKit; f: Fig; standard?: 
   );
 }
 
-export function riderKit(type: UnitType, faction: Palette['faction'], i: number): RiderKit {
-  const greek = faction === 'syracuse';
-  const punic = faction === 'carthage';
+export function riderKit(type: UnitType, kit: Kit, i: number): RiderKit {
+  const greek = kit === 'greek';
+  const punic = kit === 'punic';
   if (type === 'LC') {
     return {
       torso: 'tunic', helmet: punic ? 'none' : greek ? 'pilos' : 'none', crest: 'none', shield: 'round', weapon: 'javelin',
@@ -214,10 +214,10 @@ export function riderKit(type: UnitType, faction: Palette['faction'], i: number)
 
 export function MountedFigure({ type, p, i }: { type: UnitType; p: Palette; i: number }) {
   const f = makeFig(p, i);
-  const kit = riderKit(type, p.faction, i);
+  const kit = riderKit(type, p.kit, i);
   const coats = p.horses;
   const h = coats[(i + (type === 'HC' ? 1 : type === 'LC' ? 2 : 0)) % coats.length];
-  const numidian = type === 'LC' && p.faction === 'carthage';
+  const numidian = type === 'LC' && p.kit === 'punic';
   const scale = type === 'LC' ? 0.92 : type === 'HC' ? 1.06 : 1;
   return (
     <g transform={scale !== 1 ? `scale(${scale})` : undefined}>

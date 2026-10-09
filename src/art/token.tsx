@@ -1,7 +1,7 @@
 // UnitToken: base plate + miniatures + class badge + strength pips, centred on (0,0) of a pointy-top hex (R = 50).
 import { memo } from 'react';
-import type { EliteId, Faction, UnitType } from '../engine/types';
-import { FACTION_PALETTES, type Palette } from './palettes';
+import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
+import { paletteFor, type Palette } from './palettes';
 import { FootFigure, footKit } from './foot';
 import { MountedFigure } from './mounted';
 import { ElephantFigure } from './elephant';
@@ -79,7 +79,7 @@ export function Miniature({ type, p, i }: { type: UnitType; p: Palette; i: numbe
   if (k === 'horse') return <MountedFigure type={type} p={p} i={i} />;
   if (k === 'elephant') return <ElephantFigure p={p} i={i} />;
   if (k === 'chariot') return <ChariotFigure p={p} i={i} />;
-  return <FootFigure kit={footKit(type, p.faction, i)} p={p} i={i} />;
+  return <FootFigure kit={footKit(type, p.kit, i)} p={p} i={i} />;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -233,7 +233,10 @@ export function SacredStandard({ p }: { p: Palette }) {
 
 export interface UnitTokenProps {
   type: UnitType;
-  faction: Faction;
+  /** The army's figure kit and palette. */
+  look: ArmyLook;
+  /** The side's block set: base-edge colour (`blocks` below is the unit's remaining strength). */
+  blockColor: Blocks;
   blocks: number;
   maxBlocks: number;
   facing: Facing;
@@ -242,8 +245,8 @@ export interface UnitTokenProps {
   dimmed?: boolean;
 }
 
-function UnitTokenImpl({ type, faction, blocks, maxBlocks, facing, elite, dimmed }: UnitTokenProps) {
-  const p = FACTION_PALETTES[faction];
+function UnitTokenImpl({ type, look, blockColor, blocks, maxBlocks, facing, elite, dimmed }: UnitTokenProps) {
+  const p = paletteFor(look, blockColor);
   const n = Math.max(0, Math.min(blocks, maxBlocks));
   const slots = n > 0 ? slotsFor(type, n) : [];
   const flip = facing === 'left' ? -1 : 1;

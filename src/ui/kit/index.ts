@@ -4,7 +4,7 @@ import './cards.css';
 import './dice.css';
 import './controls.css';
 
-export { theme, FACTION_COLORS, GROUP_COLORS } from './theme';
+export { theme, BANNER_CLOTH, GROUP_COLORS, bannerCloth, type BannerCloth } from './theme';
 export type { Theme } from './theme';
 export { CardView, CardBack, CARD_ICONS, Ornament } from './CardView';
 export type { CardSize } from './CardView';

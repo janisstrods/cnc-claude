@@ -9,8 +9,8 @@ export function ChariotFigure({ p, i }: { p: Palette; i: number }) {
   const h2 = p.horses[(i + 2) % p.horses.length];
   const driver = makeFig(p, i + 1);
   const warrior = makeFig(p, i + 2);
-  const helmet = p.faction === 'syracuse' ? 'corinthian' : p.faction === 'carthage' ? 'attic' : 'montefortino';
-  const crest = p.faction === 'rome' ? 'plumes' : p.faction === 'syracuse' ? 'tall' : 'horsehair';
+  const helmet = p.kit === 'greek' ? 'corinthian' : p.kit === 'punic' ? 'attic' : 'montefortino';
+  const crest = p.kit === 'roman' ? 'plumes' : p.kit === 'greek' ? 'tall' : 'horsehair';
   const wx = -13;
   const wy = -6.8;
   const wr = 6.6;
@@ -33,7 +33,7 @@ export function ChariotFigure({ p, i }: { p: Palette; i: number }) {
         <Spear x1={-12.4} y1={-12.4} x2={11} y2={-20.6} f={warrior} w={0.8} blade={2.8} bladeW={1.3} />
         <Arm s={[-2.2, -7]} e={[-5.6, -10.6]} h={[-4, -15.6]} f={warrior} sleeve={p.tunic} />
         <g transform="translate(-0.6 13.4)">
-          <Body f={warrior} torso={p.faction === 'rome' ? 'mail' : p.faction === 'syracuse' ? 'muscle' : 'linen'} skirt={false} />
+          <Body f={warrior} torso={p.kit === 'roman' ? 'mail' : p.kit === 'greek' ? 'muscle' : 'linen'} skirt={false} />
           <Head f={warrior} helmet={helmet} crest={crest} beard={i % 2 === 0} />
         </g>
       </g>
@@ -48,7 +48,7 @@ export function ChariotFigure({ p, i }: { p: Palette; i: number }) {
       <g transform="translate(-6.8 -17.2) scale(0.95)">
         <g transform="translate(-0.6 13.4)">
           <Body f={driver} torso="tunic" skirt={false} />
-          <Head f={driver} helmet={p.faction === 'syracuse' ? 'pilos' : 'cap'} crest="none" />
+          <Head f={driver} helmet={p.kit === 'greek' ? 'pilos' : 'cap'} crest="none" />
         </g>
         <Arm s={[1.6, -7.2]} e={[4.4, -4.8]} h={[6.8, -3.2]} f={driver} near sleeve={p.tunic} />
       </g>

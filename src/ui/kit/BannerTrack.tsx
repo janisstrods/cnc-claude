@@ -1,13 +1,13 @@
 import { useId, type CSSProperties } from 'react';
-import type { Faction } from '../../engine/types';
-import { FACTION_COLORS } from './theme';
+import type { ArmyLook, Blocks } from '../../engine/types';
+import { bannerCloth } from './theme';
 
-/** A single swallow-tailed standard. `faction` = colour of the cloth; omitted = empty slot. */
-export function BannerIcon(p: { faction?: Faction; size?: number; className?: string; style?: CSSProperties }) {
+/** A single swallow-tailed standard. `look` + `blockColor` = colour of the cloth; omitted = empty slot. */
+export function BannerIcon(p: { look?: ArmyLook; blockColor?: Blocks; size?: number; className?: string; style?: CSSProperties }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const w = p.size ?? 28;
   const h = (w * 66) / 40;
-  const c = p.faction ? FACTION_COLORS[p.faction] : null;
+  const c = p.look && p.blockColor ? bannerCloth(p.look, p.blockColor) : null;
   const cloth = 'M7 10 H33 V55 L20 46 L7 55 Z';
   return (
     <svg className={p.className} style={p.style} viewBox="0 0 40 66" width={w} height={h} aria-hidden="true">
@@ -66,12 +66,13 @@ export function BannerIcon(p: { faction?: Faction; size?: number; className?: st
 
 /**
  * Victory banner track: `target` slots, the first `count` filled with captured banners.
- * `faction` is the faction whose banners were captured (i.e. the opponent's), used for the cloth colour.
+ * `look` and `blockColor` are those of the army whose banners were captured (i.e. the opponent's), used for the cloth colour.
  */
 export function BannerTrack(p: {
   count: number;
   target: number;
-  faction: Faction;
+  look: ArmyLook;
+  blockColor: Blocks;
   label: string;
   bannerSize?: number;
   className?: string;
@@ -98,7 +99,7 @@ export function BannerTrack(p: {
         {Array.from({ length: target }, (_, i) => (
           <div key={i} className={`kit-banners__slot ${i < count ? 'is-filled' : ''}`}>
             {i < count ? (
-              <BannerIcon faction={p.faction} size={p.bannerSize} className="kit-banner" />
+              <BannerIcon look={p.look} blockColor={p.blockColor} size={p.bannerSize} className="kit-banner" />
             ) : (
               <BannerIcon size={p.bannerSize} className="kit-banner kit-banner--empty" />
             )}

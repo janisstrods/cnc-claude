@@ -37,8 +37,8 @@ interface Pos {
 function position(p: Pos): GameState {
   const setup: ScenarioSetup = {
     id: 'test', name: 'Test',
-    top: { army: 'Carthaginian', faction: 'carthage', commander: 'Hasdrubal', cards: 5 },
-    bottom: { army: 'Roman', faction: 'rome', commander: 'Scipio', cards: 5 },
+    top: { army: 'Carthaginian', blocks: 'car', look: 'carthaginian', commander: 'Hasdrubal', cards: 5 },
+    bottom: { army: 'Roman', blocks: 'rom', look: 'roman', commander: 'Scipio', cards: 5 },
     first: p.first ?? 'bottom', banners: 8,
     terrain: (p.terrain ?? []).map((t) => ({ r: t.at[0], c: t.at[1], t: t.t })),
     units: p.units.map((u) => ({ side: u.side, type: u.type, r: u.at[0], c: u.at[1] })),

@@ -1,13 +1,13 @@
 // The 15 base-game battles. Setups are transcribed data (src/scenarios/data); texts are original summaries.
 import type { ScenarioSetup } from '../engine/setup';
-import type { Faction, Side, SpecialRuleId, TerrainType, UnitType } from '../engine/types';
+import type { ArmyLook, Blocks, Side, SpecialRuleId, TerrainType, UnitType } from '../engine/types';
 
 interface ScenarioJson {
   id: string;
   name: string;
   year: string;
-  top: { army: string; blocks: 'car' | 'rom'; commander: string; cards: number };
-  bottom: { army: string; blocks: 'car' | 'rom'; commander: string; cards: number };
+  top: { army: string; blocks: Blocks; look: ArmyLook; commander: string; cards: number };
+  bottom: { army: string; blocks: Blocks; look: ArmyLook; commander: string; cards: number };
   first: Side;
   banners: number;
   terrain: { r: number; c: number; t: string; ford?: boolean }[];
@@ -30,11 +30,6 @@ export interface ScenarioInfo {
 }
 
 const files = import.meta.glob<ScenarioJson>('./data/*.json', { eager: true, import: 'default' });
-
-function faction(blocks: 'car' | 'rom', army: string): Faction {
-  if (blocks === 'car') return 'carthage';
-  return army === 'Syracusan' ? 'syracuse' : 'rome';
-}
 
 interface Extra {
   blurb: string;
@@ -154,8 +149,8 @@ function build(j: ScenarioJson): ScenarioInfo {
   const setup: ScenarioSetup = {
     id: j.id,
     name: j.name,
-    top: { army: j.top.army, faction: faction(j.top.blocks, j.top.army), commander: j.top.commander, cards: j.top.cards },
-    bottom: { army: j.bottom.army, faction: faction(j.bottom.blocks, j.bottom.army), commander: j.bottom.commander, cards: j.bottom.cards },
+    top: { army: j.top.army, blocks: j.top.blocks, look: j.top.look, commander: j.top.commander, cards: j.top.cards },
+    bottom: { army: j.bottom.army, blocks: j.bottom.blocks, look: j.bottom.look, commander: j.bottom.commander, cards: j.bottom.cards },
     first: j.first,
     banners: j.banners,
     terrain: j.terrain.map((t) => ({ r: t.r, c: t.c, t: t.t as TerrainType, ford: !!t.ford })),

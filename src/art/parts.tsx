@@ -157,7 +157,7 @@ export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted 
   painted?: boolean;
 }) {
   const { p } = f;
-  const fac = p.faction;
+  const kit = p.kit;
   const pt = painted ?? (kind === 'round' || kind === 'longOval');
   const face = pt ? p.paint : p.shield;
   const faceShade = pt ? p.paintShade : p.shieldShade;
@@ -185,9 +185,9 @@ export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted 
         <ellipse cx={4.2} cy={-14.4} rx={5.7} ry={6.9} fill={face} />
         <Paint d="M0.2 -19.4 C-1.6 -16 -1.6 -12 0.6 -9 C1.6 -7.8 3 -7.2 4.2 -7.5 C1.6 -9.6 0.6 -15 1.8 -20.6 Z" f={faceShade} o={0.75} mx={4.2} />
         <Hi d="M-0.8 -18.6 C0.2 -20.8 2 -22.2 4 -22.3" c={p.metalLight} w={0.8} mx={3.9} mr={false} />
-        {emblem && fac === 'syracuse' && <Emblem kind="syracuse" cx={4.4} cy={-14.4} s={1.15} f={f} c={emb} />}
-        {emblem && fac === 'carthage' && <Emblem kind="carthage" cx={4.4} cy={-14.2} s={1.25} f={f} c={emb} />}
-        {emblem && fac === 'rome' && <Emblem kind="rome" cx={4.4} cy={-14.4} s={0.95} f={f} c={emb} />}
+        {emblem && kit === 'greek' && <Emblem kind="syracuse" cx={4.4} cy={-14.4} s={1.15} f={f} c={emb} />}
+        {emblem && kit === 'punic' && <Emblem kind="carthage" cx={4.4} cy={-14.2} s={1.25} f={f} c={emb} />}
+        {emblem && kit === 'roman' && <Emblem kind="rome" cx={4.4} cy={-14.4} s={0.95} f={f} c={emb} />}
         <Hi d="M5.6 -20.2 C8 -18.4 8.8 -14.6 8 -11.2" c={faceLight} w={0.7} o={0.8} mx={4.2} />
       </>
     );
@@ -197,11 +197,11 @@ export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted 
         <ellipse cx={4.3} cy={-13.8} rx={5.1} ry={8.6} fill={face} stroke={OL} strokeWidth={OW} />
         <Paint d="M0.6 -19.6 C-1 -15.6 -0.9 -11 0.9 -7.6 C1.8 -6.4 2.8 -5.6 3.8 -5.3 C2.2 -9 1.8 -15.6 2.6 -22.1 C1.8 -21.5 1.1 -20.6 0.6 -19.6 Z" f={faceShade} mx={4.3} />
         <ellipse cx={4.3} cy={-13.8} rx={4.4} ry={7.9} fill="none" stroke={p.shieldRim} strokeWidth={0.6} />
-        {emblem && fac === 'carthage' && <Emblem kind="carthage" cx={4.5} cy={-13.4} s={1.15} f={f} c={emb} />}
-        {emblem && fac === 'syracuse' && <Emblem kind="syracuse" cx={4.5} cy={-13.8} s={1.0} f={f} c={emb} />}
-        {emblem && fac === 'rome' && <Emblem kind="rome" cx={4.5} cy={-13.8} s={0.95} f={f} c={emb} />}
+        {emblem && kit === 'punic' && <Emblem kind="carthage" cx={4.5} cy={-13.4} s={1.15} f={f} c={emb} />}
+        {emblem && kit === 'greek' && <Emblem kind="syracuse" cx={4.5} cy={-13.8} s={1.0} f={f} c={emb} />}
+        {emblem && kit === 'roman' && <Emblem kind="rome" cx={4.5} cy={-13.8} s={0.95} f={f} c={emb} />}
         <Hi d="M7.4 -19.4 C8.6 -16.6 8.8 -12.4 7.8 -9" c={faceLight} w={0.8} mx={4.3} />
-        {fac === 'rome' && <ellipse cx={4.5} cy={-13.8} rx={1.3} ry={1.8} fill={p.metal} stroke={OL} strokeWidth={0.5} />}
+        {kit === 'roman' && <ellipse cx={4.5} cy={-13.8} rx={1.3} ry={1.8} fill={p.metal} stroke={OL} strokeWidth={0.5} />}
       </>
     );
   } else if (kind === 'longOval') {

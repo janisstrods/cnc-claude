@@ -69,7 +69,7 @@ function Units() {
         return (
           <div key={t} className="unit-card">
             <svg width={64} height={64} viewBox="-30 -34 60 60">
-              <UnitIcon type={t} faction="rome" size={54} />
+              <UnitIcon type={t} look="roman" blockColor="rom" size={54} />
             </svg>
             <div>
               <div className="unit-card-title">{st.name} <span className={`cls cls-${st.cls}`}>{st.cls}</span></div>

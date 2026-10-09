@@ -2,8 +2,8 @@
   "id": "011",
   "name": "Baecula",
   "year": "208 BC",
-  "top":    { "army": "Carthaginian", "blocks": "car", "commander": "Hasdrubal", "cards": 4 },
-  "bottom": { "army": "Roman", "blocks": "rom", "commander": "Publius Scipio", "cards": 6 },
+  "top":    { "army": "Carthaginian", "blocks": "car", "look": "carthaginian", "commander": "Hasdrubal", "cards": 4 },
+  "bottom": { "army": "Roman", "blocks": "rom", "look": "roman", "commander": "Publius Scipio", "cards": 6 },
   "first": "bottom",
   "banners": 6,
   "terrain": [

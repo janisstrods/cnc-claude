@@ -480,7 +480,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
                 {Array.from({ length: them.hand.length }).map((_, i) => <CardBack key={i} size="sm" style={{ fontSize: '1.7px', marginLeft: i ? -9 : 0 }} />)}
               </div>
             </div>
-            <BannerTrack count={them.banners} target={s.bannersToWin} faction={s.players[human].faction} label="Banners won" />
+            <BannerTrack count={them.banners} target={s.bannersToWin} look={s.players[human].look} blockColor={s.players[human].blocks} label="Banners won" />
             <div className="divider" />
             <div className="army-row">
               <div>
@@ -488,7 +488,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
                 <div className="army-cmd">{me.commander} · Command {me.command}</div>
               </div>
             </div>
-            <BannerTrack count={me.banners} target={s.bannersToWin} faction={s.players[ai].faction} label="Banners won" />
+            <BannerTrack count={me.banners} target={s.bannersToWin} look={s.players[ai].look} blockColor={s.players[ai].blocks} label="Banners won" />
             <div className="deck-row">Deck {s.deck.length} · Discards {s.discard.length}</div>
           </Panel>
           <div className="dice-slot">
@@ -542,7 +542,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         {hoverInfo?.u && (
           <>
             <div className="tip-head">
-              <svg width={46} height={46} viewBox="-25 -27 50 50"><UnitIcon type={hoverInfo.u.type} faction={s.players[hoverInfo.u.side].faction} size={42} /></svg>
+              <svg width={46} height={46} viewBox="-25 -27 50 50"><UnitIcon type={hoverInfo.u.type} look={s.players[hoverInfo.u.side].look} blockColor={s.players[hoverInfo.u.side].blocks} size={42} /></svg>
               <div>
                 <div className="tip-title">{s.players[hoverInfo.u.side].army} {unitTypeName(hoverInfo.u.type)}</div>
                 <div className="tip-sub">{hoverInfo.u.blocks}/{hoverInfo.u.maxBlocks} blocks · {UNIT_STATS[hoverInfo.u.type].cls}{UNIT_STATS[hoverInfo.u.type].mounted ? ' mounted' : ' foot'}</div>

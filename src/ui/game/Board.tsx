@@ -66,12 +66,12 @@ const UnitLayer = memo(function UnitLayer(p: {
     <g className="units-layer">
       {units.map((u) => {
         const { x, y } = pos(u.id, u.hex);
-        const faction = state.players[u.side].faction;
+        const owner = state.players[u.side];
         const ordered = p.orderedIds.has(u.id);
         return (
           <g key={u.id} className={`unit-g ${walking[u.id] !== undefined ? 'walking' : ''}`} style={{ transform: `translate(${x}px, ${y}px)` }}>
             {ordered && <circle r={HEX_R * 0.86} className="ordered-ring" />}
-            <UnitToken type={u.type} faction={faction} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={facingFor(u.side, humanSide)} elite={u.elite} dimmed={p.doneIds.has(u.id)} />
+            <UnitToken type={u.type} look={owner.look} blockColor={owner.blocks} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={facingFor(u.side, humanSide)} elite={u.elite} dimmed={p.doneIds.has(u.id)} />
             {ordered && (
               <g transform={`translate(${-HEX_R * 0.72}, ${-HEX_R * 0.08})`} className="ordered-flag">
                 <path d="M0 0 L0 -14 L11 -10 L0 -6" fill="#f1c84b" stroke="#3b2a0a" strokeWidth={1} />
@@ -85,7 +85,7 @@ const UnitLayer = memo(function UnitLayer(p: {
         const u = leaderUnit(state, l);
         const hex = walking[l.id] ?? (u ? walking[u.id] ?? l.hex : l.hex);
         const { x, y } = hexCenterId(hex, flipped);
-        const faction = state.players[l.side].faction;
+        const owner = state.players[l.side];
         const attached = !!u;
         const hl = p.leaderHighlights.get(l.id);
         const ox = attached ? LEADER_ATTACH_OFFSET.x : 0;
@@ -101,7 +101,7 @@ const UnitLayer = memo(function UnitLayer(p: {
           >
             {hl && <circle r={attached ? 15 : 30} fill={HL_STYLE[hl].fill} stroke={HL_STYLE[hl].stroke} strokeWidth={2.5} strokeDasharray={HL_STYLE[hl].dash} />}
             {p.orderedIds.has(l.id) && <circle r={attached ? 16 : 31} className="ordered-ring" />}
-            <LeaderToken faction={faction} facing={facingFor(l.side, humanSide)} attached={attached} name={l.name || 'Leader'} showName={!attached} />
+            <LeaderToken look={owner.look} blockColor={owner.blocks} facing={facingFor(l.side, humanSide)} attached={attached} name={l.name || 'Leader'} showName={!attached} />
           </g>
         );
       })}

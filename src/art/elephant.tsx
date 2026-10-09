@@ -68,8 +68,8 @@ export function ElephantFigure({ p, i }: { p: Palette; i: number }) {
         <Arm s={[-2.2, -7]} e={[-5.6, -10.6]} h={[-4, -15.6]} f={rider} sleeve={p.tunic} />
         <Line2 d="M-1 -0.6 L3.6 1.8 L3.2 6.4" w={2.5} c={rider.skin} />
         <g transform="translate(-0.6 13.4)">
-          <Body f={rider} torso={p.faction === 'syracuse' ? 'linen' : 'tunic'} skirt={false} />
-          <Head f={rider} helmet={p.faction === 'syracuse' ? 'pilos' : p.faction === 'carthage' ? 'conical' : 'montefortino'} crest="knob" />
+          <Body f={rider} torso={p.kit === 'greek' ? 'linen' : 'tunic'} skirt={false} />
+          <Head f={rider} helmet={p.kit === 'greek' ? 'pilos' : p.kit === 'punic' ? 'conical' : 'montefortino'} crest="knob" />
         </g>
         <Spear x1={1.2} y1={4.4} x2={9.4} y2={-14.6} f={rider} w={0.6} blade={2.1} bladeW={1.0} />
         <Shield kind="round" f={rider} dx={1.2} dy={11.6} />

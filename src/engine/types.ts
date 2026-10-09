@@ -12,8 +12,14 @@ export type EliteId = 'carthSacredBand' | 'thebanSacredBand' | 'silverShields' |
 /** Terrain of a hex. A fordable river is `river` with `fords[hex] === true`. `void` = not on the board. */
 export type TerrainType = 'plain' | 'hill' | 'forest' | 'marsh' | 'broken' | 'river' | 'lake' | 'camp' | 'steep' | 'void';
 
-/** Visual palette / army look. */
-export type Faction = 'rome' | 'carthage' | 'syracuse';
+/** Which block set a side plays: decides base-edge and banner colour (i.e. which side a piece belongs to). */
+export type Blocks = 'rom' | 'car' | 'grk' | 'eas';
+
+/** Army look: the figure kit and palette an army is drawn with (see src/art/palettes.ts). */
+export type ArmyLook =
+  | 'roman' | 'carthaginian' | 'syracusan'
+  | 'athenian' | 'theban' | 'spartan' | 'phocian' | 'macedonian' | 'antigonid' | 'epirote'
+  | 'craterus' | 'eumenes' | 'antigonus' | 'seleucid' | 'ptolemaic' | 'persian' | 'scythian' | 'indian' | 'mauryan';
 
 export type SectionName = 'left' | 'center' | 'right';
 
@@ -47,7 +53,8 @@ export interface Leader {
 export interface PlayerState {
   side: Side;
   army: string; // e.g. "Roman"
-  faction: Faction;
+  blocks: Blocks;
+  look: ArmyLook;
   commander: string;
   hand: number[]; // card instance ids (index into CARD_LIST)
   command: number; // current maximum hand size = Command value

@@ -6,12 +6,13 @@ import { ELITES } from './elites';
 import { UNIT_STATS } from './units';
 import {
   COLS, OFF_BOARD, ROWS,
-  type EliteId, type Faction, type GameState, type Leader, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
+  type ArmyLook, type Blocks, type EliteId, type GameState, type Leader, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
 export interface SideSetup {
   army: string;
-  faction: Faction;
+  blocks: Blocks;
+  look: ArmyLook;
   commander: string;
   cards: number;
 }
@@ -93,11 +94,11 @@ export function createGame(setup: ScenarioSetup, seed: number): GameState {
     leaders,
     players: {
       top: {
-        side: 'top', army: setup.top.army, faction: setup.top.faction, commander: setup.top.commander,
+        side: 'top', army: setup.top.army, blocks: setup.top.blocks, look: setup.top.look, commander: setup.top.commander,
         hand: [], command: setup.initialCommand?.top ?? setup.top.cards, banners: 0,
       },
       bottom: {
-        side: 'bottom', army: setup.bottom.army, faction: setup.bottom.faction, commander: setup.bottom.commander,
+        side: 'bottom', army: setup.bottom.army, blocks: setup.bottom.blocks, look: setup.bottom.look, commander: setup.bottom.commander,
         hand: [], command: setup.initialCommand?.bottom ?? setup.bottom.cards, banners: 0,
       },
     },
