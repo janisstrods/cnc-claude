@@ -1,27 +1,47 @@
-// The 15 base-game battles. Setups are transcribed data (src/scenarios/data); texts are original summaries.
+// The 15 base-game battles (001-015) and the 24 battles of Expansion #1, Greece & Eastern Kingdoms (101-124). Setups
+// are transcribed data (src/scenarios/data); texts are original summaries (base game below, Expansion #1 in
+// exp1-texts.ts).
 import { ELITES } from '../engine/elites';
-import type { ScenarioSetup } from '../engine/setup';
-import type { ArmyLook, Blocks, Side, SpecialRuleId, TerrainType, UnitType } from '../engine/types';
+import type { GameOptions, ScenarioSetup, SideSetup, TerrainSetup } from '../engine/setup';
+import type { LeaderTrait, Side, SpecialRuleId } from '../engine/types';
+import { EXTRA_EXP1, type ScenarioTexts } from './exp1-texts';
 
-interface ScenarioJson {
+/** Which box a battle comes from. */
+export type Expansion = 'base' | 'exp1';
+
+/**
+ * A scenario file in src/scenarios/data. Base-game files omit `expansion` (and keep their special rules in `EXTRA`
+ * below); Expansion #1 files carry their rules, options, camp objective and leaders to place themselves. Other fields of
+ * a file (the base files' copied rule text, roster checks) are ignored.
+ */
+export interface ScenarioJson {
   id: string;
   name: string;
   year: string;
-  top: { army: string; blocks: Blocks; look: ArmyLook; commander: string; cards: number };
-  bottom: { army: string; blocks: Blocks; look: ArmyLook; commander: string; cards: number };
+  expansion?: Expansion;
+  top: SideSetup;
+  bottom: SideSetup;
   first: Side;
   banners: number;
-  terrain: { r: number; c: number; t: string; ford?: boolean }[];
-  units: { side: Side; type: UnitType; r: number; c: number }[];
-  leaders: { side: Side; name: string; r: number; c: number }[];
-  reserves: { side: Side; type: UnitType }[];
-  reserveLeaders: { side: Side; name: string }[];
+  rules?: SpecialRuleId[];
+  /** Optional rules the battle offers, with their default (Tactical Flexibility, §17.3). */
+  options?: GameOptions;
+  campCapture?: ScenarioSetup['campCapture'];
+  /** `ford: 'nocap'` = fordable without dice caps; a rampart lists `faces` and/or `edges`. */
+  terrain: TerrainSetup[];
+  units: ScenarioSetup['units'];
+  leaders: ScenarioSetup['leaders'];
+  /** Leaders placed before the first turn, in placement order (117 Asculum). */
+  placeLeaders?: ScenarioSetup['placeLeaders'];
+  reserves: ScenarioSetup['reserves'];
+  reserveLeaders: ScenarioSetup['reserveLeaders'];
 }
 
 export interface ScenarioInfo {
   id: string;
   name: string;
   year: string;
+  expansion: Expansion;
   /** Short original summary of the historical battle. */
   blurb: string;
   /** Plain-language special rules shown in the briefing. */
@@ -32,13 +52,11 @@ export interface ScenarioInfo {
 
 const files = import.meta.glob<ScenarioJson>('./data/*.json', { eager: true, import: 'default' });
 
-interface Extra {
-  blurb: string;
-  specialText?: string[];
+/** Texts and base-game rule data of a base battle (Expansion #1 battles keep their rules in the JSON). */
+interface Extra extends ScenarioTexts {
   rules?: SpecialRuleId[];
   /** Camp-capture objective (with rule `campCapture`). */
   campCapture?: ScenarioSetup['campCapture'];
-  hint: string;
   patch?: (s: ScenarioSetup) => void;
 }
 
@@ -150,8 +168,38 @@ const EXTRA: Record<string, Extra> = {
   },
 };
 
-function build(j: ScenarioJson): ScenarioInfo {
-  const ex = EXTRA[j.id];
+const EXPANSIONS: Expansion[] = ['base', 'exp1'];
+
+const copyLeader = <T extends { traits?: LeaderTrait[] }>(l: T): T => (l.traits ? { ...l, traits: [...l.traits] } : { ...l });
+
+/** A terrain entry with only the fields it has (so `ford: 'nocap'`, `faces` and `edges` survive unchanged). */
+function copyTerrain(t: TerrainSetup): TerrainSetup {
+  const o: TerrainSetup = { r: t.r, c: t.c, t: t.t };
+  if (t.ford !== undefined) o.ford = t.ford;
+  if (t.faces !== undefined) o.faces = t.faces;
+  if (t.edges !== undefined) o.edges = [...t.edges];
+  return o;
+}
+
+function copyCamp(cc: NonNullable<ScenarioSetup['campCapture']>): NonNullable<ScenarioSetup['campCapture']> {
+  const o: NonNullable<ScenarioSetup['campCapture']> = { side: cc.side };
+  if (cc.hexes) o.hexes = cc.hexes.map(([r, c]) => [r, c]);
+  if (cc.text !== undefined) o.text = cc.text;
+  return o;
+}
+
+/** One value given by the JSON or by `EXTRA`, never both. */
+function oneSource<T>(id: string, field: string, json: T | undefined, extra: T | undefined): T | undefined {
+  if (json !== undefined && extra !== undefined) throw new Error(`${field} is given twice, in the JSON and in EXTRA (${id})`);
+  return json ?? extra;
+}
+
+/** Build a scenario from its JSON data and texts. The setup is a copy: nothing in it shares the JSON's objects. */
+export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
+  const expansion = j.expansion ?? 'base';
+  if (!EXPANSIONS.includes(expansion)) throw new Error(`unknown expansion ${String(j.expansion)} (${j.id})`);
+  const ex: Extra | undefined = EXTRA[j.id];
+  const texts: ScenarioTexts | undefined = ex ?? EXTRA_EXP1[j.id];
   const setup: ScenarioSetup = {
     id: j.id,
     name: j.name,
@@ -159,14 +207,17 @@ function build(j: ScenarioJson): ScenarioInfo {
     bottom: { army: j.bottom.army, blocks: j.bottom.blocks, look: j.bottom.look, commander: j.bottom.commander, cards: j.bottom.cards },
     first: j.first,
     banners: j.banners,
-    terrain: j.terrain.map((t) => ({ r: t.r, c: t.c, t: t.t as TerrainType, ford: !!t.ford })),
+    terrain: j.terrain.map(copyTerrain),
     units: j.units.map((u) => ({ ...u })),
-    leaders: j.leaders.map((l) => ({ ...l })),
+    leaders: j.leaders.map(copyLeader),
     reserves: j.reserves.map((u) => ({ ...u })),
-    reserveLeaders: j.reserveLeaders.map((l) => ({ ...l })),
-    rules: ex?.rules ?? [],
+    reserveLeaders: j.reserveLeaders.map(copyLeader),
+    rules: [...(oneSource(j.id, 'rules', j.rules, ex?.rules) ?? [])],
   };
-  if (ex?.campCapture) setup.campCapture = { ...ex.campCapture };
+  const camp = oneSource(j.id, 'campCapture', j.campCapture, ex?.campCapture);
+  if (camp) setup.campCapture = copyCamp(camp);
+  if (j.options && Object.keys(j.options).length) setup.options = { ...j.options };
+  if (j.placeLeaders?.length) setup.placeLeaders = j.placeLeaders.map(copyLeader);
   // Trasimenus: the Roman column starts with 4 cards eventually; War Council lists 2 initially.
   if (j.id === '006') setup.bottom.cards = 4;
   ex?.patch?.(setup);
@@ -174,15 +225,16 @@ function build(j: ScenarioJson): ScenarioInfo {
     id: j.id,
     name: j.name,
     year: j.year,
-    blurb: ex?.blurb ?? '',
-    specialText: ex?.specialText ?? [],
+    expansion,
+    blurb: texts?.blurb ?? '',
+    specialText: texts?.specialText ?? [],
     setup,
-    difficultyHint: ex?.hint ?? '',
+    difficultyHint: texts?.hint ?? '',
   };
 }
 
 export const SCENARIOS: ScenarioInfo[] = Object.values(files)
-  .map(build)
+  .map(scenarioFromJson)
   .sort((a, b) => a.id.localeCompare(b.id));
 
 export function scenarioById(id: string): ScenarioInfo {

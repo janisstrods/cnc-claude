@@ -164,8 +164,20 @@ function checkPlacement(setup: ScenarioSetup, rules: SpecialRuleId[]) {
   }
 }
 
-/** Build the initial state. `options`: the player's choice of the optional rules the scenario offers (§17.3). */
+/**
+ * Build the initial state. `options`: the player's choice of the optional rules the scenario offers (§17.3). Invalid
+ * scenario data throws, and the error names the scenario (`(<id>)` at the end of the message).
+ */
 export function createGame(setup: ScenarioSetup, seed: number, options?: GameOptions): GameState {
+  try {
+    return buildGame(setup, seed, options);
+  } catch (e) {
+    if (e instanceof Error && !e.message.endsWith(`(${setup.id})`)) e.message = `${e.message} (${setup.id})`;
+    throw e;
+  }
+}
+
+function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | undefined): GameState {
   const terrain: TerrainType[] = [];
   const fords: boolean[] = [];
   const noCap: boolean[] = [];
