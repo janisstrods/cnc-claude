@@ -130,11 +130,11 @@ export interface LeaderTokenProps {
 }
 
 function NameRibbon({ name, y, p }: { name: string; y: number; p: Palette }) {
-  const w = Math.max(18, name.length * 4.1 + 6);
+  const w = Math.max(22, name.length * 5.7 + 8);
   return (
     <g>
-      <rect x={-w / 2} y={y - 4.4} width={w} height={8} rx={2} fill="#17110c" opacity={0.9} stroke={p.gold} strokeWidth={0.5} />
-      <text x={0} y={y + 1.8} textAnchor="middle" fontFamily="Cinzel, Georgia, serif" fontWeight={700} fontSize={5.6} fill="#fbf1d6">
+      <rect x={-w / 2} y={y - 5.8} width={w} height={11} rx={2.6} fill="#17110c" opacity={0.92} stroke={p.gold} strokeWidth={0.6} />
+      <text x={0} y={y + 2.6} textAnchor="middle" fontFamily="Cinzel, Georgia, serif" fontWeight={700} fontSize={7.8} fill="#fbf1d6">
         {name}
       </text>
     </g>

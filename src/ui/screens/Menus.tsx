@@ -1,15 +1,18 @@
 import { useMemo, useState } from 'react';
-import { createGame, leaderUnit, type GameState, type Side } from '../../engine';
+import { UNIT_STATS, createGame, leaderUnit, type GameState, type Side, type UnitType } from '../../engine';
 import { SCENARIOS, type ScenarioInfo } from '../../scenarios';
 import { LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
 import { BoardArt } from '../terrain';
-import { Button, Modal, Panel } from '../kit';
+import { Button, Icon, Modal, Panel } from '../kit';
 import { BOARD_H, BOARD_W, hexCenterId } from '../geometry';
 import type { Difficulty, SavedGame } from '../game/controller';
 import { RulesReference } from './RulesReference';
 import './screens.css';
 
-export function MainMenu(p: { saved: SavedGame | null; onNew: () => void; onContinue: () => void }) {
+const MENU_ARMY_L: UnitType[] = ['HI', 'MI', 'LC'];
+const MENU_ARMY_R: UnitType[] = ['EL', 'WA', 'HC'];
+
+export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; onNew: () => void; onContinue: () => void }) {
   const [rules, setRules] = useState(false);
   const [credits, setCredits] = useState(false);
   const savedName = p.saved ? SCENARIOS.find((s) => s.id === p.saved!.config.scenarioId)?.name : null;
@@ -17,22 +20,29 @@ export function MainMenu(p: { saved: SavedGame | null; onNew: () => void; onCont
     <div className="menu-root">
       <div className="menu-hero">
         <div className="menu-emblem" aria-hidden>
-          <svg viewBox="0 0 120 120" width="120" height="120">
-            <defs>
-              <radialGradient id="emb" cx="40%" cy="35%">
-                <stop offset="0%" stopColor="#f6d77c" />
-                <stop offset="100%" stopColor="#9a6a1c" />
-              </radialGradient>
-            </defs>
-            <circle cx="60" cy="60" r="56" fill="none" stroke="url(#emb)" strokeWidth="4" />
-            <path d="M60 14 L94 30 L94 60 C94 82 78 98 60 106 C42 98 26 82 26 60 L26 30 Z" fill="#7a1d18" stroke="url(#emb)" strokeWidth="4" />
-            <path d="M44 44 L76 76 M76 44 L44 76" stroke="#f3d27a" strokeWidth="6" strokeLinecap="round" />
-            <circle cx="60" cy="60" r="7" fill="#f3d27a" />
-          </svg>
+          <Icon name="laurels" size={150} gradient={['#fbe7a6', '#e0b85a', '#a87c2c']} />
+          <div className="menu-emblem-swords">
+            <Icon name="crossedSwords" size={58} gradient={['#fbe7a6', '#d8b064', '#8a6226']} />
+          </div>
         </div>
         <h1 className="menu-title">Commands &amp; Colors</h1>
         <div className="menu-sub">ANCIENTS</div>
         <p className="menu-tag">Rome and Carthage, 406–202 BC · fifteen historical battles</p>
+        <div className="menu-armies" aria-hidden>
+          <svg viewBox="-52 -48 524 96" width="620" height="114">
+            {MENU_ARMY_L.map((t, i) => (
+              <g key={t} transform={`translate(${i * 80}, ${i % 2 ? 4 : 0})`}>
+                <UnitToken type={t} faction="rome" blocks={UNIT_STATS[t].blocks} maxBlocks={UNIT_STATS[t].blocks} facing="right" />
+              </g>
+            ))}
+            {MENU_ARMY_R.map((t, i) => (
+              <g key={t} transform={`translate(${420 - i * 80}, ${i % 2 ? 4 : 0})`}>
+                <UnitToken type={t} faction="carthage" blocks={UNIT_STATS[t].blocks} maxBlocks={UNIT_STATS[t].blocks} facing="left" />
+              </g>
+            ))}
+          </svg>
+        </div>
+        {p.notice && <div className="menu-notice">{p.notice}</div>}
         <div className="menu-buttons">
           {p.saved && (
             <Button onClick={p.onContinue}>Continue: {savedName}</Button>

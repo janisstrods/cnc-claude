@@ -73,7 +73,7 @@ const UnitLayer = memo(function UnitLayer(p: {
             {ordered && <circle r={HEX_R * 0.86} className="ordered-ring" />}
             <UnitToken type={u.type} faction={faction} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={facingFor(u.side, humanSide)} sacredBand={u.sacredBand} dimmed={p.doneIds.has(u.id)} />
             {ordered && (
-              <g transform={`translate(${-HEX_R * 0.62}, ${-HEX_R * 0.6})`} className="ordered-flag">
+              <g transform={`translate(${-HEX_R * 0.72}, ${-HEX_R * 0.08})`} className="ordered-flag">
                 <path d="M0 0 L0 -14 L11 -10 L0 -6" fill="#f1c84b" stroke="#3b2a0a" strokeWidth={1} />
                 <line x1={0} y1={0} x2={0} y2={-15} stroke="#3b2a0a" strokeWidth={1.4} />
               </g>
@@ -222,11 +222,15 @@ export function Board(p: BoardProps) {
           const cx = x + (attached ? LEADER_ATTACH_OFFSET.x : 0);
           const cy = y + (attached ? LEADER_ATTACH_OFFSET.y : 0);
           return (
+            <g key={l.id}>
+              <clipPath id={`lc-${l.id}`}>
+                <polygon points={hexPoints(x, y, HEX_R)} />
+              </clipPath>
             <circle
-              key={l.id}
               cx={cx}
               cy={cy}
               r={attached ? 15 : 26}
+              clipPath={`url(#lc-${l.id})`}
               className="leader-hit"
               onClick={(e) => {
                 if (p.onLeaderClick?.(l.id)) e.stopPropagation();
@@ -234,6 +238,7 @@ export function Board(p: BoardProps) {
               }}
               onMouseEnter={() => p.onHexHover?.(l.hex)}
             />
+            </g>
           );
         })}
       </g>

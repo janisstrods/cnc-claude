@@ -188,11 +188,11 @@ export type Decision =
   | { kind: 'orders'; side: Side; card: CardKind; mirrored: boolean }
   | { kind: 'move'; side: Side; stage: 1 | 2 }
   | { kind: 'battle'; side: Side }
-  | { kind: 'defend'; side: Side; attacker: string; target: string; canEvade: boolean; canFirstStrike: boolean }
+  | { kind: 'defend'; side: Side; attacker: string; target: string; canEvade: boolean; canFirstStrike: boolean; bonus?: boolean }
   | { kind: 'ignoreFlags'; side: Side; unit: string; flags: number; max: number }
   | { kind: 'retreat'; side: Side; unit: string; options: RetreatOption[]; reason: 'retreat' | 'evade' }
   | { kind: 'leaderEvade'; side: Side; leader: string; options: RetreatOption[] }
-  | { kind: 'momentum'; side: Side; unit: string; hex: HexId }
+  | { kind: 'momentum'; side: Side; unit: string; hex: HexId; bonus?: boolean }
   | { kind: 'cavalryExtra'; side: Side; unit: string; options: HexId[] }
   | { kind: 'bonusCombat'; side: Side; unit: string; targets: HexId[] }
   | { kind: 'rally'; side: Side; faces: DieFace[] }

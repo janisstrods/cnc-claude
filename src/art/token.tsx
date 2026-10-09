@@ -163,7 +163,7 @@ export function Badge({ type, blocks, maxBlocks, sacred }: { type: UnitType; blo
   const cls = UNIT_CLASS[type];
   const white = type === 'AX' || type === 'WA';
   const cyB = 30.8;
-  const pw = 3.7;
+  const pw = 4.6;
   const right = 19.4;
   const pips: JSX.Element[] = [];
   for (let k = 0; k < maxBlocks; k++) {
@@ -171,8 +171,8 @@ export function Badge({ type, blocks, maxBlocks, sacred }: { type: UnitType; blo
     const on = k < blocks;
     pips.push(
       on
-        ? <circle key={k} cx={x} cy={cyB} r={1.45} fill="#f8e9bd" />
-        : <circle key={k} cx={x} cy={cyB} r={1.15} fill="none" stroke="#8d7c5c" strokeWidth={0.6} />,
+        ? <circle key={k} cx={x} cy={cyB} r={1.95} fill="#f8e9bd" />
+        : <circle key={k} cx={x} cy={cyB} r={1.55} fill="none" stroke="#a8946c" strokeWidth={0.8} />,
     );
   }
   return (

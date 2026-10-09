@@ -55,6 +55,8 @@ function Basics() {
         <li>Light troops should skirmish and evade; heavy infantry wins close fights but moves only one hex.</li>
         <li>Save strong cards (Clash of Shields, Mounted Charge, Double Time) for the moment many units are in contact.</li>
       </ul>
+      <h3>Controls</h3>
+      <p>Click to select; hover a unit for its stats and a card to preview it. Keys: <b>1–6</b> pick a card, <b>Enter</b> confirms the highlighted action, <b>Esc</b> clears a selection. Click the board while the enemy moves to speed up the animation.</p>
     </div>
   );
 }

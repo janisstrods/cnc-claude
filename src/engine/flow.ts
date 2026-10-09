@@ -510,7 +510,7 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
   type DefendChoice = 'stand' | 'evade' | 'firstStrike';
   let choice = 'stand' as DefendChoice;
   if (canEvade || fsCard !== null) {
-    const a = yield* ask(ctx, { kind: 'defend', side: tu.side, attacker: attacker.id, target: tu.id, canEvade, canFirstStrike: fsCard !== null }, (a) => {
+    const a = yield* ask(ctx, { kind: 'defend', side: tu.side, attacker: attacker.id, target: tu.id, canEvade, canFirstStrike: fsCard !== null, bonus: role === 'bonus' }, (a) => {
       if (a.kind !== 'defend') return 'Choose how to defend.';
       if (a.choice === 'evade' && !canEvade) return 'This unit cannot evade.';
       if (a.choice === 'firstStrike' && fsCard === null) return 'You do not hold First Strike.';
@@ -575,7 +575,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   const op = s.turn.ordered[u.id];
   const fromT = terrainAt(s, u.hex);
   if ((fromT === 'marsh' || isFord(s, u.hex)) && op?.enteredHexThisTurn) return;
-  const a = yield* ask(ctx, { kind: 'momentum', side: u.side, unit: u.id, hex }, (a) => (a.kind === 'yesno' ? null : 'Advance or not?'));
+  const a = yield* ask(ctx, { kind: 'momentum', side: u.side, unit: u.id, hex, bonus: role === 'bonus' }, (a) => (a.kind === 'yesno' ? null : 'Advance or not?'));
   if (!(a as { yes: boolean }).yes) return;
   const from = u.hex;
   relocate(s, u, hex);

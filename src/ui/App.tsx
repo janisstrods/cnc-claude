@@ -23,8 +23,8 @@ function useHash(): string {
 
 type Screen = { kind: 'menu' } | { kind: 'select' } | { kind: 'game'; controller: GameController };
 
-function startController(config: SessionConfig, answers: SavedGame['answers'] = []): GameController {
-  return new GameController(config, makeOpponent(config), answers);
+function startController(config: SessionConfig, answers: SavedGame['answers'] = [], check?: SavedGame['check']): GameController {
+  return new GameController(config, makeOpponent(config), answers, check);
 }
 
 export function App() {
@@ -44,6 +44,7 @@ export function App() {
     setScreen({ kind: 'game', controller: startController(cfg) });
   }, []);
   const [saved, setSaved] = useState<SavedGame | null>(() => loadSaved());
+  const [notice, setNotice] = useState<string | null>(null);
 
 
   if (hash.startsWith('#/gallery/art')) return <Suspense fallback={null}><ArtGallery /></Suspense>;
@@ -63,8 +64,14 @@ export function App() {
       </ErrorBoundary>
     );
   }
+  const resetMenus = () => {
+    clearSaved();
+    setSaved(null);
+    setScreen({ kind: 'menu' });
+  };
   if (screen.kind === 'select') {
     return (
+      <ErrorBoundary onReset={resetMenus}>
       <ScenarioSelect
         onBack={toMenu}
         onStart={(id: string, side: Side, diff: Difficulty) => {
@@ -72,22 +79,27 @@ export function App() {
           setScreen({ kind: 'game', controller: startController(newSessionConfig(id, side, diff)) });
         }}
       />
+      </ErrorBoundary>
     );
   }
   return (
+    <ErrorBoundary onReset={resetMenus}>
     <MainMenu
+      notice={notice}
       saved={saved}
       onNew={() => setScreen({ kind: 'select' })}
       onContinue={() => {
         if (!saved) return;
         try {
-          setScreen({ kind: 'game', controller: startController(saved.config, saved.answers) });
+          setScreen({ kind: 'game', controller: startController(saved.config, saved.answers, saved.check) });
         } catch (e) {
           console.error('Could not resume', e);
           clearSaved();
           setSaved(null);
+          setNotice('That saved battle could not be restored (it was made with an older version). Please start a new battle.');
         }
       }}
     />
+    </ErrorBoundary>
   );
 }

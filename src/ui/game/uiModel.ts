@@ -1,6 +1,6 @@
 // Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges.
 import {
-  ALL_HEXES, CARD_DEFS, UNIT_STATS, battleReady, battleTargets, cardKind, closeCombatDice, closeHitChance, eligiblePieces,
+  ALL_HEXES, CARD_DEFS, OFF_BOARD, UNIT_STATS, battleReady, battleTargets, cardKind, closeCombatDice, closeHitChance, eligiblePieces,
   inSection, isLeaderId, leaderAt, leaderById, leaderUnit, mirrorKind, movablePieces, other, pieceMoves, rangedDice, unitAt, unitById,
   type CardKind, type Decision, type GameState, type HexId, type SectionName, type Side, type Unit,
 } from '../../engine';
@@ -43,12 +43,12 @@ function shadeSections(side: Side, secs: SectionName[]): Set<HexId> {
   return out;
 }
 
-export function attackDice(s: GameState, attacker: Unit, hex: HexId, kind: 'close' | 'ranged'): number {
+export function attackDice(s: GameState, attacker: Unit, hex: HexId, kind: 'close' | 'ranged', role: 'attack' | 'bonus' = 'attack'): number {
   const op = s.turn.ordered[attacker.id];
   if (kind === 'ranged') return rangedDice(s, attacker, hex, op?.moved ?? 0, true);
   const t = unitAt(s, hex) ?? leaderAt(s, hex);
   if (!t) return 0;
-  return closeCombatDice(s, attacker, t, { role: 'attack', fullAtStart: attacker.blocks === attacker.maxBlocks, ordered: true });
+  return closeCombatDice(s, attacker, t, { role, fullAtStart: attacker.blocks === attacker.maxBlocks, ordered: true });
 }
 
 export function expectedHits(s: GameState, attacker: Unit, hex: HexId, kind: 'close' | 'ranged'): number {
@@ -100,21 +100,34 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       break;
     }
     case 'move': {
-      for (const id of movablePieces(s, d.stage)) markPiece(id, 'mover');
+      for (const id of movablePieces(s, d.stage)) {
+        markPiece(id, 'mover');
+        if (pieceMoves(s, id, d.stage).some((m) => m.hex === OFF_BOARD)) {
+          const h = pieceHexOf(s, id);
+          if (h >= 0) badges.set(h, 'Exit');
+        }
+      }
       if (ui.selPiece) {
         markPiece(ui.selPiece, 'selected');
         const moves = pieceMoves(s, ui.selPiece, d.stage);
         for (const m of moves) {
-          if (m.hex < 0) continue;
+          if (m.hex < 0) {
+            const last = m.path[m.path.length - 2];
+            if (last !== undefined && last >= 0) badges.set(last, 'Exit ↑');
+            continue;
+          }
           const isLeader = isLeaderId(ui.selPiece);
-          highlights.set(m.hex, isLeader ? 'move' : m.mustBattle ? 'moveMustBattle' : m.canBattle ? 'move' : 'moveNoBattle');
+          highlights.set(m.hex, isLeader || d.stage === 2 ? 'move' : m.mustBattle ? 'moveMustBattle' : m.canBattle ? 'move' : 'moveNoBattle');
           if (ui.hoverHex === m.hex) pathPreview = m.path;
         }
       }
       break;
     }
     case 'battle': {
-      for (const id of battleReady(s)) markPiece(id, 'attacker');
+      for (const id of battleReady(s)) {
+        const op = s.turn.ordered[id];
+        markPiece(id, op?.mustBattle ? 'moveMustBattle' : 'attacker');
+      }
       if (ui.selPiece) {
         markPiece(ui.selPiece, 'selected');
         const u = unitById(s, ui.selPiece);
@@ -154,7 +167,7 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       for (const h of d.targets) {
         highlights.set(h, 'targetClose');
         if (u) {
-          const n = attackDice(s, u, h, 'close');
+          const n = attackDice(s, u, h, 'close', 'bonus');
           badges.set(h, `${n} ${n === 1 ? 'die' : 'dice'}`);
         }
       }
