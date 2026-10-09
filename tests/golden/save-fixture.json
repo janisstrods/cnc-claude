@@ -1,6 +1,8 @@
 {
  "scenarioId": "007",
  "seed": 17,
+ "rngCalls": 60,
+ "stateHash": "5c13c16f",
  "answers": [
   {
    "kind": "playCard",

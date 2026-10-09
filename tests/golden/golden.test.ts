@@ -3,7 +3,7 @@ import { GameDriver, createGame, type Answer } from '../../src/engine';
 import { scenarioById } from '../../src/scenarios';
 import fixtures from './fixtures.json';
 import saveFixture from './save-fixture.json';
-import { goldenGames } from './record';
+import { digest, fnv, goldenGames } from './record';
 
 describe('golden games (base-game behaviour is unchanged)', () => {
   it('replays every recorded game with identical events', () => {
@@ -20,10 +20,14 @@ describe('golden games (base-game behaviour is unchanged)', () => {
 
 describe('saved games stay loadable (a save is exactly config + answers)', () => {
   it('rebuilds the recorded save by replaying its answers', () => {
-    const { scenarioId, seed, answers } = saveFixture as { scenarioId: string; seed: number; answers: Answer[] };
+    const { scenarioId, seed, answers, rngCalls, stateHash } = saveFixture as { scenarioId: string; seed: number; answers: Answer[]; rngCalls: number; stateHash: string };
     expect(answers).toHaveLength(60);
     const d = GameDriver.replay(createGame(scenarioById(scenarioId).setup, seed), answers);
     expect(d.answers).toHaveLength(answers.length);
     expect(d.pending).not.toBeNull();
+    // the replayed position is exactly the recorded one (not merely loadable)
+    const dg = digest(d.state);
+    expect(dg.rngCalls).toBe(rngCalls);
+    expect(fnv(JSON.stringify(dg)).toString(16)).toBe(stateHash);
   });
 });
