@@ -2,6 +2,7 @@
 export * from './types';
 export * from './hex';
 export * from './units';
+export * from './elites';
 export * from './terrain';
 export * from './cards';
 export * from './query';

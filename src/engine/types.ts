@@ -6,6 +6,9 @@ export type Side = 'top' | 'bottom';
 export type UnitType = 'LI' | 'LB' | 'LS' | 'AX' | 'WA' | 'MI' | 'HI' | 'LC' | 'MC' | 'HC' | 'EL' | 'HCH';
 export type UnitClass = 'light' | 'medium' | 'heavy';
 
+/** Elite unit presets (see elites.ts). A unit with `elite` set gets that preset's abilities on top of its type's. */
+export type EliteId = 'carthSacredBand' | 'thebanSacredBand' | 'silverShields' | 'companions' | 'immortals' | 'bowAuxilia';
+
 /** Terrain of a hex. A fordable river is `river` with `fords[hex] === true`. `void` = not on the board. */
 export type TerrainType = 'plain' | 'hill' | 'forest' | 'marsh' | 'broken' | 'river' | 'lake' | 'camp' | 'steep' | 'void';
 
@@ -30,8 +33,8 @@ export interface Unit {
   hex: HexId;
   blocks: number;
   maxBlocks: number;
-  /** Scenario 002: the Carthaginian Sacred Band. */
-  sacredBand?: boolean;
+  /** Elite preset (e.g. scenario 002's Carthaginian Sacred Band); absent for ordinary units. */
+  elite?: EliteId;
 }
 
 export interface Leader {

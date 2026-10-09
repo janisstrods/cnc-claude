@@ -1,5 +1,5 @@
 // Valuation constants and personality-derived weights. One banner ~ 1.0 point.
-import type { GameState, Leader, Side, Unit, UnitType } from '../engine/types';
+import type { EliteId, GameState, Leader, Side, Unit, UnitType } from '../engine/types';
 import type { Personality } from './personality';
 
 export type Difficulty = 'recruit' | 'tribune' | 'consul';
@@ -10,13 +10,18 @@ export const TYPE_WEIGHT: Record<UnitType, number> = {
   LC: 0.55, MC: 0.72, HC: 0.85, EL: 0.8, HCH: 0.7,
 };
 
+/** Multiplier on the weight of a unit carrying this elite preset (missing = 1). */
+export const ELITE_WEIGHT: Partial<Record<EliteId, number>> = {
+  carthSacredBand: 1.25,
+};
+
 export const LEADER_VALUE = 0.4;
 export const WIN_SCORE = 100;
 /** Cap on the value of the opponent's winning banner used in risk estimates (they are approximate). */
 const WINNING_BANNER = 6;
 
 export function unitWeight(u: Unit): number {
-  return TYPE_WEIGHT[u.type] * (u.sacredBand ? 1.25 : 1);
+  return TYPE_WEIGHT[u.type] * (u.elite ? ELITE_WEIGHT[u.elite] ?? 1 : 1);
 }
 
 export function blockVal(u: Unit): number {

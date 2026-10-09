@@ -11,7 +11,7 @@ import { randomAnswer } from '../engine/legal';
 import { validateOrders, validateRally, validateSpartacus } from '../engine/orders';
 import { other, unitById } from '../engine/query';
 import { cloneState, newTurn } from '../engine/setup';
-import { UNIT_STATS } from '../engine/units';
+import { rangeOf } from '../engine/elites';
 import { OFF_BOARD, type Answer, type CardKind, type Decision, type GameState, type HexId, type SectionName, type Side, type UnitType } from '../engine/types';
 import { hexDist } from './board';
 import { attackOptions } from './estimate';
@@ -190,7 +190,7 @@ function planShape(s: GameState, me: Side, b: Cand): { attacking: boolean; regro
     if (h < 0) continue;
     const near = Math.min(99, ...enemies.map((e) => hexDist(e.hex, h)));
     const nearBefore = Math.min(99, ...enemies.map((e) => hexDist(e.hex, u.hex)));
-    const range = UNIT_STATS[u.type].range;
+    const range = rangeOf(u);
     if (near <= 1 || (range > 0 && near <= range && !noRanged)) {
       attacking = true;
       focus ??= u.type;

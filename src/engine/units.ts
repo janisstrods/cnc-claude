@@ -47,7 +47,7 @@ export interface UnitStats {
   momentumExtraHex: boolean;
   /** +1 die and may ignore 1 flag at full strength (warriors). */
   fullStrengthBonus: boolean;
-  /** Moves 1, or 2 if it then close combats (warriors). */
+  /** Moves 1, or 2 if it then close combats; also eligible for the bonus close combat after momentum, like mounted units (warriors). */
   chargeMove: boolean;
   /** Cannot fire after moving this many hexes (AX 2; 99 = no limit). */
   noFireAfterMove: number;
@@ -145,10 +145,6 @@ export function canEvadeType(defender: UnitType, attacker: UnitType): boolean {
     case 'vsFootElephant':
       return a.foot || attacker === 'EL';
   }
-}
-
-export function hasRanged(t: UnitType): boolean {
-  return UNIT_STATS[t].range > 0;
 }
 
 /** Units that may battle after moving into a forest. */

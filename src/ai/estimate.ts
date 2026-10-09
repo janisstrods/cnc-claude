@@ -3,7 +3,8 @@ import { battleTargets } from '../engine/flow';
 import { closeCombatDice, rangedDice, retreatPerFlag, swordIgnores, vsMountedIgnores, type StrikeRole } from '../engine/combat';
 import { neighbours } from '../engine/hex';
 import { unitById } from '../engine/query';
-import { UNIT_STATS, canEvadeType, hasRanged } from '../engine/units';
+import { canShoot, eliteHas, rangeOf } from '../engine/elites';
+import { UNIT_STATS, canEvadeType } from '../engine/units';
 import type { GameState, HexId, Leader, Unit } from '../engine/types';
 import {
   Occ, attachedLeaderOcc, canEvadeOcc, canFireOcc, helmetsOcc, hexDist, ignorableOcc, retreatRoom,
@@ -18,7 +19,7 @@ export function closeProfile(s: GameState, occ: Occ, st: Unit, t: Unit, n: numbe
   const S = UNIT_STATS[st.type];
   let pc = SIXTH;
   let ps = S.swordHits ? SIXTH : 0;
-  const ph = (st.type !== 'EL' && helmetsOcc(occ, st)) || st.sacredBand ? SIXTH : 0;
+  const ph = (st.type !== 'EL' && helmetsOcc(occ, st)) || eliteHas(st, 'helmetHits') ? SIXTH : 0;
   let pf = SIXTH;
   let sw = 0;
   if (t.type === 'EL') ps = 0;
@@ -272,8 +273,8 @@ export function attackNowValue(s: GameState, occ: Occ, u: Unit, moved: number, c
   }
   if (mustBattle) return bestClose === -Infinity ? -0.5 : bestClose;
   if (bestClose > best) best = bestClose;
-  if (!m.noRanged && hasRanged(u.type) && !(u.type === 'AX' && moved >= 2)) {
-    const range = UNIT_STATS[u.type].range;
+  if (!m.noRanged && canShoot(u) && !(u.type === 'AX' && moved >= 2)) {
+    const range = rangeOf(u);
     for (const v of s.units) {
       if (v.side === u.side || v.hex < 0) continue;
       const d = hexDist(u.hex, v.hex);

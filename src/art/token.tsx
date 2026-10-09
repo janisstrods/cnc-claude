@@ -1,6 +1,6 @@
 // UnitToken: base plate + miniatures + class badge + strength pips, centred on (0,0) of a pointy-top hex (R = 50).
 import { memo } from 'react';
-import type { Faction, UnitType } from '../engine/types';
+import type { EliteId, Faction, UnitType } from '../engine/types';
 import { FACTION_PALETTES, type Palette } from './palettes';
 import { FootFigure, footKit } from './foot';
 import { MountedFigure } from './mounted';
@@ -237,11 +237,12 @@ export interface UnitTokenProps {
   blocks: number;
   maxBlocks: number;
   facing: Facing;
-  sacredBand?: boolean;
+  /** Elite preset: draws the gold standard and a gold badge rim. */
+  elite?: EliteId;
   dimmed?: boolean;
 }
 
-function UnitTokenImpl({ type, faction, blocks, maxBlocks, facing, sacredBand, dimmed }: UnitTokenProps) {
+function UnitTokenImpl({ type, faction, blocks, maxBlocks, facing, elite, dimmed }: UnitTokenProps) {
   const p = FACTION_PALETTES[faction];
   const n = Math.max(0, Math.min(blocks, maxBlocks));
   const slots = n > 0 ? slotsFor(type, n) : [];
@@ -253,7 +254,7 @@ function UnitTokenImpl({ type, faction, blocks, maxBlocks, facing, sacredBand, d
       <g opacity={dimmed ? 0.6 : undefined} style={dimmed ? { filter: 'saturate(0.3) brightness(0.95)' } : undefined}>
       <BasePlate p={p} />
       <FacingRightCtx.Provider value={facing === 'right'}>
-      {sacredBand && <SacredStandard p={p} />}
+      {elite && <SacredStandard p={p} />}
       {slots.map((sl, k) => {
         const idx = full.findIndex((q) => q.x === sl.x && q.y === sl.y);
         const i = idx >= 0 ? idx : k;
@@ -269,7 +270,7 @@ function UnitTokenImpl({ type, faction, blocks, maxBlocks, facing, sacredBand, d
       </FacingRightCtx.Provider>
       </g>
       <g opacity={dimmed ? 0.8 : undefined}>
-      <Badge type={type} blocks={n} maxBlocks={maxBlocks} sacred={sacredBand} />
+      <Badge type={type} blocks={n} maxBlocks={maxBlocks} sacred={!!elite} />
       </g>
     </g>
   );

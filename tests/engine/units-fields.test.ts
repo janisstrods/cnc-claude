@@ -2,9 +2,10 @@
 // behaviour the engine had when the abilities were literal type checks.
 import { describe, expect, it } from 'vitest';
 import {
-  UNIT_STATS, UNIT_TYPES, elephantDiceVs, escapeDice, frightens, isLightFoot,
-  type Unit, type UnitStats, type UnitType,
+  ELITES, UNIT_STATS, UNIT_TYPES, canShoot, createGame, eliteHas, elephantDiceVs, escapeDice, frightens, isLightFoot, rangeOf,
+  type ScenarioSetup, type Unit, type UnitStats, type UnitType,
 } from '../../src/engine';
+import { setupOf } from './helpers';
 
 type AbilityField =
   | 'elephantTable' | 'elephantDiceAgainst' | 'ignoreAllSwords' | 'swordIgnore' | 'frightenedBy' | 'vsMountedIgnoreHit'
@@ -93,5 +94,50 @@ describe('unit ability helpers', () => {
     for (const t of UNIT_TYPES) {
       if (t !== 'EL') expect(UNIT_TYPES.some((v) => frightens(unit(t), unit(v))), t).toBe(false);
     }
+  });
+});
+
+describe('elite units', () => {
+  it('eliteHas: the Sacred Band has helmetHits and ignoreFlag; plain units and other abilities do not', () => {
+    const sb: Unit = { ...unit('HI'), elite: 'carthSacredBand' };
+    expect(eliteHas(sb, 'helmetHits')).toBe(true);
+    expect(eliteHas(sb, 'ignoreFlag')).toBe(true);
+    expect(eliteHas(sb, 'ignoreSword')).toBe(false);
+    expect(eliteHas(sb, 'ranged')).toBe(false);
+    for (const t of UNIT_TYPES) {
+      for (const a of ['helmetHits', 'ignoreFlag', 'ignoreSword', 'ranged'] as const) expect(eliteHas(unit(t), a), `${t}.${a}`).toBe(false);
+    }
+  });
+
+  it('the Sacred Band preset is a Carthaginian heavy-infantry elite', () => {
+    expect(ELITES.carthSacredBand).toMatchObject({ id: 'carthSacredBand', name: 'Sacred Band', abilities: ['helmetHits', 'ignoreFlag'], types: ['HI'] });
+  });
+
+  it('rangeOf / canShoot reproduce the base-game range of every unit type (no elite is ranged yet)', () => {
+    expect(rangeOf(unit('LI'))).toBe(2);
+    for (const t of UNIT_TYPES) {
+      expect(rangeOf(unit(t)), t).toBe(UNIT_STATS[t].range);
+      expect(canShoot(unit(t)), t).toBe(UNIT_STATS[t].range > 0);
+    }
+    expect(rangeOf({ ...unit('HI'), elite: 'carthSacredBand' })).toBe(0);
+    expect(canShoot({ ...unit('HI'), elite: 'carthSacredBand' })).toBe(false);
+  });
+});
+
+describe('elite units in a scenario setup', () => {
+  const at = (type: UnitType, elite?: ScenarioSetup['units'][number]['elite']): ScenarioSetup => {
+    const base = setupOf({ units: [{ side: 'top', type, at: [4, 6] }] });
+    return { ...base, units: [{ ...base.units[0], elite }] };
+  };
+
+  it('createGame puts the elite on the unit; plain units have none', () => {
+    const s = createGame(at('HI', 'carthSacredBand'), 1);
+    expect(s.units[0].elite).toBe('carthSacredBand');
+    expect(createGame(at('HI'), 1).units[0].elite).toBeUndefined();
+    expect('elite' in createGame(at('HI'), 1).units[0]).toBe(false);
+  });
+
+  it('createGame rejects an elite on a unit type the preset does not allow', () => {
+    expect(() => createGame(at('LI', 'carthSacredBand'), 1)).toThrow(/Sacred Band.*cannot be a LI unit/);
   });
 });

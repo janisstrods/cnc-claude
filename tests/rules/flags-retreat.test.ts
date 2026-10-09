@@ -151,7 +151,7 @@ describe('bolster morale (ignorable flags)', () => {
   it('Sacred Band ignores 1 flag', () => {
     const d = hiAttack({ def: 'HI' }, flag5);
     expect(d.pending?.kind).toBe('retreat');
-    const s = build({ units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'HI', at: [4, 6], sacredBand: true }] });
+    const s = build({ units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'HI', at: [4, 6], elite: 'carthSacredBand' }] });
     const d2 = toBattle(s, 'order4C', ['u1']);
     forceDice(['flag', ...n('light', 4)]);
     must(d2, { kind: 'attack', unit: 'u1', target: H(4, 6) });

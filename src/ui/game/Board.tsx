@@ -71,7 +71,7 @@ const UnitLayer = memo(function UnitLayer(p: {
         return (
           <g key={u.id} className={`unit-g ${walking[u.id] !== undefined ? 'walking' : ''}`} style={{ transform: `translate(${x}px, ${y}px)` }}>
             {ordered && <circle r={HEX_R * 0.86} className="ordered-ring" />}
-            <UnitToken type={u.type} faction={faction} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={facingFor(u.side, humanSide)} sacredBand={u.sacredBand} dimmed={p.doneIds.has(u.id)} />
+            <UnitToken type={u.type} faction={faction} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={facingFor(u.side, humanSide)} elite={u.elite} dimmed={p.doneIds.has(u.id)} />
             {ordered && (
               <g transform={`translate(${-HEX_R * 0.72}, ${-HEX_R * 0.08})`} className="ordered-flag">
                 <path d="M0 0 L0 -14 L11 -10 L0 -6" fill="#f1c84b" stroke="#3b2a0a" strokeWidth={1} />

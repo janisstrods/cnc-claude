@@ -2,7 +2,8 @@
 import { ambushAvailable } from '../engine/flow';
 import { inSection } from '../engine/hex';
 import { leadersOf, unitsOf } from '../engine/query';
-import { UNIT_STATS, hasRanged } from '../engine/units';
+import { canShoot } from '../engine/elites';
+import { UNIT_STATS } from '../engine/units';
 import type { CardKind, GameState, SectionName, Side, Unit } from '../engine/types';
 import { areAdjacent } from '../engine/hex';
 import { rallyCandidates } from '../engine/orders';
@@ -54,7 +55,7 @@ export function cardRetention(s: GameState, side: Side, kind: CardKind, W: Weigh
       case 'leadershipAny': v = leadersOf(s, side).length ? 0.15 : 0.03; break;
       case 'clash': v = 0.45; break;
       case 'counterAttack': v = 0.1; break;
-      case 'darken': v = 0.18 * Math.min(1, countOf((u) => hasRanged(u.type)) / 3); break;
+      case 'darken': v = 0.18 * Math.min(1, countOf(canShoot) / 3); break;
       case 'doubleTime': v = countOf((u) => UNIT_STATS[u.type].foot) >= 2 ? 0.1 : 0.02; break;
       case 'lineCommand': v = 0.16 * Math.min(1, countOf((u) => UNIT_STATS[u.type].foot) / 4); break;
       case 'mountedCharge': v = 0.3 * Math.min(1, countOf((u) => UNIT_STATS[u.type].mounted) / 2); break;
@@ -107,7 +108,7 @@ export function quickCardScore(s: GameState, side: Side, kind: CardKind, ben: Ma
       for (const u of units) if (s.units.some((e) => e.side !== side && e.hex >= 0 && areAdjacent(e.hex, u.hex))) v += b(u) * 1.6 + 0.05;
       return v;
     }
-    case 'darken': return units.filter((u) => hasRanged(u.type)).reduce((a, u) => a + b(u) * 1.5, 0);
+    case 'darken': return units.filter(canShoot).reduce((a, u) => a + b(u) * 1.5, 0);
     case 'lineCommand': return topN(units.filter((u) => UNIT_STATS[u.type].foot), 5) * 0.8;
     case 'doubleTime': return topN(units.filter((u) => UNIT_STATS[u.type].foot), 4) * 0.9;
     case 'moveFireMove': return topN(units.filter((u) => UNIT_STATS[u.type].cls === 'light'), command) * 0.8;

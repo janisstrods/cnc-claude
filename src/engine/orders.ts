@@ -2,7 +2,8 @@
 import { sectionOrders } from './cards';
 import { areAdjacent, inSection, sectionsOf } from './hex';
 import { attachedLeader, isLeaderId, isLoneLeader, leaderById, leaderUnit, leadersOf, unitById, unitsOf, enemyUnitAdjacent } from './query';
-import { UNIT_STATS, hasRanged } from './units';
+import { canShoot } from './elites';
+import { UNIT_STATS } from './units';
 import type { CardKind, DieFace, GameState, SectionName, Side, Unit, UnitClass } from './types';
 
 export type OrderMode =
@@ -42,7 +43,7 @@ export function orderMode(s: GameState, side: Side, kind: CardKind | null): Orde
     case 'lineCommand': return units.some(isFoot) ? { mode: 'group', max: null } : { mode: 'one' };
     case 'doubleTime': return units.some(isFoot) ? { mode: 'group', max: 4 } : { mode: 'one' };
     case 'clash': return { mode: 'auto' };
-    case 'darken': return units.some((u) => hasRanged(u.type)) ? { mode: 'auto' } : { mode: 'one' };
+    case 'darken': return units.some(canShoot) ? { mode: 'auto' } : { mode: 'one' };
     case 'rally': return leadersOf(s, side).length ? { mode: 'dice' } : { mode: 'one' };
     case 'spartacus': return { mode: 'dice' };
     case 'firstStrike': return { mode: 'none' };
@@ -55,7 +56,7 @@ export function orderMode(s: GameState, side: Side, kind: CardKind | null): Orde
 export function autoOrders(s: GameState, side: Side, kind: CardKind): string[] {
   const units = unitsOf(s, side);
   if (kind === 'clash') return units.filter((u) => enemyUnitAdjacent(s, u.hex, side)).map((u) => u.id);
-  if (kind === 'darken') return units.filter((u) => hasRanged(u.type)).map((u) => u.id);
+  if (kind === 'darken') return units.filter(canShoot).map((u) => u.id);
   return [];
 }
 

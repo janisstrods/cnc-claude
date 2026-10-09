@@ -16,7 +16,8 @@ import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOption
 import { rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
 import { isFord, isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
-import { UNIT_STATS, canEvadeType, escapeDice, forestFighter, hasRanged } from './units';
+import { canShoot } from './elites';
+import { UNIT_STATS, canEvadeType, escapeDice, forestFighter } from './units';
 import {
   OFF_BOARD,
   type Answer, type CardKind, type Decision, type DieFace, type FlowCtx, type GameState, type HexId, type Leader,
@@ -651,7 +652,7 @@ export function battleTargets(s: GameState, unitId: string): BattleTarget[] {
       if (t && closeCombatDice(s, u, t, { role: 'attack', fullAtStart: u.blocks === u.maxBlocks, ordered: true }) > 0) out.push({ hex: h, kind: 'close' });
     }
   }
-  if (!m.noRanged && hasRanged(u.type) && op.moved < UNIT_STATS[u.type].noFireAfterMove) {
+  if (!m.noRanged && canShoot(u) && op.moved < UNIT_STATS[u.type].noFireAfterMove) {
     const hexes = new Set<HexId>();
     for (const v of s.units) if (v.side !== u.side && v.hex >= 0) hexes.add(v.hex);
     for (const l of s.leaders) if (l.side !== u.side && l.hex >= 0 && !leaderUnit(s, l)) hexes.add(l.hex);

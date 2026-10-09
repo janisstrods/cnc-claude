@@ -79,7 +79,7 @@ function SetupPreview({ state, flipped, humanSide }: { state: GameState; flipped
         const { x, y } = hexCenterId(u.hex, flipped);
         return (
           <g key={u.id} transform={`translate(${x}, ${y})`}>
-            <UnitToken type={u.type} faction={state.players[u.side].faction} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={u.side === humanSide ? 'right' : 'left'} sacredBand={u.sacredBand} />
+            <UnitToken type={u.type} faction={state.players[u.side].faction} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={u.side === humanSide ? 'right' : 'left'} elite={u.elite} />
           </g>
         );
       })}

@@ -154,7 +154,6 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   for (const t of results.values()) {
     if (t.hex === OFF_BOARD) continue;
     let can = t.dist <= lim.battleMax;
-    if (t.dist >= st.noFireAfterMove && !mods.doubleTime) can = false;
     if (lim.chargeFrom !== null && t.dist >= lim.chargeFrom) {
       if (enemyPieceAdjacent(s, t.hex, u.side)) t.mustBattle = true;
       else {

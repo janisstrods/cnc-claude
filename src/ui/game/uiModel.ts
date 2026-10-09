@@ -1,7 +1,7 @@
 // Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges.
 import {
   ALL_HEXES, CARD_DEFS, OFF_BOARD, UNIT_STATS, battleReady, battleTargets, cardKind, closeCombatDice, closeHitChance, eligiblePieces,
-  inSection, isLeaderId, leaderAt, leaderById, leaderUnit, mirrorKind, movablePieces, other, pieceMoves, rangedDice, unitAt, unitById,
+  eliteDef, eliteHas, inSection, isLeaderId, leaderAt, leaderById, leaderUnit, mirrorKind, movablePieces, other, pieceMoves, rangedDice, unitAt, unitById,
   type CardKind, type Decision, type GameState, type HexId, type SectionName, type Side, type Unit,
 } from '../../engine';
 import type { Highlight } from './Board';
@@ -203,6 +203,10 @@ export function unitSummary(u: Unit): string[] {
   lines.push(ev);
   if (u.type === 'EL') lines.push('Ignores sword hits · rampages when it retreats');
   if (u.type === 'HCH') lines.push('Ignores 1 sword hit');
-  if (u.sacredBand) lines.push('Sacred Band: helmets always hit, ignores 1 flag');
+  const elite = eliteDef(u);
+  if (elite) {
+    const perks = [eliteHas(u, 'helmetHits') && 'helmets always hit', eliteHas(u, 'ignoreFlag') && 'ignores 1 flag'].filter(Boolean);
+    if (perks.length) lines.push(`${elite.name}: ${perks.join(', ')}`);
+  }
   return lines;
 }

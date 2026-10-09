@@ -193,10 +193,10 @@ export default function ArtGallery() {
           </Hex>
         ))}
         <Hex label="Sacred Band (HI)">
-          <UnitToken type="HI" faction="carthage" blocks={4} maxBlocks={4} facing="right" sacredBand />
+          <UnitToken type="HI" faction="carthage" blocks={4} maxBlocks={4} facing="right" elite="carthSacredBand" />
         </Hex>
         <Hex label="Sacred Band 2/4, left">
-          <UnitToken type="HI" faction="carthage" blocks={2} maxBlocks={4} facing="left" sacredBand />
+          <UnitToken type="HI" faction="carthage" blocks={2} maxBlocks={4} facing="left" elite="carthSacredBand" />
         </Hex>
         <Hex label="Dimmed (acted)">
           <UnitToken type="HI" faction="rome" blocks={4} maxBlocks={4} facing="right" dimmed />

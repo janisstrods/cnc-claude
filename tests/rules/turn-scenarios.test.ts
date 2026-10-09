@@ -102,7 +102,7 @@ describe('scenario data', () => {
   });
   it('Crimissos: exactly one Carthaginian Sacred Band (heavy infantry) unit', () => {
     const s = createGame(scenarioById('002').setup, 1);
-    const sb = s.units.filter((x) => x.sacredBand);
+    const sb = s.units.filter((x) => x.elite === 'carthSacredBand');
     expect(sb).toHaveLength(1);
     expect(sb[0].type).toBe('HI');
     expect(s.players[sb[0].side].army).toBe('Carthaginian');

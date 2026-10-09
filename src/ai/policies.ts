@@ -5,6 +5,7 @@ import { neighbours } from '../engine/hex';
 import { rallyCandidates, validateRally, validateSpartacus } from '../engine/orders';
 import { leaderById, other, unitById } from '../engine/query';
 import { retreatOptions, type ElephantRetreatOption } from '../engine/retreat';
+import { rangeOf } from '../engine/elites';
 import { isCamp, terrainAt } from '../engine/terrain';
 import { UNIT_STATS, forestFighter } from '../engine/units';
 import {
@@ -181,7 +182,7 @@ function survivesActiveTurn(s: GameState, l: { side: Side; hex: HexId }, h: HexI
     const dNow = hexDist(e.hex, h);
     if (op.battlesLeft > 0 && op.canBattle) {
       if (dNow === 1 && !s.turn.mods.noClose) surv *= 1 - pAnyHelmet(escapeDice(e));
-      else if (dNow > 1 && UNIT_STATS[e.type].range >= dNow && !s.turn.mods.noRanged) surv *= 1 - pAnyHelmet(1);
+      else if (dNow > 1 && rangeOf(e) >= dNow && !s.turn.mods.noRanged) surv *= 1 - pAnyHelmet(1);
     } else if (from >= 0 && hexDist(e.hex, from) === 1 && hexDist(h, from) === 1 && !s.turn.mods.noClose) {
       const st = UNIT_STATS[e.type];
       const bonusOk = e.type === 'WA' || st.mounted || (st.foot && !!attachedLeaderOcc(occ, e));

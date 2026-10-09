@@ -290,7 +290,7 @@ describe('hit scoring through the turn flow', () => {
   });
   it('Sacred Band scores helmets without any leader', () => {
     const s = build({
-      units: [{ side: 'top', type: 'HI', at: [4, 6], sacredBand: true }, { side: 'bottom', type: 'MI', at: [5, 6] }],
+      units: [{ side: 'top', type: 'HI', at: [4, 6], elite: 'carthSacredBand' }, { side: 'bottom', type: 'MI', at: [5, 6] }],
       first: 'top',
     });
     const d = toBattle(s, 'order4C', ['u1']);

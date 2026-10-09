@@ -2,6 +2,7 @@
 import { distance, hasLineOfSight, neighbours } from './hex';
 import { attachedLeader, enemyUnitAdjacent, leaderAt, leaderNear, supportCount, unitAt } from './query';
 import { ccCapOfHex, hillGroups, isCamp, isHill, rangedFromCap, rangedTargetCap, terrainBlocksLOS } from './terrain';
+import { eliteHas, rangeOf } from './elites';
 import { UNIT_STATS, elephantDiceVs, frightens } from './units';
 import type { DieFace, GameState, HexId, Leader, Unit } from './types';
 
@@ -75,7 +76,7 @@ export function lineOfSight(s: GameState, from: HexId, to: HexId): boolean {
 
 /** Can `firer` make a ranged attack at `targetHex` (ignoring order state)? */
 export function canFireAt(s: GameState, firer: Unit, targetHex: HexId): boolean {
-  const range = UNIT_STATS[firer.type].range;
+  const range = rangeOf(firer);
   if (range === 0) return false;
   const d = distance(firer.hex, targetHex);
   if (d < 2 || d > range) return false;
@@ -139,7 +140,7 @@ export function scoreClose(s: GameState, striker: Unit, target: Unit, faces: Die
         else hit = true;
       }
     } else if (f === 'leader') {
-      hit = leaderHelmets || !!striker.sacredBand;
+      hit = leaderHelmets || eliteHas(striker, 'helmetHits');
     } else if (f === 'flag') {
       flags++;
     }
@@ -190,7 +191,7 @@ export function ignorableFlags(s: GameState, target: Unit, ctx: IgnoreContext): 
   }
   if (isCamp(s, target.hex) && t.foot) n++;
   if (t.fullStrengthBonus && ctx.fullAtStart) n++;
-  if (target.sacredBand) n++;
+  if (eliteHas(target, 'ignoreFlag')) n++;
   if (t.vsMountedIgnoreFlag && ctx.kind === 'close' && ctx.striker && cavalryOrChariot(ctx.striker)) n++;
   return n;
 }
@@ -208,7 +209,7 @@ export function closeHitChance(s: GameState, striker: Unit, target: Unit): numbe
   const tst = UNIT_STATS[target.type];
   let p = 1 / 6; // class symbol
   if (sst.swordHits && !tst.ignoreAllSwords) p += 1 / 6;
-  if (!sst.noLeaderBenefit && (helmetsCount(s, striker) || striker.sacredBand)) p += 1 / 6;
+  if (!sst.noLeaderBenefit && (helmetsCount(s, striker) || eliteHas(striker, 'helmetHits'))) p += 1 / 6;
   if (tst.cls === tst.vsMountedIgnoreHit && vsMountedIgnores(striker, target)) p -= 1 / 18; // rough
   return p;
 }

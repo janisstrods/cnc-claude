@@ -1,6 +1,7 @@
 // Fast board helpers for the AI: distance table, occupancy, retreat room, LOS and flag rules mirrored with O(1) lookups.
 import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
 import { hillGroups, isCamp, isHill, isImpassable, terrainBlocksLOS } from '../engine/terrain';
+import { eliteHas, rangeOf } from '../engine/elites';
 import { UNIT_STATS } from '../engine/units';
 import { COLS, ROWS, type GameState, type HexId, type Leader, type Side, type Unit } from '../engine/types';
 
@@ -76,7 +77,7 @@ export function ignorableOcc(s: GameState, occ: Occ, t: Unit, kind: 'close' | 'r
   if (supportOcc(occ, t) >= 2) n++;
   if (isCamp(s, t.hex) && UNIT_STATS[t.type].foot) n++;
   if (t.type === 'WA' && t.blocks === t.maxBlocks) n++;
-  if (t.sacredBand) n++;
+  if (eliteHas(t, 'ignoreFlag')) n++;
   return n;
 }
 
@@ -158,7 +159,7 @@ export function losOcc(s: GameState, occ: Occ, from: HexId, to: HexId): boolean 
 
 /** Mirror of engine canFireAt using occupancy. */
 export function canFireOcc(s: GameState, occ: Occ, f: Unit, target: HexId): boolean {
-  const range = UNIT_STATS[f.type].range;
+  const range = rangeOf(f);
   if (!range) return false;
   const d = hexDist(f.hex, target);
   if (d < 2 || d > range) return false;

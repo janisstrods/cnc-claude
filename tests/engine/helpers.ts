@@ -1,7 +1,7 @@
-import { CARD_LIST, GameDriver, createGame, hexId, type Answer, type CardKind, type GameState, type ScenarioSetup, type Side, type TerrainType, type UnitType } from '../../src/engine';
+import { CARD_LIST, GameDriver, createGame, hexId, type Answer, type CardKind, type EliteId, type GameState, type ScenarioSetup, type Side, type TerrainType, type UnitType } from '../../src/engine';
 
 export interface Pos {
-  units?: { side: Side; type: UnitType; at: [number, number]; blocks?: number; sacredBand?: boolean }[];
+  units?: { side: Side; type: UnitType; at: [number, number]; blocks?: number; elite?: EliteId }[];
   leaders?: { side: Side; name?: string; at: [number, number] }[];
   terrain?: { at: [number, number]; t: TerrainType; ford?: boolean }[];
   first?: Side;
@@ -18,7 +18,7 @@ export function setupOf(p: Pos): ScenarioSetup {
     first: p.first ?? 'bottom',
     banners: 99,
     terrain: (p.terrain ?? []).map((t) => ({ r: t.at[0], c: t.at[1], t: t.t, ford: t.ford })),
-    units: (p.units ?? []).map((u) => ({ side: u.side, type: u.type, r: u.at[0], c: u.at[1], sacredBand: u.sacredBand })),
+    units: (p.units ?? []).map((u) => ({ side: u.side, type: u.type, r: u.at[0], c: u.at[1], elite: u.elite })),
     leaders: (p.leaders ?? []).map((l, i) => ({ side: l.side, name: l.name ?? `L${i}`, r: l.at[0], c: l.at[1] })),
     reserves: [],
     reserveLeaders: [],

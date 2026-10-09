@@ -59,7 +59,7 @@ const EXTRA: Record<string, Extra> = {
     hint: 'River crossing, elite Sacred Band.',
     patch: (s) => {
       const sb = s.units.find((u) => u.side === 'top' && u.type === 'HI' && u.r === 3 && u.c === 2);
-      if (sb) sb.sacredBand = true;
+      if (sb) sb.elite = 'carthSacredBand';
     },
   },
   '003': {

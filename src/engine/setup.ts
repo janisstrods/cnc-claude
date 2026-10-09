@@ -2,10 +2,11 @@
 import { CARD_LIST, defaultMods } from './cards';
 import { hexId, onBoard } from './hex';
 import { shuffle } from './rng';
+import { ELITES } from './elites';
 import { UNIT_STATS } from './units';
 import {
   COLS, OFF_BOARD, ROWS,
-  type Faction, type GameState, type Leader, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
+  type EliteId, type Faction, type GameState, type Leader, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
 export interface SideSetup {
@@ -23,7 +24,7 @@ export interface ScenarioSetup {
   first: Side;
   banners: number;
   terrain: { r: number; c: number; t: TerrainType; ford?: boolean }[];
-  units: { side: Side; type: UnitType; r: number; c: number; sacredBand?: boolean }[];
+  units: { side: Side; type: UnitType; r: number; c: number; elite?: EliteId }[];
   leaders: { side: Side; name: string; r: number; c: number }[];
   reserves: { side: Side; type: UnitType }[];
   reserveLeaders: { side: Side; name: string }[];
@@ -60,7 +61,14 @@ export function createGame(setup: ScenarioSetup, seed: number): GameState {
     if (!onBoard(u.r, u.c)) throw new Error(`unit off board ${u.r},${u.c}`);
     const st = UNIT_STATS[u.type];
     const unit: Unit = { id: `u${nextId++}`, side: u.side, type: u.type, hex: hexId(u.r, u.c), blocks: st.blocks, maxBlocks: st.blocks };
-    if (u.sacredBand) unit.sacredBand = true;
+    if (u.elite) {
+      const def = ELITES[u.elite];
+      if (!def) throw new Error(`unknown elite preset ${u.elite}`);
+      if (!def.types.includes(u.type)) {
+        throw new Error(`elite ${def.name} (${def.id}) cannot be a ${u.type} unit (allowed: ${def.types.join(', ')})`);
+      }
+      unit.elite = u.elite;
+    }
     return unit;
   });
   const leaders: Leader[] = setup.leaders.map((l) => ({ id: `L${nextId++}`, side: l.side, name: l.name, hex: hexId(l.r, l.c) }));

@@ -5,7 +5,8 @@ import { unitMoves } from '../engine/movement';
 import { halfCol, neighbours, rowOf } from '../engine/hex';
 import { other } from '../engine/query';
 import { ccCapOfHex, isHill, isImpassable } from '../engine/terrain';
-import { UNIT_STATS, canEvadeType, elephantDiceVs, hasRanged } from '../engine/units';
+import { eliteHas, rangeOf } from '../engine/elites';
+import { UNIT_STATS, canEvadeType, elephantDiceVs } from '../engine/units';
 import type { GameState, Leader, Side, Unit } from '../engine/types';
 import {
   Occ, attachedLeaderOcc, canEvadeOcc, canFireOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, helmetsOcc, hexDist, ignorableOcc,
@@ -30,7 +31,7 @@ function hitP(s: GameState, occ: Occ, e: Unit, u: Unit): number {
   if (e.type === 'EL') return u.type === 'EL' ? SIXTH : 0.4;
   let p = SIXTH;
   if (S.swordHits && u.type !== 'EL') p += swordIgnores(s, u) > 0 ? SIXTH * 0.5 : SIXTH;
-  if (helmetsOcc(occ, e) || e.sacredBand) p += SIXTH;
+  if (helmetsOcc(occ, e) || eliteHas(e, 'helmetHits')) p += SIXTH;
   return p;
 }
 
@@ -141,7 +142,7 @@ function threatsAgainst(
       }
       return hasFreeApproach(s, occ, e, target, reach);
     };
-    const range = UNIT_STATS[e.type].range;
+    const range = rangeOf(e);
     const lightFoot = isRangedLight(e) && e.type !== 'LC';
     for (let j = 0; j < victims.length; j++) {
       const u = victims[j];
