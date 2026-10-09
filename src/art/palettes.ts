@@ -243,6 +243,11 @@ export const BLOCK_COLORS: Partial<Record<Blocks, SideColors>> = {
     edge: '#1f4fb4', edgeShade: '#0f2a6a', edgeLight: '#5582dc', banner: '#22439a', bannerShade: '#132a66',
     cloth: { main: '#1f417e', light: '#4b72b6', dark: '#0f2149' },
   },
+  // TEMPORARY until Task 15 (army looks): provisional ochre-tan for the Eastern Kingdom blocks of Expansion #1.
+  eas: {
+    edge: '#b8893a', edgeShade: '#7a5a22', edgeLight: '#dcb36a', banner: '#a87a30', bannerShade: '#6e4e1c',
+    cloth: { main: '#9a7030', light: '#c89a52', dark: '#5e4218' },
+  },
 };
 
 export interface LookDef {
@@ -257,9 +262,19 @@ export const LOOKS: Partial<Record<ArmyLook, LookDef>> = {
   syracusan: { kit: 'greek', palette: SYRACUSAN },
 };
 
+// TEMPORARY until Task 15 (army looks): the Expansion #1 looks have no art yet, so each borrows the closest base kit's
+// art (the Greek kit with the Syracusan palette, or the Punic kit with the Carthaginian palette).
+const LOOK_FALLBACK: Partial<Record<ArmyLook, ArmyLook>> = {
+  athenian: 'syracusan', theban: 'syracusan', spartan: 'syracusan', phocian: 'syracusan', macedonian: 'syracusan',
+  antigonid: 'syracusan', epirote: 'syracusan', craterus: 'syracusan', eumenes: 'syracusan', antigonus: 'syracusan',
+  seleucid: 'syracusan', ptolemaic: 'syracusan',
+  persian: 'carthaginian', scythian: 'carthaginian', indian: 'carthaginian', mauryan: 'carthaginian',
+};
+
 /** The art of a look; throws when the look has none (so a missing look fails loudly instead of drawing wrong). */
 export function lookDef(look: ArmyLook): LookDef {
-  const d = LOOKS[look];
+  const fallback = LOOK_FALLBACK[look]; // TEMPORARY until Task 15 (army looks)
+  const d = LOOKS[look] ?? (fallback ? LOOKS[fallback] : undefined);
   if (!d) throw new Error(`No art for army look "${look}"`);
   return d;
 }

@@ -1,0 +1,303 @@
+{
+  "id": "107",
+  "name": "Granicus",
+  "year": "334 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Macedonian",
+    "blocks": "grk",
+    "look": "macedonian",
+    "commander": "Alexander",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Persian",
+    "blocks": "eas",
+    "look": "persian",
+    "commander": "Mithridates",
+    "cards": 4
+  },
+  "first": "top",
+  "banners": 6,
+  "rules": [],
+  "options": {},
+  "terrain": [
+    {
+      "r": 3,
+      "c": 0,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 1,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 2,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 3,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 4,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 5,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 6,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 7,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 8,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 9,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 10,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "river",
+      "ford": true
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 1,
+      "c": 2,
+      "elite": "companions"
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 4,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 4,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 4,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 4,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "HC",
+      "r": 4,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 4,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 8,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 8,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 8,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 8,
+      "c": 10
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Alexander",
+      "r": 1,
+      "c": 2,
+      "traits": [
+        "ccBonus"
+      ]
+    },
+    {
+      "side": "top",
+      "name": "Ptolemy",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "name": "Parmenio",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "name": "Mithridates",
+      "r": 4,
+      "c": 3,
+      "traits": [
+        "attachedOnly"
+      ]
+    },
+    {
+      "side": "bottom",
+      "name": "Rhoesaces",
+      "r": 4,
+      "c": 5,
+      "traits": [
+        "attachedOnly"
+      ]
+    },
+    {
+      "side": "bottom",
+      "name": "Spithridates",
+      "r": 4,
+      "c": 6,
+      "traits": [
+        "attachedOnly"
+      ]
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

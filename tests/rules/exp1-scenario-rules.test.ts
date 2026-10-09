@@ -802,8 +802,8 @@ describe('campCapture (114 Gabiene, 011 Baecula)', () => {
     expect(s.special.campCapture).toEqual({ side: 'bottom', hexes: [H(1, 4), H(1, 6), H(1, 8)], text: 'The Romans storm a Carthaginian camp!' });
     expect(s.terrain.flatMap((t, h) => (t === 'camp' ? [h] : []))).toEqual([H(1, 4), H(1, 6), H(1, 8)]);
     expect(s.units).toHaveLength(sc.setup.units.length);
-    // no other scenario has a camp objective
-    for (const x of SCENARIOS) if (x.id !== '011') expect([x.id, x.setup.campCapture]).toEqual([x.id, undefined]);
+    // no other base scenario has a camp objective (114 Gabiene's is checked in tests/scenarios/exp1.test.ts)
+    for (const x of SCENARIOS) if (x.id !== '011' && x.id !== '114') expect([x.id, x.setup.campCapture]).toEqual([x.id, undefined]);
   });
 
   it('the AI values the camp for the capturing side only', () => {

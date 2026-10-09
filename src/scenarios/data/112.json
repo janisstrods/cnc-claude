@@ -1,0 +1,232 @@
+{
+  "id": "112",
+  "name": "Hellespont",
+  "year": "323 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Craterus' Successors",
+    "blocks": "car",
+    "look": "craterus",
+    "commander": "Craterus",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Eumenes' Successors",
+    "blocks": "grk",
+    "look": "eumenes",
+    "commander": "Eumenes",
+    "cards": 6
+  },
+  "first": "top",
+  "banners": 6,
+  "rules": [
+    "leaderLossCostsCard",
+    "allLeadersSuddenDeath"
+  ],
+  "options": {},
+  "terrain": [],
+  "units": [
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 1,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 3,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 6,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 0
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 12
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Craterus",
+      "r": 3,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "name": "Neoptolemus",
+      "r": 1,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "name": "Eumenes",
+      "r": 8,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "name": "Alcetas",
+      "r": 7,
+      "c": 5
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

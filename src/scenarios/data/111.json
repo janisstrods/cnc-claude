@@ -1,0 +1,310 @@
+{
+  "id": "111",
+  "name": "Hydaspes",
+  "year": "326 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Macedonian",
+    "blocks": "grk",
+    "look": "macedonian",
+    "commander": "Alexander",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Indian",
+    "blocks": "eas",
+    "look": "indian",
+    "commander": "Porus",
+    "cards": 5
+  },
+  "first": "top",
+  "banners": 7,
+  "rules": [],
+  "options": {},
+  "terrain": [
+    {
+      "r": 0,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 1,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 2,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 3,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 4,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 5,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 6,
+      "c": 1,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 7,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 8,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 4,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 6,
+      "c": 0,
+      "t": "forest"
+    },
+    {
+      "r": 8,
+      "c": 1,
+      "t": "forest"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 0,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 1,
+      "c": 1,
+      "elite": "companions"
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 1,
+      "c": 4,
+      "elite": "companions"
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LBC",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LBC",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "HCH",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "EL",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "EL",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "EL",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "HCH",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 10
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Alexander",
+      "r": 1,
+      "c": 1,
+      "traits": [
+        "ccBonus"
+      ]
+    },
+    {
+      "side": "top",
+      "name": "Coenus",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "name": "Antigenes",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "name": "Porus",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "name": "Spitaces",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "name": "Hages",
+      "r": 7,
+      "c": 8
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

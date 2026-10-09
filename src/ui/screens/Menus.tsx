@@ -83,7 +83,8 @@ function SetupPreview({ state, flipped, humanSide }: { state: GameState; flipped
           </g>
         );
       })}
-      {state.leaders.map((l) => {
+      {/* leaders still to be placed (117 Asculum) wait off the board */}
+      {state.leaders.filter((l) => l.hex >= 0).map((l) => {
         const { x, y } = hexCenterId(l.hex, flipped);
         const att = !!leaderUnit(state, l);
         return (

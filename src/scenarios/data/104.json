@@ -1,0 +1,182 @@
+{
+  "id": "104",
+  "name": "Leuctra",
+  "year": "371 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Theban",
+    "blocks": "grk",
+    "look": "theban",
+    "commander": "Epaminondas",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Spartan",
+    "blocks": "eas",
+    "look": "spartan",
+    "commander": "Cleombrotos",
+    "cards": 5
+  },
+  "first": "top",
+  "banners": 4,
+  "rules": [],
+  "options": {},
+  "terrain": [],
+  "units": [
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 11,
+      "elite": "thebanSacredBand"
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 3,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 3,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 5,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 5,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 3
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Epaminondas",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "name": "Cleombrotos",
+      "r": 5,
+      "c": 10
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

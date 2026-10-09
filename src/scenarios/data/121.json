@@ -1,0 +1,298 @@
+{
+  "id": "121",
+  "name": "Magnesia",
+  "year": "190 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Seleucid",
+    "blocks": "grk",
+    "look": "seleucid",
+    "commander": "Antiochus",
+    "cards": 4
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "roman",
+    "commander": "Scipio",
+    "cards": 5
+  },
+  "first": "bottom",
+  "banners": 7,
+  "rules": [],
+  "options": {
+    "tacticalFlexibility": true
+  },
+  "terrain": [
+    {
+      "r": 2,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 3,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 4,
+      "c": 1,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 5,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 6,
+      "c": 1,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 7,
+      "c": 1,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 8,
+      "c": 2,
+      "t": "river",
+      "ford": false
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "HC",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LBC",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "HCH",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "CAM",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "EL",
+      "r": 8,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 6
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Antiochus",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "name": "Seleucus",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "name": "Scipio",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "name": "Eumenes",
+      "r": 7,
+      "c": 8
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

@@ -1,0 +1,272 @@
+{
+  "id": "114",
+  "name": "Gabiene",
+  "year": "316 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Antigonus' Successors",
+    "blocks": "eas",
+    "look": "antigonus",
+    "commander": "Antigonus",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Eumenes' Successors",
+    "blocks": "grk",
+    "look": "eumenes",
+    "commander": "Eumenes",
+    "cards": 5
+  },
+  "first": "top",
+  "banners": 7,
+  "rules": [
+    "campCapture"
+  ],
+  "options": {},
+  "campCapture": {
+    "side": "top",
+    "hexes": [
+      [
+        8,
+        12
+      ]
+    ],
+    "text": "Antigonus' troops seize Eumenes' baggage camp!"
+  },
+  "terrain": [
+    {
+      "r": 8,
+      "c": 12,
+      "t": "camp"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "HC",
+      "r": 1,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LBC",
+      "r": 1,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "EL",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "EL",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "EL",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LBC",
+      "r": 7,
+      "c": 0
+    },
+    {
+      "side": "bottom",
+      "type": "HC",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 4,
+      "elite": "silverShields"
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 10
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Demetrius",
+      "r": 1,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "name": "Antigonus",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "name": "Peithon",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "name": "Eumenes",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "name": "Philip",
+      "r": 7,
+      "c": 10
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

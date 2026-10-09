@@ -1,0 +1,254 @@
+{
+  "id": "103",
+  "name": "Plataea",
+  "year": "479 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Greek",
+    "blocks": "grk",
+    "look": "athenian",
+    "commander": "Pausanias",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Persian",
+    "blocks": "eas",
+    "look": "persian",
+    "commander": "Mardonius",
+    "cards": 5
+  },
+  "first": "top",
+  "banners": 5,
+  "rules": [],
+  "options": {},
+  "terrain": [
+    {
+      "r": 0,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 7,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 12,
+      "t": "hill"
+    },
+    {
+      "r": 7,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 7,
+      "c": 6,
+      "t": "hill"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 12
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 5,
+      "c": 0
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 5,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 5,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 0
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 7
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Pausanias",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "name": "Aristides",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "name": "Myronides",
+      "r": 1,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "name": "Mardonius",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "name": "Artabazus",
+      "r": 8,
+      "c": 6
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

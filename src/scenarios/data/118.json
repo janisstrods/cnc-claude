@@ -1,0 +1,350 @@
+{
+  "id": "118",
+  "name": "Beneventum",
+  "year": "275 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Epirote",
+    "blocks": "grk",
+    "look": "epirote",
+    "commander": "Pyrrhus",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "roman",
+    "commander": "Dentatus",
+    "cards": 5
+  },
+  "first": "top",
+  "banners": 7,
+  "rules": [],
+  "options": {},
+  "terrain": [
+    {
+      "r": 0,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 0,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 4,
+      "t": "forest"
+    },
+    {
+      "r": 0,
+      "c": 9,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 9,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 8,
+      "c": 3,
+      "t": "camp"
+    },
+    {
+      "r": 8,
+      "c": 6,
+      "t": "camp"
+    },
+    {
+      "r": 8,
+      "c": 9,
+      "t": "camp"
+    },
+    {
+      "r": 8,
+      "c": 4,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 8,
+      "c": 5,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 8,
+      "c": 7,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 8,
+      "c": 8,
+      "t": "rampart",
+      "faces": "top"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 3,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 3,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 3,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 3,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 4,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "HWM",
+      "r": 8,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "HWM",
+      "r": 8,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 11
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Pyrrhus",
+      "r": 0,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "name": "Leonatus",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "name": "Dentatus",
+      "r": 8,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "name": "Lentulus",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "name": "Fabricius",
+      "r": 8,
+      "c": 9
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

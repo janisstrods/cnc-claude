@@ -78,12 +78,13 @@ describe('base armies are painted exactly as before', () => {
 describe('every base scenario seats its armies in the old colours', () => {
   /** The old faction of an army (what `faction()` in src/scenarios/index.ts used to compute from the JSON). */
   const oldFaction = (army: string): OldFaction => (army === 'Carthaginian' ? 'carthage' : army === 'Syracusan' ? 'syracuse' : 'rome');
+  const BASE = SCENARIOS.filter((sc) => sc.expansion === 'base');
 
   it('covers all 15 battles', () => {
-    expect(SCENARIOS).toHaveLength(15);
+    expect(BASE.map((sc) => sc.id)).toEqual(['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015']);
   });
 
-  for (const sc of SCENARIOS) {
+  for (const sc of BASE) {
     it(`${sc.id} ${sc.name}`, () => {
       const g = createGame(sc.setup, 1);
       for (const side of ['top', 'bottom'] as const) {
@@ -104,20 +105,57 @@ describe('every base scenario seats its armies in the old colours', () => {
   }
 });
 
-describe('missing art fails loudly', () => {
-  it('a look without art throws and names the look', () => {
-    expect(() => lookDef('athenian')).toThrow(/athenian/);
-    expect(() => paletteFor('mauryan', 'rom')).toThrow(/mauryan/);
+// TEMPORARY until Task 15 (army looks): the Expansion #1 looks and the Eastern (`eas`) blocks have no art yet, so a
+// look without art borrows the closest base kit (Greek kit / Syracusan palette, or the Punic kit / Carthaginian palette)
+// and `eas` has provisional ochre-tan colours. Task 15 replaces these tests with the real looks and restores the rule
+// that a look without art throws.
+describe('looks without art fall back to the closest base kit (TEMPORARY until Task 15)', () => {
+  const GREEK: ArmyLook[] = ['athenian', 'theban', 'spartan', 'phocian', 'macedonian', 'antigonid', 'epirote', 'craterus', 'eumenes', 'antigonus', 'seleucid', 'ptolemaic'];
+  const EASTERN: ArmyLook[] = ['persian', 'scythian', 'indian', 'mauryan'];
+
+  it('the Greek and Successor looks borrow the Syracusan art, the Eastern looks the Carthaginian art', () => {
+    for (const look of GREEK) expect(lookDef(look), look).toBe(LOOKS.syracusan);
+    for (const look of EASTERN) expect(lookDef(look), look).toBe(LOOKS.carthaginian);
+    expect(paletteFor('athenian', 'grk')).toEqual(paletteFor('syracusan', 'grk'));
+    expect(paletteFor('persian', 'eas').kit).toBe('punic');
+    expect(paletteFor('persian', 'eas').tunic).toBe(paletteFor('carthaginian', 'car').tunic);
   });
 
-  it('blocks without colours throw and name the blocks', () => {
-    expect(() => blockColors('eas')).toThrow(/eas/);
-    expect(() => paletteFor('roman', 'eas')).toThrow(/eas/);
-    expect(() => bannerCloth('eas')).toThrow(/eas/);
+  it('the three base looks keep their own art', () => {
+    expect(lookDef('roman')).toBe(LOOKS.roman);
+    expect(lookDef('carthaginian')).toBe(LOOKS.carthaginian);
+    expect(lookDef('syracusan')).toBe(LOOKS.syracusan);
   });
 
-  it('Phase 1 has art for exactly the three base looks and the three base block sets', () => {
+  it('every army of every scenario can be drawn', () => {
+    for (const sc of SCENARIOS) {
+      for (const side of ['top', 'bottom'] as const) {
+        const { look, blocks } = sc.setup[side];
+        expect(() => paletteFor(look, blocks), `${sc.id} ${side}`).not.toThrow();
+        expect(() => bannerCloth(blocks), `${sc.id} ${side}`).not.toThrow();
+      }
+    }
+  });
+
+  it('Eastern blocks have provisional ochre-tan side colours of their own', () => {
+    expect(blockColors('eas')).toEqual({
+      edge: '#b8893a', edgeShade: '#7a5a22', edgeLight: '#dcb36a', banner: '#a87a30', bannerShade: '#6e4e1c',
+      cloth: { main: '#9a7030', light: '#c89a52', dark: '#5e4218' },
+    });
+    expect(bannerCloth('eas')).toEqual(blockColors('eas').cloth);
+    const p = paletteFor('persian', 'eas');
+    expect([p.baseEdge, p.banner]).toEqual(['#b8893a', '#a87a30']);
+  });
+
+  it('a look or block set outside the types still throws and names it', () => {
+    expect(() => lookDef('klingon' as ArmyLook)).toThrow(/klingon/);
+    expect(() => paletteFor('klingon' as ArmyLook, 'rom')).toThrow(/klingon/);
+    expect(() => blockColors('xyz' as Blocks)).toThrow(/xyz/);
+    expect(() => bannerCloth('xyz' as Blocks)).toThrow(/xyz/);
+  });
+
+  it('art exists for exactly the three base looks; side colours for the three base block sets plus provisional eas', () => {
     expect(Object.keys(LOOKS).sort()).toEqual(['carthaginian', 'roman', 'syracusan']);
-    expect(Object.keys(BLOCK_COLORS).sort()).toEqual(['car', 'grk', 'rom']);
+    expect(Object.keys(BLOCK_COLORS).sort()).toEqual(['car', 'eas', 'grk', 'rom']);
   });
 });

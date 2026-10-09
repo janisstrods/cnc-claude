@@ -1,0 +1,325 @@
+{
+  "id": "123",
+  "name": "Indus",
+  "year": "306 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Seleucid",
+    "blocks": "grk",
+    "look": "seleucid",
+    "commander": "Seleucus",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Indian",
+    "blocks": "eas",
+    "look": "mauryan",
+    "commander": "Maurya",
+    "cards": 5
+  },
+  "first": "bottom",
+  "banners": 6,
+  "rules": [],
+  "options": {},
+  "terrain": [
+    {
+      "r": 1,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 11,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 10,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 12,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 12,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 0,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 5,
+      "c": 0,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 6,
+      "c": 1,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 6,
+      "c": 2,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 6,
+      "c": 3,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 6,
+      "c": 4,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 4,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 4,
+      "t": "river",
+      "ford": true
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 0,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 0,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 0,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "HCH",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "HCH",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "EL",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 1,
+      "elite": "bowAuxilia"
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 2,
+      "elite": "bowAuxilia"
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 3,
+      "elite": "bowAuxilia"
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 7
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Seleucus",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "name": "Antiochus",
+      "r": 0,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "name": "Maurya",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "name": "Chanakya",
+      "r": 7,
+      "c": 5
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

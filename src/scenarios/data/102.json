@@ -1,0 +1,330 @@
+{
+  "id": "102",
+  "name": "Himera",
+  "year": "480 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Carthaginian",
+    "blocks": "car",
+    "look": "carthaginian",
+    "commander": "Hamilcar",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Syracusan",
+    "blocks": "grk",
+    "look": "syracusan",
+    "commander": "Gelon",
+    "cards": 5
+  },
+  "first": "bottom",
+  "banners": 6,
+  "rules": [],
+  "options": {},
+  "terrain": [
+    {
+      "r": 0,
+      "c": 12,
+      "t": "sea"
+    },
+    {
+      "r": 1,
+      "c": 11,
+      "t": "sea"
+    },
+    {
+      "r": 2,
+      "c": 12,
+      "t": "sea"
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "sea"
+    },
+    {
+      "r": 4,
+      "c": 12,
+      "t": "sea"
+    },
+    {
+      "r": 1,
+      "c": 3,
+      "t": "camp"
+    },
+    {
+      "r": 1,
+      "c": 4,
+      "t": "camp"
+    },
+    {
+      "r": 1,
+      "c": 9,
+      "t": "camp"
+    },
+    {
+      "r": 3,
+      "c": 1,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 3,
+      "c": 2,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 3,
+      "c": 3,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 3,
+      "c": 9,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 3,
+      "c": 10,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 0,
+      "c": 8,
+      "t": "rampart",
+      "edges": [
+        "W",
+        "SW"
+      ]
+    },
+    {
+      "r": 1,
+      "c": 8,
+      "t": "rampart",
+      "edges": [
+        "W",
+        "SW"
+      ]
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 0,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 0,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "HCH",
+      "r": 0,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 3,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LS",
+      "r": 5,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 4
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Terillus",
+      "r": 0,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "name": "Hamilcar",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "name": "Eumachus",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "name": "Gelon",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "name": "Theron",
+      "r": 6,
+      "c": 10
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

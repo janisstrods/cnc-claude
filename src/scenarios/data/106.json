@@ -1,0 +1,255 @@
+{
+  "id": "106",
+  "name": "Crocus Plain",
+  "year": "352 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Macedonian",
+    "blocks": "grk",
+    "look": "macedonian",
+    "commander": "Philip II",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Phocian",
+    "blocks": "eas",
+    "look": "phocian",
+    "commander": "Onomarchus",
+    "cards": 5
+  },
+  "first": "top",
+  "banners": 6,
+  "rules": [],
+  "options": {},
+  "terrain": [
+    {
+      "r": 8,
+      "c": 1,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 2,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 3,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 4,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 5,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 6,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 7,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 8,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 9,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 10,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 11,
+      "t": "lake"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "HC",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LS",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 1
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Philip II",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "name": "Antipater",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "name": "Parmenio",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "name": "Onomarchus",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "name": "Mnaseas",
+      "r": 6,
+      "c": 8
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

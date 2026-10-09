@@ -1,0 +1,455 @@
+{
+  "id": "108",
+  "name": "Issus",
+  "year": "333 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Macedonian",
+    "blocks": "grk",
+    "look": "macedonian",
+    "commander": "Alexander",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Persian",
+    "blocks": "eas",
+    "look": "persian",
+    "commander": "Darius III",
+    "cards": 4
+  },
+  "first": "top",
+  "banners": 8,
+  "rules": [],
+  "options": {},
+  "terrain": [
+    {
+      "r": 0,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 7,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 8,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 8,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 1,
+      "t": "river",
+      "ford": "nocap"
+    },
+    {
+      "r": 5,
+      "c": 2,
+      "t": "river",
+      "ford": "nocap"
+    },
+    {
+      "r": 5,
+      "c": 3,
+      "t": "river",
+      "ford": "nocap"
+    },
+    {
+      "r": 5,
+      "c": 4,
+      "t": "river",
+      "ford": "nocap"
+    },
+    {
+      "r": 5,
+      "c": 5,
+      "t": "river",
+      "ford": "nocap"
+    },
+    {
+      "r": 5,
+      "c": 6,
+      "t": "river",
+      "ford": "nocap"
+    },
+    {
+      "r": 5,
+      "c": 7,
+      "t": "river",
+      "ford": "nocap"
+    },
+    {
+      "r": 5,
+      "c": 8,
+      "t": "river",
+      "ford": "nocap"
+    },
+    {
+      "r": 5,
+      "c": 9,
+      "t": "river",
+      "ford": "nocap"
+    },
+    {
+      "r": 5,
+      "c": 10,
+      "t": "river",
+      "ford": "nocap"
+    },
+    {
+      "r": 2,
+      "c": 12,
+      "t": "sea"
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "sea"
+    },
+    {
+      "r": 4,
+      "c": 12,
+      "t": "sea"
+    },
+    {
+      "r": 5,
+      "c": 11,
+      "t": "sea"
+    },
+    {
+      "r": 6,
+      "c": 12,
+      "t": "sea"
+    },
+    {
+      "r": 7,
+      "c": 11,
+      "t": "sea"
+    },
+    {
+      "r": 8,
+      "c": 12,
+      "t": "sea"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 4,
+      "elite": "companions"
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 0,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 0,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LS",
+      "r": 4,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "LS",
+      "r": 4,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 0
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 5,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 5,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 0
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 6,
+      "elite": "immortals"
+    },
+    {
+      "side": "bottom",
+      "type": "HC",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 8,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 8,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 8,
+      "c": 7
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Alexander",
+      "r": 0,
+      "c": 4,
+      "traits": [
+        "ccBonus"
+      ]
+    },
+    {
+      "side": "top",
+      "name": "Craterus",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "name": "Parmenio",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "name": "Thymondas",
+      "r": 5,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "name": "Nabarzanes",
+      "r": 5,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "name": "Darius",
+      "r": 6,
+      "c": 6
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

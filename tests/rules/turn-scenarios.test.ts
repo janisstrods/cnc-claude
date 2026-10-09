@@ -79,8 +79,8 @@ describe('victory', () => {
 });
 
 describe('scenario data', () => {
-  it('15 scenarios are available', () => {
-    expect(SCENARIOS.map((x) => x.id)).toEqual(['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015']);
+  it('the 15 base scenarios are available', () => {
+    expect(SCENARIOS.filter((x) => x.expansion === 'base').map((x) => x.id)).toEqual(['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015']);
   });
   it('special rules are attached to the right scenarios', () => {
     expect(scenarioById('002').setup.rules).toContain('sacredBand');

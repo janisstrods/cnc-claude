@@ -1,0 +1,351 @@
+{
+  "id": "101",
+  "name": "Marathon",
+  "year": "490 BC",
+  "expansion": "exp1",
+  "top": {
+    "army": "Greek",
+    "blocks": "grk",
+    "look": "athenian",
+    "commander": "Callimachus",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Persian",
+    "blocks": "eas",
+    "look": "persian",
+    "commander": "Datis",
+    "cards": 5
+  },
+  "first": "top",
+  "banners": 6,
+  "rules": [],
+  "options": {},
+  "terrain": [
+    {
+      "r": 0,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 1,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 2,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 3,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 4,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 6,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 7,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 8,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 7,
+      "c": 1,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 2,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 3,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 4,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 5,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 6,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 7,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 8,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 9,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 2,
+      "c": 12,
+      "t": "steep"
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "steep"
+    },
+    {
+      "r": 4,
+      "c": 11,
+      "t": "steep"
+    },
+    {
+      "r": 4,
+      "c": 12,
+      "t": "steep"
+    },
+    {
+      "r": 5,
+      "c": 10,
+      "t": "steep"
+    },
+    {
+      "r": 5,
+      "c": 11,
+      "t": "steep"
+    },
+    {
+      "r": 6,
+      "c": 10,
+      "t": "steep"
+    },
+    {
+      "r": 6,
+      "c": 11,
+      "t": "steep"
+    },
+    {
+      "r": 6,
+      "c": 12,
+      "t": "steep"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 5,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 5,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 5,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 7
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Callimachus",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "name": "Miltiades",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "name": "Datis",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "name": "Artaphernes",
+      "r": 8,
+      "c": 7
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}
