@@ -1,12 +1,19 @@
-// Appearance guard for the split of `Faction` into blocks (side colour) and look (figure kit + palette):
-// every base army must still be painted with exactly the swatches it had before (the Syracusans' blue now belongs
-// to the Greek blocks, `grk`, which scenarios 001 and 002 seat them on). palette-baseline.json is the
-// serialised FACTION_PALETTES / FACTION_COLORS of the last commit that still had `Faction`.
+// Appearance guards for the army art.
+// 1. The split of `Faction` into blocks (side colour) and look (figure kit + palette): every base army must still be
+//    painted with exactly the swatches it had before (the Syracusans' blue now belongs to the Greek blocks, `grk`, which
+//    scenarios 001 and 002 seat them on). palette-baseline.json is the serialised FACTION_PALETTES / FACTION_COLORS of
+//    the last commit that still had `Faction`.
+// 2. The base armies render byte-identically to the art before Expansion #1 (pinned SVG hash).
+// 3. The Expansion #1 looks: all 19 looks and 4 block sets exist, armies that meet look different, elites differ.
 import { describe, expect, it } from 'vitest';
 import baselineJson from './palette-baseline.json';
 import { createGame } from '../../src/engine';
-import type { ArmyLook, Blocks } from '../../src/engine/types';
+import type { ArmyLook, Blocks, EliteId, UnitType } from '../../src/engine/types';
+import { createElement as h } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { BLOCK_COLORS, LOOKS, blockColors, lookDef, paletteFor, type Kit } from '../../src/art/palettes';
+import { LeaderToken, UnitIcon, UnitToken } from '../../src/art';
+import { ELITE_FOOT, EliteCtx, FootFigure, crewFigure, figurePalette, footKit } from '../../src/art/foot';
 import { bannerCloth } from '../../src/ui/kit/theme';
 import { SCENARIOS } from '../../src/scenarios';
 
@@ -29,8 +36,9 @@ describe('base armies are painted exactly as before', () => {
     it(`${a.look} on ${a.blocks} blocks equals the old '${a.old}' palette, swatch for swatch`, () => {
       const { faction, ...old } = baseline.FACTION_PALETTES[a.old];
       expect(faction).toBe(a.old);
-      const { kit, ...now } = paletteFor(a.look, a.blocks);
+      const { kit, style, ...now } = paletteFor(a.look, a.blocks);
       expect(kit).toBe(a.kit);
+      expect(style).toBe(LOOKS[a.look].style);
       expect(now).toEqual(old);
     });
 
@@ -97,7 +105,7 @@ describe('every base scenario seats its armies in the old colours', () => {
         expect(setup.blocks).toBe(setup.army === 'Carthaginian' ? 'car' : setup.army === 'Syracusan' ? 'grk' : 'rom');
         const old = oldFaction(setup.army);
         const { faction: _f, ...expected } = baseline.FACTION_PALETTES[old];
-        const { kit: _k, ...drawn } = paletteFor(player.look, player.blocks);
+        const { kit: _k, style: _s, ...drawn } = paletteFor(player.look, player.blocks);
         expect(drawn, `${side} ${setup.army}`).toEqual(expected);
         expect(bannerCloth(player.blocks)).toEqual(baseline.FACTION_COLORS[old]);
       }
@@ -105,26 +113,74 @@ describe('every base scenario seats its armies in the old colours', () => {
   }
 });
 
-// TEMPORARY until Task 15 (army looks): the Expansion #1 looks and the Eastern (`eas`) blocks have no art yet, so a
-// look without art borrows the closest base kit (Greek kit / Syracusan palette, or the Punic kit / Carthaginian palette)
-// and `eas` has provisional ochre-tan colours. Task 15 replaces these tests with the real looks and restores the rule
-// that a look without art throws.
-describe('looks without art fall back to the closest base kit (TEMPORARY until Task 15)', () => {
-  const GREEK: ArmyLook[] = ['athenian', 'theban', 'spartan', 'phocian', 'macedonian', 'antigonid', 'epirote', 'craterus', 'eumenes', 'antigonus', 'seleucid', 'ptolemaic'];
-  const EASTERN: ArmyLook[] = ['persian', 'scythian', 'indian', 'mauryan'];
+const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
+const MAX: Record<UnitType, number> = { LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HC: 3, EL: 2, HCH: 2, LBC: 3, CAM: 3, HWM: 2 };
+const ALL_TYPES = Object.keys(MAX) as UnitType[];
+const BASE_TYPES: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI', 'LC', 'MC', 'HC', 'EL', 'HCH'];
 
-  it('the Greek and Successor looks borrow the Syracusan art, the Eastern looks the Carthaginian art', () => {
-    for (const look of GREEK) expect(lookDef(look), look).toBe(LOOKS.syracusan);
-    for (const look of EASTERN) expect(lookDef(look), look).toBe(LOOKS.carthaginian);
-    expect(paletteFor('athenian', 'grk')).toEqual(paletteFor('syracusan', 'grk'));
-    expect(paletteFor('persian', 'eas').kit).toBe('punic');
-    expect(paletteFor('persian', 'eas').tunic).toBe(paletteFor('carthaginian', 'car').tunic);
+describe('base armies are drawn exactly as before Expansion #1 (rendered SVG)', () => {
+  // SHA-256 of a react-dom/server render of every base-game UnitToken (all strengths, both facings, dimmed or not),
+  // UnitIcon and LeaderToken of the three base looks, computed on the tree before the Expansion #1 looks existed.
+  // Elite tokens are left out: the Sacred Band's figures get their own look once the token passes `elite` on.
+  const BASELINE = '3ae9d01d94e4381ad996a4284e043472be3abb3618a4c5e52f7eed908c72d8d7';
+
+  it('every base token, icon and leader renders byte-identically', async () => {
+    const parts: string[] = [];
+    const hash = { update: (s: string) => parts.push(s) };
+    for (const a of [{ look: 'roman', blockColor: 'rom' }, { look: 'carthaginian', blockColor: 'car' }, { look: 'syracusan', blockColor: 'grk' }] as const) {
+      for (const type of BASE_TYPES) {
+        for (let blocks = 0; blocks <= MAX[type]; blocks++) {
+          for (const facing of ['left', 'right'] as const) {
+            for (const dimmed of [false, true]) hash.update(svg(h(UnitToken, { type, ...a, blocks, maxBlocks: MAX[type], facing, dimmed })));
+          }
+        }
+        for (const size of [24, 64]) hash.update(svg(h(UnitIcon, { type, ...a, size })));
+      }
+      for (const facing of ['left', 'right'] as const) {
+        for (const attached of [false, true]) hash.update(svg(h(LeaderToken, { ...a, facing, attached, name: 'Hannibal', showName: true })));
+      }
+    }
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(parts.join('')));
+    const hex = [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, '0')).join('');
+    expect(hex).toBe(BASELINE);
+  });
+});
+
+/** The kit of every look (Expansion #1 brief). */
+const KITS: Record<ArmyLook, Kit> = {
+  roman: 'roman', carthaginian: 'punic', syracusan: 'greek',
+  athenian: 'greek', theban: 'greek', spartan: 'greek', phocian: 'greek',
+  macedonian: 'macedonian', antigonid: 'macedonian', epirote: 'macedonian', craterus: 'macedonian', eumenes: 'macedonian',
+  antigonus: 'macedonian', seleucid: 'macedonian', ptolemaic: 'macedonian',
+  persian: 'persian', scythian: 'scythian', indian: 'indian', mauryan: 'indian',
+};
+const ALL_LOOKS = Object.keys(KITS) as ArmyLook[];
+
+describe('army looks of Expansion #1', () => {
+  it('every army look has art, with its kit', () => {
+    expect(Object.keys(LOOKS).sort()).toEqual([...ALL_LOOKS].sort());
+    for (const look of ALL_LOOKS) {
+      expect(lookDef(look).kit, look).toBe(KITS[look]);
+      expect(paletteFor(look, 'grk').kit, look).toBe(KITS[look]);
+    }
   });
 
-  it('the three base looks keep their own art', () => {
-    expect(lookDef('roman')).toBe(LOOKS.roman);
-    expect(lookDef('carthaginian')).toBe(LOOKS.carthaginian);
-    expect(lookDef('syracusan')).toBe(LOOKS.syracusan);
+  it('the base looks keep their devices: the kit emblems, wreath / crescent / circle standards', () => {
+    expect(LOOKS.roman.style).toEqual({ emblems: ['rome'], device: 'wreath', finial: 'eagle' });
+    expect(LOOKS.carthaginian.style).toEqual({ emblems: ['carthage'], device: 'carthage', finial: 'crescent' });
+    expect(LOOKS.syracusan.style).toEqual({ emblems: ['syracuse'], device: 'syracuse', finial: 'lozenge' });
+  });
+
+  it('block colours exist for all four block sets; Eastern blocks are ochre-tan', () => {
+    expect(Object.keys(BLOCK_COLORS).sort()).toEqual(['car', 'eas', 'grk', 'rom']);
+    expect(blockColors('grk').edge).toBe('#1f4fb4');
+    expect(blockColors('eas')).toEqual({
+      edge: '#c88a22', edgeShade: '#7c5212', edgeLight: '#ecbc5e', banner: '#b8801e', bannerShade: '#74500f',
+      cloth: { main: '#a8741e', light: '#d4a24a', dark: '#5e3e0c' },
+    });
+    expect(bannerCloth('eas')).toEqual(blockColors('eas').cloth);
+    const p = paletteFor('persian', 'eas');
+    expect([p.baseEdge, p.banner]).toEqual(['#c88a22', '#b8801e']);
   });
 
   it('every army of every scenario can be drawn', () => {
@@ -137,25 +193,99 @@ describe('looks without art fall back to the closest base kit (TEMPORARY until T
     }
   });
 
-  it('Eastern blocks have provisional ochre-tan side colours of their own', () => {
-    expect(blockColors('eas')).toEqual({
-      edge: '#b8893a', edgeShade: '#7a5a22', edgeLight: '#dcb36a', banner: '#a87a30', bannerShade: '#6e4e1c',
-      cloth: { main: '#9a7030', light: '#c89a52', dark: '#5e4218' },
-    });
-    expect(bannerCloth('eas')).toEqual(blockColors('eas').cloth);
-    const p = paletteFor('persian', 'eas');
-    expect([p.baseEdge, p.banner]).toEqual(['#b8893a', '#a87a30']);
-  });
-
-  it('a look or block set outside the types still throws and names it', () => {
+  it('a look or block set outside the types throws and names it', () => {
     expect(() => lookDef('klingon' as ArmyLook)).toThrow(/klingon/);
+    expect(() => lookDef('constructor' as ArmyLook)).toThrow(/constructor/);
     expect(() => paletteFor('klingon' as ArmyLook, 'rom')).toThrow(/klingon/);
     expect(() => blockColors('xyz' as Blocks)).toThrow(/xyz/);
     expect(() => bannerCloth('xyz' as Blocks)).toThrow(/xyz/);
   });
 
-  it('art exists for exactly the three base looks; side colours for the three base block sets plus provisional eas', () => {
-    expect(Object.keys(LOOKS).sort()).toEqual(['carthaginian', 'roman', 'syracusan']);
-    expect(Object.keys(BLOCK_COLORS).sort()).toEqual(['car', 'eas', 'grk', 'rom']);
+  it('the two armies of every Expansion #1 battle look different (figures and side colours)', () => {
+    for (const sc of SCENARIOS.filter((s) => s.expansion === 'exp1')) {
+      const a = paletteFor(sc.setup.top.look, sc.setup.top.blocks);
+      const b = paletteFor(sc.setup.bottom.look, sc.setup.bottom.blocks);
+      expect(a.baseEdge, sc.id).not.toBe(b.baseEdge);
+      expect([a.tunic, a.shield], sc.id).not.toEqual([b.tunic, b.shield]);
+    }
+  });
+
+  it('the eight Successor-kit palettes are distinct from each other (tunic and shield)', () => {
+    const mac = ALL_LOOKS.filter((l) => KITS[l] === 'macedonian');
+    expect(mac).toHaveLength(8);
+    const keys = mac.map((l) => `${LOOKS[l].palette.tunic}/${LOOKS[l].palette.shield}`);
+    expect(new Set(keys).size).toBe(8);
+    expect(new Set(mac.map((l) => LOOKS[l].palette.tunic)).size).toBe(8);
+    expect(new Set(mac.map((l) => LOOKS[l].palette.shield)).size).toBe(8);
+  });
+
+  it('every look draws every unit type, alone and with a leader, and every type differs between kits', () => {
+    for (const look of ALL_LOOKS) {
+      const blockColor = look === 'roman' ? 'rom' : look === 'carthaginian' ? 'car' : 'eas';
+      for (const type of ALL_TYPES) {
+        const out = svg(h(UnitToken, { type, look, blockColor, blocks: MAX[type], maxBlocks: MAX[type], facing: 'left' }));
+        expect(out.length, `${look} ${type}`).toBeGreaterThan(1000);
+        expect(out, `${look} ${type}`).not.toMatch(/NaN|undefined/);
+      }
+      for (const attached of [false, true]) {
+        const out = svg(h(LeaderToken, { look, blockColor, facing: 'right', attached, name: 'Leader', showName: true }));
+        expect(out, look).not.toMatch(/NaN|undefined/);
+      }
+    }
+    const foot: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI'];
+    for (const type of foot) {
+      const byKit = new Set(['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian'].map((look) =>
+        svg(h(UnitToken, { type, look: look as ArmyLook, blockColor: 'grk', blocks: 4, maxBlocks: 4, facing: 'right' }))));
+      expect(byKit.size, type).toBe(7);
+    }
+  });
+
+  it('looks of one kit differ in their figures (devices, colours, per-type details)', () => {
+    for (const kit of ['greek', 'macedonian', 'indian'] as Kit[]) {
+      const looks = ALL_LOOKS.filter((l) => KITS[l] === kit);
+      const hi = new Set(looks.map((look) => svg(h(UnitToken, { type: 'HI', look, blockColor: 'grk', blocks: 4, maxBlocks: 4, facing: 'right' }))));
+      expect(hi.size, kit).toBe(looks.length);
+    }
+  });
+});
+
+describe('elite foot figures', () => {
+  const ELITES: { elite: EliteId; look: ArmyLook; type: UnitType }[] = [
+    { elite: 'carthSacredBand', look: 'carthaginian', type: 'HI' },
+    { elite: 'thebanSacredBand', look: 'theban', type: 'MI' },
+    { elite: 'silverShields', look: 'eumenes', type: 'HI' },
+    { elite: 'immortals', look: 'persian', type: 'MI' },
+    { elite: 'bowAuxilia', look: 'mauryan', type: 'AX' },
+  ];
+
+  for (const { elite, look, type } of ELITES) {
+    it(`${elite} (${look} ${type}) has its own figures, by prop or by context`, () => {
+      const p = paletteFor(look, 'grk');
+      const kit = footKit(type, p.kit, 2);
+      const plain = svg(h(FootFigure, { kit, p, i: 2 }));
+      const byProp = svg(h(FootFigure, { kit, p, i: 2, elite }));
+      const byCtx = svg(h(EliteCtx.Provider, { value: elite }, h(FootFigure, { kit, p, i: 2 })));
+      expect(byProp).not.toBe(plain);
+      expect(byCtx).toBe(byProp);
+      expect(ELITE_FOOT[elite]).toBeDefined();
+    });
+  }
+
+  it('an ordinary figure of a base look is painted with the army palette itself (no copies)', () => {
+    const p = paletteFor('roman', 'rom');
+    for (let i = 0; i < 4; i++) expect(figurePalette(p, i)).toBe(p);
+    const persian = paletteFor('persian', 'eas');
+    expect(figurePalette(persian, 1)).toBe(figurePalette(persian, 1));
+    expect(figurePalette(persian, 1).tunic).not.toBe(persian.tunic);
+  });
+
+  it('war-machine crews are drawn for every kit and pose', () => {
+    for (const look of ['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian'] as ArmyLook[]) {
+      for (const pose of ['crank', 'load', 'aim', { near: [6, -18], far: [4, -16] }] as const) {
+        const out = svg(crewFigure(paletteFor(look, 'grk'), 1, pose as Parameters<typeof crewFigure>[2]));
+        expect(out.length, look).toBeGreaterThan(500);
+        expect(out).not.toMatch(/NaN|undefined/);
+      }
+    }
   });
 });
