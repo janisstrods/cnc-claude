@@ -2,6 +2,7 @@
 // and the terrain legend. URL options (hash query): ?s=006 (large board), ?units=1 (mock blocks),
 // ?only=large|grid|legend.
 import { useEffect, useMemo, useState } from 'react';
+import { rampartMask, type TerrainSetup } from '../engine/setup';
 import { COLS, ROWS, type TerrainType } from '../engine/types';
 import { BOARD_H, BOARD_W, hexCenter, isOnBoard } from '../ui/geometry';
 import { BoardArt, TerrainIcon, terrainName } from '../ui/terrain';
@@ -12,13 +13,13 @@ interface ScenarioJson {
   year?: string;
   top: { army: string };
   bottom: { army: string };
-  terrain: { r: number; c: number; t: TerrainType; ford?: boolean }[];
+  terrain: TerrainSetup[];
   units?: { side: 'top' | 'bottom'; type: string; r: number; c: number }[];
 }
 
 const modules = import.meta.glob('../scenarios/data/*.json', { eager: true }) as Record<string, { default: ScenarioJson }>;
 /** Synthetic board exercising every terrain type and the tricky joins (river junction, river
- * into a lake, dead-end stream, merged marsh/broken/steep clusters). */
+ * into a lake, dead-end stream, merged marsh/broken/steep clusters, sea, rampart edges). */
 const SAMPLER: ScenarioJson = {
   id: 'T',
   name: 'Terrain sampler',
@@ -57,6 +58,14 @@ const SAMPLER: ScenarioJson = {
     { r: 8, c: 10, t: 'river', ford: false },
     { r: 6, c: 10, t: 'river', ford: false },
     { r: 6, c: 9, t: 'camp' },
+    { r: 0, c: 12, t: 'sea' },
+    { r: 1, c: 11, t: 'sea' },
+    { r: 2, c: 12, t: 'sea' },
+    { r: 7, c: 2, t: 'rampart', faces: 'top' },
+    { r: 7, c: 3, t: 'rampart', faces: 'top' },
+    { r: 7, c: 4, t: 'rampart', edges: ['NW', 'NE', 'E'] },
+    { r: 2, c: 3, t: 'rampart', faces: 'bottom' },
+    { r: 2, c: 4, t: 'rampart', edges: ['W', 'SW', 'SE'] },
   ],
 };
 
@@ -67,21 +76,24 @@ const SCENARIOS: ScenarioJson[] = [
   SAMPLER,
 ];
 
-function boardArrays(s: ScenarioJson): { terrain: TerrainType[]; fords: boolean[] } {
+function boardArrays(s: ScenarioJson): { terrain: TerrainType[]; fords: boolean[]; rampart: number[] } {
   const terrain: TerrainType[] = [];
   const fords: boolean[] = [];
+  const rampart: number[] = [];
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       terrain.push(isOnBoard(r, c) ? 'plain' : 'void');
       fords.push(false);
+      rampart.push(0);
     }
   }
   for (const t of s.terrain) {
     const id = t.r * COLS + t.c;
     terrain[id] = t.t;
     fords[id] = t.t === 'river' && !!t.ford;
+    rampart[id] = rampartMask(t);
   }
-  return { terrain, fords };
+  return { terrain, fords, rampart };
 }
 
 function useHashParams(): URLSearchParams {
@@ -117,12 +129,12 @@ function MockUnits({ s, flipped }: { s: ScenarioJson; flipped: boolean }) {
 }
 
 function Board({ s, flipped, width, units }: { s: ScenarioJson; flipped: boolean; width: number | string; units: boolean }) {
-  const { terrain, fords } = useMemo(() => boardArrays(s), [s]);
+  const { terrain, fords, rampart } = useMemo(() => boardArrays(s), [s]);
   const topLabel = flipped ? s.bottom.army : s.top.army;
   const bottomLabel = flipped ? s.top.army : s.bottom.army;
   return (
     <svg viewBox={`0 0 ${BOARD_W} ${BOARD_H}`} style={{ width, display: 'block', borderRadius: 4, boxShadow: '0 6px 22px rgba(0,0,0,0.45)' }}>
-      <BoardArt terrain={terrain} fords={fords} flipped={flipped} topLabel={topLabel} bottomLabel={bottomLabel} />
+      <BoardArt terrain={terrain} fords={fords} rampart={rampart} flipped={flipped} topLabel={topLabel} bottomLabel={bottomLabel} />
       {units && <MockUnits s={s} flipped={flipped} />}
     </svg>
   );
@@ -135,8 +147,10 @@ const LEGEND: { t: TerrainType; ford?: boolean }[] = [
   { t: 'river' },
   { t: 'river', ford: true },
   { t: 'lake' },
+  { t: 'sea' },
   { t: 'steep' },
   { t: 'camp' },
+  { t: 'rampart' },
   { t: 'broken' },
   { t: 'marsh' },
 ];

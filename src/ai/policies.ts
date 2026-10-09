@@ -87,7 +87,7 @@ export function defendChoice(s: GameState, d: D<'defend'>, W: Weights, fsKeepSca
   }
   if (d.canFirstStrike) {
     const nb = closeCombatDice(s, t, a, { role: 'firstStrike', fullAtStart: t.blocks === t.maxBlocks, ordered: false });
-    const fs = strikeValue(s, occ, t, a, closeProfile(s, occ, t, a, nb), 'close');
+    const fs = strikeValue(s, occ, t, a, closeProfile(s, occ, t, a, nb, 'firstStrike'), 'close');
     const pStop = Math.min(1, fs.pElim + fs.pRetreat);
     const after = standEV(s, occ, a, t, n, mom, 0).ev; // attacker strikes, no battle back
     const keep = 0.3 * W.retention * fsKeepScale;

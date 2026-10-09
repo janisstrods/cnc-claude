@@ -227,8 +227,11 @@ export function validateOrders(s: GameState, side: Side, kind: CardKind | null, 
         return null;
       }
       const only = leaders.length === 1 ? leaders[0] : null;
-      if (only && leadershipChain(only, m.chain) === 0 && (!m.section || inSection(only.hex, side, m.section))) {
-        return `${only.name || 'This leader'} commands only himself and his own unit.`;
+      if (only && (!m.section || inSection(only.hex, side, m.section))) {
+        // the detach rule first: it is the reason for any attached leader, satrap or not
+        const own = leaderUnit(s, only);
+        if (own && !units.includes(own)) return `${only.name || 'This leader'} may not detach: order his unit with him.`;
+        if (leadershipChain(only, m.chain) === 0) return `${only.name || 'This leader'} commands only himself and his own unit.`;
       }
       return m.section
         ? `Choose a leader in the ${m.section} section and up to ${m.chain} linked units.`

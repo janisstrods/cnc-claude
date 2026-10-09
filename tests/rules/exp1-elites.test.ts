@@ -341,6 +341,31 @@ describe('Alexander (+1 close combat die to his unit)', () => {
     expect(combatDice(ev(d), 'firstStrike')).toBe(5);
   });
 
+  it('applies to the roll against an evading unit and against a lone leader [Interp]', () => {
+    // MC (3 dice) with Alexander attacks a light infantry unit that evades: 4 dice
+    const s = build({
+      units: [{ side: 'bottom', type: 'MC', at: [5, 6] }, { side: 'top', type: 'LI', at: [4, 6] }],
+      leaders: [{ side: 'bottom', at: [5, 6], traits: ALEX }],
+    });
+    const d = toBattle(s, 'order4C', ['u1']);
+    must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+    expect(d.pending).toMatchObject({ kind: 'defend', canEvade: true });
+    ev(d);
+    forceDice(n('heavy', 4));
+    must(d, { kind: 'defend', choice: 'evade' });
+    expect(combatDice(ev(d), 'evade')).toBe(4);
+    // ... and a lone leader: 4 dice
+    const l = build({
+      units: [{ side: 'bottom', type: 'MC', at: [5, 6] }],
+      leaders: [{ side: 'bottom', at: [5, 6], traits: ALEX }, { side: 'top', at: [4, 6] }],
+    });
+    const dl = toBattle(l, 'order4C', ['u1']);
+    ev(dl);
+    forceDice(n('flag', 4));
+    must(dl, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+    expect(combatDice(ev(dl), 'close')).toBe(4);
+  });
+
   it('a unit merely adjacent to Alexander gets no bonus', () => {
     const s = build({
       units: [{ side: 'bottom', type: 'MI', at: [5, 6] }, { side: 'bottom', type: 'MC', at: [5, 7] }, { side: 'top', type: 'HI', at: [4, 6] }],
@@ -483,7 +508,7 @@ describe('satraps (helmets and Leadership only for their own unit)', () => {
       expect(validateOrders(s, 'bottom', card, [L, 'u1'])).toBeNull();
       expect(validateOrders(s, 'bottom', card, [L, 'u1', 'u2'])).not.toBeNull();
       expect(validateOrders(s, 'bottom', card, [L, 'u1', 'u2', 'u3'])).not.toBeNull();
-      expect(validateOrders(s, 'bottom', card, [L])).not.toBeNull(); // leaders may not detach
+      expect(validateOrders(s, 'bottom', card, [L])).toMatch(/may not detach/); // the detach rule, not the satrap one
       expect(validateOrders(s, 'bottom', card, ['u2'])).toBeNull(); // the 1-unit alternative is unchanged
       expect(orderLimit(s, 'bottom', card, [L])).toBe(2);
       // control: an ordinary leader in the same spot

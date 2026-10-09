@@ -1,10 +1,14 @@
-// Rivers (with fords) and lakes.
+// Rivers (with fords), lakes and (for now drawn like a lake) the sea.
+import type { TerrainType } from '../../engine/types';
 import { addToGrid, blurGrid, fillGrid, isoPath, makeGrid, polyPath } from './field';
 import { DIRS, fmt, neighborRC, RI, type Dir, type HexInfo, type PaintCtx, type Pt } from './hexmath';
 import { fbm, rng } from './noise';
 import { P } from './palette';
 
 type PortKind = 'hex' | 'lake' | 'off' | 'end';
+
+/** Standing water painted by paintLakes: lakes and the sea (which has the lake rules, §16). */
+const isStill = (t: TerrainType) => t === 'lake' || t === 'sea';
 interface Port {
   d: Dir;
   kind: PortKind;
@@ -38,7 +42,7 @@ function portsOf(ctx: PaintCtx, h: HexInfo): Port[] {
     const n = ctx.get(r, c);
     if (!n) off.push(d);
     else if (n.t === 'river') links.push({ d, kind: 'hex' });
-    else if (n.t === 'lake') links.push({ d, kind: 'lake' });
+    else if (isStill(n.t)) links.push({ d, kind: 'lake' });
   }
   if (links.length >= 2) return links;
   if (links.length === 1) {
@@ -297,7 +301,7 @@ export function paintRivers(ctx: PaintCtx): JSX.Element | null {
     for (let i = 4; i < s.length - 6; i += 7 + Math.floor(R() * 5)) {
       const q = s[i];
       const hx = rivers.find((h) => h.id === q.hex);
-      if (hx?.ford || ctx.terrainAt(q.p.x, q.p.y) === 'lake') continue;
+      if (hx?.ford || isStill(ctx.terrainAt(q.p.x, q.p.y))) continue;
       const side = R() < 0.5 ? -1 : 1;
       const o = q.hw * (0.25 + R() * 0.35) * side;
       const a = add(q.p, mul(q.n, o));
@@ -392,7 +396,7 @@ export function paintRivers(ctx: PaintCtx): JSX.Element | null {
 }
 
 export function paintLakes(ctx: PaintCtx): JSX.Element | null {
-  const lakes = ctx.hexes.filter((h) => h.t === 'lake');
+  const lakes = ctx.hexes.filter((h) => isStill(h.t));
   if (!lakes.length) return null;
   const b = ctx.bounds;
   const pad = 70;
@@ -403,7 +407,7 @@ export function paintLakes(ctx: PaintCtx): JSX.Element | null {
     y1: Math.min(b.y1, Math.max(...lakes.map((h) => h.y)) + pad),
   };
   const g = makeGrid(rect, 3);
-  fillGrid(g, (x, y) => (ctx.terrainAt(x, y) === 'lake' ? 1 : 0));
+  fillGrid(g, (x, y) => (isStill(ctx.terrainAt(x, y)) ? 1 : 0));
   blurGrid(g, 3, 3);
   addToGrid(g, (x, y) => (fbm(x / 26, y / 26, 3) - 0.5) * 0.22);
   const shore = isoPath(g, 0.4);
@@ -430,7 +434,7 @@ export function paintLakes(ctx: PaintCtx): JSX.Element | null {
       const rr = 38 + R() * 8;
       const x = h.x + Math.cos(a) * rr;
       const y = h.y + Math.sin(a) * rr;
-      if (ctx.terrainAt(x + Math.cos(a) * 10, y + Math.sin(a) * 10) === 'lake') continue;
+      if (isStill(ctx.terrainAt(x + Math.cos(a) * 10, y + Math.sin(a) * 10))) continue;
       for (let m = -2; m <= 2; m++) reeds += `M${fmt(x + m * 1.4)},${fmt(y + 2)}l${fmt(m * 1.2)},${fmt(-6 - R() * 4)}`;
     }
   }

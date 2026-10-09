@@ -1,7 +1,7 @@
 // Pure combat calculations: dice counts, hit scoring, flag ignores (rules-reference §3, §4, §10).
 import { distance, hasLineOfSight, neighbours } from './hex';
 import { attachedLeader, enemyUnitAdjacent, leaderAt, leaderHas, leaderNear, supportCount, unitAt } from './query';
-import { ccCapOfHex, hillGroups, isCamp, isHill, rangedFromCap, rangedTargetCap, terrainBlocksLOS } from './terrain';
+import { ccCapOfHex, hillGroups, isCamp, isHill, rampartProtects, rangedFromCap, rangedTargetCap, terrainBlocksLOS } from './terrain';
 import { eliteHas, rangeOf } from './elites';
 import { UNIT_STATS, elephantDiceVs, frightens } from './units';
 import type { DieFace, GameState, HexId, Leader, Unit } from './types';
@@ -110,13 +110,30 @@ export interface Scored {
   flags: number;
 }
 
-/** How many sword hits the target ignores in close combat (an elephant does not re-roll an ignored sword). */
-export function swordIgnores(s: GameState, target: Unit): number {
+/**
+ * Rampart protection (§16) of `target` against a roll by `striker`: only a foot unit, and only when the roll reaches it
+ * through a protected hexside of its rampart hex. Close combat: the roll of an enemy attacking it (`role` 'attack' or
+ * 'bonus', incl. the attack after its own First Strike) from the neighbour across that side; never the battle back or
+ * First Strike against a rampart unit that attacked out **[Interp]**. Ranged: the line of fire enters through that side
+ * (at a corner, either side counts **[Interp]**).
+ */
+export function rampartShields(s: GameState, target: Unit, striker: Unit | null, kind: 'close' | 'ranged', role?: StrikeRole | null): boolean {
+  if (!striker || !s.rampart[target.hex] || !UNIT_STATS[target.type].foot) return false;
+  if (kind === 'close' && role !== 'attack' && role !== 'bonus') return false;
+  return rampartProtects(s, target.hex, striker.hex);
+}
+
+/**
+ * How many sword hits the target ignores in close combat (an elephant does not re-roll an ignored sword). Pass the
+ * `striker` and its `role` to include the rampart (§16); without them only the position-independent ignores count.
+ */
+export function swordIgnores(s: GameState, target: Unit, striker: Unit | null = null, role: StrikeRole | null = null): number {
   const t = UNIT_STATS[target.type];
   if (t.ignoreAllSwords) return 99;
   let n = t.swordIgnore;
   if (isCamp(s, target.hex) && t.foot) n += 1;
   if (eliteHas(target, 'ignoreSword')) n += 1;
+  if (rampartShields(s, target, striker, 'close', role)) n += 1;
   return n;
 }
 
@@ -140,12 +157,15 @@ function vsMountedCovers(target: Unit, f: DieFace): boolean {
 /**
  * Score close combat dice (elephant re-rolls must already be included in `faces`, in roll order).
  * `leaderHelmets`: a friendly leader is attached/adjacent to the striker (and the striker is not an elephant).
+ * `role`: the striker's role in this combat (decides the target's rampart protection, §16).
  */
-export function scoreClose(s: GameState, striker: Unit, target: Unit, faces: DieFace[], leaderHelmets: boolean): Scored {
+export function scoreClose(
+  s: GameState, striker: Unit, target: Unit, faces: DieFace[], leaderHelmets: boolean, role: StrikeRole = 'attack',
+): Scored {
   const st = UNIT_STATS[striker.type];
   const tst = UNIT_STATS[target.type];
   const cls = tst.cls;
-  let swordsLeft = swordIgnores(s, target);
+  let swordsLeft = swordIgnores(s, target, striker, role);
   let vsMountedLeft = vsMountedIgnores(striker, target);
   const scoring: boolean[] = [];
   let hits = 0;
@@ -211,6 +231,8 @@ export function scoreClassOnly(target: Unit, faces: DieFace[], countFlags: boole
 export interface IgnoreContext {
   kind: 'close' | 'ranged';
   striker: Unit | null;
+  /** Close combat: the striker's role (a rampart protects only against an attack or bonus combat roll, §16). */
+  role?: StrikeRole;
   /** Leader attached at the time flags are applied and still alive. */
   leaderAlive: boolean;
   /** Target was a full-strength warrior when this combat began. */
@@ -229,6 +251,7 @@ export function ignorableFlags(s: GameState, target: Unit, ctx: IgnoreContext): 
   if (t.fullStrengthBonus && ctx.fullAtStart) n++;
   if (eliteHas(target, 'ignoreFlag')) n++;
   if (t.vsMountedIgnoreFlag && ctx.kind === 'close' && ctx.striker && cavalryOrChariot(ctx.striker)) n++;
+  if (rampartShields(s, target, ctx.striker, ctx.kind, ctx.role)) n++;
   return n;
 }
 
@@ -239,12 +262,30 @@ export function retreatPerFlag(target: Unit, striker: Unit | null): number {
   return n;
 }
 
-/** Probability helpers for UI/AI: chance a single die hits a target of this class in close combat. */
-export function closeHitChance(s: GameState, striker: Unit, target: Unit): number {
+/** Expected number of swords beyond the first `k` among `dice` dice (E[max(0, S - k)], S ~ Binomial(dice, 1/6)). */
+function swordsBeyond(dice: number, k: number): number {
+  let pmf = Math.pow(5 / 6, dice); // P(S = 0)
+  let e = 0;
+  for (let j = 0; j <= dice; j++) {
+    if (j > k) e += (j - k) * pmf;
+    pmf = (pmf * (dice - j)) / (j + 1) / 5; // P(S = j + 1) from P(S = j)
+  }
+  return e;
+}
+
+/**
+ * Probability helper for UI previews: average chance per die that a close-combat roll of `dice` dice by `striker` (in
+ * `role`) hits `target`: its class symbol, swords beyond those the target ignores (HCH, camp, Companions, rampart), and
+ * helmets when a leader helps.
+ */
+export function closeHitChance(s: GameState, striker: Unit, target: Unit, dice = 1, role: StrikeRole = 'attack'): number {
   const sst = UNIT_STATS[striker.type];
   const tst = UNIT_STATS[target.type];
   let p = 1 / 6; // class symbol
-  if (sst.swordHits && !tst.ignoreAllSwords) p += 1 / 6;
+  if (sst.swordHits && !tst.ignoreAllSwords) {
+    const k = swordIgnores(s, target, striker, role);
+    p += k > 0 && dice > 0 ? swordsBeyond(dice, k) / dice : 1 / 6;
+  }
   if (!sst.noLeaderBenefit && (helmetsCount(s, striker) || eliteHas(striker, 'helmetHits'))) p += 1 / 6;
   if (vsMountedCovers(target, tst.cls) && vsMountedIgnores(striker, target)) p -= 1 / 18; // rough
   return p;

@@ -1,5 +1,5 @@
 // Hex grid math for the 13x9 "odd-r" offset board (odd rows shifted right by half a hex).
-import { COLS, OFF_BOARD, ROWS, type HexId, type SectionName, type Side } from './types';
+import { COLS, OFF_BOARD, ROWS, type HexDir, type HexId, type SectionName, type Side } from './types';
 
 export const NUM_HEXES = ROWS * COLS;
 
@@ -30,6 +30,9 @@ export const ALL_HEXES: HexId[] = (() => {
 const EVEN_DIRS: [number, number][] = [[0, 1], [-1, 0], [-1, -1], [0, -1], [1, -1], [1, 0]];
 const ODD_DIRS: [number, number][] = [[0, 1], [-1, 1], [-1, 0], [0, -1], [1, 0], [1, 1]];
 
+/** Direction names by index (the order of the offsets above; rampart edges and masks use these indices). */
+export const HEX_DIRS: readonly HexDir[] = ['E', 'NE', 'NW', 'W', 'SW', 'SE'];
+
 const NEIGHBOURS: HexId[][] = [];
 for (let h = 0; h < NUM_HEXES; h++) {
   const r = rowOf(h);
@@ -49,6 +52,18 @@ export function neighbours(h: HexId): HexId[] {
 
 export function areAdjacent(a: HexId, b: HexId): boolean {
   return NEIGHBOURS[a]?.includes(b) ?? false;
+}
+
+/** Direction index (0..5 = E, NE, NW, W, SW, SE) from `from` to its neighbour `to`; -1 if they are not adjacent. */
+export function directionTo(from: HexId, to: HexId): number {
+  const r = rowOf(from);
+  const c = colOf(from);
+  const dirs = r % 2 === 0 ? EVEN_DIRS : ODD_DIRS;
+  for (let i = 0; i < 6; i++) {
+    const [dr, dc] = dirs[i];
+    if (onBoard(r + dr, c + dc) && hexId(r + dr, c + dc) === to) return i;
+  }
+  return -1;
 }
 
 /** Cube coordinates. */
@@ -105,6 +120,25 @@ export function lineBetween(a: HexId, b: HexId): [HexId[], HexId[]] {
   const res: [HexId[], HexId[]] = [plus, minus];
   lineCache.set(key, res);
   return res;
+}
+
+/**
+ * The hexside(s) of `target` that the centre-to-centre line towards `other` passes through, as direction indices
+ * (0..5 = E, NE, NW, W, SW, SE): the side facing `other`, or both sides meeting at a corner when the line passes exactly
+ * through that corner (a line running along hexsides, §8). For a neighbour it is the shared side. Empty for the same hex.
+ */
+export function sidesCrossed(target: HexId, other: HexId): number[] {
+  if (target === other) return [];
+  const [tx, , tz] = toCube(target);
+  const [ox, , oz] = toCube(other);
+  const dx = ox - tx;
+  const dz = oz - tz;
+  // Board direction with y pointing up the board (row 0 at the top); side i faces 60*i degrees, corners lie in between.
+  const deg = (Math.atan2(-1.5 * dz, Math.sqrt(3) * (dx + dz / 2)) * 180) / Math.PI;
+  const t = (((deg / 60) % 6) + 6) % 6;
+  const lo = Math.floor(t);
+  if (Math.abs(t - lo - 0.5) < 1e-9) return [lo % 6, (lo + 1) % 6];
+  return [Math.round(t) % 6];
 }
 
 /** Line of sight given a predicate telling whether an intermediate hex blocks. */

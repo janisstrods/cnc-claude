@@ -413,6 +413,7 @@ block, it cannot be transferred), and add to everything else. A preset may only 
   * It applies to every close combat of that unit — attack, bonus combat, battle back and First Strike **[Interp]**: the
     designer FAQ settles only the terrain caps; for the other cases no ruling exists and this is the plain reading of the
     scenario text (Q1).
+  * It also applies to his unit's roll against an evading unit and against a lone leader (both are close combat) **[Interp]**.
   * He must be attached when the dice are rolled; an adjacent Alexander gives no bonus. A battle back after the unit
     lost blocks counts only if he survived the casualty check **[Interp]** (an eliminated leader is not attached).
   * Not mirrored by elephants (an elephant rolls the base dice, §2); an elephant never benefits from him (LR p.13).

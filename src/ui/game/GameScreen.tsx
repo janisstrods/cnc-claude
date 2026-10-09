@@ -402,7 +402,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
     const u = unitAt(s, h);
     const l = leaderAt(s, h);
     const t = terrainAt(s, h);
-    const terr = t !== 'plain' ? terrainName(t, isFord(s, h)) : null;
+    const terr = t !== 'plain' ? terrainName(t, isFord(s, h), s.noCap[h]) : null;
     if (!u && !l && !terr) return null;
     return { u, l, terr };
   }, [ui.hoverHex, s]);

@@ -5,11 +5,15 @@ import { HEX_R } from '../geometry';
 import { paintBroken, paintCamps } from './ground';
 import { corner, iconCtx } from './hexmath';
 import { paintHills, paintSteep } from './hills';
+import { paintRamparts } from './rampart';
 import { P } from './palette';
 import { paintForests, paintMarsh } from './vegetation';
 import { paintLakes, paintRivers } from './water';
 
 const cache = new Map<string, JSX.Element | null>();
+
+/** The swatch shows a rampart protecting its two upper sides (NE + NW, the bits of a `faces: 'top'` piece). */
+const ICON_RAMPART = (1 << 1) | (1 << 2);
 
 function iconArt(t: TerrainType, ford: boolean): JSX.Element | null {
   const key = `${t}:${ford ? 1 : 0}`;
@@ -27,7 +31,11 @@ function iconArt(t: TerrainType, ford: boolean): JSX.Element | null {
       el = paintRivers(ctx);
       break;
     case 'lake':
+    case 'sea':
       el = paintLakes(ctx);
+      break;
+    case 'rampart':
+      el = paintRamparts(ctx, [ICON_RAMPART]);
       break;
     case 'steep':
       el = paintSteep(ctx);

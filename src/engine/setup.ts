@@ -1,14 +1,14 @@
 // Build a GameState from a scenario definition.
 import { CARD_LIST, defaultMods } from './cards';
-import { hexId, onBoard } from './hex';
+import { HEX_DIRS, hexId, onBoard } from './hex';
 import { shuffle } from './rng';
 import { ELITES, type EliteDef } from './elites';
 import { LEADER_TRAITS } from './query';
 import { UNIT_STATS } from './units';
 import {
   COLS, OFF_BOARD, ROWS,
-  type ArmyLook, type Blocks, type EliteId, type GameState, type Leader, type LeaderTrait, type Side, type SpecialRuleId, type TerrainType,
-  type TurnState, type Unit, type UnitType,
+  type ArmyLook, type Blocks, type EliteId, type GameState, type HexDir, type Leader, type LeaderTrait, type Side, type SpecialRuleId,
+  type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
 export interface SideSetup {
@@ -26,7 +26,7 @@ export interface ScenarioSetup {
   bottom: SideSetup;
   first: Side;
   banners: number;
-  terrain: { r: number; c: number; t: TerrainType; ford?: boolean }[];
+  terrain: TerrainSetup[];
   units: { side: Side; type: UnitType; r: number; c: number; elite?: EliteId }[];
   /** `traits`: Expansion #1 leader traits (§17.2), e.g. Alexander's `ccBonus`. */
   leaders: { side: Side; name: string; r: number; c: number; traits?: LeaderTrait[] }[];
@@ -37,6 +37,43 @@ export interface ScenarioSetup {
   sacredLeader?: { side: Side; name: string };
   /** Starting Command for a side when different from `cards` (Trasimenus Romans start with 2). */
   initialCommand?: Partial<Record<Side, number>>;
+}
+
+/**
+ * One terrain hex of a scenario. `ford`: a fordable river hex (`'nocap'` = fordable without the ford dice caps, 108
+ * Pinarus). A `rampart` hex lists its protected hexsides (§16): `faces: 'top'` = NW + NE, `faces: 'bottom'` = SW + SE,
+ * and/or `edges` by direction (a corner piece lists 3).
+ */
+export interface TerrainSetup {
+  r: number;
+  c: number;
+  t: TerrainType;
+  ford?: boolean | 'nocap';
+  faces?: Side;
+  edges?: HexDir[];
+}
+
+const FACES: Record<Side, HexDir[]> = { top: ['NW', 'NE'], bottom: ['SW', 'SE'] };
+
+/** Protected-edge mask of a terrain entry (bit i = direction i of HEX_DIRS; 0 unless a rampart), validated. */
+export function rampartMask(t: TerrainSetup): number {
+  const where = `${t.r},${t.c}`;
+  const hasEdges = t.faces !== undefined || t.edges !== undefined;
+  if (t.t !== 'rampart') {
+    if (hasEdges) throw new Error(`faces/edges are only for rampart hexes (${t.t} at ${where})`);
+    return 0;
+  }
+  if (!hasEdges) throw new Error(`rampart at ${where} needs faces or edges`);
+  if (t.faces !== undefined && !FACES[t.faces]) throw new Error(`rampart at ${where}: unknown faces ${String(t.faces)}`);
+  const dirs = [...(t.faces !== undefined ? FACES[t.faces] : []), ...(t.edges ?? [])];
+  let mask = 0;
+  for (const d of dirs) {
+    const i = HEX_DIRS.indexOf(d);
+    if (i < 0) throw new Error(`rampart at ${where}: unknown edge ${String(d)}`);
+    mask |= 1 << i;
+  }
+  if (!mask) throw new Error(`rampart at ${where} needs at least one protected edge`);
+  return mask;
 }
 
 export function newTurn(side: Side, number: number): TurnState {
@@ -56,16 +93,24 @@ function withTraits(l: Leader, traits: LeaderTrait[] | undefined): Leader {
 export function createGame(setup: ScenarioSetup, seed: number): GameState {
   const terrain: TerrainType[] = [];
   const fords: boolean[] = [];
+  const noCap: boolean[] = [];
+  const rampart: number[] = [];
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       terrain.push(onBoard(r, c) ? 'plain' : 'void');
       fords.push(false);
+      noCap.push(false);
+      rampart.push(0);
     }
   }
   for (const t of setup.terrain) {
     if (!onBoard(t.r, t.c)) throw new Error(`terrain off board ${t.r},${t.c}`);
-    terrain[hexId(t.r, t.c)] = t.t;
-    fords[hexId(t.r, t.c)] = !!t.ford;
+    if (t.ford === 'nocap' && t.t !== 'river') throw new Error(`a no-cap ford must be a river hex (${t.t} at ${t.r},${t.c})`);
+    const h = hexId(t.r, t.c);
+    terrain[h] = t.t;
+    fords[h] = !!t.ford;
+    noCap[h] = t.ford === 'nocap';
+    rampart[h] = rampartMask(t);
   }
   let nextId = 1;
   const units: Unit[] = setup.units.map((u) => {
@@ -100,6 +145,8 @@ export function createGame(setup: ScenarioSetup, seed: number): GameState {
     scenarioId: setup.id,
     terrain,
     fords,
+    noCap,
+    rampart,
     units,
     leaders,
     players: {
@@ -151,6 +198,8 @@ export function cloneState(s: GameState): GameState {
     ...s,
     terrain: s.terrain,
     fords: s.fords,
+    noCap: s.noCap,
+    rampart: s.rampart,
     units: s.units.map((u) => ({ ...u })),
     leaders: s.leaders.map((l) => ({ ...l })),
     players: {

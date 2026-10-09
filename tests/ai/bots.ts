@@ -50,7 +50,7 @@ function closeScore(s: GameState, a: Unit, t: Unit | Leader, leaderBonus: number
   if (n <= 0) return -1;
   if (!('type' in t)) return (1 - Math.pow(5 / 6, n)) * (1.4 + leaderBonus * 2);
   const evades = canEvadeType(t.type, a.type) && evadeOptions(s, t).length > 0;
-  const p = evades ? SIXTH : a.type === 'EL' ? 0.4 : closeHitChance(s, a, t);
+  const p = evades ? SIXTH : a.type === 'EL' ? 0.4 : closeHitChance(s, a, t, n, role);
   const pmf = binom(n, Math.min(0.95, p));
   let eh = 0;
   let pe = 0;
@@ -63,7 +63,7 @@ function closeScore(s: GameState, a: Unit, t: Unit | Leader, leaderBonus: number
   if (!evades) {
     const nb = closeCombatDice(s, t, a, { role: 'back', fullAtStart: t.blocks === t.maxBlocks, ordered: false });
     if (nb > 0) {
-      const back = nb * (t.type === 'EL' ? 0.4 : closeHitChance(s, t, a));
+      const back = nb * (t.type === 'EL' ? 0.4 : closeHitChance(s, t, a, nb, 'back'));
       v -= (1 - pe) * ((Math.min(back, a.blocks) / a.maxBlocks) * wOf(a) + (back >= a.blocks ? 0.5 : 0));
     }
   }

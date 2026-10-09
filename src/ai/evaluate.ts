@@ -1,6 +1,6 @@
 // Static evaluation of a position from one side's point of view (1.0 ~ one banner).
 import { defaultMods } from '../engine/cards';
-import { closeCombatDice, leaderDiceBonus, rangedDice, swordIgnores } from '../engine/combat';
+import { closeCombatDice, leaderDiceBonus, rampartShields, rangedDice, swordIgnores } from '../engine/combat';
 import { unitMoves } from '../engine/movement';
 import { halfCol, neighbours, rowOf } from '../engine/hex';
 import { leaderHas, other } from '../engine/query';
@@ -25,14 +25,17 @@ export function battered(u: Unit): boolean {
   return u.blocks === 1 || u.blocks * 2 < u.maxBlocks;
 }
 
-/** Per-die chance that `e` scores a hit on `u` in close combat (approximate, flags excluded). */
+/**
+ * Per-die chance that `e` scores a hit on `u` in close combat (approximate, flags excluded). A rampart counts when `e`
+ * is (or, not yet adjacent, lies) on the protected side of `u`'s hex.
+ */
 function hitP(s: GameState, occ: Occ, e: Unit, u: Unit): number {
   const S = UNIT_STATS[e.type];
   const ignoresSwords = UNIT_STATS[u.type].ignoreAllSwords;
   // elephants re-roll swords: ~0.4 per die, unless the target ignores swords altogether
   if (S.elephantTable) return ignoresSwords ? SIXTH : 0.4;
   let p = SIXTH;
-  if (S.swordHits && !ignoresSwords) p += swordIgnores(s, u) > 0 ? SIXTH * 0.5 : SIXTH;
+  if (S.swordHits && !ignoresSwords) p += swordIgnores(s, u, e, 'attack') > 0 ? SIXTH * 0.5 : SIXTH;
   if (helmetsOcc(occ, e) || eliteHas(e, 'helmetHits')) p += SIXTH;
   return p;
 }
@@ -73,6 +76,8 @@ function hasFreeApproach(s: GameState, occ: Occ, e: Unit, target: number, reach:
 
 interface VictimInfo {
   pFlagHit: number;
+  /** pFlagHit against a roll its rampart protects it from (one more ignorable flag, §16); = pFlagHit off a rampart. */
+  pFlagHitShielded: number;
   unignored: number;
   lossPerFlag: number;
   canEv: boolean;
@@ -100,10 +105,19 @@ function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number): VictimInfo {
   const lossPerFlag = Math.min(2, per - room);
   const ign = ignorableOcc(s, occ, u, 'close', null);
   const unignored = ign >= 2 ? 0.1 : ign === 1 ? 0.4 : 1;
-  const pFlagHit = lossPerFlag > 0 ? SIXTH * lossPerFlag * (ign >= 2 ? 0.1 : ign === 1 ? 0.35 : 1) : 0;
+  const flagHit = (k: number) => (lossPerFlag > 0 ? SIXTH * lossPerFlag * (k >= 2 ? 0.1 : k === 1 ? 0.35 : 1) : 0);
+  const pFlagHit = flagHit(ign);
+  // a foot unit on a rampart: one more ignorable flag against rolls coming across a protected side (decided per threat)
+  const pFlagHitShielded = s.rampart[u.hex] && st.foot ? flagHit(ign + 1) : pFlagHit;
   const canEv = st.evade !== 'never' && canEvadeOcc(s, occ, u);
   const l = attachedLeaderOcc(occ, u);
-  return { pFlagHit, unignored, lossPerFlag, canEv, leaderBonus: l ? SIXTH * (bm + leaderVal(s, l)) : 0 };
+  return { pFlagHit, pFlagHitShielded, unignored, lossPerFlag, canEv, leaderBonus: l ? SIXTH * (bm + leaderVal(s, l)) : 0 };
+}
+
+/** Flag-loss chance per die of a threat by `e` against victim `u` (rampart-aware). */
+function flagHitP(s: GameState, vi: VictimInfo, u: Unit, e: Unit, kind: 'close' | 'ranged'): number {
+  if (vi.pFlagHitShielded === vi.pFlagHit) return vi.pFlagHit;
+  return rampartShields(s, u, e, kind, 'attack') ? vi.pFlagHitShielded : vi.pFlagHit;
 }
 
 /** Expected value an attack of n dice with per-die hit chance p would take from u (used to rank targets). */
@@ -161,17 +175,18 @@ function threatsAgainst(
       if (d === 1) {
         n = closeCombatDice(s, e, u, { role: 'attack', fullAtStart: e.blocks === e.maxBlocks, ordered: false });
         base = pAdj * (footSkirmisher ? 0.5 : 1);
-        p = evades ? SIXTH : hitP(s, occ, e, u) + vi.pFlagHit;
+        p = evades ? SIXTH : hitP(s, occ, e, u) + flagHitP(s, vi, u, e, 'close');
         flags = !evades;
       } else if (range && d <= range && canFireOcc(s, occ, e, u.hex)) {
         n = rangedDice(s, e, u.hex, 0, false);
         base = pAdj * 0.85;
-        p = SIXTH + vi.pFlagHit;
+        p = SIXTH + flagHitP(s, vi, u, e, 'ranged');
         flags = true;
       } else if (d - 1 <= reach && canReach(u.hex)) {
         n = reachDice(s, e, u);
         base = pReach * (isRangedLight(e) ? (mounted ? 0.6 : 0.3) : 1);
-        p = evades ? SIXTH : hitP(s, occ, e, u) + vi.pFlagHit;
+        // not adjacent yet: the rampart counts when e lies on its protected side
+        p = evades ? SIXTH : hitP(s, occ, e, u) + flagHitP(s, vi, u, e, 'close');
         flags = !evades;
       } else continue;
       if (n <= 0) continue;

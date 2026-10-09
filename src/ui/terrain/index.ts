@@ -5,8 +5,8 @@ export { BoardArt } from './BoardArt';
 export type { BoardArtProps } from './BoardArt';
 export { TerrainIcon } from './TerrainIcon';
 
-/** Human-readable terrain name ("Hill", "Forest", "Fordable River", ...). */
-export function terrainName(t: TerrainType, ford: boolean): string {
+/** Human-readable terrain name ("Hill", "Forest", "Fordable River", ...). `noCap`: a ford without dice limits (§16). */
+export function terrainName(t: TerrainType, ford: boolean, noCap = false): string {
   switch (t) {
     case 'plain':
       return 'Open Ground';
@@ -19,13 +19,17 @@ export function terrainName(t: TerrainType, ford: boolean): string {
     case 'broken':
       return 'Broken Ground';
     case 'river':
-      return ford ? 'Fordable River' : 'River';
+      return ford ? (noCap ? 'Ford (no dice limit)' : 'Fordable River') : 'River';
     case 'lake':
       return 'Lake';
     case 'camp':
       return 'Fortified Camp';
     case 'steep':
       return 'Steep Hill';
+    case 'sea':
+      return 'Sea';
+    case 'rampart':
+      return 'Rampart';
     case 'void':
       return 'Off Board';
   }

@@ -9,8 +9,16 @@ export type UnitClass = 'light' | 'medium' | 'heavy';
 /** Elite unit presets (see elites.ts). A unit with `elite` set gets that preset's abilities on top of its type's. */
 export type EliteId = 'carthSacredBand' | 'thebanSacredBand' | 'silverShields' | 'companions' | 'immortals' | 'bowAuxilia';
 
-/** Terrain of a hex. A fordable river is `river` with `fords[hex] === true`. `void` = not on the board. */
-export type TerrainType = 'plain' | 'hill' | 'forest' | 'marsh' | 'broken' | 'river' | 'lake' | 'camp' | 'steep' | 'void';
+/**
+ * Terrain of a hex. A fordable river is `river` with `fords[hex] === true` (and `noCap[hex]` when it has no dice caps).
+ * `sea` follows the lake rules; `rampart` is open ground whose protected hexsides are `GameState.rampart[hex]` (§16).
+ * `void` = not on the board.
+ */
+export type TerrainType =
+  | 'plain' | 'hill' | 'forest' | 'marsh' | 'broken' | 'river' | 'lake' | 'camp' | 'steep' | 'sea' | 'rampart' | 'void';
+
+/** Hexside / neighbour directions, in the board's neighbour order (row 0 at the top, so NE and NW point up the board). */
+export type HexDir = 'E' | 'NE' | 'NW' | 'W' | 'SW' | 'SE';
 
 /** Which block set a side plays: decides base-edge and banner colour (i.e. which side a piece belongs to). */
 export type Blocks = 'rom' | 'car' | 'grk' | 'eas';
@@ -170,6 +178,10 @@ export interface GameState {
   scenarioId: string;
   terrain: TerrainType[]; // length ROWS*COLS
   fords: boolean[]; // length ROWS*COLS
+  /** Fordable river hexes without the ford dice caps (108 Pinarus, §16); length ROWS*COLS. */
+  noCap: boolean[];
+  /** Protected hexsides of each rampart hex: bit i = neighbour direction i (E, NE, NW, W, SW, SE); 0 elsewhere. */
+  rampart: number[];
   units: Unit[];
   leaders: Leader[];
   players: Record<Side, PlayerState>;

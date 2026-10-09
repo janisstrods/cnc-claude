@@ -118,6 +118,7 @@ export function Board(p: BoardProps) {
       <BoardArt
         terrain={state.terrain}
         fords={state.fords}
+        rampart={state.rampart}
         flipped={flipped}
         topLabel={state.players[top].army}
         bottomLabel={state.players[bottom].army}

@@ -6,6 +6,7 @@ import { Frame, grassDefs, GrassBase, HexGrid, SectionDividers } from './base';
 import { paintBroken, paintCamps } from './ground';
 import { boardCtx, fieldOutline } from './hexmath';
 import { paintHills, paintSteep } from './hills';
+import { paintRamparts } from './rampart';
 import { paintForests, paintMarsh } from './vegetation';
 import { paintLakes, paintRivers } from './water';
 
@@ -14,6 +15,8 @@ export interface BoardArtProps {
   terrain: TerrainType[];
   /** True where a river hex is fordable. */
   fords: boolean[];
+  /** Protected-hexside mask of each rampart hex (GameState.rampart: bit i = direction E, NE, NW, W, SW, SE); absent = none. */
+  rampart?: number[];
   /** Board rotated 180 degrees. */
   flipped: boolean;
   /** Army name written on the frame at the top edge (already resolved for `flipped`). */
@@ -22,11 +25,14 @@ export interface BoardArtProps {
   bottomLabel?: string;
 }
 
-function BoardArtImpl({ terrain, fords, flipped, topLabel, bottomLabel }: BoardArtProps): JSX.Element {
+const NO_RAMPARTS: number[] = [];
+
+function BoardArtImpl({ terrain, fords, rampart = NO_RAMPARTS, flipped, topLabel, bottomLabel }: BoardArtProps): JSX.Element {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const id = (s: string) => `ba${uid}-${s}`;
   const tKey = terrain.join(',');
   const fKey = fords.map((f) => (f ? 1 : 0)).join('');
+  const rKey = rampart.join(',');
 
   const art = useMemo(() => {
     const ctx = boardCtx(terrain, fords, flipped);
@@ -42,12 +48,13 @@ function BoardArtImpl({ terrain, fords, flipped, topLabel, bottomLabel }: BoardA
           {paintLakes(ctx)}
           {paintSteep(ctx)}
           {paintCamps(ctx)}
+          {paintRamparts(ctx, rampart)}
           {paintForests(ctx)}
         </>
       ),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tKey, fKey, flipped, uid]);
+  }, [tKey, fKey, rKey, flipped, uid]);
 
   const x1 = hexCenter(0, 4, flipped).x;
   const x2 = hexCenter(0, 8, flipped).x;
@@ -79,7 +86,7 @@ function sameArr<T>(a: readonly T[], b: readonly T[]): boolean {
   return true;
 }
 
-/** Static board art; re-renders only when the terrain, fords, orientation or labels change. */
+/** Static board art; re-renders only when the terrain, fords, ramparts, orientation or labels change. */
 export const BoardArt = memo(
   BoardArtImpl,
   (a, b) =>
@@ -87,5 +94,6 @@ export const BoardArt = memo(
     a.topLabel === b.topLabel &&
     a.bottomLabel === b.bottomLabel &&
     sameArr(a.terrain, b.terrain) &&
-    sameArr(a.fords, b.fords),
+    sameArr(a.fords, b.fords) &&
+    sameArr(a.rampart ?? NO_RAMPARTS, b.rampart ?? NO_RAMPARTS),
 );

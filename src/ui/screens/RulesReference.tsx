@@ -118,6 +118,8 @@ function Terrain() {
     ['Broken ground', 'Mounted units stop and may not battle that turn. Max 2 dice in close combat.'],
     ['Fortified camp', 'Foot defending ignore one sword and one flag. Units in a camp roll one die fewer. Blocks line of sight.'],
     ['Lake / steep hills', 'Impassable.'],
+    ['Sea', 'Impassable, like a lake. Does not block line of sight.'],
+    ['Rampart', 'Foot attacked across a walled side ignore one sword and one flag; fired at through it, one flag. Mounted units gain nothing. No effect on movement, line of sight or dice.'],
   ];
   return (
     <table className="terrain-table">

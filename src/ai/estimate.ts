@@ -14,8 +14,8 @@ import { blockVal, leaderVal, nextBanner, type Weights } from './values';
 
 const SIXTH = 1 / 6;
 
-/** Per-die profile of a close-combat strike. */
-export function closeProfile(s: GameState, occ: Occ, st: Unit, t: Unit, n: number): Prof {
+/** Per-die profile of a close-combat strike by `st` (in `role`) against `t`. */
+export function closeProfile(s: GameState, occ: Occ, st: Unit, t: Unit, n: number, role: StrikeRole): Prof {
   const S = UNIT_STATS[st.type];
   let pc = SIXTH;
   let ps = S.swordHits ? SIXTH : 0;
@@ -23,7 +23,7 @@ export function closeProfile(s: GameState, occ: Occ, st: Unit, t: Unit, n: numbe
   let pf = SIXTH;
   let sw = 0;
   if (UNIT_STATS[t.type].ignoreAllSwords) ps = 0;
-  else if (ps) sw = swordIgnores(s, t);
+  else if (ps) sw = swordIgnores(s, t, st, role);
   if (S.elephantTable && ps && sw === 0) {
     // elephants re-roll every sword: ~0.4 hits and ~0.2 flags per die
     pc = 0.2;
@@ -66,15 +66,18 @@ function roomFn(s: GameState, occ: Occ, u: Unit): (need: number) => number {
 
 /**
  * Expected value of `st` striking `v` (no battle back): damage incl. flag losses, plus a small value for pushing it back.
- * Returns value from the striker's point of view and the elimination probability.
+ * Returns value from the striker's point of view and the elimination probability. `role`: the striker's close-combat
+ * role (null for a roll against a unit that is itself attacking, which no rampart protects).
  */
-export function strikeValue(s: GameState, occ: Occ, st: Unit, v: Unit, prof: Prof, kind: 'close' | 'ranged'): { ev: number; pElim: number; pRetreat: number } {
+export function strikeValue(
+  s: GameState, occ: Occ, st: Unit, v: Unit, prof: Prof, kind: 'close' | 'ranged', role: StrikeRole | null = null,
+): { ev: number; pElim: number; pRetreat: number } {
   const n = prof.n;
   if (n <= 0) return { ev: 0, pElim: 0, pRetreat: 0 };
   const bm = nextBanner(s, st.side);
   const D = strikeDist(prof);
   const W1 = n + 1;
-  const ign = ignorableOcc(s, occ, v, kind, st);
+  const ign = ignorableOcc(s, occ, v, kind, st, role);
   const per = retreatPerFlag(v, st);
   const room = roomFn(s, occ, v);
   const full = dmgValue(s, occ, v, v.blocks, bm);
@@ -112,7 +115,7 @@ export function strikeValue(s: GameState, occ: Occ, st: Unit, v: Unit, prof: Pro
 export function backDamage(s: GameState, occ: Occ, t: Unit, a: Unit): number {
   const n = closeCombatDice(s, t, a, { role: 'back', fullAtStart: t.blocks === t.maxBlocks, ordered: false });
   if (n <= 0) return 0;
-  return strikeValue(s, occ, t, a, closeProfile(s, occ, t, a, n), 'close').ev;
+  return strikeValue(s, occ, t, a, closeProfile(s, occ, t, a, n, 'back'), 'close').ev;
 }
 
 export function momentumValue(s: GameState, occ: Occ, a: Unit, role: StrikeRole, W: Weights): number {
@@ -134,9 +137,10 @@ export function standEV(s: GameState, occ: Occ, a: Unit, t: Unit, n: number, mom
   const back = backOverride ?? backDamage(s, occ, t, a);
   if (n <= 0) return { ev: -back, pElim: 0 };
   const bmA = nextBanner(s, a.side);
-  const D = strikeDist(closeProfile(s, occ, a, t, n));
+  // the attacker's roll (attack or bonus combat: the same for every ignore, incl. a rampart)
+  const D = strikeDist(closeProfile(s, occ, a, t, n, 'attack'));
   const W1 = n + 1;
-  const ign = ignorableOcc(s, occ, t, 'close', a);
+  const ign = ignorableOcc(s, occ, t, 'close', a, 'attack');
   const per = retreatPerFlag(t, a);
   const room = roomFn(s, occ, t);
   const full = dmgValue(s, occ, t, t.blocks, bmA);

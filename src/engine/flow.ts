@@ -397,7 +397,7 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
 /** Apply hits and flags to a unit (shared by ranged and close combat). */
 function* applyHits(
   s: GameState, ctx: FlowCtx, target: Unit, hits: number, flags: number,
-  info: { kind: 'close' | 'ranged'; striker: Unit | null; fullAtStart: boolean },
+  info: { kind: 'close' | 'ranged'; striker: Unit | null; fullAtStart: boolean; role?: StrikeRole },
 ): Gen<HitOutcome> {
   const l = attachedLeader(s, target);
   let leaderAlive = !!l;
@@ -414,7 +414,7 @@ function* applyHits(
     if (s.winner) return { eliminated: false, vacated: false };
   }
   if (flags <= 0) return { eliminated: false, vacated: false };
-  const max = Math.min(flags, ignorableFlags(s, target, { kind: info.kind, striker: info.striker, leaderAlive, fullAtStart: info.fullAtStart }));
+  const max = Math.min(flags, ignorableFlags(s, target, { kind: info.kind, striker: info.striker, leaderAlive, fullAtStart: info.fullAtStart, role: info.role }));
   let ignored = 0;
   if (max > 0) {
     const a = yield* ask(ctx, { kind: 'ignoreFlags', side: target.side, unit: target.id, flags, max }, (a) =>
@@ -435,11 +435,11 @@ function purposeOf(role: StrikeRole): RollPurpose {
   return role === 'attack' ? 'close' : role === 'bonus' ? 'bonus' : role === 'back' ? 'battleBack' : 'firstStrike';
 }
 
-/** Roll close combat dice including elephant sword re-rolls. */
-function rollClose(s: GameState, striker: Unit, target: Unit, n: number): DieFace[] {
+/** Roll close combat dice including elephant sword re-rolls (a sword the target ignores is not re-rolled). */
+function rollClose(s: GameState, striker: Unit, target: Unit, n: number, role: StrikeRole): DieFace[] {
   const faces = rollDice(s, n);
   if (!UNIT_STATS[striker.type].elephantTable) return faces;
-  let ignore = swordIgnores(s, target);
+  let ignore = swordIgnores(s, target, striker, role);
   for (let i = 0; i < faces.length && faces.length < 40; i++) {
     if (faces[i] !== 'swords') continue;
     if (ignore > 0) { ignore--; continue; }
@@ -453,10 +453,10 @@ function* strike(s: GameState, ctx: FlowCtx, striker: Unit, target: Unit, role: 
   const dice = closeCombatDice(s, striker, target, { role, fullAtStart: strikerFull, ordered: !!s.turn.ordered[striker.id] });
   ctx.emit({ t: 'combat', purpose: purposeOf(role), attacker: striker.id, target: target.id, dice });
   if (dice <= 0) return { eliminated: false, vacated: false };
-  const faces = rollClose(s, striker, target, dice);
-  const sc = scoreClose(s, striker, target, faces, helmetsCount(s, striker));
+  const faces = rollClose(s, striker, target, dice, role);
+  const sc = scoreClose(s, striker, target, faces, helmetsCount(s, striker), role);
   emitRoll(ctx, purposeOf(role), sc.faces, sc.scoring, striker.id, target.id);
-  return yield* applyHits(s, ctx, target, sc.hits, sc.flags, { kind: 'close', striker, fullAtStart: targetFull });
+  return yield* applyHits(s, ctx, target, sc.hits, sc.flags, { kind: 'close', striker, fullAtStart: targetFull, role });
 }
 
 function* attackLoneLeader(s: GameState, ctx: FlowCtx, striker: Unit, l: Leader, kind: 'close' | 'ranged', dice: number): Gen {

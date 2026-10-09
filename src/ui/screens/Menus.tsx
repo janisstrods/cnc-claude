@@ -74,7 +74,7 @@ function SetupPreview({ state, flipped, humanSide }: { state: GameState; flipped
   const bottom = flipped ? 'top' : 'bottom';
   return (
     <svg className="preview-svg" viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}>
-      <BoardArt terrain={state.terrain} fords={state.fords} flipped={flipped} topLabel={state.players[top].army} bottomLabel={state.players[bottom].army} />
+      <BoardArt terrain={state.terrain} fords={state.fords} rampart={state.rampart} flipped={flipped} topLabel={state.players[top].army} bottomLabel={state.players[bottom].army} />
       {state.units.map((u) => {
         const { x, y } = hexCenterId(u.hex, flipped);
         return (

@@ -1,14 +1,15 @@
 // Independent QA helpers for the rules suite (tests/rules). Uses only the public engine API.
 import {
   CARD_LIST, GameDriver, createGame, forceDice, forcedDiceLeft, hexId,
-  type Answer, type CardKind, type Decision, type DieFace, type EliteId, type GameEvent, type GameState, type LeaderTrait, type ScenarioSetup,
-  type Side, type TerrainType, type Unit, type UnitType,
+  type Answer, type CardKind, type Decision, type DieFace, type EliteId, type GameEvent, type GameState, type HexDir, type LeaderTrait,
+  type ScenarioSetup, type Side, type TerrainType, type Unit, type UnitType,
 } from '../../src/engine';
 
 export interface Pos {
   units?: { side: Side; type: UnitType; at: [number, number]; blocks?: number; elite?: EliteId }[];
   leaders?: { side: Side; name?: string; at: [number, number]; traits?: LeaderTrait[] }[];
-  terrain?: { at: [number, number]; t: TerrainType; ford?: boolean }[];
+  /** `ford: 'nocap'` = fordable without dice caps; `faces` / `edges` = a rampart's protected hexsides (§16). */
+  terrain?: { at: [number, number]; t: TerrainType; ford?: boolean | 'nocap'; faces?: Side; edges?: HexDir[] }[];
   first?: Side;
   rules?: ScenarioSetup['rules'];
   cards?: number;
@@ -29,7 +30,7 @@ export function setupOf(p: Pos): ScenarioSetup {
     bottom: { army: p.bottomArmy ?? 'Roman', blocks: 'rom', look: 'roman', commander: 'B', cards: p.cards ?? 5 },
     first: p.first ?? 'bottom',
     banners: p.banners ?? 99,
-    terrain: (p.terrain ?? []).map((t) => ({ r: t.at[0], c: t.at[1], t: t.t, ford: t.ford })),
+    terrain: (p.terrain ?? []).map((t) => ({ r: t.at[0], c: t.at[1], t: t.t, ford: t.ford, faces: t.faces, edges: t.edges })),
     units: (p.units ?? []).map((u) => ({ side: u.side, type: u.type, r: u.at[0], c: u.at[1], elite: u.elite })),
     leaders: (p.leaders ?? []).map((l, i) => ({ side: l.side, name: l.name ?? `Ldr${i}`, r: l.at[0], c: l.at[1], traits: l.traits })),
     reserves: [],
