@@ -7,6 +7,7 @@ import { paintBroken, paintCamps } from './ground';
 import { boardCtx, fieldOutline } from './hexmath';
 import { paintHills, paintSteep } from './hills';
 import { paintRamparts } from './rampart';
+import { paintSea } from './sea';
 import { paintForests, paintMarsh } from './vegetation';
 import { paintLakes, paintRivers } from './water';
 
@@ -44,7 +45,8 @@ function BoardArtImpl({ terrain, fords, rampart = NO_RAMPARTS, flipped, topLabel
           {paintBroken(ctx)}
           {paintMarsh(ctx)}
           {paintHills(ctx, `url(#${id('tuftA')})`)}
-          {paintRivers(ctx)}
+          {paintSea(ctx)}
+          {paintRivers(ctx, id)}
           {paintLakes(ctx)}
           {paintSteep(ctx)}
           {paintCamps(ctx)}

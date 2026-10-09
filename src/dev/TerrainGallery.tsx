@@ -1,6 +1,6 @@
 // Dev gallery for the battlefield art: every scenario board, a large normal + flipped board,
-// and the terrain legend. URL options (hash query): ?s=006 (large board), ?units=1 (mock blocks),
-// ?only=large|grid|legend.
+// close-ups of the sea coasts and ramparts, and the terrain legend. URL options (hash query):
+// ?s=006 (large board), ?units=1 (mock blocks), ?only=large|grid|legend|samples.
 import { useEffect, useMemo, useState } from 'react';
 import { rampartMask, type TerrainSetup } from '../engine/setup';
 import { COLS, ROWS, type TerrainType } from '../engine/types';
@@ -69,12 +69,104 @@ const SAMPLER: ScenarioJson = {
   ],
 };
 
+/** Sea coasts: a straight edge, a corner, and a river running into the sea. */
+const COASTS: ScenarioJson = {
+  id: 'C',
+  name: 'Coast sampler',
+  top: { army: 'Top Army' },
+  bottom: { army: 'Bottom Army' },
+  terrain: [
+    // straight coast along the right edge
+    { r: 0, c: 12, t: 'sea' },
+    { r: 1, c: 11, t: 'sea' },
+    { r: 2, c: 12, t: 'sea' },
+    { r: 3, c: 11, t: 'sea' },
+    { r: 4, c: 12, t: 'sea' },
+    // a bay in the lower-left corner
+    { r: 7, c: 0, t: 'sea' },
+    { r: 8, c: 0, t: 'sea' },
+    { r: 8, c: 1, t: 'sea' },
+    // a river (no ford) from a lake into the sea on the left edge, and a ford river into the straight coast
+    { r: 2, c: 0, t: 'sea' },
+    { r: 3, c: 0, t: 'sea' },
+    { r: 4, c: 0, t: 'sea' },
+    { r: 3, c: 1, t: 'river', ford: false },
+    { r: 3, c: 2, t: 'river', ford: false },
+    { r: 3, c: 3, t: 'river', ford: false },
+    { r: 3, c: 4, t: 'river', ford: false },
+    { r: 4, c: 5, t: 'river', ford: false },
+    { r: 5, c: 5, t: 'river', ford: false },
+    { r: 3, c: 10, t: 'river', ford: true },
+    { r: 3, c: 9, t: 'river', ford: false },
+    { r: 4, c: 9, t: 'river', ford: false },
+    { r: 5, c: 9, t: 'river', ford: false },
+    { r: 6, c: 9, t: 'river', ford: false },
+    { r: 7, c: 9, t: 'river', ford: false },
+    { r: 8, c: 9, t: 'river', ford: false },
+    { r: 6, c: 6, t: 'lake' },
+  ],
+};
+
+/** Ramparts: facing the top, facing the bottom, a diagonal W+SW wall and a free-standing 3-edge corner. */
+const RAMPARTS: ScenarioJson = {
+  id: 'R',
+  name: 'Rampart sampler',
+  top: { army: 'Top Army' },
+  bottom: { army: 'Bottom Army' },
+  terrain: [
+    { r: 6, c: 2, t: 'rampart', faces: 'top' },
+    { r: 6, c: 3, t: 'rampart', faces: 'top' },
+    { r: 6, c: 4, t: 'camp' },
+    { r: 2, c: 2, t: 'rampart', faces: 'bottom' },
+    { r: 2, c: 3, t: 'rampart', faces: 'bottom' },
+    { r: 2, c: 4, t: 'rampart', faces: 'bottom' },
+    { r: 4, c: 7, t: 'rampart', edges: ['W', 'SW'] },
+    { r: 5, c: 7, t: 'rampart', edges: ['W', 'SW'] },
+    { r: 2, c: 10, t: 'rampart', edges: ['NW', 'NE', 'E'] },
+    { r: 0, c: 8, t: 'rampart', edges: ['W', 'SW'] },
+    { r: 6, c: 10, t: 'rampart', faces: 'top' },
+    { r: 6, c: 11, t: 'sea' },
+    { r: 7, c: 11, t: 'sea' },
+    { r: 8, c: 12, t: 'sea' },
+    { r: 5, c: 12, t: 'sea' },
+    { r: 6, c: 12, t: 'sea' },
+    { r: 7, c: 12, t: 'sea' },
+  ],
+};
+
 const SCENARIOS: ScenarioJson[] = [
   ...Object.values(modules)
     .map((m) => m.default)
     .sort((a, b) => a.id.localeCompare(b.id)),
   SAMPLER,
+  COASTS,
+  RAMPARTS,
 ];
+
+/** Close-ups shown normal and flipped: a sampler board and the hexes (r, c) to frame. */
+const SAMPLES: { label: string; s: ScenarioJson; hexes: [number, number][] }[] = [
+  { label: 'Sea: straight coast along the edge', s: COASTS, hexes: [[0, 12], [2, 12], [4, 12], [2, 10]] },
+  { label: 'Sea: corner bay', s: COASTS, hexes: [[7, 0], [8, 1], [6, 1]] },
+  { label: 'Sea: river mouth (and the lake it drains, for comparison)', s: COASTS, hexes: [[2, 0], [4, 0], [6, 6]] },
+  { label: 'Sea: ford river into the coast', s: COASTS, hexes: [[3, 9], [3, 11], [2, 10]] },
+  { label: 'Rampart: faces top (beside a camp)', s: RAMPARTS, hexes: [[6, 2], [6, 4], [5, 3]] },
+  { label: 'Rampart: faces bottom', s: RAMPARTS, hexes: [[2, 2], [2, 4], [3, 3]] },
+  { label: 'Rampart: diagonal W+SW', s: RAMPARTS, hexes: [[4, 7], [5, 7], [4, 6]] },
+  { label: 'Rampart: 3-edge corner (NW+NE+E)', s: RAMPARTS, hexes: [[2, 10], [1, 10], [2, 11]] },
+  { label: 'Rampart: W+SW from the board edge', s: RAMPARTS, hexes: [[0, 8], [1, 8], [0, 7]] },
+  { label: 'Rampart: faces top, next to the sea', s: RAMPARTS, hexes: [[6, 10], [6, 11], [5, 10]] },
+];
+
+/** viewBox framing hexes (with some margin) on a normal or flipped board. */
+function cropBox(hexes: [number, number][], flipped: boolean): string {
+  const ps = hexes.map(([r, c]) => hexCenter(r, c, flipped));
+  const pad = 70;
+  const x0 = Math.max(0, Math.min(...ps.map((p) => p.x)) - pad);
+  const y0 = Math.max(0, Math.min(...ps.map((p) => p.y)) - pad);
+  const x1 = Math.min(BOARD_W, Math.max(...ps.map((p) => p.x)) + pad);
+  const y1 = Math.min(BOARD_H, Math.max(...ps.map((p) => p.y)) + pad);
+  return `${x0.toFixed(1)} ${y0.toFixed(1)} ${(x1 - x0).toFixed(1)} ${(y1 - y0).toFixed(1)}`;
+}
 
 function boardArrays(s: ScenarioJson): { terrain: TerrainType[]; fords: boolean[]; rampart: number[] } {
   const terrain: TerrainType[] = [];
@@ -128,12 +220,12 @@ function MockUnits({ s, flipped }: { s: ScenarioJson; flipped: boolean }) {
   );
 }
 
-function Board({ s, flipped, width, units }: { s: ScenarioJson; flipped: boolean; width: number | string; units: boolean }) {
+function Board({ s, flipped, width, units, viewBox }: { s: ScenarioJson; flipped: boolean; width: number | string; units: boolean; viewBox?: string }) {
   const { terrain, fords, rampart } = useMemo(() => boardArrays(s), [s]);
   const topLabel = flipped ? s.bottom.army : s.top.army;
   const bottomLabel = flipped ? s.top.army : s.bottom.army;
   return (
-    <svg viewBox={`0 0 ${BOARD_W} ${BOARD_H}`} style={{ width, display: 'block', borderRadius: 4, boxShadow: '0 6px 22px rgba(0,0,0,0.45)' }}>
+    <svg viewBox={viewBox ?? `0 0 ${BOARD_W} ${BOARD_H}`} style={{ width, display: 'block', borderRadius: 4, boxShadow: '0 6px 22px rgba(0,0,0,0.45)' }}>
       <BoardArt terrain={terrain} fords={fords} rampart={rampart} flipped={flipped} topLabel={topLabel} bottomLabel={bottomLabel} />
       {units && <MockUnits s={s} flipped={flipped} />}
     </svg>
@@ -227,6 +319,26 @@ export default function TerrainGallery() {
               <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 4 }}>flipped</div>
               <Board s={big} flipped width="100%" units={units} />
             </div>
+          </div>
+        </>
+      )}
+
+      {show('samples') && (
+        <>
+          <div style={h2}>Sea coasts and ramparts (normal | flipped)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(560px, 1fr))', gap: 18 }}>
+            {SAMPLES.map(({ label, s, hexes }) => (
+              <div key={label}>
+                <div style={{ fontSize: 15, marginBottom: 4 }}>{label}</div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {[false, true].map((f) => (
+                    <div key={String(f)} style={{ flex: '1 1 0' }}>
+                      <Board s={s} flipped={f} width="100%" units={units} viewBox={cropBox(hexes, f)} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}

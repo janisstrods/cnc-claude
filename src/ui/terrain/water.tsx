@@ -1,4 +1,4 @@
-// Rivers (with fords), lakes and (for now drawn like a lake) the sea.
+// Rivers (with fords) and lakes. (The sea has its own painter, sea.tsx; rivers still run into it.)
 import type { TerrainType } from '../../engine/types';
 import { addToGrid, blurGrid, fillGrid, isoPath, makeGrid, polyPath } from './field';
 import { DIRS, fmt, neighborRC, RI, type Dir, type HexInfo, type PaintCtx, type Pt } from './hexmath';
@@ -7,7 +7,7 @@ import { P } from './palette';
 
 type PortKind = 'hex' | 'lake' | 'off' | 'end';
 
-/** Standing water painted by paintLakes: lakes and the sea (which has the lake rules, §16). */
+/** Standing water a river can run into: lakes and the sea. */
 const isStill = (t: TerrainType) => t === 'lake' || t === 'sea';
 interface Port {
   d: Dir;
@@ -277,17 +277,41 @@ function hexRun(s: Sample[], id: number): Sample[][] {
   return runs;
 }
 
-export function paintRivers(ctx: PaintCtx): JSX.Element | null {
+/** Where a river runs into the sea: the shared hexside's midpoint and the unit vector out to sea. */
+function seaMouths(ctx: PaintCtx, rivers: HexInfo[]): { m: Pt; u: Pt }[] {
+  const out: { m: Pt; u: Pt }[] = [];
+  for (const h of rivers) {
+    for (const d of DIRS) {
+      const [r, c] = neighborRC(h.r, h.c, d);
+      const n = ctx.get(r, c);
+      if (n?.t !== 'sea') continue;
+      out.push({ m: { x: (h.x + n.x) / 2, y: (h.y + n.y) / 2 }, u: norm(sub(n, h)) });
+    }
+  }
+  return out;
+}
+
+/**
+ * Rivers with their fords. `id` (unique SVG ids) lets a river that runs into the sea fade out across the beach into the
+ * water (the sea is painted first); without it, or without a river mouth, the plain river group is drawn.
+ */
+export function paintRivers(ctx: PaintCtx, id?: (s: string) => string): JSX.Element | null {
   const rivers = ctx.hexes.filter((h) => h.t === 'river');
   if (!rivers.length) return null;
   const { chains } = traceRivers(ctx);
   const fords = rivers.filter((h) => h.ford);
+  const mouths = id ? seaMouths(ctx, rivers) : [];
   const baseHW = 13.5;
   const hwAt = (p: Pt) => {
     let w = baseHW * (0.86 + 0.32 * fbm(p.x / 45, p.y / 45, 7));
     for (const f of fords) {
       const d = Math.hypot(p.x - f.x, p.y - f.y) / RI;
       if (d < 1) w += 5.5 * (1 - d * d) * (1 - d * d);
+    }
+    // an estuary: the river widens as it meets the sea
+    for (const q of mouths) {
+      const d = Math.hypot(p.x - q.m.x, p.y - q.m.y) / 34;
+      if (d < 1) w += 7 * (1 - d) * (1 - d);
     }
     return w;
   };
@@ -371,8 +395,8 @@ export function paintRivers(ctx: PaintCtx): JSX.Element | null {
     }
   }
 
-  return (
-    <g className="rivers">
+  const layers = (
+    <>
       <path d={all(10)} fill={P.verge} opacity={0.32} />
       <path d={all(4.2)} fill={P.bank} opacity={0.8} />
       <path d={all(0)} fill={P.water} />
@@ -391,12 +415,41 @@ export function paintRivers(ctx: PaintCtx): JSX.Element | null {
         </g>
       )}
       <path d={glints} fill="none" stroke={P.glint} strokeWidth={1.3} strokeLinecap="round" />
+    </>
+  );
+  if (!mouths.length) return <g className="rivers">{layers}</g>;
+  // fade each mouth from just above the waterline to where the channel stops, 22 px out to sea
+  const b = ctx.bounds;
+  const at = (q: { m: Pt; u: Pt }, a: number, s: number): Pt => ({ x: q.m.x + q.u.x * a - q.u.y * s, y: q.m.y + q.u.y * a + q.u.x * s });
+  return (
+    <g className="rivers">
+      <defs>
+        {mouths.map((q, i) => {
+          const a = at(q, -4, 0);
+          const e = at(q, 19, 0);
+          return (
+            <linearGradient key={i} id={id!(`mouth${i}`)} gradientUnits="userSpaceOnUse" x1={fmt(a.x)} y1={fmt(a.y)} x2={fmt(e.x)} y2={fmt(e.y)}>
+              <stop offset="0" stopColor="#fff" />
+              <stop offset="1" stopColor="#000" />
+            </linearGradient>
+          );
+        })}
+        <mask id={id!('mouths')} maskUnits="userSpaceOnUse" x={b.x0} y={b.y0} width={b.x1 - b.x0} height={b.y1 - b.y0}>
+          <rect x={b.x0} y={b.y0} width={b.x1 - b.x0} height={b.y1 - b.y0} fill="#fff" />
+          {mouths.map((q, i) => (
+            <path key={i} d={polyPath([at(q, -12, -44), at(q, 44, -44), at(q, 44, 44), at(q, -12, 44)])} fill={`url(#${id!(`mouth${i}`)})`} />
+          ))}
+        </mask>
+      </defs>
+      <g mask={`url(#${id!('mouths')})`}>{layers}</g>
     </g>
   );
 }
 
+const isLake = (t: TerrainType) => t === 'lake';
+
 export function paintLakes(ctx: PaintCtx): JSX.Element | null {
-  const lakes = ctx.hexes.filter((h) => isStill(h.t));
+  const lakes = ctx.hexes.filter((h) => isLake(h.t));
   if (!lakes.length) return null;
   const b = ctx.bounds;
   const pad = 70;
@@ -407,7 +460,7 @@ export function paintLakes(ctx: PaintCtx): JSX.Element | null {
     y1: Math.min(b.y1, Math.max(...lakes.map((h) => h.y)) + pad),
   };
   const g = makeGrid(rect, 3);
-  fillGrid(g, (x, y) => (isStill(ctx.terrainAt(x, y)) ? 1 : 0));
+  fillGrid(g, (x, y) => (isLake(ctx.terrainAt(x, y)) ? 1 : 0));
   blurGrid(g, 3, 3);
   addToGrid(g, (x, y) => (fbm(x / 26, y / 26, 3) - 0.5) * 0.22);
   const shore = isoPath(g, 0.4);
@@ -434,7 +487,7 @@ export function paintLakes(ctx: PaintCtx): JSX.Element | null {
       const rr = 38 + R() * 8;
       const x = h.x + Math.cos(a) * rr;
       const y = h.y + Math.sin(a) * rr;
-      if (isStill(ctx.terrainAt(x + Math.cos(a) * 10, y + Math.sin(a) * 10))) continue;
+      if (isLake(ctx.terrainAt(x + Math.cos(a) * 10, y + Math.sin(a) * 10))) continue;
       for (let m = -2; m <= 2; m++) reeds += `M${fmt(x + m * 1.4)},${fmt(y + 2)}l${fmt(m * 1.2)},${fmt(-6 - R() * 4)}`;
     }
   }

@@ -7,6 +7,7 @@ import { corner, iconCtx } from './hexmath';
 import { paintHills, paintSteep } from './hills';
 import { paintRamparts } from './rampart';
 import { P } from './palette';
+import { paintSea } from './sea';
 import { paintForests, paintMarsh } from './vegetation';
 import { paintLakes, paintRivers } from './water';
 
@@ -14,6 +15,9 @@ const cache = new Map<string, JSX.Element | null>();
 
 /** The swatch shows a rampart protecting its two upper sides (NE + NW, the bits of a `faces: 'top'` piece). */
 const ICON_RAMPART = (1 << 1) | (1 << 2);
+
+/** The sea swatch is a stretch of coast: land across the hex's W and SW sides, open water everywhere else. */
+const iconSeaCell = (r: number, c: number) => !(c === -1 && (r === 0 || r === 1));
 
 function iconArt(t: TerrainType, ford: boolean): JSX.Element | null {
   const key = `${t}:${ford ? 1 : 0}`;
@@ -31,11 +35,15 @@ function iconArt(t: TerrainType, ford: boolean): JSX.Element | null {
       el = paintRivers(ctx);
       break;
     case 'lake':
-    case 'sea':
       el = paintLakes(ctx);
       break;
+    case 'sea':
+      // pull the coast into the hex so the beach shows inside the swatch
+      el = paintSea(ctx, { seaCell: iconSeaCell, shift: 15 });
+      break;
     case 'rampart':
-      el = paintRamparts(ctx, [ICON_RAMPART]);
+      // shrunk a little so the ditch outside the hexsides stays inside the swatch
+      el = <g transform="scale(0.86)">{paintRamparts(ctx, [ICON_RAMPART], { openEdges: false })}</g>;
       break;
     case 'steep':
       el = paintSteep(ctx);

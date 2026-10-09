@@ -42,6 +42,11 @@ export const P = {
   stoneDark: '#5d584e',
   stoneLight: '#d9d4c4',
 
+  sandWet: '#bca673',
+  seaShallow: '#79aeac',
+  foam: '#f4f3e6',
+  seaTrough: 'rgba(18,46,66,0.35)',
+
   mud: '#6f6d3f',
   pool: '#5f7f7c',
   poolLight: '#91aba3',
@@ -52,6 +57,9 @@ export const P = {
   scrub: '#556b2f',
 
   earth: '#b6a06e',
+  earthLight: '#d6c38e',
+  earthShade: '#86703f',
+  ditch: '#5e4a2b',
   palisade: '#7f5f37',
   palisadeLight: '#c49d63',
   palisadeDark: '#4a3520',
