@@ -7,8 +7,9 @@ import {
 } from '../../src/engine';
 import { SCENARIOS } from '../../src/scenarios';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityById, personalityFor, type AiOptions } from '../../src/ai';
+import { orderCandidates } from '../../src/ai/ordering';
 import { chooseCavalryExtra } from '../../src/ai/policies';
-import { NEUTRAL_W } from '../../src/ai/values';
+import { NEUTRAL_W, weightsFor } from '../../src/ai/values';
 import { Bot, type Strategy } from './bots';
 
 const H = (r: number, c: number) => hexId(r, c);
@@ -192,6 +193,28 @@ describe('battle phase', () => {
       const r = chooseAnswer(d.state, d.pending!, detOpts('bottom', seed), newMemory());
       expect(r.answer, `seed ${seed}`).toEqual({ kind: 'attack', unit: 'u1', target: H(3, 4) });
     }
+  });
+});
+
+describe('order selection', () => {
+  it('offers a section card in full when its units only gain by advancing together (Out Flanked, wings out of reach)', () => {
+    // Seen in play (Cannae): one step towards the enemy costs each unit more risk on its own than it gains, so
+    // Hannibal ordered a single unit with Out Flanked and his wings never moved all game.
+    const s = position({
+      units: [
+        { side: 'top', type: 'HI', at: [1, 2] },
+        { side: 'top', type: 'HI', at: [1, 3] },
+        { side: 'top', type: 'HI', at: [1, 8] },
+        { side: 'top', type: 'HI', at: [1, 9] },
+        { side: 'bottom', type: 'MI', at: [5, 3] },
+        { side: 'bottom', type: 'MI', at: [5, 5] },
+        { side: 'bottom', type: 'MI', at: [5, 7] },
+        { side: 'bottom', type: 'MC', at: [6, 10] },
+        { side: 'bottom', type: 'MC', at: [6, 1] },
+      ],
+    });
+    const cands = orderCandidates(s, 'top', 'outFlanked', weightsFor(personalityById('fox')), 2);
+    expect(cands.map((c) => [...c.pieces].sort())).toContainEqual(['u1', 'u2', 'u3', 'u4']);
   });
 });
 

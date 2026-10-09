@@ -54,22 +54,24 @@ export interface DiffCfg {
   exactEval: boolean;
   /** Leftover budget: keep sampling the top plans while they are statistically close, up to this many samples (0 = off). */
   topUp: number;
+  /** Also try a section card's full allotment of orders (see orderCandidates). */
+  fullSection: boolean;
 }
 
 export const DIFFICULTY: Record<Difficulty, DiffCfg> = {
   recruit: {
     budgetMs: 150, maxSims: 90, orderCands: 1, moveVariants: 1, topCards: 2, k0: 2, evalNoise: 0.6, pickTemp: 0.3,
-    battleRollouts: 0, battleCands: 0, battleNoise: 0.3, lookahead: 0, mistakeRate: 0.3, kMax: 4, extraVariants: 0, refine: 0, exactEval: false, topUp: 0,
+    battleRollouts: 0, battleCands: 0, battleNoise: 0.3, lookahead: 0, mistakeRate: 0.3, kMax: 4, extraVariants: 0, refine: 0, exactEval: false, topUp: 0, fullSection: true,
   },
   tribune: {
     budgetMs: 800, maxSims: 1200, orderCands: 2, moveVariants: 3, topCards: 3, k0: 4, evalNoise: 0, pickTemp: 0,
     battleRollouts: 24, battleCands: 3, battleNoise: 0, lookahead: 0, mistakeRate: 0, kMax: 16, extraVariants: 2, refine: 0, exactEval: false,
-    topUp: 48,
+    topUp: 48, fullSection: true,
   },
   consul: {
     budgetMs: 2000, maxSims: 5000, orderCands: 4, moveVariants: 5, topCards: 6, k0: 12, evalNoise: 0, pickTemp: 0,
     battleRollouts: 32, battleCands: 6, battleNoise: 0, lookahead: 0, mistakeRate: 0, kMax: 64, extraVariants: 16, refine: 0, exactEval: false,
-    topUp: 64,
+    topUp: 64, fullSection: true,
   },
 };
 
@@ -186,7 +188,7 @@ function inspectCard(root: GameState, ctx: PlanCtx, card: number): { effective: 
   st.answer({ kind: 'playCard', card });
   if (st.cur?.kind === 'orders') {
     const eff = st.cur.card;
-    return { effective: eff, ocs: orderCandidates(st.s, ctx.me, eff, ctx.W, Math.max(ctx.cfg.orderCands, 1)) };
+    return { effective: eff, ocs: orderCandidates(st.s, ctx.me, eff, ctx.W, Math.max(ctx.cfg.orderCands, 1), ctx.cfg.fullSection) };
   }
   return { effective: st.s.turn.effective, ocs: null };
 }

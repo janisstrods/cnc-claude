@@ -131,8 +131,8 @@ function dedupe(cands: OrderCandidate[]): OrderCandidate[] {
   return out;
 }
 
-/** Candidate order selections for a card (best first). */
-export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Weights, max = 3): OrderCandidate[] {
+/** Candidate order selections for a card (best first). `full`: also offer a section card's whole allotment. */
+export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Weights, max = 3, full = true): OrderCandidate[] {
   const mode = orderMode(s, side, kind);
   const ben = pieceBenefits(s, side, kind, W);
   const b = (id: string) => ben.get(id) ?? 0;
@@ -166,6 +166,18 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
       ]);
       const a = fill(elig);
       push(a);
+      if (full) {
+        // Benefits are judged unit by unit: a line whose first step costs each unit more risk alone than it gains
+        // would never be ordered (whole wings idle for the game). Top up with sound units, front first; the
+        // rollouts decide whether they move.
+        const near = (u: Unit) => nearestEnemy(s, u.hex, side);
+        const rest = units
+          .filter((u) => inAny(u.hex) && !a.includes(u.id) && !battered(u))
+          .sort((x, y) => b(y.id) - b(x.id) || near(x) - near(y));
+        const sel = [...a];
+        for (const u of rest) if (valid([...sel, u.id])) sel.push(u.id);
+        if (sel.length > a.length) push(sel);
+      }
       if (a.length) {
         // cluster around the most promising unit
         const top = units.find((u) => u.id === a[0]);
