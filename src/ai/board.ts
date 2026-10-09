@@ -1,7 +1,7 @@
 // Fast board helpers for the AI: distance table, occupancy, retreat room, LOS and flag rules mirrored with O(1) lookups.
 import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
 import { hillGroups, isCamp, isHill, isImpassable, terrainAt, terrainBlocksLOS } from '../engine/terrain';
-import { rampartShields, type StrikeRole } from '../engine/combat';
+import { frightAtFirstSight, rampartShields, type StrikeRole } from '../engine/combat';
 import { canShoot, eliteHas, rangeOf } from '../engine/elites';
 import { leaderHas } from '../engine/query';
 import { UNIT_STATS, forbidsTerrain } from '../engine/units';
@@ -68,10 +68,12 @@ export function enemyUnitsAdjacent(occ: Occ, h: HexId, side: Side): number {
 /**
  * Mirror of engine ignorableFlags using the occupancy table. `role` = the striker's close-combat role (a rampart counts
  * only against an attack or bonus combat, §16); null = a roll against a unit that is attacking (battle back, First Strike).
+ * Fright at First Sight (116) applies when the striker is known.
  */
 export function ignorableOcc(
   s: GameState, occ: Occ, t: Unit, kind: 'close' | 'ranged', striker: Unit | null, role: StrikeRole | null = null,
 ): number {
+  if (frightAtFirstSight(s, t, striker, kind)) return 0;
   const T = UNIT_STATS[t.type];
   let n = 0;
   if (!T.noLeaderBenefit) {

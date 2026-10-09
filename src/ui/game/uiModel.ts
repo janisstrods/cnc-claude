@@ -57,7 +57,7 @@ export function expectedHits(s: GameState, attacker: Unit, hex: HexId, kind: 'cl
   const dice = attackDice(s, attacker, hex, kind);
   const t = unitAt(s, hex);
   if (!t) return dice / 6;
-  const p = kind === 'ranged' ? 1 / 6 : closeHitChance(s, attacker, t, dice);
+  const p = kind === 'ranged' ? 1 / 6 : closeHitChance(s, attacker, t, dice, 'attack');
   return dice * p;
 }
 

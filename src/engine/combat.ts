@@ -1,10 +1,12 @@
 // Pure combat calculations: dice counts, hit scoring, flag ignores (rules-reference §3, §4, §10).
 import { distance, hasLineOfSight, neighbours } from './hex';
-import { attachedLeader, enemyUnitAdjacent, leaderAt, leaderHas, leaderNear, supportCount, unitAt } from './query';
-import { ccCapOfHex, hillGroups, isCamp, isHill, rampartProtects, rangedFromCap, rangedTargetCap, terrainBlocksLOS } from './terrain';
+import { attachedLeader, enemyUnitAdjacent, isRomanArmy, leaderAt, leaderHas, leaderNear, supportCount, unitAt } from './query';
+import {
+  ccCapOfHex, hillGroups, isCamp, isHill, rampartProtects, rangedFromCap, rangedTargetCap, terrainAt, terrainBlocksLOS,
+} from './terrain';
 import { eliteHas, rangeOf } from './elites';
 import { UNIT_STATS, elephantDiceVs, frightens } from './units';
-import type { DieFace, GameState, HexId, Leader, Unit } from './types';
+import type { DieFace, GameState, HexId, Leader, Unit, UnitType } from './types';
 
 export type StrikeRole = 'attack' | 'bonus' | 'back' | 'firstStrike';
 
@@ -34,9 +36,28 @@ export function leaderDiceBonus(s: GameState, striker: Unit): number {
   return l && leaderHas(l, 'ccBonus') ? 1 : 0;
 }
 
+/** Tactical Flexibility (§17.3): the non-Roman unit type affected, the Roman attackers it applies against, its dice. */
+const TF_DEFENDERS: readonly UnitType[] = ['HI'];
+const TF_ATTACKERS: readonly UnitType[] = ['MI', 'HI'];
+const TF_DICE = 3;
+
+/**
+ * Roman Tactical Flexibility (rule `tacticalFlexibility`, §17.3): does `striker`, battling back against `target`, roll
+ * only 3 dice? It must be a HI of the non-Roman army that is unsupported (fewer than 2 adjacent friendly units or lone
+ * leaders, the §10 support test) and not on broken ground, battling back (`role` 'back', so also against a bonus
+ * combat) against a Roman MI or HI. Never on First Strike.
+ */
+export function tacticalFlexibility(s: GameState, striker: Unit, target: Unit | Leader, role: StrikeRole): boolean {
+  if (role !== 'back' || !('type' in target) || !s.special.rules.includes('tacticalFlexibility')) return false;
+  if (!TF_DEFENDERS.includes(striker.type) || !TF_ATTACKERS.includes(target.type)) return false;
+  if (isRomanArmy(s, striker.side) || !isRomanArmy(s, target.side)) return false;
+  return supportCount(s, striker) < 2 && terrainAt(s, striker.hex) !== 'broken';
+}
+
 /**
  * Number of dice `striker` rolls in close combat against `target` (a unit or a lone leader): base dice, capped by
- * terrain, -1 on a camp, then card bonuses and Alexander's +1 (§4, §17.2).
+ * terrain, -1 on a camp, then card bonuses and Alexander's +1 (§4, §17.2). Tactical Flexibility (§17.3) replaces the
+ * base dice, before the caps.
  */
 export function closeCombatDice(s: GameState, striker: Unit, target: Unit | Leader, opts: CloseDiceOpts): number {
   const st = UNIT_STATS[striker.type];
@@ -44,6 +65,7 @@ export function closeCombatDice(s: GameState, striker: Unit, target: Unit | Lead
   let base: number;
   if (st.elephantTable) base = targetIsUnit ? elephantDiceVs((target as Unit).type) : 1;
   else base = opts.role === 'back' || opts.role === 'firstStrike' ? st.ccBack : st.cc;
+  if (tacticalFlexibility(s, striker, target, opts.role)) base = TF_DICE;
   if (st.fullStrengthBonus && opts.fullAtStart) base += 1;
   const cap = Math.min(ccCapOfHex(s, striker.hex), ccCapOfHex(s, target.hex), capForHills(s, striker.hex, target.hex, striker));
   let dice = Math.min(base, cap);
@@ -124,17 +146,26 @@ export function rampartShields(s: GameState, target: Unit, striker: Unit | null,
 }
 
 /**
- * How many sword hits the target ignores in close combat (an elephant does not re-roll an ignored sword). Pass the
- * `striker` and its `role` to include the rampart (§16); without them only the position-independent ignores count.
+ * Sword hits the target ignores whoever rolls against it: its type (EL all, HCH 1), a foot unit on a camp, the
+ * Companions. **Excludes the rampart** (§16), which depends on the striker's position and role: use `swordIgnores` for
+ * an actual roll.
  */
-export function swordIgnores(s: GameState, target: Unit, striker: Unit | null = null, role: StrikeRole | null = null): number {
+export function baseSwordIgnores(s: GameState, target: Unit): number {
   const t = UNIT_STATS[target.type];
   if (t.ignoreAllSwords) return 99;
   let n = t.swordIgnore;
   if (isCamp(s, target.hex) && t.foot) n += 1;
   if (eliteHas(target, 'ignoreSword')) n += 1;
-  if (rampartShields(s, target, striker, 'close', role)) n += 1;
   return n;
+}
+
+/**
+ * How many sword hits the target ignores from a close-combat roll by `striker` in `role` (an elephant does not re-roll an
+ * ignored sword): `baseSwordIgnores` plus the rampart (§16).
+ */
+export function swordIgnores(s: GameState, target: Unit, striker: Unit, role: StrikeRole): number {
+  const n = baseSwordIgnores(s, target);
+  return rampartShields(s, target, striker, 'close', role) ? n + 1 : n;
 }
 
 /** Is the striker a cavalry or chariot unit (the rollers that `vsMounted*` abilities react to)? */
@@ -239,8 +270,19 @@ export interface IgnoreContext {
   fullAtStart: boolean;
 }
 
+/**
+ * Fright at First Sight (rule `frightAtFirstSight`, 116 Heraclea, §17.4): a Roman infantry unit (any foot type but war
+ * machines) may ignore none of the flags an elephant rolls against it in close combat, whatever its role (attack,
+ * battle back, bonus combat, First Strike); no leader, support or other ignore applies.
+ */
+export function frightAtFirstSight(s: GameState, target: Unit, striker: Unit | null, kind: 'close' | 'ranged'): boolean {
+  if (kind !== 'close' || !striker || !s.special.rules.includes('frightAtFirstSight')) return false;
+  return UNIT_STATS[striker.type].elephantTable && UNIT_STATS[target.type].infantry && isRomanArmy(s, target.side);
+}
+
 /** Number of flags the target may ignore (bolster morale, terrain, special). */
 export function ignorableFlags(s: GameState, target: Unit, ctx: IgnoreContext): number {
+  if (frightAtFirstSight(s, target, ctx.striker, ctx.kind)) return 0;
   const t = UNIT_STATS[target.type];
   let n = 0;
   if (!t.noLeaderBenefit) {
@@ -276,9 +318,9 @@ function swordsBeyond(dice: number, k: number): number {
 /**
  * Probability helper for UI previews: average chance per die that a close-combat roll of `dice` dice by `striker` (in
  * `role`) hits `target`: its class symbol, swords beyond those the target ignores (HCH, camp, Companions, rampart), and
- * helmets when a leader helps.
+ * helmets when a leader helps. `dice` and `role` are required: both change the sword term.
  */
-export function closeHitChance(s: GameState, striker: Unit, target: Unit, dice = 1, role: StrikeRole = 'attack'): number {
+export function closeHitChance(s: GameState, striker: Unit, target: Unit, dice: number, role: StrikeRole): number {
   const sst = UNIT_STATS[striker.type];
   const tst = UNIT_STATS[target.type];
   let p = 1 / 6; // class symbol

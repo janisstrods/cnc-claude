@@ -18,6 +18,10 @@ export interface Pos {
   bottomArmy?: string;
   sacredLeader?: ScenarioSetup['sacredLeader'];
   initialCommand?: ScenarioSetup['initialCommand'];
+  /** Camp-capture objective (rule `campCapture`, §14 / §17.4). */
+  campCapture?: ScenarioSetup['campCapture'];
+  /** Scenario options (Tactical Flexibility, §17.3). */
+  options?: ScenarioSetup['options'];
 }
 
 export const H = (r: number, c: number) => hexId(r, c);
@@ -38,6 +42,8 @@ export function setupOf(p: Pos): ScenarioSetup {
     rules: p.rules ?? [],
     sacredLeader: p.sacredLeader,
     initialCommand: p.initialCommand,
+    campCapture: p.campCapture,
+    options: p.options,
   };
 }
 

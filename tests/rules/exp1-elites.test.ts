@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ELITES, GameDriver, autoOrders, battleTargets, closeCombatDice, createGame, eligiblePieces, ignorableFlags, orderLimit,
-  pieceMoves, rallyCandidates, swordIgnores, validateOrders,
+  baseSwordIgnores, pieceMoves, rallyCandidates, validateOrders,
   type CardKind, type EliteId, type LeaderTrait, type Unit,
 } from '../../src/engine';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory, type AiOptions } from '../../src/ai';
@@ -155,8 +155,8 @@ describe('Companions', () => {
     const ctx = { kind: 'close' as const, striker: hi, leaderAlive: true, fullAtStart: true };
     expect(ignorableFlags(s, comp, ctx)).toBe(3);
     expect(ignorableFlags(s, alone, ctx)).toBe(1);
-    expect(swordIgnores(s, comp)).toBe(1);
-    expect(swordIgnores(s, alone)).toBe(1);
+    expect(baseSwordIgnores(s, comp)).toBe(1);
+    expect(baseSwordIgnores(s, alone)).toBe(1);
   });
 });
 

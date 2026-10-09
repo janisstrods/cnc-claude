@@ -7,8 +7,8 @@ import { LEADER_TRAITS } from './query';
 import { UNIT_STATS } from './units';
 import {
   COLS, OFF_BOARD, ROWS,
-  type ArmyLook, type Blocks, type EliteId, type GameState, type HexDir, type Leader, type LeaderTrait, type Side, type SpecialRuleId,
-  type TerrainType, type TurnState, type Unit, type UnitType,
+  type ArmyLook, type Blocks, type CampCapture, type EliteId, type GameState, type HexDir, type HexId, type Leader, type LeaderTrait,
+  type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
 export interface SideSetup {
@@ -37,6 +37,21 @@ export interface ScenarioSetup {
   sacredLeader?: { side: Side; name: string };
   /** Starting Command for a side when different from `cards` (Trasimenus Romans start with 2). */
   initialCommand?: Partial<Record<Side, number>>;
+  /**
+   * Camp-capture objective (needs rule `campCapture`; 011 Baecula, 114 Gabiene): a unit of `side` that ends its move on
+   * one of `hexes` (every camp hex on the board when omitted) gains 1 banner, once per camp. `text`: the log line.
+   */
+  campCapture?: { side: Side; hexes?: [number, number][]; text?: string };
+  /**
+   * Optional rules this scenario offers, with their default (Tactical Flexibility in 120, 121, 124, §17.3). A player's
+   * choice is passed to `createGame` as `GameOptions`.
+   */
+  options?: GameOptions;
+}
+
+/** Optional rules chosen for a game. Only rules the scenario offers (`ScenarioSetup.options`) can be switched. */
+export interface GameOptions {
+  tacticalFlexibility?: boolean;
 }
 
 /**
@@ -90,7 +105,51 @@ function withTraits(l: Leader, traits: LeaderTrait[] | undefined): Leader {
   return { ...l, traits: [...traits] };
 }
 
-export function createGame(setup: ScenarioSetup, seed: number): GameState {
+/**
+ * Effective rule list: the scenario's rules with each optional rule it offers set by `options` (else its default).
+ * An option the scenario does not offer is ignored, so a stored player choice never changes a battle without it.
+ */
+function effectiveRules(setup: ScenarioSetup, options: GameOptions | undefined): SpecialRuleId[] {
+  const rules = [...setup.rules];
+  const offered = setup.options?.tacticalFlexibility;
+  if (offered === undefined) return rules;
+  const on = options?.tacticalFlexibility ?? offered;
+  const out: SpecialRuleId[] = rules.filter((r) => r !== 'tacticalFlexibility');
+  if (on) out.push('tacticalFlexibility');
+  return out;
+}
+
+/** Resolve and validate the camp-capture objective against the terrain (null without the `campCapture` rule). */
+function campCaptureOf(setup: ScenarioSetup, rules: SpecialRuleId[], terrain: TerrainType[], players: GameState['players']): CampCapture | null {
+  const cc = setup.campCapture;
+  const ruled = rules.includes('campCapture');
+  if (!cc && !ruled) return null;
+  if (!cc) throw new Error(`rule campCapture needs scenario data campCapture (${setup.id})`);
+  if (!ruled) throw new Error(`campCapture data needs the campCapture rule (${setup.id})`);
+  if (cc.side !== 'top' && cc.side !== 'bottom') throw new Error(`campCapture: unknown side ${String(cc.side)} (${setup.id})`);
+  let hexes: HexId[];
+  if (cc.hexes) {
+    hexes = cc.hexes.map(([r, c]) => {
+      if (!onBoard(r, c) || terrain[hexId(r, c)] !== 'camp') throw new Error(`campCapture hex ${r},${c} is not a camp (${setup.id})`);
+      return hexId(r, c);
+    });
+    hexes = [...new Set(hexes)].sort((a, b) => a - b);
+  } else hexes = terrain.flatMap((t, h) => (t === 'camp' ? [h] : []));
+  if (!hexes.length) throw new Error(`campCapture needs at least one camp hex (${setup.id})`);
+  const enemy = cc.side === 'top' ? 'bottom' : 'top';
+  const text = cc.text ?? `The ${players[cc.side].army} army captures a ${players[enemy].army} camp!`;
+  return { side: cc.side, hexes, text };
+}
+
+/** Leaders each side starts with: on the board and in reserve. */
+function leaderCount(setup: ScenarioSetup): Record<Side, number> {
+  const n = { top: 0, bottom: 0 };
+  for (const l of [...setup.leaders, ...setup.reserveLeaders]) n[l.side]++;
+  return n;
+}
+
+/** Build the initial state. `options`: the player's choice of the optional rules the scenario offers (§17.3). */
+export function createGame(setup: ScenarioSetup, seed: number, options?: GameOptions): GameState {
   const terrain: TerrainType[] = [];
   const fords: boolean[] = [];
   const noCap: boolean[] = [];
@@ -105,7 +164,7 @@ export function createGame(setup: ScenarioSetup, seed: number): GameState {
   }
   for (const t of setup.terrain) {
     if (!onBoard(t.r, t.c)) throw new Error(`terrain off board ${t.r},${t.c}`);
-    if (t.ford === 'nocap' && t.t !== 'river') throw new Error(`a no-cap ford must be a river hex (${t.t} at ${t.r},${t.c})`);
+    if (t.ford && t.t !== 'river') throw new Error(`a ford must be a river hex (${t.t} at ${t.r},${t.c}, ford ${String(t.ford)})`);
     const h = hexId(t.r, t.c);
     terrain[h] = t.t;
     fords[h] = !!t.ford;
@@ -140,6 +199,7 @@ export function createGame(setup: ScenarioSetup, seed: number): GameState {
   const sacred = setup.sacredLeader
     ? leaders.find((l) => l.side === setup.sacredLeader!.side && l.name === setup.sacredLeader!.name)?.id ?? null
     : null;
+  const rules = effectiveRules(setup, options);
 
   const s: GameState = {
     scenarioId: setup.id,
@@ -171,18 +231,23 @@ export function createGame(setup: ScenarioSetup, seed: number): GameState {
     winner: null,
     winReason: '',
     special: {
-      rules: [...setup.rules],
+      rules,
       reserveUnits,
       reserveLeaders,
       reserveSide: reserveUnits[0]?.side ?? reserveLeaders[0]?.side ?? null,
       reserveReleased: false,
       turnsDone: { top: 0, bottom: 0 },
+      campCapture: null,
       campsCaptured: [],
       sacredLeaderId: sacred,
       beneventumBonusGiven: false,
+      leadersAtStart: leaderCount(setup),
+      leadersEliminated: { top: 0, bottom: 0 },
+      cardDebt: { top: 0, bottom: 0 },
     },
     nextId,
   };
+  s.special.campCapture = campCaptureOf(setup, rules, terrain, s.players);
   for (const side of [setup.first, setup.first === 'top' ? 'bottom' : 'top'] as Side[]) {
     const p = s.players[side];
     for (let i = 0; i < p.command; i++) p.hand.push(s.deck.pop()!);
@@ -217,6 +282,9 @@ export function cloneState(s: GameState): GameState {
       reserveLeaders: s.special.reserveLeaders.map((l) => ({ ...l })),
       turnsDone: { ...s.special.turnsDone },
       campsCaptured: [...s.special.campsCaptured],
+      leadersAtStart: { ...s.special.leadersAtStart },
+      leadersEliminated: { ...s.special.leadersEliminated },
+      cardDebt: { ...s.special.cardDebt },
     },
   };
 }

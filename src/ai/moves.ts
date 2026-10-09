@@ -1,7 +1,6 @@
 // Movement planning: score each reachable hex of an ordered piece by the resulting position plus the attack it enables.
-import { movablePieces, pieceMoves } from '../engine/flow';
+import { capturableCamp, movablePieces, pieceMoves } from '../engine/flow';
 import { attachedLeader, isLeaderId, leaderById, leaderUnit, other, unitById } from '../engine/query';
-import { isCamp } from '../engine/terrain';
 import type { MoveTarget } from '../engine/movement';
 import { OFF_BOARD, type Answer, type GameState, type HexId, type Side } from '../engine/types';
 import { Occ, hexDist } from './board';
@@ -57,7 +56,7 @@ export function scoreOption(s: GameState, id: string, m: MoveTarget | null, stag
         p.banners = bannersBefore;
         return WIN_SCORE;
       }
-    } else if (s.special.rules.includes('baeculaCamps') && isCamp(s, m.hex) && !s.special.campsCaptured.includes(m.hex) && p.army === 'Roman') {
+    } else if (capturableCamp(s, me, m.hex)) {
       p.banners += 1;
       if (p.banners >= s.bannersToWin) {
         p.banners = bannersBefore;

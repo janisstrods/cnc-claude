@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   UNIT_STATS, autoOrders, battleTargets, bonusCombatEligible, ignorableFlags, leaderById, pieceMoves, rallyCandidates, retreatOptions,
-  retreatPerFlag, rowOf, scoreClose, swordIgnores, unitAt, validateOrders, validateRally, validateSpartacus,
+  baseSwordIgnores, retreatPerFlag, rowOf, scoreClose, unitAt, validateOrders, validateRally, validateSpartacus,
   type CardKind, type DieFace, type GameEvent, type HexId, type UnitType,
 } from '../../src/engine';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory, type AiOptions } from '../../src/ai';
@@ -409,7 +409,7 @@ describe('heavy war machine: support and fortified camp', () => {
   });
   it('as foot on a fortified camp it ignores 1 sword hit and 1 flag', () => {
     const s = build({ units: [{ side: 'top', type: 'HWM', at: [4, 6] }], terrain: [{ at: [4, 6], t: 'camp' }] });
-    expect(swordIgnores(s, s.units[0])).toBe(1);
+    expect(baseSwordIgnores(s, s.units[0])).toBe(1);
     expect(ignorableFlags(s, s.units[0], ctx)).toBe(1);
   });
 });

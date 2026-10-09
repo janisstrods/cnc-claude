@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   HEX_DIRS, TERRAIN_NAMES, battleTargets, ccCapOfHex, closeCombatDice, closeHitChance, createGame, directionTo, evadeOptions,
   ignorableFlags, isFord, isImpassable, leaderEvadeOptions, lineOfSight, pieceMoves, rampartProtects, rangedFromCap,
-  retreatOptions, sidesCrossed, swordIgnores,
+  retreatOptions, sidesCrossed, swordIgnores, baseSwordIgnores,
   type DieFace, type HexDir, type StrikeRole, type UnitType,
 } from '../../src/engine';
 import { Occ, ignorableOcc } from '../../src/ai/board';
@@ -286,8 +286,8 @@ describe('rampart in close combat (foot defender attacked across a protected edg
     expectRole('bonus', 1);
     expectRole('back', 0);
     expectRole('firstStrike', 0);
-    // without a striker the position-independent value is reported
-    expect(swordIgnores(s, mi)).toBe(0);
+    // the position-independent part leaves the rampart out
+    expect(baseSwordIgnores(s, mi)).toBe(0);
   });
 
   it('the rampart unit attacking out rolls its normal dice, and the battle back against it is not reduced', () => {
@@ -537,10 +537,10 @@ describe('expected hits preview and AI estimates', () => {
     });
     const [a, t, a2, plain, a3, comp] = s.units;
     const unignored = (dice: number) => dice / 6 - (1 - Math.pow(5 / 6, dice)); // E[max(0, swords - 1)]
-    expect(closeHitChance(s, a2, plain, 5)).toBeCloseTo(2 / 6, 10);
-    expect(closeHitChance(s, a, t, 5)).toBeCloseTo(1 / 6 + unignored(5) / 5, 10);
+    expect(closeHitChance(s, a2, plain, 5, 'attack')).toBeCloseTo(2 / 6, 10);
+    expect(closeHitChance(s, a, t, 5, 'attack')).toBeCloseTo(1 / 6 + unignored(5) / 5, 10);
     expect(closeHitChance(s, a, t, 5, 'back')).toBeCloseTo(2 / 6, 10); // not protected against a battle back
-    expect(closeHitChance(s, a3, comp, 5)).toBeCloseTo(1 / 6 + unignored(5) / 5, 10);
+    expect(closeHitChance(s, a3, comp, 5, 'attack')).toBeCloseTo(1 / 6 + unignored(5) / 5, 10);
   });
 
   it('the AI sees the rampart in its combat estimates and its threat model', () => {

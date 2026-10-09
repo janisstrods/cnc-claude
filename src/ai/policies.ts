@@ -1,12 +1,13 @@
 // Fast decision policies: battle choice, defence, flags, retreats, leader evasion, momentum, bonus combat, rally.
 // Used both for live answers and inside Monte-Carlo simulations (for both sides).
 import { closeCombatDice, retreatPerFlag } from '../engine/combat';
+import { capturableCamp } from '../engine/flow';
 import { neighbours } from '../engine/hex';
 import { rallyCandidates, validateRally, validateSpartacus } from '../engine/orders';
 import { leaderById, other, unitById } from '../engine/query';
 import { retreatOptions, type ElephantRetreatOption } from '../engine/retreat';
 import { rangeOf } from '../engine/elites';
-import { isCamp, terrainAt } from '../engine/terrain';
+import { terrainAt } from '../engine/terrain';
 import { UNIT_STATS, bonusCombatEligible, escapeDice, forestFighter } from '../engine/units';
 import {
   OFF_BOARD, type Answer, type Decision, type DieFace, type GameState, type HexId, type RetreatOption, type Side, type Unit,
@@ -304,12 +305,12 @@ function valueAt(s: GameState, u: Unit, hex: HexId, W: Weights, withBonus: boole
 }
 
 /**
- * Baecula: value of a Roman unit ending its attack on hex h when that is an uncaptured Carthaginian camp (the engine
- * credits the camp only where the unit finally stops, so riding on out of it forfeits the banner).
+ * Camp capture (Baecula, Gabiene): value of a unit of the capturing side ending its attack on hex h when that is an
+ * uncaptured objective camp (the engine credits the camp only where the unit finally stops, so riding on out of it
+ * forfeits the banner).
  */
 export function campBanner(s: GameState, u: Unit, h: HexId): number {
-  if (!s.special.rules.includes('baeculaCamps') || h < 0) return 0;
-  if (s.players[u.side].army !== 'Roman' || !isCamp(s, h) || s.special.campsCaptured.includes(h)) return 0;
+  if (h < 0 || !capturableCamp(s, u.side, h)) return 0;
   if (s.players[u.side].banners + 1 >= s.bannersToWin) return WIN_SCORE;
   return nextBanner(s, u.side);
 }

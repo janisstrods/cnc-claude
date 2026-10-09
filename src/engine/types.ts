@@ -150,13 +150,31 @@ export interface TurnState {
   ambushSection: SectionName | null; // Trebbia: section where Mago's force enters this turn
 }
 
+/**
+ * Scenario special rules (§14, §17). Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112 Hellespont),
+ * `frightAtFirstSight` (116 Heraclea), `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3) and
+ * `campCapture` (a side gains a banner for stopping on listed camp hexes: 011 Baecula, 114 Gabiene).
+ */
 export type SpecialRuleId =
   | 'sacredBand'
   | 'magoAmbush'
   | 'trasimenusHand'
   | 'beneventumHand'
   | 'castulo'
-  | 'baeculaCamps';
+  | 'campCapture'
+  | 'leaderLossCostsCard'
+  | 'allLeadersSuddenDeath'
+  | 'frightAtFirstSight'
+  | 'tacticalFlexibility';
+
+/** Camp-capture objective (rule `campCapture`): units of `side` stopping on one of `hexes` gain a banner, once per camp. */
+export interface CampCapture {
+  side: Side;
+  /** Camp hexes that can be captured, ascending. */
+  hexes: HexId[];
+  /** Log line when a camp falls. */
+  text: string;
+}
 
 export interface ScenarioSpecial {
   rules: SpecialRuleId[];
@@ -167,11 +185,22 @@ export interface ScenarioSpecial {
   reserveReleased: boolean;
   /** Turns completed per side (used by hand-growth rules and Mago). */
   turnsDone: Record<Side, number>;
-  /** Baecula: camp hexes already captured. */
+  /** Camp-capture objective (Baecula, Gabiene); null without the `campCapture` rule. */
+  campCapture: CampCapture | null;
+  /** Camp hexes already captured. */
   campsCaptured: HexId[];
   /** Castulo: id of Publius Scipio. */
   sacredLeaderId: string | null;
   beneventumBonusGiven: boolean;
+  /** Leaders each side had at the start (on the board, in reserve or still to be placed). */
+  leadersAtStart: Record<Side, number>;
+  /** Leaders each side has had eliminated (killed for a banner; not leaders who left the board by evading or exiting). */
+  leadersEliminated: Record<Side, number>;
+  /**
+   * Hellespont (`leaderLossCostsCard`): cards a side still owes for lost leaders. Each one skips that side's next draw;
+   * a leader lost on the opponent's turn is paid at once with a random discard when the hand has a card.
+   */
+  cardDebt: Record<Side, number>;
 }
 
 export interface GameState {
@@ -279,6 +308,8 @@ export type GameEvent =
   | { t: 'draw'; side: Side }
   | { t: 'reshuffle' }
   | { t: 'command'; side: Side; command: number }
+  /** A card taken from the hand at random and discarded (Hellespont: a leader lost on the opponent's turn). */
+  | { t: 'cardLost'; side: Side; card: number }
   | { t: 'log'; text: string; side?: Side }
   | { t: 'victory'; winner: Side | 'draw'; reason: string };
 

@@ -439,6 +439,9 @@ special rule). Official text: GMT Bonus Pack #2 (Pydna); the web pages omit the 
   test; an attached leader is not support) — and **not on broken ground**.
 * No effect on: attacks by Roman AX, LI, cavalry or elephants; the HI's own attacks; First Strike (it is not a battle
   back); a battle with the option off.
+* The 3 replaces the HI's base dice, before the §4 caps, the camp -1 and the card-bonus step (a capped ford or a hill
+  still limits it, an attached Alexander-style +1 adds on top); so the broken-ground clause never changes the count,
+  since broken ground caps the HI at 2 anyway **[Interp]** (the text says only "uses only 3 dice", Q12).
 * Of the three battles only 124 has broken ground; in 120 and 121 the broken-ground clause changes nothing.
 
 ### 17.4 The battles

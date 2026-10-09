@@ -162,7 +162,7 @@ describe('F6 Baecula camp banner when a unit only passes through the camp by mom
   // through the hex."
   it('cavalry advancing into a camp and taking its extra hex out of it gains no camp banner', () => {
     const s = build({
-      rules: ['baeculaCamps'], terrain: [{ at: [4, 6], t: 'camp' }],
+      rules: ['campCapture'], campCapture: { side: 'bottom' }, terrain: [{ at: [4, 6], t: 'camp' }],
       units: [{ side: 'bottom', type: 'HC', at: [5, 6] }, { side: 'top', type: 'MI', at: [4, 6], blocks: 1 }],
     });
     const d = toBattle(s, 'order4C', ['u1']);

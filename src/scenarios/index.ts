@@ -36,6 +36,8 @@ interface Extra {
   blurb: string;
   specialText?: string[];
   rules?: SpecialRuleId[];
+  /** Camp-capture objective (with rule `campCapture`). */
+  campCapture?: ScenarioSetup['campCapture'];
   hint: string;
   patch?: (s: ScenarioSetup) => void;
 }
@@ -124,7 +126,9 @@ const EXTRA: Record<string, Extra> = {
   '011': {
     blurb: "Hasdrubal Barca holds a strong ridge at Baecula, his camps behind it. The young Scipio pins him with light troops and swings his legions around both flanks.",
     specialText: ['A Roman unit that ends its move in a Carthaginian camp hex gains a banner (each camp only once).'],
-    rules: ['baeculaCamps'],
+    rules: ['campCapture'],
+    // every camp on the board is Carthaginian; the Romans (bottom) capture them
+    campCapture: { side: 'bottom', text: 'The Romans storm a Carthaginian camp!' },
     hint: 'Assault the ridge and the camps.',
   },
   '012': {
@@ -162,6 +166,7 @@ function build(j: ScenarioJson): ScenarioInfo {
     reserveLeaders: j.reserveLeaders.map((l) => ({ ...l })),
     rules: ex?.rules ?? [],
   };
+  if (ex?.campCapture) setup.campCapture = { ...ex.campCapture };
   // Trasimenus: the Roman column starts with 4 cards eventually; War Council lists 2 initially.
   if (j.id === '006') setup.bottom.cards = 4;
   ex?.patch?.(setup);

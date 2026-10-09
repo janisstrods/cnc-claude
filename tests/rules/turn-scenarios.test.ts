@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GameDriver, OFF_BOARD, createGame, distance, inSection, pieceMoves, rowOf } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
-import { H, build, forceDice, giveCard, must, n, noFirstStrike, passTurn, play, toBattle, u } from './helpers';
+import { H, build, forceDice, giveCard, must, n, noFirstStrike, passTurn, play, toBattle, u, type Pos } from './helpers';
 
 beforeEach(() => forceDice([]));
 
@@ -88,7 +88,7 @@ describe('scenario data', () => {
     expect(scenarioById('006').setup.rules).toContain('trasimenusHand');
     expect(scenarioById('009').setup.rules).toContain('beneventumHand');
     expect(scenarioById('010').setup.rules).toContain('castulo');
-    expect(scenarioById('011').setup.rules).toContain('baeculaCamps');
+    expect(scenarioById('011').setup.rules).toContain('campCapture');
   });
   it('river fordability: Ticinus and Beneventum not fordable, Trebbia and Metaurus fordable', () => {
     const fordable = (id: string) => {
@@ -211,7 +211,7 @@ describe('Castulo', () => {
 });
 
 describe('Baecula camps', () => {
-  const baecula = { rules: ['baeculaCamps' as const], terrain: [{ at: [2, 6] as [number, number], t: 'camp' as const }] };
+  const baecula: Pos = { rules: ['campCapture'], campCapture: { side: 'bottom' }, terrain: [{ at: [2, 6], t: 'camp' }] };
   it('a Roman unit ending its move on a camp hex gains 1 banner, once per camp', () => {
     const s = build({ ...baecula, units: [{ side: 'bottom', type: 'MI', at: [3, 6] }, { side: 'bottom', type: 'MI', at: [3, 5] }] });
     const d = play(s, 'order2C', ['u1']);

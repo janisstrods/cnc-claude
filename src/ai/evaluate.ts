@@ -375,10 +375,6 @@ function advancePenalty(units: Unit[], enemies: Unit[], W: Weights): number {
   return pen * W.adv;
 }
 
-function romanSide(s: GameState): Side {
-  return s.players.top.army === 'Roman' ? 'top' : 'bottom';
-}
-
 /** Scenario objectives, positive = good for `me`. */
 function objectives(s: GameState, me: Side, W: Weights): number {
   const rules = s.special.rules;
@@ -394,16 +390,17 @@ function objectives(s: GameState, me: Side, W: Weights): number {
     }
     v += (me === 'bottom' ? 1 : -1) * r * W.objective;
   }
-  if (rules.includes('baeculaCamps')) {
-    const rs = romanSide(s);
+  const cc = s.special.campCapture;
+  if (cc && rules.includes('campCapture')) {
+    // camps still to capture, drawing the capturing side's nearest unit
     let r = 0;
-    for (let h = 0; h < s.terrain.length; h++) {
-      if (s.terrain[h] !== 'camp' || s.special.campsCaptured.includes(h)) continue;
+    for (const h of cc.hexes) {
+      if (s.special.campsCaptured.includes(h)) continue;
       let dmin = 99;
-      for (const u of s.units) if (u.side === rs && u.hex >= 0) dmin = Math.min(dmin, hexDist(u.hex, h));
+      for (const u of s.units) if (u.side === cc.side && u.hex >= 0) dmin = Math.min(dmin, hexDist(u.hex, h));
       r += 0.07 * Math.max(0, 6 - dmin) / 6;
     }
-    v += (me === rs ? 1 : -1) * r * W.objective;
+    v += (me === cc.side ? 1 : -1) * r * W.objective;
   }
   return v;
 }

@@ -10,6 +10,8 @@ export interface UnitStats {
   /** Symbol drawn with a white border (AX, WA). */
   whiteBorder: boolean;
   foot: boolean;
+  /** Infantry: every foot type except war machines (LI, LB, LS, AX, WA, MI, HI; 116 Fright at First Sight, §17.4). */
+  infantry: boolean;
   mounted: boolean;
   /** Cavalry proper (LC, MC, HC, LBC); elephants, chariots and camels are mounted but not cavalry. */
   cavalry: boolean;
@@ -108,39 +110,39 @@ const noAbilities = (): OptionalAbilities => ({
 const U = (s: Omit<UnitStats, keyof OptionalAbilities> & Partial<OptionalAbilities>): UnitStats => ({ ...noAbilities(), ...s });
 
 export const UNIT_STATS: Record<UnitType, UnitStats> = {
-  LI: U({ type: 'LI', name: 'Light Infantry', cls: 'light', whiteBorder: false, foot: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 2, moveBattle: 2, cc: 2, ccBack: 2, range: 2, retreat: 2, swordHits: false, evade: 'always',
+  LI: U({ type: 'LI', name: 'Light Infantry', cls: 'light', whiteBorder: false, foot: true, infantry: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 2, moveBattle: 2, cc: 2, ccBack: 2, range: 2, retreat: 2, swordHits: false, evade: 'always',
     elephantDiceAgainst: 2, lightFoot: true, forestFighter: true }),
-  LB: U({ type: 'LB', name: 'Light Bow Infantry', cls: 'light', whiteBorder: false, foot: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 2, moveBattle: 2, cc: 2, ccBack: 2, range: 3, retreat: 2, swordHits: false, evade: 'always',
+  LB: U({ type: 'LB', name: 'Light Bow Infantry', cls: 'light', whiteBorder: false, foot: true, infantry: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 2, moveBattle: 2, cc: 2, ccBack: 2, range: 3, retreat: 2, swordHits: false, evade: 'always',
     elephantDiceAgainst: 2, lightFoot: true, forestFighter: true }),
-  LS: U({ type: 'LS', name: 'Light Sling Infantry', cls: 'light', whiteBorder: false, foot: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 2, moveBattle: 2, cc: 2, ccBack: 2, range: 3, retreat: 2, swordHits: false, evade: 'always',
+  LS: U({ type: 'LS', name: 'Light Sling Infantry', cls: 'light', whiteBorder: false, foot: true, infantry: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 2, moveBattle: 2, cc: 2, ccBack: 2, range: 3, retreat: 2, swordHits: false, evade: 'always',
     elephantDiceAgainst: 2, lightFoot: true, forestFighter: true }),
-  AX: U({ type: 'AX', name: 'Auxilia', cls: 'light', whiteBorder: true, foot: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 2, moveBattle: 1, cc: 3, ccBack: 3, range: 2, retreat: 1, swordHits: true, evade: 'never',
+  AX: U({ type: 'AX', name: 'Auxilia', cls: 'light', whiteBorder: true, foot: true, infantry: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 2, moveBattle: 1, cc: 3, ccBack: 3, range: 2, retreat: 1, swordHits: true, evade: 'never',
     elephantDiceAgainst: 3, noFireAfterMove: 2, lightFoot: true, forestFighter: true, doubleTimeMove: 2 }),
-  WA: U({ type: 'WA', name: 'Warriors', cls: 'medium', whiteBorder: true, foot: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 2, moveBattle: 2, cc: 3, ccBack: 3, range: 0, retreat: 2, swordHits: true, evade: 'never',
+  WA: U({ type: 'WA', name: 'Warriors', cls: 'medium', whiteBorder: true, foot: true, infantry: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 2, moveBattle: 2, cc: 3, ccBack: 3, range: 0, retreat: 2, swordHits: true, evade: 'never',
     elephantDiceAgainst: 3, fullStrengthBonus: true, chargeMove: true, forestFighter: true, doubleTimeMove: 3 }),
-  MI: U({ type: 'MI', name: 'Medium Infantry', cls: 'medium', whiteBorder: false, foot: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 1, moveBattle: 1, cc: 4, ccBack: 4, range: 0, retreat: 1, swordHits: true, evade: 'never',
+  MI: U({ type: 'MI', name: 'Medium Infantry', cls: 'medium', whiteBorder: false, foot: true, infantry: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 1, moveBattle: 1, cc: 4, ccBack: 4, range: 0, retreat: 1, swordHits: true, evade: 'never',
     elephantDiceAgainst: 4, doubleTimeMove: 2 }),
-  HI: U({ type: 'HI', name: 'Heavy Infantry', cls: 'heavy', whiteBorder: false, foot: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 1, moveBattle: 1, cc: 5, ccBack: 5, range: 0, retreat: 1, swordHits: true, evade: 'never',
+  HI: U({ type: 'HI', name: 'Heavy Infantry', cls: 'heavy', whiteBorder: false, foot: true, infantry: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 1, moveBattle: 1, cc: 5, ccBack: 5, range: 0, retreat: 1, swordHits: true, evade: 'never',
     elephantDiceAgainst: 5, doubleTimeMove: 2 }),
-  LC: U({ type: 'LC', name: 'Light Cavalry', cls: 'light', whiteBorder: false, foot: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 4, moveBattle: 4, cc: 2, ccBack: 2, range: 2, retreat: 4, swordHits: false, evade: 'always',
+  LC: U({ type: 'LC', name: 'Light Cavalry', cls: 'light', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 4, moveBattle: 4, cc: 2, ccBack: 2, range: 2, retreat: 4, swordHits: false, evade: 'always',
     elephantDiceAgainst: 2, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true }),
-  MC: U({ type: 'MC', name: 'Medium Cavalry', cls: 'medium', whiteBorder: false, foot: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 3, moveBattle: 3, cc: 3, ccBack: 3, range: 0, retreat: 3, swordHits: true, evade: 'vsFootHeavyMounted',
+  MC: U({ type: 'MC', name: 'Medium Cavalry', cls: 'medium', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 3, moveBattle: 3, cc: 3, ccBack: 3, range: 0, retreat: 3, swordHits: true, evade: 'vsFootHeavyMounted',
     elephantDiceAgainst: 3, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true }),
-  HC: U({ type: 'HC', name: 'Heavy Cavalry', cls: 'heavy', whiteBorder: false, foot: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 2, moveBattle: 2, cc: 4, ccBack: 4, range: 0, retreat: 2, swordHits: true, evade: 'vsFootElephant',
+  HC: U({ type: 'HC', name: 'Heavy Cavalry', cls: 'heavy', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 2, moveBattle: 2, cc: 4, ccBack: 4, range: 0, retreat: 2, swordHits: true, evade: 'vsFootElephant',
     elephantDiceAgainst: 4, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true, mountedChargeMove: true }),
-  EL: U({ type: 'EL', name: 'Elephants', cls: 'heavy', whiteBorder: false, foot: false, mounted: true, cavalry: false, chariot: false, blocks: 2, move: 2, moveBattle: 2, cc: 0, ccBack: 0, range: 0, retreat: 1, swordHits: true, evade: 'never',
+  EL: U({ type: 'EL', name: 'Elephants', cls: 'heavy', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: false, chariot: false, blocks: 2, move: 2, moveBattle: 2, cc: 0, ccBack: 0, range: 0, retreat: 1, swordHits: true, evade: 'never',
     elephantDiceAgainst: 3, elephantTable: true, ignoreAllSwords: true, vsMountedIgnoreHit: 'heavy', vsMountedIgnoreFlag: true,
     noRally: true, noLeaderBenefit: true, mountedChargeMove: true }),
-  HCH: U({ type: 'HCH', name: 'Heavy Chariots', cls: 'heavy', whiteBorder: false, foot: false, mounted: true, cavalry: false, chariot: true, blocks: 2, move: 2, moveBattle: 2, cc: 4, ccBack: 3, range: 0, retreat: 2, swordHits: true, evade: 'vsFootElephant',
+  HCH: U({ type: 'HCH', name: 'Heavy Chariots', cls: 'heavy', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: false, chariot: true, blocks: 2, move: 2, moveBattle: 2, cc: 4, ccBack: 3, range: 0, retreat: 2, swordHits: true, evade: 'vsFootElephant',
     elephantDiceAgainst: 3, swordIgnore: 1, frightenedBy: ['EL', 'CAM'], noRally: true, mountedChargeMove: true }),
   // Expansion #1 (§15). Camels: 3 dice attacking, 2 battling back and on First Strike; ignore 1 blue triangle from horses.
-  LBC: U({ type: 'LBC', name: 'Light Bow Cavalry', cls: 'light', whiteBorder: false, foot: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 4, moveBattle: 4, cc: 2, ccBack: 2, range: 3, retreat: 4, swordHits: false, evade: 'always',
+  LBC: U({ type: 'LBC', name: 'Light Bow Cavalry', cls: 'light', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 4, moveBattle: 4, cc: 2, ccBack: 2, range: 3, retreat: 4, swordHits: false, evade: 'always',
     elephantDiceAgainst: 2, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true }),
-  CAM: U({ type: 'CAM', name: 'Camels', cls: 'medium', whiteBorder: false, foot: false, mounted: true, cavalry: false, chariot: false, blocks: 3, move: 3, moveBattle: 3, cc: 3, ccBack: 2, range: 0, retreat: 3, swordHits: true, evade: 'vsFootHeavyMounted',
+  CAM: U({ type: 'CAM', name: 'Camels', cls: 'medium', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: false, chariot: false, blocks: 3, move: 3, moveBattle: 3, cc: 3, ccBack: 2, range: 0, retreat: 3, swordHits: true, evade: 'vsFootHeavyMounted',
     elephantDiceAgainst: 3, vsMountedIgnoreHit: 'medium', vsMountedIgnoreFlag: false }),
   // Heavy war machines: move 1 and then no battle at all (moveBattle 0, so close combat only when it did not move); no fire
   // after moving; evade only along a legal path, then abandoned (no banner).
-  HWM: U({ type: 'HWM', name: 'Heavy War Machines', cls: 'heavy', whiteBorder: false, foot: true, mounted: false, cavalry: false, chariot: false, blocks: 2, move: 1, moveBattle: 0, cc: 2, ccBack: 2, range: 6, retreat: 1, swordHits: false, evade: 'always',
+  HWM: U({ type: 'HWM', name: 'Heavy War Machines', cls: 'heavy', whiteBorder: false, foot: true, infantry: false, mounted: false, cavalry: false, chariot: false, blocks: 2, move: 1, moveBattle: 0, cc: 2, ccBack: 2, range: 6, retreat: 1, swordHits: false, evade: 'always',
     elephantDiceAgainst: 2, noFireAfterMove: 1, forbiddenTerrain: ['broken', 'marsh'], noMomentum: true, evadeRemoves: true }),
 };
 

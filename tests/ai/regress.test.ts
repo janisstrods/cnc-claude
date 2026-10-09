@@ -30,6 +30,7 @@ interface Pos {
   leaders?: { side: Side; name: string; at: [number, number] }[];
   terrain?: { at: [number, number]; t: TerrainType }[];
   rules?: ScenarioSetup['rules'];
+  campCapture?: ScenarioSetup['campCapture'];
   sacredLeader?: { side: Side; name: string };
   first?: Side;
 }
@@ -43,7 +44,7 @@ function position(p: Pos): GameState {
     terrain: (p.terrain ?? []).map((t) => ({ r: t.at[0], c: t.at[1], t: t.t })),
     units: p.units.map((u) => ({ side: u.side, type: u.type, r: u.at[0], c: u.at[1] })),
     leaders: (p.leaders ?? []).map((l) => ({ side: l.side, name: l.name, r: l.at[0], c: l.at[1] })),
-    reserves: [], reserveLeaders: [], rules: p.rules ?? [], sacredLeader: p.sacredLeader,
+    reserves: [], reserveLeaders: [], rules: p.rules ?? [], sacredLeader: p.sacredLeader, campCapture: p.campCapture,
   };
   const s = createGame(setup, 77);
   p.units.forEach((u, i) => {
@@ -239,7 +240,7 @@ describe('Baecula camps', () => {
   it('cavalry that rode into an uncaptured camp stays there instead of taking the extra hex out', () => {
     for (const P of PERSONALITIES) {
       const s = position({
-        rules: ['baeculaCamps'],
+        rules: ['campCapture'], campCapture: { side: 'bottom' },
         terrain: [{ at: [4, 4], t: 'camp' }],
         units: [
           { side: 'bottom', type: 'HC', at: [4, 4] },

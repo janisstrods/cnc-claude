@@ -13,7 +13,7 @@ import {
   attachedLeader, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, unitAt, unitById,
 } from './query';
 import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption } from './retreat';
-import { rollDice, rollDie, shuffle } from './rng';
+import { randInt, rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
 import { isFord, isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
 import { canShoot } from './elites';
@@ -55,6 +55,12 @@ function romanSide(s: GameState): Side {
 }
 
 function drawCard(s: GameState, ctx: FlowCtx, side: Side) {
+  // Hellespont: a card still owed for a lost leader is paid by not drawing (§17.4)
+  if (s.special.cardDebt[side] > 0) {
+    s.special.cardDebt[side]--;
+    log(s, ctx, `The ${s.players[side].army} army draws no card: it lost a leader.`, side);
+    return;
+  }
   if (s.deck.length === 0) {
     if (s.discard.length === 0) return;
     s.deck = s.discard;
@@ -88,17 +94,63 @@ export function gainBanner(s: GameState, ctx: FlowCtx, side: Side, reason: strin
   }
 }
 
-function killLeader(s: GameState, ctx: FlowCtx, l: Leader, reason: string) {
+/**
+ * Take an eliminated leader off the board. **Every leader elimination goes through here** (killLeader and the elephant's
+ * blocked retreat), so the count for the Hellespont rules is complete. A leader who leaves the board by evading off his
+ * baseline or exiting with his unit is not eliminated. Returns true when the battle ended (Castulo's Scipio); the caller
+ * then awards the banner and calls `afterLeaderLoss`.
+ */
+function eliminateLeader(s: GameState, ctx: FlowCtx, l: Leader, text: string): boolean {
   s.leaders = s.leaders.filter((x) => x.id !== l.id);
+  s.special.leadersEliminated[l.side]++;
   ctx.emit({ t: 'leaderKilled', id: l.id });
-  log(s, ctx, `${l.name || 'A leader'} (${sideName(s, l.side)}) has fallen!`, l.side);
+  log(s, ctx, text, l.side);
   if (s.special.sacredLeaderId === l.id && !s.winner) {
     s.winner = other(l.side);
     s.winReason = `${l.name} has fallen`;
     ctx.emit({ t: 'victory', winner: s.winner, reason: s.winReason });
+    return true;
+  }
+  return false;
+}
+
+const possessive = (name: string) => (name.endsWith('s') ? `${name}'` : `${name}'s`);
+
+/**
+ * Hellespont rules (§17.4) after a leader of `side` was eliminated and its banner awarded:
+ * `allLeadersSuddenDeath` — every leader the side started with is gone: the other side wins at once;
+ * `leaderLossCostsCard` — Command -1 for the rest of the battle and one card owed (`cardDebt`). On the side's own turn
+ * the debt is paid by its next draw (the end of this turn; a second loss in the same turn skips the next one too). On
+ * the opponent's turn a random card is discarded at once (event `cardLost`); with an empty hand the next draw is skipped
+ * instead. Command never drops below 1 (a player must hold a card to play; unreachable in 112, where the second loss
+ * ends the battle).
+ */
+function afterLeaderLoss(s: GameState, ctx: FlowCtx, side: Side) {
+  if (s.winner) return;
+  const sp = s.special;
+  if (sp.rules.includes('allLeadersSuddenDeath') && sp.leadersEliminated[side] >= sp.leadersAtStart[side]) {
+    s.winner = other(side);
+    s.winReason = `All of ${possessive(s.players[side].commander)} leaders have fallen`;
+    ctx.emit({ t: 'victory', winner: s.winner, reason: s.winReason });
     return;
   }
+  if (!sp.rules.includes('leaderLossCostsCard')) return;
+  const p = s.players[side];
+  if (p.command <= 1) return;
+  p.command--;
+  ctx.emit({ t: 'command', side, command: p.command });
+  sp.cardDebt[side]++;
+  if (side === s.active || !p.hand.length) return;
+  const card = p.hand.splice(randInt(s, p.hand.length), 1)[0];
+  s.discard.push(card);
+  sp.cardDebt[side]--;
+  ctx.emit({ t: 'cardLost', side, card });
+}
+
+function killLeader(s: GameState, ctx: FlowCtx, l: Leader, reason: string) {
+  if (eliminateLeader(s, ctx, l, `${l.name || 'A leader'} (${sideName(s, l.side)}) has fallen!`)) return;
   gainBanner(s, ctx, other(l.side), reason);
+  afterLeaderLoss(s, ctx, l.side);
 }
 
 /** Remove blocks; returns true if the unit was eliminated. */
@@ -219,12 +271,17 @@ function* marshCheckUnit(s: GameState, ctx: FlowCtx, u: Unit, leaderChecked: { d
   return false;
 }
 
+/** Camp capture (011 Baecula, 114 Gabiene): would a unit of `side` stopping on hex `h` capture a camp now? */
+export function capturableCamp(s: GameState, side: Side, h: HexId): boolean {
+  const cc = s.special.campCapture;
+  return !!cc && s.special.rules.includes('campCapture') && cc.side === side && cc.hexes.includes(h) && !s.special.campsCaptured.includes(h);
+}
+
+/** A unit stops on a camp hex of the camp-capture objective: 1 banner, once per camp. */
 function captureCamp(s: GameState, ctx: FlowCtx, u: Unit) {
-  if (!s.special.rules.includes('baeculaCamps')) return;
-  if (u.side !== romanSide(s)) return;
-  if (terrainAt(s, u.hex) !== 'camp' || s.special.campsCaptured.includes(u.hex)) return;
+  if (!capturableCamp(s, u.side, u.hex)) return;
   s.special.campsCaptured.push(u.hex);
-  log(s, ctx, `The Romans storm a Carthaginian camp!`, u.side);
+  log(s, ctx, s.special.campCapture!.text, u.side);
   gainBanner(s, ctx, u.side, 'camp captured');
 }
 
@@ -306,22 +363,16 @@ function* walkPath(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, kind
  */
 function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: string; n: number }[]): Gen {
   const gains: Side[] = [];
+  const crushed: Side[] = [];
   const orphans: Leader[] = [];
   const survivorsWithLeader: Leader[] = [];
   for (const b of blockers) {
     if (isLeaderId(b.id)) {
       const l = leaderById(s, b.id);
       if (!l) continue;
-      s.leaders = s.leaders.filter((x) => x.id !== l.id);
-      ctx.emit({ t: 'leaderKilled', id: l.id });
-      log(s, ctx, `${l.name || 'A leader'} (${sideName(s, l.side)}) is crushed by the elephants!`, l.side);
-      if (s.special.sacredLeaderId === l.id && !s.winner) {
-        s.winner = other(l.side);
-        s.winReason = `${l.name} has fallen`;
-        ctx.emit({ t: 'victory', winner: s.winner, reason: s.winReason });
-        return;
-      }
+      if (eliminateLeader(s, ctx, l, `${l.name || 'A leader'} (${sideName(s, l.side)}) is crushed by the elephants!`)) return;
       gains.push(other(l.side));
+      crushed.push(l.side);
       continue;
     }
     const v = unitById(s, b.id);
@@ -354,6 +405,9 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
     return;
   }
   for (const g of gains) gainBanner(s, ctx, g, 'crushed by elephants');
+  if (s.winner) return;
+  // Hellespont rules for the crushed leaders, after their banners
+  for (const side of crushed) afterLeaderLoss(s, ctx, side);
   if (s.winner) return;
   for (const l of survivorsWithLeader) if (leaderById(s, l.id)) leaderCheck(s, ctx, l, 2);
   for (const l of orphans) yield* leaderOrphaned(s, ctx, l);
@@ -949,7 +1003,7 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
       op.battlesLeft = 0;
       op.mustBattle = false;
       yield* closeCombat(s, ctx, u, a.target, 'attack');
-      // Baecula: a camp counts only where the attacking unit finally stops.
+      // Camp capture: a camp counts only where the attacking unit finally stops.
       if (!s.winner && unitById(s, u.id)) captureCamp(s, ctx, u);
     }
   }

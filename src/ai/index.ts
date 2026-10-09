@@ -232,12 +232,12 @@ function exitLine(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rn
   return speak(s, me, P, 'exit', mem.voice, rng, { chance: 1.2 });
 }
 
-/** Baecula: a camp captured by our side since the previous decision (the engine credits it once the unit stops). */
+/** Camp capture: a camp captured by our side since the previous decision (the engine credits it once the unit stops). */
 function campLine(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rng): string | undefined {
   const n = s.special.campsCaptured.length;
   const before = mem.campsSeen ?? -1;
   mem.campsSeen = n;
-  if (before < 0 || n <= before || s.players[me].army !== 'Roman') return undefined;
+  if (before < 0 || n <= before || s.special.campCapture?.side !== me) return undefined;
   return speak(s, me, P, 'camp', mem.voice, rng, { chance: 2 });
 }
 

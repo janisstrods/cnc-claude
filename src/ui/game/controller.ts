@@ -562,6 +562,11 @@ export class GameController {
         this.addLog({ text: `The ${after.players[e.side].army} army now holds ${e.command} command cards.`, side: e.side, kind: 'info' });
         this.set({ display: after });
         break;
+      case 'cardLost':
+        // Hellespont: a card taken at random from the hand of a side that lost a leader on the opponent's turn
+        this.addLog({ text: `The ${after.players[e.side].army} army loses a command card.`, side: e.side, kind: 'info' });
+        this.set({ display: after });
+        break;
       case 'log':
         this.addLog({ text: e.text, side: e.side, kind: 'info' });
         this.set({ display: after });
