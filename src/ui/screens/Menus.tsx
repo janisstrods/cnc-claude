@@ -1,0 +1,174 @@
+import { useMemo, useState } from 'react';
+import { createGame, leaderUnit, type GameState, type Side } from '../../engine';
+import { SCENARIOS, type ScenarioInfo } from '../../scenarios';
+import { LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
+import { BoardArt } from '../terrain';
+import { Button, Modal, Panel } from '../kit';
+import { BOARD_H, BOARD_W, hexCenterId } from '../geometry';
+import type { Difficulty, SavedGame } from '../game/controller';
+import { RulesReference } from './RulesReference';
+import './screens.css';
+
+export function MainMenu(p: { saved: SavedGame | null; onNew: () => void; onContinue: () => void }) {
+  const [rules, setRules] = useState(false);
+  const [credits, setCredits] = useState(false);
+  const savedName = p.saved ? SCENARIOS.find((s) => s.id === p.saved!.config.scenarioId)?.name : null;
+  return (
+    <div className="menu-root">
+      <div className="menu-hero">
+        <div className="menu-emblem" aria-hidden>
+          <svg viewBox="0 0 120 120" width="120" height="120">
+            <defs>
+              <radialGradient id="emb" cx="40%" cy="35%">
+                <stop offset="0%" stopColor="#f6d77c" />
+                <stop offset="100%" stopColor="#9a6a1c" />
+              </radialGradient>
+            </defs>
+            <circle cx="60" cy="60" r="56" fill="none" stroke="url(#emb)" strokeWidth="4" />
+            <path d="M60 14 L94 30 L94 60 C94 82 78 98 60 106 C42 98 26 82 26 60 L26 30 Z" fill="#7a1d18" stroke="url(#emb)" strokeWidth="4" />
+            <path d="M44 44 L76 76 M76 44 L44 76" stroke="#f3d27a" strokeWidth="6" strokeLinecap="round" />
+            <circle cx="60" cy="60" r="7" fill="#f3d27a" />
+          </svg>
+        </div>
+        <h1 className="menu-title">Commands &amp; Colors</h1>
+        <div className="menu-sub">ANCIENTS</div>
+        <p className="menu-tag">Rome and Carthage, 406–202 BC · fifteen historical battles</p>
+        <div className="menu-buttons">
+          {p.saved && (
+            <Button onClick={p.onContinue}>Continue: {savedName}</Button>
+          )}
+          <Button variant={p.saved ? 'secondary' : 'primary'} onClick={p.onNew}>New Battle</Button>
+          <Button variant="ghost" onClick={() => setRules(true)}>How to Play</Button>
+          <Button variant="ghost" onClick={() => setCredits(true)}>Credits</Button>
+        </div>
+      </div>
+      <Modal open={rules} title="How to Play" onClose={() => setRules(false)} width={880}>
+        <RulesReference />
+      </Modal>
+      <Modal open={credits} title="Credits" onClose={() => setCredits(false)} width={640}>
+        <div className="credits">
+          <p>An unofficial, fan-made digital edition of <i>Commands &amp; Colors: Ancients</i>, designed by Richard Borg and published by GMT Games. Commands &amp; Colors is a trademark of GMT Games LLC. This edition uses original artwork and paraphrased rules text; it is not affiliated with or endorsed by GMT Games.</p>
+          <p>Scenario setups follow the base game's 15 battles as documented by the community at commandsandcolors.net.</p>
+          <p><b>Fonts:</b> Cinzel (Natanael Gama) and EB Garamond (Georg Duffner, Octavio Pardo) — SIL Open Font License 1.1.</p>
+          <p><b>Icons:</b> game-icons.net by Lorc and Delapouite — CC BY 3.0 (see CREDITS.md for the full list).</p>
+          <p><b>Miniatures, terrain, cards and dice:</b> original SVG artwork made for this edition.</p>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+function SetupPreview({ state, flipped, humanSide }: { state: GameState; flipped: boolean; humanSide: Side }) {
+  const top = flipped ? 'bottom' : 'top';
+  const bottom = flipped ? 'top' : 'bottom';
+  return (
+    <svg className="preview-svg" viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}>
+      <BoardArt terrain={state.terrain} fords={state.fords} flipped={flipped} topLabel={state.players[top].army} bottomLabel={state.players[bottom].army} />
+      {state.units.map((u) => {
+        const { x, y } = hexCenterId(u.hex, flipped);
+        return (
+          <g key={u.id} transform={`translate(${x}, ${y})`}>
+            <UnitToken type={u.type} faction={state.players[u.side].faction} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={u.side === humanSide ? 'right' : 'left'} sacredBand={u.sacredBand} />
+          </g>
+        );
+      })}
+      {state.leaders.map((l) => {
+        const { x, y } = hexCenterId(l.hex, flipped);
+        const att = !!leaderUnit(state, l);
+        return (
+          <g key={l.id} transform={`translate(${x + (att ? LEADER_ATTACH_OFFSET.x : 0)}, ${y + (att ? LEADER_ATTACH_OFFSET.y : 0)})`}>
+            <LeaderToken faction={state.players[l.side].faction} facing={l.side === humanSide ? 'right' : 'left'} attached={att} name={l.name} showName={!att} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+const DIFFS: { id: Difficulty; name: string; text: string }[] = [
+  { id: 'recruit', name: 'Recruit', text: 'A forgiving opponent that makes mistakes.' },
+  { id: 'tribune', name: 'Tribune', text: 'A capable general. Recommended.' },
+  { id: 'consul', name: 'Consul', text: 'Thinks deeper and punishes errors.' },
+];
+
+export function ScenarioSelect(p: { onBack: () => void; onStart: (scenarioId: string, side: Side, difficulty: Difficulty) => void }) {
+  const [sel, setSel] = useState<ScenarioInfo>(SCENARIOS[0]);
+  const [side, setSide] = useState<Side>('bottom');
+  const [diff, setDiff] = useState<Difficulty>(() => {
+    try {
+      return (localStorage.getItem('cca-difficulty') as Difficulty) || 'tribune';
+    } catch {
+      return 'tribune';
+    }
+  });
+  const preview = useMemo(() => createGame(sel.setup, 1), [sel]);
+  const armies = { top: sel.setup.top, bottom: sel.setup.bottom };
+  const start = () => {
+    try {
+      localStorage.setItem('cca-difficulty', diff);
+    } catch {
+      /* ignore */
+    }
+    p.onStart(sel.id, side, diff);
+  };
+  return (
+    <div className="select-root">
+      <div className="select-list">
+        <div className="select-head">
+          <Button variant="ghost" onClick={p.onBack}>← Back</Button>
+          <h2>Choose a Battle</h2>
+        </div>
+        <div className="select-scroll">
+          {SCENARIOS.map((s) => (
+            <button key={s.id} className={`scen-item ${s.id === sel.id ? 'active' : ''}`} onClick={() => setSel(s)}>
+              <span className="scen-num">{Number(s.id)}</span>
+              <span className="scen-name">{s.name}</span>
+              <span className="scen-year">{s.year}</span>
+              <span className="scen-hint">{s.difficultyHint}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="select-detail">
+        <Panel variant="parchment" className="brief">
+          <div className="brief-title">{sel.name} <span>{sel.year}</span></div>
+          <p className="brief-blurb">{sel.blurb}</p>
+          <div className="brief-facts">
+            <span>{sel.setup.banners} banners to win</span>
+            <span>{armies[sel.setup.first].army} move first</span>
+            <span>{armies.top.army}: {armies.top.cards} cards · {armies.bottom.army}: {sel.id === '006' ? '2→4' : armies.bottom.cards} cards</span>
+          </div>
+          {sel.specialText.length > 0 && (
+            <ul className="brief-special">
+              {sel.specialText.map((t) => <li key={t}>{t}</li>)}
+            </ul>
+          )}
+        </Panel>
+        <div className="preview-wrap">
+          <SetupPreview state={preview} flipped={side === 'top'} humanSide={side} />
+        </div>
+        <div className="choose-row">
+          <div className="choose-group">
+            <div className="choose-label">Command the</div>
+            {(['bottom', 'top'] as Side[]).map((sd) => (
+              <button key={sd} className={`choice ${side === sd ? 'active' : ''}`} onClick={() => setSide(sd)}>
+                <b>{armies[sd].army}</b>
+                <small>{armies[sd].commander}</small>
+              </button>
+            ))}
+          </div>
+          <div className="choose-group">
+            <div className="choose-label">Opponent</div>
+            {DIFFS.map((d) => (
+              <button key={d.id} className={`choice ${diff === d.id ? 'active' : ''}`} onClick={() => setDiff(d.id)} title={d.text}>
+                <b>{d.name}</b>
+                <small>{d.text}</small>
+              </button>
+            ))}
+          </div>
+          <Button className="start-btn" onClick={start}>To Battle!</Button>
+        </div>
+      </div>
+    </div>
+  );
+}

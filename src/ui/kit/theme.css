@@ -1,0 +1,94 @@
+/* Commands & Colors: Ancients UI kit - design tokens (mirrors theme.ts). */
+:root {
+  --kit-font-title: 'Cinzel', 'Trajan Pro', 'Times New Roman', serif;
+  --kit-font-body: 'EB Garamond', Garamond, 'Times New Roman', serif;
+
+  --kit-wood: #2a1a10;
+  --kit-wood-dark: #160d07;
+  --kit-wood-light: #4a2e1a;
+  --kit-leather: #3a2216;
+  --kit-leather-dark: #22130b;
+  --kit-leather-light: #5a3622;
+  --kit-parchment: #f0e3c2;
+  --kit-parchment-light: #f8efd7;
+  --kit-parchment-dark: #d9c393;
+  --kit-ink: #2b1d12;
+  --kit-ink-soft: #5a4630;
+  --kit-bronze: #b0823a;
+  --kit-bronze-light: #e2bd72;
+  --kit-bronze-dark: #6e4b1c;
+  --kit-gold: #e8c45a;
+  --kit-crimson: #8e1b1b;
+  --kit-royal: #22457f;
+  --kit-purple: #55235f;
+  --kit-olive: #6b6a2a;
+  --kit-felt: #1d3127;
+  --kit-hit: #f0c94e;
+  --kit-flag: #e3801f;
+
+  --kit-die-light: #2f8a3a;
+  --kit-die-medium: #2453a6;
+  --kit-die-heavy: #b3261e;
+  --kit-die-ivory: #f6efdc;
+
+  --kit-rome: #9b1f1c;
+  --kit-carthage: #6a1e5c;
+  --kit-syracuse: #1f417e;
+
+  --kit-group-section: #6f6526;
+  --kit-group-troop: #8c1d1b;
+  --kit-group-leadership: #22457f;
+  --kit-group-tactic: #55235f;
+
+  --kit-radius-sm: 4px;
+  --kit-radius-md: 8px;
+  --kit-radius-lg: 14px;
+  --kit-shadow-soft: 0 2px 6px rgba(0, 0, 0, .35);
+  --kit-shadow-lifted: 0 14px 28px rgba(0, 0, 0, .55), 0 4px 10px rgba(0, 0, 0, .4);
+
+  /* Metallic bronze used for rims, frames and ornaments. */
+  --kit-bronze-metal: linear-gradient(135deg, #7a5320 0%, #d8b064 22%, #f3dc9a 34%, #a8782f 52%, #6e4b1c 68%, #c79d50 86%, #8a6226 100%);
+  --kit-gold-metal: linear-gradient(180deg, #fbe7a6 0%, #e0b85a 45%, #a87c2c 100%);
+
+  /* Procedural textures (SVG turbulence, no image assets). */
+  --kit-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n' x='0' y='0'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .30  0 0 0 0 .20  0 0 0 0 .08  .55 0 0 0 -.2'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>");
+  --kit-mottle: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='500' height='500'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='4' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .30  0 0 0 0 .10  .9 0 0 0 -.38'/></filter><rect width='500' height='500' filter='url(%23n)'/></svg>");
+  --kit-woodgrain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1000' height='300'><filter id='w' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.006 .14' numOctaves='4' seed='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .05  0 0 0 0 .03  0 0 0 0 .01  1.1 0 0 0 -.35'/></filter><rect width='1000' height='300' filter='url(%23w)'/></svg>");
+  --kit-leather-tex: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='l' x='0' y='0'><feTurbulence type='turbulence' baseFrequency='.55' numOctaves='2' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  .5 0 0 0 -.12'/></filter><rect width='200' height='200' filter='url(%23l)'/></svg>");
+
+  --kit-parchment-bg:
+    radial-gradient(120% 90% at 50% 40%, rgba(255, 250, 232, .55) 0%, rgba(255, 250, 232, 0) 60%),
+    radial-gradient(140% 120% at 50% 50%, rgba(0, 0, 0, 0) 55%, rgba(120, 80, 30, .28) 100%),
+    var(--kit-mottle),
+    var(--kit-grain),
+    linear-gradient(175deg, #f4e8ca 0%, #ecdcb5 55%, #e2cd9f 100%);
+}
+
+/* The tabletop: dark wood planks under a leather vignette. */
+.kit-table {
+  background:
+    radial-gradient(130% 90% at 50% 0%, rgba(255, 200, 140, .10) 0%, rgba(0, 0, 0, 0) 55%),
+    radial-gradient(150% 120% at 50% 50%, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, .55) 100%),
+    var(--kit-woodgrain),
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 118px, rgba(0, 0, 0, .35) 119px, rgba(255, 220, 170, .05) 121px, rgba(0, 0, 0, 0) 122px),
+    linear-gradient(180deg, #33200f 0%, #2a190c 50%, #241509 100%);
+  background-color: var(--kit-wood);
+  color: var(--kit-parchment);
+  font-family: var(--kit-font-body);
+}
+
+.kit-leather {
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(255, 210, 160, .10) 0%, rgba(0, 0, 0, 0) 60%),
+    radial-gradient(140% 120% at 50% 50%, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, .45) 100%),
+    var(--kit-leather-tex),
+    var(--kit-grain),
+    linear-gradient(170deg, #4a2c1b 0%, #3a2216 60%, #2e1a10 100%);
+  background-color: var(--kit-leather);
+}
+
+.kit-parchment {
+  background: var(--kit-parchment-bg);
+  background-color: var(--kit-parchment);
+  color: var(--kit-ink);
+}

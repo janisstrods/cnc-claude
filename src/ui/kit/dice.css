@@ -1,0 +1,213 @@
+/* ------------------------------------------------------------------ */
+/* Dice                                                                */
+/* ------------------------------------------------------------------ */
+
+.kit-die {
+  --die-size: 44px;
+  --die-delay: 0s;
+  position: relative;
+  flex: none;
+  width: var(--die-size);
+  height: var(--die-size);
+  font-size: calc(var(--die-size) / 10);
+  transition: opacity .3s ease, filter .3s ease;
+}
+
+.kit-die__shadow {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -9%;
+  height: 22%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, .55), rgba(0, 0, 0, 0));
+}
+
+.kit-die__body {
+  position: absolute;
+  inset: 0;
+  border-radius: 22%;
+  background:
+    radial-gradient(110% 110% at 28% 18%, #fffdf7 0%, #f8f1df 40%, #ebe0c4 78%, #d9caa5 100%);
+  box-shadow:
+    inset 0 .12em .08em rgba(255, 255, 255, .95),
+    inset 0 -.32em .4em rgba(150, 122, 72, .42),
+    inset .2em 0 .3em rgba(255, 255, 255, .35),
+    inset 0 0 0 .05em rgba(120, 95, 55, .45),
+    0 .26em 0 #bba984,
+    0 .28em 0 .03em rgba(80, 60, 30, .55);
+  transition: box-shadow .3s ease, transform .3s ease;
+}
+
+.kit-die__sym {
+  position: absolute;
+  inset: 9%;
+  width: 82%;
+  height: 82%;
+  overflow: visible;
+}
+
+/* Resolved states. */
+.kit-die.is-hit .kit-die__body {
+  box-shadow:
+    inset 0 .12em .08em rgba(255, 255, 255, .95),
+    inset 0 -.32em .4em rgba(150, 122, 72, .42),
+    inset 0 0 0 .05em rgba(120, 95, 55, .45),
+    0 .26em 0 #bba984,
+    0 0 0 .1em #f8d878,
+    0 0 0 .17em rgba(150, 100, 20, .7),
+    0 0 1.1em .35em rgba(250, 205, 80, .85);
+  animation: kit-die-pop .45s cubic-bezier(.2, .9, .3, 1.4) both;
+}
+.kit-die.is-flag .kit-die__body {
+  box-shadow:
+    inset 0 .12em .08em rgba(255, 255, 255, .95),
+    inset 0 -.32em .4em rgba(150, 122, 72, .42),
+    inset 0 0 0 .05em rgba(120, 95, 55, .45),
+    0 .26em 0 #bba984,
+    0 0 0 .13em var(--kit-flag),
+    0 0 .6em .12em rgba(227, 128, 31, .6);
+}
+.kit-die.is-miss {
+  opacity: .5;
+  filter: grayscale(.85) brightness(.8) contrast(.85);
+}
+
+@keyframes kit-die-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+/* Rolling: the die tumbles while the faces flicker through all six symbols. */
+.kit-die.is-rolling .kit-die__body {
+  animation: kit-die-tumble .68s cubic-bezier(.45, .05, .55, .95) infinite;
+  animation-delay: var(--die-delay);
+}
+.kit-die.is-rolling .kit-die__shadow {
+  animation: kit-die-shadow .68s cubic-bezier(.45, .05, .55, .95) infinite;
+  animation-delay: var(--die-delay);
+}
+.kit-die__layer { opacity: 0; }
+.kit-die.is-rolling .kit-die__layer {
+  animation: kit-die-cycle .54s step-end infinite;
+  animation-delay: calc(var(--i) * .09s - .54s + var(--die-delay));
+}
+
+@keyframes kit-die-cycle {
+  0% { opacity: 1; }
+  16.667% { opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes kit-die-tumble {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  22% { transform: translate(6%, -26%) rotate(-38deg) scale(.9, .96); }
+  48% { transform: translate(-4%, -8%) rotate(-96deg) scale(1.02, .92); }
+  70% { transform: translate(3%, -20%) rotate(-150deg) scale(.94); }
+  100% { transform: translate(0, 0) rotate(-180deg) scale(1); }
+}
+@keyframes kit-die-shadow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  22% { transform: scale(.7); opacity: .55; }
+  48% { transform: scale(.92); opacity: .85; }
+  70% { transform: scale(.75); opacity: .6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kit-die.is-rolling .kit-die__body,
+  .kit-die.is-rolling .kit-die__shadow { animation: none; }
+  .kit-die.is-hit .kit-die__body { animation: none; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Dice tray                                                           */
+/* ------------------------------------------------------------------ */
+
+.kit-tray {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 260px;
+  padding: 10px 12px 12px;
+  border-radius: 14px;
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgba(255, 210, 150, .14) 0%, rgba(0, 0, 0, 0) 55%),
+    var(--kit-woodgrain),
+    linear-gradient(180deg, #5a3720 0%, #3f2513 55%, #2e1a0c 100%);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, .65),
+    inset 0 1px 0 rgba(255, 220, 170, .25),
+    inset 0 -2px 4px rgba(0, 0, 0, .45),
+    0 10px 24px rgba(0, 0, 0, .55);
+}
+.kit-tray::before,
+.kit-tray::after {
+  content: '';
+  position: absolute;
+  top: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fbe3a0, #b48535 55%, #5e3e12);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .6);
+}
+.kit-tray::before { left: 9px; }
+.kit-tray::after { right: 9px; }
+
+.kit-tray__head {
+  padding: 1px 16px 9px;
+  text-align: center;
+}
+.kit-tray__title {
+  font-family: var(--kit-font-title);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: .06em;
+  color: #f1dca6;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .8);
+}
+.kit-tray__sub {
+  margin-top: 2px;
+  font-family: var(--kit-font-body);
+  font-style: italic;
+  font-size: 15px;
+  color: #d9c497;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .7);
+}
+.kit-tray__sub.has-hits { color: #f6d67a; }
+
+.kit-tray__felt {
+  position: relative;
+  border-radius: 9px;
+  padding: 16px 18px 20px;
+  background:
+    radial-gradient(90% 120% at 50% 30%, rgba(120, 170, 130, .16) 0%, rgba(0, 0, 0, 0) 60%),
+    var(--kit-grain),
+    linear-gradient(180deg, #213b2d 0%, #1b3125 60%, #15271d 100%);
+  box-shadow:
+    inset 0 4px 10px rgba(0, 0, 0, .7),
+    inset 0 0 0 1px rgba(0, 0, 0, .6),
+    0 1px 0 rgba(255, 220, 170, .18);
+}
+.kit-tray__felt::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 6px;
+  border: 1px dashed rgba(214, 186, 120, .35);
+  pointer-events: none;
+}
+.kit-tray__dice {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px 14px;
+  min-height: 46px;
+}
+.kit-tray__empty {
+  align-self: center;
+  font-style: italic;
+  color: rgba(230, 215, 180, .5);
+}

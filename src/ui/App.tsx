@@ -1,4 +1,10 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import type { Side } from '../engine';
+import { GameController, clearSaved, loadSaved, newSessionConfig, type Difficulty, type SavedGame, type SessionConfig } from './game/controller';
+import { GameScreen } from './game/GameScreen';
+import { makeOpponent } from './game/makeOpponent';
+import { MainMenu, ScenarioSelect } from './screens/Menus';
+import './kit';
 
 const ArtGallery = lazy(() => import('../dev/ArtGallery'));
 const TerrainGallery = lazy(() => import('../dev/TerrainGallery'));
@@ -14,12 +20,65 @@ function useHash(): string {
   return hash;
 }
 
+type Screen = { kind: 'menu' } | { kind: 'select' } | { kind: 'game'; controller: GameController };
+
+function startController(config: SessionConfig, answers: SavedGame['answers'] = []): GameController {
+  return new GameController(config, makeOpponent(config), answers);
+}
+
 export function App() {
   const hash = useHash();
-  let page: JSX.Element;
-  if (hash.startsWith('#/gallery/art')) page = <ArtGallery />;
-  else if (hash.startsWith('#/gallery/terrain')) page = <TerrainGallery />;
-  else if (hash.startsWith('#/gallery/kit')) page = <KitGallery />;
-  else page = <div style={{ fontFamily: 'Cinzel', padding: 40 }}>Commands &amp; Colors: Ancients</div>;
-  return <Suspense fallback={null}>{page}</Suspense>;
+  const [screen, setScreen] = useState<Screen>({ kind: 'menu' });
+  const devStarted = useRef(false);
+  useEffect(() => {
+    // Dev shortcut: #/play/<scenario>/<top|bottom>/<difficulty>[/<seed>] starts a battle directly.
+    if (devStarted.current) return;
+    const m = window.location.hash.match(/^#\/play\/(\d{3})\/(top|bottom)\/(recruit|tribune|consul)(?:\/(\d+))?/);
+    if (!m) return;
+    devStarted.current = true;
+    const cfg = newSessionConfig(m[1], m[2] as Side, m[3] as Difficulty);
+    if (m[4]) cfg.seed = Number(m[4]);
+    setScreen({ kind: 'game', controller: startController(cfg) });
+  }, []);
+  const [saved, setSaved] = useState<SavedGame | null>(() => loadSaved());
+
+
+  if (hash.startsWith('#/gallery/art')) return <Suspense fallback={null}><ArtGallery /></Suspense>;
+  if (hash.startsWith('#/gallery/terrain')) return <Suspense fallback={null}><TerrainGallery /></Suspense>;
+  if (hash.startsWith('#/gallery/kit')) return <Suspense fallback={null}><KitGallery /></Suspense>;
+
+  const toMenu = () => {
+    if (screen.kind === 'game') screen.controller.dispose();
+    setSaved(loadSaved());
+    setScreen({ kind: 'menu' });
+  };
+
+  if (screen.kind === 'game') return <GameScreen key={screen.controller.config.seed} controller={screen.controller} onExit={toMenu} />;
+  if (screen.kind === 'select') {
+    return (
+      <ScenarioSelect
+        onBack={toMenu}
+        onStart={(id: string, side: Side, diff: Difficulty) => {
+          clearSaved();
+          setScreen({ kind: 'game', controller: startController(newSessionConfig(id, side, diff)) });
+        }}
+      />
+    );
+  }
+  return (
+    <MainMenu
+      saved={saved}
+      onNew={() => setScreen({ kind: 'select' })}
+      onContinue={() => {
+        if (!saved) return;
+        try {
+          setScreen({ kind: 'game', controller: startController(saved.config, saved.answers) });
+        } catch (e) {
+          console.error('Could not resume', e);
+          clearSaved();
+          setSaved(null);
+        }
+      }}
+    />
+  );
 }
