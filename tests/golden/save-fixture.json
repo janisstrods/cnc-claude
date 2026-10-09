@@ -1,0 +1,328 @@
+{
+ "scenarioId": "007",
+ "seed": 17,
+ "answers": [
+  {
+   "kind": "playCard",
+   "card": 30
+  },
+  {
+   "kind": "orders",
+   "pieces": [
+    "u20",
+    "u32",
+    "u26",
+    "u29"
+   ]
+  },
+  {
+   "kind": "move",
+   "piece": "u26",
+   "to": 73
+  },
+  {
+   "kind": "move",
+   "piece": "u20",
+   "to": 107
+  },
+  {
+   "kind": "move",
+   "piece": "u29",
+   "to": 108
+  },
+  {
+   "kind": "move",
+   "piece": "u32",
+   "to": 87
+  },
+  {
+   "kind": "playCard",
+   "card": 28
+  },
+  {
+   "kind": "orders",
+   "pieces": [
+    "u2",
+    "u14",
+    "u13",
+    "u16",
+    "u1",
+    "u3"
+   ]
+  },
+  {
+   "kind": "move",
+   "piece": "u16",
+   "to": 8
+  },
+  {
+   "kind": "endMove"
+  },
+  {
+   "kind": "playCard",
+   "card": 40
+  },
+  {
+   "kind": "orders",
+   "pieces": [
+    "L36",
+    "u22",
+    "u29",
+    "u20",
+    "u30"
+   ]
+  },
+  {
+   "kind": "move",
+   "piece": "u20",
+   "to": 105
+  },
+  {
+   "kind": "move",
+   "piece": "u30",
+   "to": 110
+  },
+  {
+   "kind": "move",
+   "piece": "u29",
+   "to": 107
+  },
+  {
+   "kind": "endMove"
+  },
+  {
+   "kind": "playCard",
+   "card": 34
+  },
+  {
+   "kind": "orders",
+   "pieces": [
+    "u9",
+    "u7",
+    "u6",
+    "u5",
+    "u4"
+   ]
+  },
+  {
+   "kind": "move",
+   "piece": "u5",
+   "to": 3
+  },
+  {
+   "kind": "move",
+   "piece": "u7",
+   "to": 10
+  },
+  {
+   "kind": "move",
+   "piece": "u6",
+   "to": 20
+  },
+  {
+   "kind": "endMove"
+  },
+  {
+   "kind": "playCard",
+   "card": 58
+  },
+  {
+   "kind": "orders",
+   "pieces": [
+    "u20",
+    "u27",
+    "u29",
+    "u26"
+   ]
+  },
+  {
+   "kind": "move",
+   "piece": "u26",
+   "to": 74
+  },
+  {
+   "kind": "move",
+   "piece": "u29",
+   "to": 106
+  },
+  {
+   "kind": "move",
+   "piece": "u20",
+   "to": 107
+  },
+  {
+   "kind": "move",
+   "piece": "u27",
+   "to": 99
+  },
+  {
+   "kind": "move",
+   "piece": "u26",
+   "to": 76
+  },
+  {
+   "kind": "move",
+   "piece": "u27",
+   "to": 114
+  },
+  {
+   "kind": "move",
+   "piece": "u29",
+   "to": 81
+  },
+  {
+   "kind": "move",
+   "piece": "u20",
+   "to": 109
+  },
+  {
+   "kind": "playCard",
+   "card": 13
+  },
+  {
+   "kind": "orders",
+   "pieces": [
+    "u13",
+    "u16",
+    "u6"
+   ]
+  },
+  {
+   "kind": "move",
+   "piece": "u6",
+   "to": 21
+  },
+  {
+   "kind": "move",
+   "piece": "u13",
+   "to": 45
+  },
+  {
+   "kind": "move",
+   "piece": "u16",
+   "to": 22
+  },
+  {
+   "kind": "attack",
+   "unit": "u13",
+   "target": 83
+  },
+  {
+   "kind": "ignoreFlags",
+   "count": 1
+  },
+  {
+   "kind": "playCard",
+   "card": 29
+  },
+  {
+   "kind": "orders",
+   "pieces": [
+    "u18",
+    "u26",
+    "u20",
+    "u32"
+   ]
+  },
+  {
+   "kind": "move",
+   "piece": "u20",
+   "to": 84
+  },
+  {
+   "kind": "move",
+   "piece": "u18",
+   "to": 112
+  },
+  {
+   "kind": "move",
+   "piece": "u32",
+   "to": 100
+  },
+  {
+   "kind": "move",
+   "piece": "u26",
+   "to": 90
+  },
+  {
+   "kind": "playCard",
+   "card": 4
+  },
+  {
+   "kind": "orders",
+   "pieces": [
+    "u12",
+    "u15"
+   ]
+  },
+  {
+   "kind": "move",
+   "piece": "u12",
+   "to": 6
+  },
+  {
+   "kind": "move",
+   "piece": "u15",
+   "to": 46
+  },
+  {
+   "kind": "playCard",
+   "card": 12
+  },
+  {
+   "kind": "orders",
+   "pieces": [
+    "u29",
+    "u21",
+    "u19"
+   ]
+  },
+  {
+   "kind": "move",
+   "piece": "u19",
+   "to": 80
+  },
+  {
+   "kind": "move",
+   "piece": "u21",
+   "to": 107
+  },
+  {
+   "kind": "move",
+   "piece": "u29",
+   "to": 68
+  },
+  {
+   "kind": "playCard",
+   "card": 41
+  },
+  {
+   "kind": "orders",
+   "pieces": [
+    "L35",
+    "u9",
+    "u8",
+    "u7"
+   ]
+  },
+  {
+   "kind": "move",
+   "piece": "u9",
+   "to": 12
+  },
+  {
+   "kind": "move",
+   "piece": "u8",
+   "to": 64
+  },
+  {
+   "kind": "move",
+   "piece": "u7",
+   "to": 9
+  },
+  {
+   "kind": "playCard",
+   "card": 45
+  }
+ ]
+}
