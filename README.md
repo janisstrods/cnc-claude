@@ -32,6 +32,22 @@ Then open http://localhost:5173. Other scripts:
    the main menu.
 
 **Rules** in the top bar opens a full reference (units, dice, terrain, every card). Hover any unit for its stats.
+Keys: **1–9** pick a card, **Enter** confirms, **Esc** clears a selection; click the board to hurry animations.
+
+## The computer general
+
+The AI (`src/ai`, running in a Web Worker) plans each turn by building candidate orders and movements for every card
+in its hand, then plays each plan through the real rules engine many times with freshly rolled dice (it never peeks at
+your cards, the deck or the dice). It scores the outcomes with a threat-aware evaluation — banners, unit strength,
+support, leader safety, retreat paths, terrain and scenario objectives — and keeps strong cards for the right moment.
+Each historical commander has a temperament (Hannibal *the Fox*, Varro *the Bull*, Scipio *the Strategist*, …)
+that shapes how boldly he fights and what he says in the battle log; you can pick a different one before the battle.
+
+| Level | Character |
+|---|---|
+| Recruit | Shallow search, noisy judgement, occasional careless reactions |
+| Tribune | Full search (default) |
+| Consul | Widest search and the most combat rollouts |
 
 ## Project layout
 
