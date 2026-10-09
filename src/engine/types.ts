@@ -120,6 +120,7 @@ export interface TurnState {
   mods: OrderMods;
   firstStrikeBy: Side | null; // defender who played First Strike this turn (draws first)
   reshuffleAfter: boolean; // I Am Spartacus
+  ambushSection: SectionName | null; // Trebbia: section where Mago's force enters this turn
 }
 
 export type SpecialRuleId =
@@ -251,4 +252,6 @@ export type GameEvent =
 /** Emitter passed through engine generators. */
 export interface FlowCtx {
   emit(e: GameEvent): void;
+  /** Called when an answer is rejected (the same decision is asked again). */
+  invalid?(msg: string): void;
 }
