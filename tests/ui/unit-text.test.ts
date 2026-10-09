@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ELITES, UNIT_STATS, UNIT_TYPES, type Leader, type LeaderTrait, type Unit, type UnitStats, type UnitType } from '../../src/engine';
 import { leaderTraitLines, unitCardLines, unitSummary } from '../../src/ui/game/uiModel';
-import { Units } from '../../src/ui/screens/RulesReference';
+import { EXP1_UNIT_TYPES, Expansion, Units } from '../../src/ui/screens/RulesReference';
 
 const unit = (t: UnitType, extra: Partial<Unit> = {}): Unit =>
   ({ id: 'u1', side: 'top', type: t, hex: 0, blocks: UNIT_STATS[t].blocks, maxBlocks: UNIT_STATS[t].blocks, ...extra }) as Unit;
@@ -34,7 +34,7 @@ const TOOLTIP: Record<UnitType, string[]> = {
     'Move 3 · Retreat 3/flag',
     'Close combat 3 (2 battling back) dice',
     'Can evade foot & heavy mounted',
-    'Ignores 1 blue-triangle hit when cavalry or chariots roll against it',
+    'Ignores 1 blue-triangle hit when cavalry or chariots roll against it · frightens horses (+1 retreat hex per flag)',
   ],
   HWM: [
     'Move 1, no battle after moving · Retreat 1/flag',
@@ -129,7 +129,7 @@ describe('leader tooltip (leaderTraitLines)', () => {
   it('lists the leader traits; an ordinary leader has none', () => {
     expect(leaderTraitLines(leader())).toEqual([]);
     expect(leaderTraitLines(leader(['ccBonus']))).toEqual(['+1 close combat die to his unit']);
-    expect(leaderTraitLines(leader(['attachedOnly']))).toEqual(['Commands only his own unit']);
+    expect(leaderTraitLines(leader(['attachedOnly']))).toEqual(['Satrap: commands only his own unit; his helmets help only that unit']);
   });
 });
 
@@ -181,11 +181,29 @@ describe('generated hit/flag-ignore text versus cavalry and chariots', () => {
 });
 
 describe('rules reference unit cards', () => {
-  it('base-game types keep their hand-written lines; Expansion #1 types are generated the same way', () => {
-    const html = renderToStaticMarkup(createElement(Units));
+  /** [stats, notes] pairs of the unit cards a component renders. */
+  const cardsOf = (c: () => JSX.Element) => {
+    const html = renderToStaticMarkup(createElement(c));
     const lines = [...html.matchAll(/<div class="unit-card-line(?: muted)?">([\s\S]*?)<\/div>/g)].map((m) => m[1].replace(/<[^>]*>/g, ''));
-    const cards = UNIT_TYPES.map((t, i) => [t, lines[2 * i], lines[2 * i + 1]]);
-    expect(lines).toHaveLength(2 * UNIT_TYPES.length);
-    expect(cards).toEqual(UNIT_TYPES.map((t) => [t, ...REFERENCE[t]]));
+    return Array.from({ length: lines.length / 2 }, (_, i) => [lines[2 * i], lines[2 * i + 1]]);
+  };
+
+  it('the Units tab keeps the base-game types and their hand-written lines', () => {
+    const base = UNIT_TYPES.filter((t) => !EXP1_UNIT_TYPES.includes(t));
+    expect(base).toEqual(['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI', 'LC', 'MC', 'HC', 'EL', 'HCH']);
+    expect(cardsOf(Units)).toEqual(base.map((t) => REFERENCE[t]));
+  });
+
+  it('the Expansion #1 tab shows the three new types, generated the same way', () => {
+    expect([...EXP1_UNIT_TYPES].sort()).toEqual(['CAM', 'HWM', 'LBC']);
+    expect(cardsOf(Expansion)).toEqual(EXP1_UNIT_TYPES.map((t) => REFERENCE[t]));
+  });
+
+  it('the Expansion #1 tab lists every elite preset and both leader traits', () => {
+    const text = renderToStaticMarkup(createElement(Expansion)).replace(/<[^>]*>/g, ' ');
+    for (const e of Object.values(ELITES)) expect(text, e.id).toContain(e.name);
+    expect(text).toContain('Alexander');
+    expect(text).toContain('satrap');
+    for (const t of ['Sea', 'Rampart', 'Ford, no dice limit', 'Tactical Flexibility', 'Hellespont', 'Asculum']) expect(text).toContain(t);
   });
 });

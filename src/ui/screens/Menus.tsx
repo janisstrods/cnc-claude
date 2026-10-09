@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { UNIT_STATS, createGame, leaderUnit, type GameState, type Side, type UnitType } from '../../engine';
-import { SCENARIOS, type ScenarioInfo } from '../../scenarios';
+import { UNIT_STATS, createGame, leaderUnit, type GameOptions, type GameState, type Side, type UnitType } from '../../engine';
+import { SCENARIOS, type Expansion, type ScenarioInfo } from '../../scenarios';
 import { LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
 import { BoardArt } from '../terrain';
 import { Button, Icon, Modal, Panel } from '../kit';
@@ -8,6 +8,10 @@ import { BOARD_H, BOARD_W, hexCenterId } from '../geometry';
 import type { Difficulty, SavedGame } from '../game/controller';
 import { PERSONALITIES, personalityFor } from '../../ai';
 import { RulesReference } from './RulesReference';
+import {
+  OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue, saveOptionChoice,
+  savePickerTab,
+} from './picker';
 import './screens.css';
 
 const MENU_ARMY_L: UnitType[] = ['HI', 'MI', 'LC'];
@@ -28,7 +32,7 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
         </div>
         <h1 className="menu-title">Commands &amp; Colors</h1>
         <div className="menu-sub">ANCIENTS</div>
-        <p className="menu-tag">Rome and Carthage, 406–202 BC · fifteen historical battles</p>
+        <p className="menu-tag">From Marathon to Pydna, 490–168 BC · 39 historical battles: the base game and Expansion #1</p>
         <div className="menu-armies" aria-hidden>
           <svg viewBox="-52 -48 524 96" width="620" height="114">
             {MENU_ARMY_L.map((t, i) => (
@@ -60,6 +64,7 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
         <div className="credits">
           <p>An unofficial, fan-made digital edition of <i>Commands &amp; Colors: Ancients</i>, designed by Richard Borg and published by GMT Games. Commands &amp; Colors is a trademark of GMT Games LLC. This edition uses original artwork and paraphrased rules text; it is not affiliated with or endorsed by GMT Games.</p>
           <p>Scenario setups follow the base game's 15 battles as documented by the community at commandsandcolors.net.</p>
+          <p><b>Expansion #1</b>, <i>Greece &amp; Eastern Kingdoms</i>: its 24 battles (101–124) were transcribed hex by hex from the official battle maps published at commandsandcolors.net (122–124 from GMT's Bonus Pack #2). Its rules are paraphrased, its battle summaries original, and its armies drawn as original artwork.</p>
           <p><b>Fonts:</b> Cinzel (Natanael Gama) and EB Garamond (Georg Duffner, Octavio Pardo) — SIL Open Font License 1.1.</p>
           <p><b>Icons:</b> game-icons.net by Lorc and Delapouite — CC BY 3.0 (see CREDITS.md for the full list).</p>
           <p><b>Miniatures, terrain, cards and dice:</b> original SVG artwork made for this edition.</p>
@@ -103,8 +108,22 @@ const DIFFS: { id: Difficulty; name: string; text: string }[] = [
   { id: 'consul', name: 'Consul', text: 'Thinks deeper and punishes errors.' },
 ];
 
-export function ScenarioSelect(p: { onBack: () => void; onStart: (scenarioId: string, side: Side, difficulty: Difficulty, personality?: string) => void }) {
-  const [sel, setSel] = useState<ScenarioInfo>(SCENARIOS[0]);
+export function ScenarioSelect(p: {
+  onBack: () => void;
+  onStart: (scenarioId: string, side: Side, difficulty: Difficulty, personality?: string, options?: GameOptions) => void;
+}) {
+  const [tab, setTab] = useState<Expansion>(() => loadPickerTab());
+  const battles = useMemo(() => battlesOf(SCENARIOS, tab), [tab]);
+  const [sel, setSel] = useState<ScenarioInfo>(() => battles[0] ?? SCENARIOS[0]);
+  const [choices, setChoices] = useState<GameOptions>(() => loadOptionChoices());
+  const offered = offeredOptions(sel);
+  const switchTab = (t: Expansion) => {
+    if (t === tab) return;
+    setTab(t);
+    savePickerTab(t);
+    const first = battlesOf(SCENARIOS, t)[0];
+    if (first) setSel(first);
+  };
   const [side, setSide] = useState<Side>('bottom');
   const [diff, setDiff] = useState<Difficulty>(() => {
     try {
@@ -124,7 +143,7 @@ export function ScenarioSelect(p: { onBack: () => void; onStart: (scenarioId: st
     } catch {
       /* ignore */
     }
-    p.onStart(sel.id, side, diff, persona || undefined);
+    p.onStart(sel.id, side, diff, persona || undefined, chosenOptions(sel, choices));
   };
   return (
     <div className="select-root">
@@ -133,8 +152,15 @@ export function ScenarioSelect(p: { onBack: () => void; onStart: (scenarioId: st
           <Button variant="ghost" onClick={p.onBack}>← Back</Button>
           <h2>Choose a Battle</h2>
         </div>
-        <div className="select-scroll">
-          {SCENARIOS.map((s) => (
+        <div className="select-tabs" role="tablist">
+          {PICKER_TABS.map((t) => (
+            <button key={t.id} role="tab" aria-selected={t.id === tab} className={t.id === tab ? 'active' : ''} onClick={() => switchTab(t.id)}>
+              {t.label} <small>{battlesOf(SCENARIOS, t.id).length}</small>
+            </button>
+          ))}
+        </div>
+        <div className="select-scroll" key={tab}>
+          {battles.map((s) => (
             <button key={s.id} className={`scen-item ${s.id === sel.id ? 'active' : ''}`} onClick={() => setSel(s)}>
               <span className="scen-num">{Number(s.id)}</span>
               <span className="scen-name">{s.name}</span>
@@ -157,6 +183,23 @@ export function ScenarioSelect(p: { onBack: () => void; onStart: (scenarioId: st
             <ul className="brief-special">
               {sel.specialText.map((t) => <li key={t}>{t}</li>)}
             </ul>
+          )}
+          {offered.length > 0 && (
+            <div className="brief-options">
+              <div className="brief-options-label">Optional rules</div>
+              {offered.map((id) => {
+                const on = optionValue(sel, id, choices);
+                return (
+                  <label key={id} className={`opt-toggle ${on ? 'on' : ''}`}>
+                    <input type="checkbox" checked={on} onChange={() => setChoices(saveOptionChoice(choices, id, !on))} />
+                    <span className="opt-switch" aria-hidden />
+                    <span className="opt-text">
+                      <b>{OPTIONAL_RULES[id].name}</b> <i>{on ? 'on' : 'off'}</i> — {OPTIONAL_RULES[id].text(sel)}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
           )}
         </Panel>
         <div className="preview-wrap">

@@ -1,7 +1,9 @@
 // Game session controller: owns the engine driver, runs the AI, and turns engine events into paced animations.
 import {
-  CARD_DEFS, CARD_LIST, GameDriver, OFF_BOARD, UNIT_STATS, cloneState, createGame, freshSeed, leaderById, other, randomAnswer, rallyCandidates, unitById,
-  type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameState, type HexId, type QueuedEvent, type RollPurpose, type Side,
+  CARD_DEFS, CARD_LIST, GameDriver, OFF_BOARD, UNIT_STATS, cardKind, cloneState, createGame, freshSeed, leaderById, other, randomAnswer,
+  rallyCandidates, unitById,
+  type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameOptions, type GameState, type HexId, type QueuedEvent,
+  type RollPurpose, type Side,
 } from '../../engine';
 import { SCENARIOS, scenarioById } from '../../scenarios';
 import type { Opponent } from './opponent';
@@ -18,6 +20,8 @@ export interface SessionConfig {
   personality?: string;
   /** Dev/testing: card kinds dealt into the human's opening hand. */
   devCards?: CardKind[];
+  /** Optional rules chosen in the briefing (Tactical Flexibility, §17.3); absent = the scenario's defaults. */
+  options?: GameOptions;
 }
 
 export interface SavedGame {
@@ -83,7 +87,8 @@ export interface ViewState {
   canUndo: boolean;
   speed: number; // 1 = normal, 2 = fast, 0.6 = slow
   lastCombatOdds: string | null;
-  toast: { id: number; text: string } | null;
+  /** Centre-board announcement: 'turn' = "Your turn"; 'notice' = a longer message (a lost command card). */
+  toast: { id: number; text: string; kind?: 'turn' | 'notice' } | null;
   /** The game loop failed and cannot continue. */
   fatal: boolean;
 }
@@ -117,6 +122,26 @@ export function clearSaved() {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * The opening position of a session: the scenario with the chosen optional rules (also when a save is replayed, so the
+ * replay sees the same rules), plus any dev opening hand.
+ */
+export function initialState(config: SessionConfig): GameState {
+  const initial = createGame(scenarioById(config.scenarioId).setup, config.seed, config.options);
+  if (config.devCards?.length) {
+    const hand = initial.players[config.humanSide].hand;
+    config.devCards.forEach((k, i) => {
+      const id = initial.deck.findIndex((c) => CARD_LIST[c] === k);
+      if (id >= 0 && i < hand.length) {
+        const card = initial.deck.splice(id, 1)[0];
+        initial.deck.push(hand[i]);
+        hand[i] = card;
+      }
+    });
+  }
+  return initial;
+}
+
 let seq = 1;
 
 export class GameController {
@@ -133,18 +158,7 @@ export class GameController {
     this.config = config;
     this.opponent = opponent;
     const sc = scenarioById(config.scenarioId);
-    const initial = createGame(sc.setup, config.seed);
-    if (config.devCards?.length) {
-      const hand = initial.players[config.humanSide].hand;
-      config.devCards.forEach((k, i) => {
-        const id = initial.deck.findIndex((c) => CARD_LIST[c] === k);
-        if (id >= 0 && i < hand.length) {
-          const card = initial.deck.splice(id, 1)[0];
-          initial.deck.push(hand[i]);
-          hand[i] = card;
-        }
-      });
-    }
+    const initial = initialState(config);
     if (answers.length) {
       this.driver = GameDriver.replay(initial, answers, { snapshots: true });
       if (check && (this.driver.answers.length !== check.n || this.driver.state.rngCalls !== check.rngCalls)) {
@@ -312,9 +326,7 @@ export class GameController {
         if (d.side === this.config.humanSide) {
           if (d.kind === 'playCard') {
             sfx.turn();
-            const toast = { id: seq++, text: 'Your turn' };
-            this.set({ toast });
-            setTimeout(() => { if (this.view.toast?.id === toast.id) this.set({ toast: null }); }, 1400);
+            this.toast('Your turn', 'turn', 1400);
           }
           const combat = d.kind === 'defend'
             ? { from: this.hexOf(d.attacker, st), to: this.hexOf(d.target, st) }
@@ -396,6 +408,18 @@ export class GameController {
   private hexOf(id: string, s: GameState): HexId {
     if (id.startsWith('L')) return (leaderById(s, id) ?? this.view.display.leaders.find((x) => x.id === id))?.hex ?? OFF_BOARD;
     return (unitById(s, id) ?? this.view.display.units.find((x) => x.id === id))?.hex ?? OFF_BOARD;
+  }
+
+  /** Show a centre-board toast for `ms` (real time: the CSS animation does not follow the game speed). */
+  private toast(text: string, kind: 'turn' | 'notice', ms: number) {
+    const toast = { id: seq++, text, kind };
+    this.set({ toast });
+    setTimeout(() => { if (this.view.toast?.id === toast.id) this.set({ toast: null }); }, ms);
+  }
+
+  /** Remove the flashes still showing on a hex (so a new one does not overlap them). */
+  private clearFlashes(hex: HexId) {
+    if (this.view.flashes.some((f) => f.hex === hex)) this.set({ flashes: this.view.flashes.filter((f) => f.hex !== hex) });
   }
 
   private flash(hex: HexId, text: string, kind: Flash['kind']) {
@@ -508,8 +532,11 @@ export class GameController {
       }
       case 'removed': {
         // Leaves the board like an eliminated unit, but no banner is awarded (a war machine abandoned after evading).
-        this.flash(this.hexOf(e.id, before), 'Abandoned', 'info');
-        this.addLog({ text: `${this.name(e.id, before)}: ${e.reason} (no banner).`, side: this.sideOf(e.id, before), kind: 'result' });
+        // It follows the evade at once: replace that hex's "Evaded" rather than stacking on it.
+        const hex = this.hexOf(e.id, before);
+        this.clearFlashes(hex);
+        this.flash(hex, 'Abandoned', 'info');
+        this.addLog({ text: `${this.name(e.id, before)} abandoned (no banner).`, side: this.sideOf(e.id, before), kind: 'result' });
         this.set({ display: after });
         await sleep(this.dur(450));
         break;
@@ -573,11 +600,18 @@ export class GameController {
         this.addLog({ text: `The ${after.players[e.side].army} army now holds ${e.command} command cards.`, side: e.side, kind: 'info' });
         this.set({ display: after });
         break;
-      case 'cardLost':
-        // Hellespont: a card taken at random from the hand of a side that lost a leader on the opponent's turn
-        this.addLog({ text: `The ${after.players[e.side].army} army loses a command card.`, side: e.side, kind: 'info' });
+      case 'cardLost': {
+        // Hellespont: a card taken at random from the hand of a side that lost a leader on the opponent's turn. The
+        // human sees which of his cards went; the computer's hand stays hidden.
+        const army = after.players[e.side].army;
+        const title = CARD_DEFS[cardKind(e.card)].title;
+        const mine = e.side === human;
+        this.addLog({ text: `The ${army} army loses a command card${mine ? ` (${title})` : ''}.`, side: e.side, kind: 'info' });
+        this.toast(mine ? `You lose a command card: ${title}` : `${army} loses a command card`, 'notice', 2800);
         this.set({ display: after });
+        await sleep(this.dur(1200));
         break;
+      }
       case 'log':
         this.addLog({ text: e.text, side: e.side, kind: 'info' });
         this.set({ display: after });
@@ -643,6 +677,22 @@ export class GameController {
   }
 }
 
-export function newSessionConfig(scenarioId: string, humanSide: Side, difficulty: Difficulty): SessionConfig {
-  return { scenarioId, humanSide, difficulty, seed: freshSeed() };
+/**
+ * Dev shortcut `#/play/<scenario>/<top|bottom>/<recruit|tribune|consul>[/<seed>][?cards=k1,k2]`: the session it starts
+ * (any scenario id, base game or Expansion #1), or null when the hash is not such a route or names no known battle.
+ */
+export function devRouteConfig(hash: string): SessionConfig | null {
+  const m = hash.match(/^#\/play\/(\d{3})\/(top|bottom)\/(recruit|tribune|consul)(?:\/(\d+))?/);
+  if (!m || !SCENARIOS.some((x) => x.id === m[1])) return null;
+  const cfg = newSessionConfig(m[1], m[2] as Side, m[3] as Difficulty);
+  if (m[4]) cfg.seed = Number(m[4]);
+  const cards = hash.match(/[?&]cards=([a-zA-Z0-9,]+)/);
+  if (cards) cfg.devCards = cards[1].split(',') as CardKind[];
+  return cfg;
+}
+
+export function newSessionConfig(scenarioId: string, humanSide: Side, difficulty: Difficulty, options?: GameOptions): SessionConfig {
+  const cfg: SessionConfig = { scenarioId, humanSide, difficulty, seed: freshSeed() };
+  if (options && Object.keys(options).length) cfg.options = { ...options };
+  return cfg;
 }

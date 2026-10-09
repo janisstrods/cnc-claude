@@ -7,7 +7,9 @@ import type { Flash } from './controller';
 
 export type Highlight =
   | 'eligible' | 'selected' | 'mover' | 'attacker' | 'move' | 'moveNoBattle' | 'moveMustBattle'
-  | 'targetClose' | 'targetRanged' | 'option' | 'focus';
+  | 'targetClose' | 'targetRanged' | 'option' | 'focus'
+  /** Asculum leader placement: an own unit to join (strong) or an empty hex to stand on alone (faint). */
+  | 'placeUnit' | 'placeEmpty';
 
 export interface BoardProps {
   state: GameState;
@@ -40,6 +42,8 @@ const HL_STYLE: Record<Highlight, { fill: string; stroke: string; dash?: string;
   targetRanged: { fill: 'rgba(255, 150, 30, 0.28)', stroke: '#ffae3c', width: 3 },
   option: { fill: 'rgba(170, 120, 255, 0.28)', stroke: '#c9a6ff', width: 2.6 },
   focus: { fill: 'rgba(255,255,255,0.12)', stroke: '#ffffff', width: 2.5 },
+  placeUnit: { fill: 'rgba(255, 210, 80, 0.22)', stroke: '#ffd45a', width: 2.8 },
+  placeEmpty: { fill: 'rgba(200, 175, 255, 0.10)', stroke: 'rgba(215, 192, 255, 0.6)', width: 1.4 },
 };
 
 function facingFor(side: Side, humanSide: Side): 'left' | 'right' {

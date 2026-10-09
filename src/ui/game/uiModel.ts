@@ -2,9 +2,10 @@
 // descriptions shown in tooltips and the rules reference.
 import {
   ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, battleReady, battleTargets, cardKind, closeCombatDice,
-  closeHitChance, eligiblePieces, eliteDef, inSection, isLeaderId, leaderAt, leaderById, leaderUnit, mirrorKind, movablePieces, other,
-  pieceMoves, rangeOf, rangedDice, unitAt, unitById, type CardKind, type Decision, type EliteAbility, type EvadeRule, type GameState,
-  type HexId, type Leader, type LeaderTrait, type SectionName, type Side, type Unit, type UnitClass, type UnitStats, type UnitType,
+  closeHitChance, eligiblePieces, eliteDef, inSection, isFord, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf,
+  mirrorKind, movablePieces, orderCommander, orderMode, other, pieceMoves, rangeOf, rangedDice, terrainAt, unitAt, unitById,
+  type CardKind, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type Leader, type LeaderTrait,
+  type SectionName, type Side, type Unit, type UnitClass, type UnitStats, type UnitType,
 } from '../../engine';
 import type { Highlight } from './Board';
 
@@ -164,8 +165,8 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       for (const h of d.options) highlights.set(h, 'option');
       break;
     case 'placeLeader':
-      // Asculum: own units (gold) to attach the leader to, empty hexes (purple) where he stands alone
-      for (const h of d.options) highlights.set(h, unitAt(s, h) ? 'eligible' : 'option');
+      // Asculum: own units (gold) to attach the leader to; empty hexes, where he stands alone, only faintly marked
+      for (const h of d.options) highlights.set(h, unitAt(s, h) ? 'placeUnit' : 'placeEmpty');
       break;
     case 'bonusCombat': {
       const u = unitById(s, d.unit);
@@ -340,6 +341,8 @@ export function unitSummary(u: Unit): string[] {
   const special = [
     swordIgnoreText(st, 'ignores sword hits', '1'),
     vsMountedText(st),
+    // camels; elephants keep their base-game line
+    !st.elephantTable && frightenedTypes(u.type).length > 0 && 'frightens horses (+1 retreat hex per flag)',
     st.elephantTable && 'rampages when it retreats',
     ...machineTexts(st),
   ].filter(Boolean);
@@ -354,7 +357,7 @@ export function unitSummary(u: Unit): string[] {
 
 const LEADER_TRAIT_TEXT: Record<LeaderTrait, string> = {
   ccBonus: '+1 close combat die to his unit',
-  attachedOnly: 'Commands only his own unit',
+  attachedOnly: 'Satrap: commands only his own unit; his helmets help only that unit',
 };
 
 /** Tooltip lines for a leader's traits (none for an ordinary leader). */
@@ -383,4 +386,79 @@ export function unitCardLines(t: UnitType): [string, string] {
   ].filter(Boolean);
   if (special.length) notes.push(`${cap(special.join(', '))}.`);
   return [stats, notes.join(' ')];
+}
+
+// ---------------------------------------------------------------------------
+// Expansion #1 prompts and terrain tooltips
+// ---------------------------------------------------------------------------
+
+/**
+ * Prompt line of a Leadership card: the chain it allows, or the satrap rule (§17.2) when the commanding leader — the
+ * selected one, or else every leader who could command — is a satrap.
+ */
+export function leadershipHint(s: GameState, side: Side, card: CardKind, sel: string[]): string {
+  const m = orderMode(s, side, card);
+  if (m.mode !== 'leadership') return '';
+  const cmd = orderCommander(s, side, card, sel);
+  const candidates = leadersOf(s, side).filter((l) => !m.section || inSection(l.hex, side, m.section));
+  const satrap = cmd ? leaderHas(cmd, 'attachedOnly') : candidates.length > 0 && candidates.every((l) => leaderHas(l, 'attachedOnly'));
+  if (satrap && cmd) {
+    return leaderUnit(s, cmd)
+      ? 'A satrap commands only his own unit: he is ordered with it, and no other unit.'
+      : 'A satrap commands only his own unit: standing alone, he orders only himself.';
+  }
+  if (satrap) return 'A satrap commands only his own unit: click him to order him with it — or order just 1 unit.';
+  return `Click a leader to command through him, then up to ${m.chain} linked units — or order just 1 unit.`;
+}
+
+/** Side of the leader to be placed next before the battle (117 Asculum), or null when deployment is over. */
+export function deploymentSide(s: GameState): Side | null {
+  const next = s.special.unplaced[0];
+  return next === undefined ? null : leaderById(s, next)?.side ?? null;
+}
+
+/** Screen words of the hexsides in HEX_DIRS order (E, NE, NW, W, SW, SE) on an unflipped board. */
+const SIDE_WORDS = ['right', 'upper-right', 'upper-left', 'left', 'lower-left', 'lower-right'] as const;
+
+/**
+ * The protected hexsides of a rampart as the viewer sees them: "its upper hexsides" (NE + NW), "its left and lower-left
+ * hexsides". On a flipped board (the human commands the top army) every side turns by 180°.
+ */
+export function rampartSidesText(mask: number, flipped: boolean): string {
+  const on = (screen: number) => (mask & (1 << (flipped ? (screen + 3) % 6 : screen))) !== 0;
+  const n = [0, 1, 2, 3, 4, 5].filter(on).length;
+  if (n === 0) return 'no hexsides';
+  if (n === 6) return 'all its hexsides';
+  const parts: string[] = [];
+  const pair = (a: number, b: number, word: string) => {
+    if (on(a) && on(b)) parts.push(word);
+    else if (on(a)) parts.push(SIDE_WORDS[a]);
+    else if (on(b)) parts.push(SIDE_WORDS[b]);
+  };
+  pair(2, 1, 'upper');
+  if (on(3)) parts.push('left');
+  if (on(0)) parts.push('right');
+  pair(4, 5, 'lower');
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0];
+  return `its ${list} hexside${n === 1 ? '' : 's'}`;
+}
+
+/**
+ * Terrain lines of the hover tooltip for hex `h` (none on open ground). `name` is the terrain's display name. Base-game
+ * terrain shows just "Terrain: <name>"; Expansion #1 terrain adds what it does, and a rampart names its protected
+ * sides relative to the viewer.
+ */
+export function terrainTipLines(s: GameState, h: HexId, flipped: boolean, name: string): string[] {
+  const t = terrainAt(s, h);
+  if (t === 'plain') return [];
+  if (t === 'rampart') {
+    return [
+      `Rampart: protects ${rampartSidesText(s.rampart[h], flipped)}`,
+      'Foot here ignore 1 sword and 1 flag from attacks across them (1 flag vs missiles)',
+    ];
+  }
+  const lines = [`Terrain: ${name}`];
+  if (t === 'sea') lines.push('Impassable; does not block line of sight');
+  if (t === 'river' && isFord(s, h) && s.noCap[h]) lines.push('Stops movement; no dice limits in or out');
+  return lines;
 }

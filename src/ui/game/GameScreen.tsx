@@ -10,7 +10,10 @@ import { BannerTrack, Button, CardBack, CardView, DiceTray, DieView, Modal, Pane
 import { terrainName } from '../terrain';
 import { Board } from './Board';
 import type { GameController, LogLine } from './controller';
-import { attackDice, boardUi, effectiveKind, expectedHits, leaderTraitLines, pieceHexOf, unitSummary, type UiSel } from './uiModel';
+import {
+  attackDice, boardUi, deploymentSide, effectiveKind, expectedHits, leaderTraitLines, leadershipHint, pieceHexOf, terrainTipLines, unitSummary,
+  type UiSel,
+} from './uiModel';
 import { RulesReference } from '../screens/RulesReference';
 import { isMuted, setMuted } from '../sound';
 import { opponentPersonality } from './makeOpponent';
@@ -32,6 +35,8 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
   const ai = other(human);
   const flipped = human === 'top';
   const d = view.pending;
+  // 117 Asculum: leaders are placed before the first turn (null once deployment is over)
+  const deploying = deploymentSide(s);
   const [ui, setUi] = useState<UiSel>(EMPTY_SEL);
   const [showRules, setShowRules] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
@@ -224,6 +229,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
       return { title: 'The battle stalled', text: view.error ?? 'An unexpected error occurred.', buttons: [<Button key="menu" onClick={onExit}>Return to menu</Button>], tone: 'danger' };
     }
     if (!d) {
+      if (deploying) return { title: deploying === human ? 'Deployment' : `${s.players[deploying].commander} is placing his leaders…`, text: '', buttons: [] };
       if (view.aiThinking) return { title: `${s.players[ai].commander} is considering…`, text: '', buttons: [] };
       return { title: s.active === human ? 'Resolving…' : `${s.players[ai].army} turn`, text: '', buttons: [] };
     }
@@ -274,7 +280,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         }
         let text = `${def.text} Click your units to order them.`;
         if (mode === 'one') text = `None of your troops fit ${def.title}: order 1 unit of your choice (a normal order, no card bonus).`;
-        else if (def.group === 'leadership') text = `Click a leader to command through him, then up to ${d.card === 'leadershipAny' ? 3 : 4} linked units — or order just 1 unit.`;
+        else if (def.group === 'leadership') text = leadershipHint(s, human, d.card, ui.orderSel);
         return {
           title: `${def.title}${d.mirrored ? ' (Counter Attack)' : ''}`,
           text: err && ui.orderSel.length ? err : text,
@@ -398,7 +404,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         const more = s.special.unplaced.filter((id) => id !== d.leader && leaderById(s, id)?.side === human).length;
         return {
           title: `Place ${l?.name || 'your leader'}`,
-          text: `Before the battle: click one of your units (gold) to attach him, or an empty hex (purple) where he stands alone.${more ? ` ${more} more to place after him.` : ''}`,
+          text: `Before the battle: click one of your units (gold) to attach him, or any faintly marked empty hex where he stands alone.${more ? ` ${more} more to place after him.` : ''}`,
           buttons: [],
         };
       }
@@ -414,10 +420,10 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
     const u = unitAt(s, h);
     const l = leaderAt(s, h);
     const t = terrainAt(s, h);
-    const terr = t !== 'plain' ? terrainName(t, isFord(s, h), s.noCap[h]) : null;
-    if (!u && !l && !terr) return null;
+    const terr = terrainTipLines(s, h, flipped, terrainName(t, isFord(s, h), s.noCap[h]));
+    if (!u && !l && !terr.length) return null;
     return { u, l, terr };
-  }, [ui.hoverHex, s]);
+  }, [ui.hoverHex, s, flipped]);
 
   const me = s.players[human];
   const them = s.players[ai];
@@ -431,8 +437,14 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
           <span className="gt-year">{controller.scenario.year}</span>
         </div>
         <div className="game-turn">
-          Turn {s.turn.number} · <span className={`side-chip side-${s.active === human ? 'me' : 'them'}`}>{s.players[s.active].army}</span>
-          {view.aiThinking && <span className="thinking-dots">thinking</span>}
+          {deploying ? (
+            <>Deployment · <span className={`side-chip side-${deploying === human ? 'me' : 'them'}`}>{s.players[deploying].army}</span></>
+          ) : (
+            <>
+              Turn {s.turn.number} · <span className={`side-chip side-${s.active === human ? 'me' : 'them'}`}>{s.players[s.active].army}</span>
+              {view.aiThinking && <span className="thinking-dots">thinking</span>}
+            </>
+          )}
         </div>
         <div className="game-actions">
           <label className="speed">
@@ -474,7 +486,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
             onLeaderClick={onLeaderClickS}
           />
           {view.toast && (
-            <div className="turn-toast" key={view.toast.id}>{view.toast.text}</div>
+            <div className={`turn-toast ${view.toast.kind === 'notice' ? 'toast-notice' : ''}`} key={view.toast.id}>{view.toast.text}</div>
           )}
           {view.cardShow && (
             <div className="card-show" key={view.cardShow.id}>
@@ -568,7 +580,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         )}
         {hoverInfo?.l && <div className="tip-line tip-leader">Leader: {hoverInfo.l.name || 'unnamed'}{leaderUnit(s, hoverInfo.l) ? ' (attached)' : ' (alone)'}</div>}
         {hoverInfo?.l && leaderTraitLines(hoverInfo.l).map((x) => <div key={x} className="tip-line tip-leader">{x}</div>)}
-        {hoverInfo?.terr && <div className="tip-line tip-terrain">Terrain: {hoverInfo.terr}</div>}
+        {hoverInfo?.terr.map((x) => <div key={x} className="tip-line tip-terrain">{x}</div>)}
       </HoverTip>
 
       {d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus') && (

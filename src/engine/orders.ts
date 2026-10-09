@@ -123,15 +123,48 @@ export function orderLimit(s: GameState, side: Side, kind: CardKind | null, piec
       return 1;
     case 'leadership': {
       // Until a commanding leader is picked, the order may still be a chain or a single unit.
-      const cmd = pieces
-        .filter(isLeaderId)
-        .map((id) => leaderById(s, id))
-        .find((l) => l && (!m.section || inSection(l.hex, side, m.section)));
+      const cmd = orderCommander(s, side, kind, pieces);
       return cmd ? 1 + (leaderUnit(s, cmd) ? 1 : 0) + leadershipChain(cmd, m.chain) : null;
     }
     default:
       return null;
   }
+}
+
+/**
+ * The leader a Leadership-card selection is commanded through (for the UI counter and prompt; display only): among the
+ * selected leaders in the card's section, the first that can command the whole selection, else the first of them; null
+ * when none is selected (or the card is not a Leadership card).
+ */
+export function orderCommander(s: GameState, side: Side, kind: CardKind | null, pieces: string[]): Leader | null {
+  const m = orderMode(s, side, kind);
+  if (m.mode !== 'leadership') return null;
+  const units = pieces.filter((id) => !isLeaderId(id)).map((id) => unitById(s, id)).filter((u): u is Unit => !!u);
+  const leaders = pieces.filter(isLeaderId).map((id) => leaderById(s, id)).filter((l): l is Leader => !!l);
+  const inSec = leaders.filter((l) => !m.section || inSection(l.hex, side, m.section));
+  return inSec.find((l) => commandsSelection(s, side, m, l, units, leaders)) ?? inSec[0] ?? null;
+}
+
+/**
+ * Can `cmd` command the selection `units` + `leaders` with a Leadership card (§6, §17.2)? He must stand in the card's
+ * section and bring his own unit; other leaders must be lone; the other hexes form one group linked to his, at most his
+ * chain long (none for a satrap).
+ */
+function commandsSelection(
+  s: GameState, side: Side, m: { section: SectionName | null; chain: number }, cmd: Leader, units: Unit[], leaders: Leader[],
+): boolean {
+  if (m.section && !inSection(cmd.hex, side, m.section)) return false;
+  const ownUnit = leaderUnit(s, cmd);
+  if (ownUnit && !units.includes(ownUnit)) return false; // leaders may not detach on Leadership cards
+  const otherHexes = new Set<number>();
+  for (const u of units) if (u.hex !== cmd.hex) otherHexes.add(u.hex);
+  for (const l of leaders) {
+    if (l === cmd) continue;
+    if (!isLoneLeader(s, l)) return false; // attached leaders follow their unit
+    otherHexes.add(l.hex);
+  }
+  if (otherHexes.size > leadershipChain(cmd, m.chain)) return false;
+  return connected([...otherHexes], cmd.hex);
 }
 
 function connected(hexes: number[], extraRoot?: number): boolean {
@@ -209,23 +242,7 @@ export function validateOrders(s: GameState, side: Side, kind: CardKind | null, 
         return null;
       }
       // Try each selected leader as the commander.
-      for (const cmd of leaders) {
-        if (m.section && !inSection(cmd.hex, side, m.section)) continue;
-        const ownUnit = leaderUnit(s, cmd);
-        if (ownUnit && !units.includes(ownUnit)) continue; // leaders may not detach on Leadership cards
-        const otherHexes = new Set<number>();
-        let ok = true;
-        for (const u of units) if (u.hex !== cmd.hex) otherHexes.add(u.hex);
-        for (const l of leaders) {
-          if (l === cmd) continue;
-          if (!isLoneLeader(s, l)) { ok = false; break; } // attached leaders follow their unit
-          otherHexes.add(l.hex);
-        }
-        if (!ok) continue;
-        if (otherHexes.size > leadershipChain(cmd, m.chain)) continue;
-        if (!connected([...otherHexes], cmd.hex)) continue;
-        return null;
-      }
+      if (leaders.some((cmd) => commandsSelection(s, side, m, cmd, units, leaders))) return null;
       const only = leaders.length === 1 ? leaders[0] : null;
       if (only && (!m.section || inSection(only.hex, side, m.section))) {
         // the detach rule first: it is the reason for any attached leader, satrap or not
