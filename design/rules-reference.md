@@ -484,8 +484,17 @@ block colours. Fordable rivers use the §4/§7/§9.6 rules, except 108 (§16).
   * Lost on **its own turn**: the owner does not draw at the end of that turn. Lost on the **opponent's turn**: one card
     chosen at random (seeded RNG) from the owner's hand is discarded at once (event `cardLost`). Several leaders lost in
     one turn apply one after the other.
+  * **Card debt** **[Interp]** (as implemented): each eliminated leader costs his side exactly one card. Lost on its own
+    turn, the side's next draw is skipped; a second own-turn loss also skips the draw after that (RAW names only the
+    draw at the end of that turn). Lost on the opponent's turn, a random card is discarded at once; with an empty hand
+    the side's next draw is skipped instead. Command never drops below 1, and at 1 no card is owed.
   * **Instant win:** when every leader a side started with has been eliminated, the other side wins at once (generalising
     Castulo's single leader). Ordinary banner victory (6) also applies; the first condition reached ends the battle.
+  * **Banners first** **[Interp]**: an elephant's blocked retreat (§10) scores all its banners together, before the
+    leader-loss rules. When that step gives a side its winning banner and also eliminates a side's last leader, the
+    banners decide and the instant win is checked only if the battle goes on. A side whose own last leader is crushed
+    in the step that brings its winning banner therefore still wins. Both sides reaching their last banner at once is
+    a draw (§10).
 * **113 Paraitacene (317 BC):** the hills down the left edge are impassable (`steep`, §16). The Eumenes HI labelled Silver
   Shields is `silverShields`. One LBC on each side.
 * **114 Gabiene (316 BC):** `silverShields` (the Eumenes HI so labelled). One LBC on each side. **Camp capture**

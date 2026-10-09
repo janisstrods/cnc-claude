@@ -433,6 +433,32 @@ describe('allLeadersSuddenDeath (112 Hellespont)', () => {
     expect(d.state.winner).toBe('top');
     expect(d.state.winReason).toBe("All of B's leaders have fallen");
   });
+
+  it('an elephant\'s blocked retreat that gives one side its last banner and kills the other\'s last leader: banners first', () => {
+    // as above, but the crushed top MI at (2,6) has 1 block left and the bottom needs 1 more banner: the bottom wins by
+    // banners although its last leader is crushed in the same step (the top would need 2 banners)
+    const s = build({
+      ...HELL, banners: 2,
+      units: [
+        { side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'EL', at: [4, 6] },
+        { side: 'top', type: 'MI', at: [3, 6] }, { side: 'top', type: 'MI', at: [2, 6], blocks: 1 },
+      ],
+      leaders: [{ side: 'bottom', at: [2, 5] }],
+    });
+    s.players.bottom.banners = 1;
+    const d = toBattle(s, 'order4C', ['u1']);
+    ev(d);
+    forceDice(['flag', 'flag', ...n('light', 3), ...n('light', 4)]);
+    must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+    if (d.pending?.kind === 'retreat') must(d, { kind: 'choose', index: d.pending.options.findIndex((o) => o.end === H(3, 5)) });
+    const e = ev(d);
+    expect(d.state.special.leadersEliminated.bottom).toBe(1);
+    expect(ofKind(e, 'eliminated').map((x) => x.id)).toEqual(['u4']);
+    expect(d.state.players.bottom.banners).toBe(2);
+    expect(d.state.winner).toBe('bottom');
+    expect(d.state.winReason).toMatch(/2 banners/);
+    expect(ofKind(e, 'victory')).toHaveLength(1);
+  });
 });
 
 // ---------------------------------------------------------------------------------------------------------------------

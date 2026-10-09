@@ -174,6 +174,9 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
       case 'bonusCombat':
         if (d.targets.includes(h)) answer({ kind: 'hex', hex: h });
         return;
+      case 'placeLeader':
+        if (d.options.includes(h)) answer({ kind: 'hex', hex: h });
+        return;
       default:
         return;
     }
@@ -390,6 +393,15 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
       case 'rally':
       case 'spartacus':
         return { title: d.kind === 'rally' ? 'Rally' : 'I Am Spartacus', text: 'Assign the dice in the dialog.', buttons: [] };
+      case 'placeLeader': {
+        const l = leaderById(s, d.leader);
+        const more = s.special.unplaced.filter((id) => id !== d.leader && leaderById(s, id)?.side === human).length;
+        return {
+          title: `Place ${l?.name || 'your leader'}`,
+          text: `Before the battle: click one of your units (gold) to attach him, or an empty hex (purple) where he stands alone.${more ? ` ${more} more to place after him.` : ''}`,
+          buttons: [],
+        };
+      }
       default:
         return null;
     }

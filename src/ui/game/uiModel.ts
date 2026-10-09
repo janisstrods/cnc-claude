@@ -163,6 +163,10 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       highlights.set(pieceHexOf(s, d.unit), 'focus');
       for (const h of d.options) highlights.set(h, 'option');
       break;
+    case 'placeLeader':
+      // Asculum: own units (gold) to attach the leader to, empty hexes (purple) where he stands alone
+      for (const h of d.options) highlights.set(h, unitAt(s, h) ? 'eligible' : 'option');
+      break;
     case 'bonusCombat': {
       const u = unitById(s, d.unit);
       if (u) highlights.set(u.hex, 'focus');

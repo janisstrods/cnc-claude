@@ -174,16 +174,16 @@ describe('hit scoring', () => {
   it('light units do not hit with swords; heavy infantry does; helmets need a leader', () => {
     const s = state({ units: [{ side: 'bottom', type: 'LI', at: [5, 4] }, { side: 'top', type: 'MI', at: [4, 4] }, { side: 'bottom', type: 'HI', at: [5, 6] }] });
     const faces = ['medium', 'swords', 'leader', 'flag'] as const;
-    expect(scoreClose(s, s.units[0], s.units[1], [...faces], false).hits).toBe(1);
-    expect(scoreClose(s, s.units[2], s.units[1], [...faces], false).hits).toBe(2);
-    expect(scoreClose(s, s.units[2], s.units[1], [...faces], true).hits).toBe(3);
-    expect(scoreClose(s, s.units[2], s.units[1], [...faces], true).flags).toBe(1);
+    expect(scoreClose(s, s.units[0], s.units[1], [...faces], false, 'attack').hits).toBe(1);
+    expect(scoreClose(s, s.units[2], s.units[1], [...faces], false, 'attack').hits).toBe(2);
+    expect(scoreClose(s, s.units[2], s.units[1], [...faces], true, 'attack').hits).toBe(3);
+    expect(scoreClose(s, s.units[2], s.units[1], [...faces], true, 'attack').flags).toBe(1);
   });
   it('elephants ignore swords; chariots ignore one sword; elephants ignore one red from cavalry', () => {
     const s = state({ units: [{ side: 'bottom', type: 'HI', at: [5, 4] }, { side: 'top', type: 'EL', at: [4, 4] }, { side: 'top', type: 'HCH', at: [4, 6] }, { side: 'bottom', type: 'HC', at: [5, 8] }] });
-    expect(scoreClose(s, s.units[0], s.units[1], ['swords', 'swords', 'heavy'], false).hits).toBe(1);
-    expect(scoreClose(s, s.units[0], s.units[2], ['swords', 'swords', 'heavy'], false).hits).toBe(2);
-    expect(scoreClose(s, s.units[3], s.units[1], ['heavy', 'heavy'], false).hits).toBe(1);
+    expect(scoreClose(s, s.units[0], s.units[1], ['swords', 'swords', 'heavy'], false, 'attack').hits).toBe(1);
+    expect(scoreClose(s, s.units[0], s.units[2], ['swords', 'swords', 'heavy'], false, 'attack').hits).toBe(2);
+    expect(scoreClose(s, s.units[3], s.units[1], ['heavy', 'heavy'], false, 'attack').hits).toBe(1);
   });
 });
 

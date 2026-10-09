@@ -22,6 +22,8 @@ export interface Pos {
   campCapture?: ScenarioSetup['campCapture'];
   /** Scenario options (Tactical Flexibility, §17.3). */
   options?: ScenarioSetup['options'];
+  /** Leaders placed before the first turn, in placement order (rule `leaderPlacement`, 117 Asculum, §17.4). */
+  placeLeaders?: ScenarioSetup['placeLeaders'];
 }
 
 export const H = (r: number, c: number) => hexId(r, c);
@@ -44,6 +46,7 @@ export function setupOf(p: Pos): ScenarioSetup {
     initialCommand: p.initialCommand,
     campCapture: p.campCapture,
     options: p.options,
+    placeLeaders: p.placeLeaders,
   };
 }
 

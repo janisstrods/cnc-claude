@@ -32,6 +32,11 @@ export interface ScenarioSetup {
   leaders: { side: Side; name: string; r: number; c: number; traits?: LeaderTrait[] }[];
   reserves: { side: Side; type: UnitType }[];
   reserveLeaders: { side: Side; name: string; traits?: LeaderTrait[] }[];
+  /**
+   * Leaders placed by the players before the first turn, in placement order (needs rule `leaderPlacement`; 117
+   * Asculum, §17.4: the Roman leaders first). They start off the board and are listed in `special.unplaced`.
+   */
+  placeLeaders?: { side: Side; name: string; traits?: LeaderTrait[] }[];
   rules: SpecialRuleId[];
   /** Castulo: name of the leader whose loss ends the game. */
   sacredLeader?: { side: Side; name: string };
@@ -141,11 +146,22 @@ function campCaptureOf(setup: ScenarioSetup, rules: SpecialRuleId[], terrain: Te
   return { side: cc.side, hexes, text };
 }
 
-/** Leaders each side starts with: on the board and in reserve. */
+/** Leaders each side starts with: on the board, in reserve and still to be placed. */
 function leaderCount(setup: ScenarioSetup): Record<Side, number> {
   const n = { top: 0, bottom: 0 };
-  for (const l of [...setup.leaders, ...setup.reserveLeaders]) n[l.side]++;
+  for (const l of [...setup.leaders, ...setup.reserveLeaders, ...(setup.placeLeaders ?? [])]) n[l.side]++;
   return n;
+}
+
+/** Validate the pre-battle placement list against the `leaderPlacement` rule (the two come together). */
+function checkPlacement(setup: ScenarioSetup, rules: SpecialRuleId[]) {
+  const list = setup.placeLeaders ?? [];
+  const ruled = rules.includes('leaderPlacement');
+  if (ruled && !list.length) throw new Error(`rule leaderPlacement needs scenario data placeLeaders (${setup.id})`);
+  if (!ruled && list.length) throw new Error(`placeLeaders data needs the leaderPlacement rule (${setup.id})`);
+  for (const l of list) {
+    if (l.side !== 'top' && l.side !== 'bottom') throw new Error(`placeLeaders: unknown side ${String(l.side)} (${setup.id})`);
+  }
 }
 
 /** Build the initial state. `options`: the player's choice of the optional rules the scenario offers (§17.3). */
@@ -187,6 +203,15 @@ export function createGame(setup: ScenarioSetup, seed: number, options?: GameOpt
     return unit;
   });
   const leaders: Leader[] = setup.leaders.map((l) => withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: hexId(l.r, l.c) }, l.traits));
+  // Asculum: leaders still to be placed wait off the board (placement order = id order)
+  const rules = effectiveRules(setup, options);
+  checkPlacement(setup, rules);
+  const unplaced: string[] = [];
+  for (const l of setup.placeLeaders ?? []) {
+    const leader = withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: OFF_BOARD }, l.traits);
+    leaders.push(leader);
+    unplaced.push(leader.id);
+  }
   const reserveUnits: Unit[] = setup.reserves.map((u) => {
     const st = UNIT_STATS[u.type];
     return { id: `u${nextId++}`, side: u.side, type: u.type, hex: OFF_BOARD, blocks: st.blocks, maxBlocks: st.blocks };
@@ -199,7 +224,6 @@ export function createGame(setup: ScenarioSetup, seed: number, options?: GameOpt
   const sacred = setup.sacredLeader
     ? leaders.find((l) => l.side === setup.sacredLeader!.side && l.name === setup.sacredLeader!.name)?.id ?? null
     : null;
-  const rules = effectiveRules(setup, options);
 
   const s: GameState = {
     scenarioId: setup.id,
@@ -242,6 +266,7 @@ export function createGame(setup: ScenarioSetup, seed: number, options?: GameOpt
       sacredLeaderId: sacred,
       beneventumBonusGiven: false,
       leadersAtStart: leaderCount(setup),
+      unplaced,
       leadersEliminated: { top: 0, bottom: 0 },
       cardDebt: { top: 0, bottom: 0 },
     },
@@ -283,6 +308,7 @@ export function cloneState(s: GameState): GameState {
       turnsDone: { ...s.special.turnsDone },
       campsCaptured: [...s.special.campsCaptured],
       leadersAtStart: { ...s.special.leadersAtStart },
+      unplaced: [...s.special.unplaced],
       leadersEliminated: { ...s.special.leadersEliminated },
       cardDebt: { ...s.special.cardDebt },
     },

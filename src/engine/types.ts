@@ -152,8 +152,9 @@ export interface TurnState {
 
 /**
  * Scenario special rules (§14, §17). Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112 Hellespont),
- * `frightAtFirstSight` (116 Heraclea), `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3) and
- * `campCapture` (a side gains a banner for stopping on listed camp hexes: 011 Baecula, 114 Gabiene).
+ * `frightAtFirstSight` (116 Heraclea), `leaderPlacement` (117 Asculum: leaders are placed before the first turn),
+ * `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3) and `campCapture` (a side gains a banner for
+ * stopping on listed camp hexes: 011 Baecula, 114 Gabiene).
  */
 export type SpecialRuleId =
   | 'sacredBand'
@@ -165,6 +166,7 @@ export type SpecialRuleId =
   | 'leaderLossCostsCard'
   | 'allLeadersSuddenDeath'
   | 'frightAtFirstSight'
+  | 'leaderPlacement'
   | 'tacticalFlexibility';
 
 /** Camp-capture objective (rule `campCapture`): units of `side` stopping on one of `hexes` gain a banner, once per camp. */
@@ -194,6 +196,11 @@ export interface ScenarioSpecial {
   beneventumBonusGiven: boolean;
   /** Leaders each side had at the start (on the board, in reserve or still to be placed). */
   leadersAtStart: Record<Side, number>;
+  /**
+   * Asculum (`leaderPlacement`): ids of the leaders still to be placed before the first turn, in placement order. They
+   * wait in `GameState.leaders` at `OFF_BOARD`; empty once placement is over (and in every other battle).
+   */
+  unplaced: string[];
   /** Leaders each side has had eliminated (killed for a banner; not leaders who left the board by evading or exiting). */
   leadersEliminated: Record<Side, number>;
   /**
@@ -256,7 +263,9 @@ export type Decision =
   | { kind: 'cavalryExtra'; side: Side; unit: string; options: HexId[] }
   | { kind: 'bonusCombat'; side: Side; unit: string; targets: HexId[] }
   | { kind: 'rally'; side: Side; faces: DieFace[] }
-  | { kind: 'spartacus'; side: Side; faces: DieFace[] };
+  | { kind: 'spartacus'; side: Side; faces: DieFace[] }
+  /** Asculum: place `leader` before the first turn on one of `options` (answer `hex`, never null). */
+  | { kind: 'placeLeader'; side: Side; leader: string; options: HexId[] };
 
 export type Answer =
   | { kind: 'playCard'; card: number }
@@ -270,7 +279,7 @@ export type Answer =
   | { kind: 'ignoreFlags'; count: number }
   | { kind: 'choose'; index: number }
   | { kind: 'yesno'; yes: boolean }
-  | { kind: 'hex'; hex: HexId | null } // null = decline
+  | { kind: 'hex'; hex: HexId | null } // null = decline (not for placeLeader)
   /** One entry per die face: id of the unit (rally) or unit/leader (spartacus) it is used on, or null. */
   | { kind: 'assign'; ids: (string | null)[] };
 
@@ -301,6 +310,8 @@ export type GameEvent =
   | { t: 'evade'; id: string; path: HexId[] }
   | { t: 'leaderEvade'; id: string; path: HexId[]; offBoard: boolean }
   | { t: 'attach'; leader: string; unit: string }
+  /** A leader placed before the first turn (Asculum); an `attach` event follows when he joins a unit. */
+  | { t: 'leaderPlaced'; id: string; hex: HexId }
   | { t: 'advance'; id: string; path: HexId[] }
   | { t: 'rampage'; id: string }
   | { t: 'rallied'; id: string; blocks: number }

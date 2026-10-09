@@ -405,6 +405,8 @@ export class Bot {
         }
         return { kind: 'assign', ids };
       }
+      case 'placeLeader':
+        return { kind: 'hex', hex: d.options[0] };
     }
   }
 

@@ -4,7 +4,7 @@ import {
   canFireAt, closeCombatDice, helmetsCount, ignorableFlags, rangedDice, retreatPerFlag, scoreClassOnly, scoreClose,
   swordIgnores, vsMountedIgnores, type StrikeRole,
 } from './combat';
-import { areAdjacent, neighbours, rowOf } from './hex';
+import { ALL_HEXES, areAdjacent, neighbours, rowOf } from './hex';
 import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './movement';
 import {
   autoOrders, orderMode, rallyCandidates, validateOrders, validateRally, validateSpartacus,
@@ -95,12 +95,25 @@ export function gainBanner(s: GameState, ctx: FlowCtx, side: Side, reason: strin
 }
 
 /**
- * Take an eliminated leader off the board. **Every leader elimination goes through here** (killLeader and the elephant's
- * blocked retreat), so the count for the Hellespont rules is complete. A leader who leaves the board by evading off his
- * baseline or exiting with his unit is not eliminated. Returns true when the battle ended (Castulo's Scipio); the caller
- * then awards the banner and calls `afterLeaderLoss`.
+ * Banners scored in one simultaneous step (the elephant's blocked retreat, §10), awarded together by `settleBanners`.
+ * Leader losses in the step are recorded here so that their Hellespont rules follow the banners.
  */
-function eliminateLeader(s: GameState, ctx: FlowCtx, l: Leader, text: string): boolean {
+interface BannerBatch {
+  /** Side scoring each banner, in order. */
+  gains: Side[];
+  /** Side of each leader eliminated, in order. */
+  leaderLosses: Side[];
+}
+
+/**
+ * A leader is eliminated (killed for a banner). **Every leader elimination goes through here** (killLeader and the
+ * elephant's blocked retreat), so the Hellespont count and rules are never skipped: he leaves the board, the loss is
+ * counted, Castulo's Scipio ends the battle; then the opponent scores the banner and `afterLeaderLoss` applies the
+ * Hellespont rules. With `batch` the banner and the Hellespont rules wait for `settleBanners` (banners first). A leader
+ * who leaves the board by evading off his baseline or exiting with his unit is not eliminated. Returns true when his
+ * loss ended the battle (Castulo's Scipio).
+ */
+function leaderLost(s: GameState, ctx: FlowCtx, l: Leader, reason: string, text: string, batch?: BannerBatch): boolean {
   s.leaders = s.leaders.filter((x) => x.id !== l.id);
   s.special.leadersEliminated[l.side]++;
   ctx.emit({ t: 'leaderKilled', id: l.id });
@@ -111,13 +124,44 @@ function eliminateLeader(s: GameState, ctx: FlowCtx, l: Leader, text: string): b
     ctx.emit({ t: 'victory', winner: s.winner, reason: s.winReason });
     return true;
   }
+  if (batch) {
+    batch.gains.push(other(l.side));
+    batch.leaderLosses.push(l.side);
+    return false;
+  }
+  gainBanner(s, ctx, other(l.side), reason);
+  afterLeaderLoss(s, ctx, l.side);
   return false;
+}
+
+/**
+ * Award a batch of banners together: if both sides reach their last banner at once the battle is a draw; otherwise the
+ * banners one by one, then the Hellespont rules for each leader lost in the batch (banners resolve first, §17.4).
+ */
+function settleBanners(s: GameState, ctx: FlowCtx, b: BannerBatch, reason: string, drawReason: string) {
+  const before = { top: s.players.top.banners, bottom: s.players.bottom.banners };
+  const add = { top: b.gains.filter((x) => x === 'top').length, bottom: b.gains.filter((x) => x === 'bottom').length };
+  const winTop = before.top + add.top >= s.bannersToWin && add.top > 0;
+  const winBottom = before.bottom + add.bottom >= s.bannersToWin && add.bottom > 0;
+  if (winTop && winBottom) {
+    s.players.top.banners += add.top;
+    s.players.bottom.banners += add.bottom;
+    ctx.emit({ t: 'banner', side: 'top', total: s.players.top.banners, reason: drawReason });
+    ctx.emit({ t: 'banner', side: 'bottom', total: s.players.bottom.banners, reason: drawReason });
+    s.winner = 'draw';
+    s.winReason = 'Both armies broke at the same moment';
+    ctx.emit({ t: 'victory', winner: 'draw', reason: s.winReason });
+    return;
+  }
+  for (const g of b.gains) gainBanner(s, ctx, g, reason);
+  for (const side of b.leaderLosses) afterLeaderLoss(s, ctx, side);
 }
 
 const possessive = (name: string) => (name.endsWith('s') ? `${name}'` : `${name}'s`);
 
 /**
- * Hellespont rules (§17.4) after a leader of `side` was eliminated and its banner awarded:
+ * Hellespont rules (§17.4) after a leader of `side` was eliminated and its banner awarded (only via `leaderLost` and
+ * `settleBanners`):
  * `allLeadersSuddenDeath` — every leader the side started with is gone: the other side wins at once;
  * `leaderLossCostsCard` — Command -1 for the rest of the battle and one card owed (`cardDebt`). On the side's own turn
  * the debt is paid by its next draw (the end of this turn; a second loss in the same turn skips the next one too). On
@@ -148,9 +192,7 @@ function afterLeaderLoss(s: GameState, ctx: FlowCtx, side: Side) {
 }
 
 function killLeader(s: GameState, ctx: FlowCtx, l: Leader, reason: string) {
-  if (eliminateLeader(s, ctx, l, `${l.name || 'A leader'} (${sideName(s, l.side)}) has fallen!`)) return;
-  gainBanner(s, ctx, other(l.side), reason);
-  afterLeaderLoss(s, ctx, l.side);
+  leaderLost(s, ctx, l, reason, `${l.name || 'A leader'} (${sideName(s, l.side)}) has fallen!`);
 }
 
 /** Remove blocks; returns true if the unit was eliminated. */
@@ -362,17 +404,14 @@ function* walkPath(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, kind
  * their final banner at once the battle is a draw.
  */
 function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: string; n: number }[]): Gen {
-  const gains: Side[] = [];
-  const crushed: Side[] = [];
+  const batch: BannerBatch = { gains: [], leaderLosses: [] };
   const orphans: Leader[] = [];
   const survivorsWithLeader: Leader[] = [];
   for (const b of blockers) {
     if (isLeaderId(b.id)) {
       const l = leaderById(s, b.id);
       if (!l) continue;
-      if (eliminateLeader(s, ctx, l, `${l.name || 'A leader'} (${sideName(s, l.side)}) is crushed by the elephants!`)) return;
-      gains.push(other(l.side));
-      crushed.push(l.side);
+      if (leaderLost(s, ctx, l, 'crushed by elephants', `${l.name || 'A leader'} (${sideName(s, l.side)}) is crushed by the elephants!`, batch)) return;
       continue;
     }
     const v = unitById(s, b.id);
@@ -385,29 +424,12 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
       s.units = s.units.filter((x) => x.id !== v.id);
       ctx.emit({ t: 'eliminated', id: v.id });
       log(s, ctx, `${sideName(s, v.side)} ${unitName(v)} eliminated.`, v.side);
-      gains.push(other(v.side));
+      batch.gains.push(other(v.side));
       if (l) orphans.push(l);
     } else if (l) survivorsWithLeader.push(l);
   }
-  // award banners together
-  const before = { top: s.players.top.banners, bottom: s.players.bottom.banners };
-  const add = { top: gains.filter((x) => x === 'top').length, bottom: gains.filter((x) => x === 'bottom').length };
-  const winTop = before.top + add.top >= s.bannersToWin && add.top > 0;
-  const winBottom = before.bottom + add.bottom >= s.bannersToWin && add.bottom > 0;
-  if (winTop && winBottom) {
-    s.players.top.banners += add.top;
-    s.players.bottom.banners += add.bottom;
-    ctx.emit({ t: 'banner', side: 'top', total: s.players.top.banners, reason: 'elephant retreat' });
-    ctx.emit({ t: 'banner', side: 'bottom', total: s.players.bottom.banners, reason: 'elephant retreat' });
-    s.winner = 'draw';
-    s.winReason = 'Both armies broke at the same moment';
-    ctx.emit({ t: 'victory', winner: 'draw', reason: s.winReason });
-    return;
-  }
-  for (const g of gains) gainBanner(s, ctx, g, 'crushed by elephants');
-  if (s.winner) return;
-  // Hellespont rules for the crushed leaders, after their banners
-  for (const side of crushed) afterLeaderLoss(s, ctx, side);
+  // banners together, then the Hellespont rules for the crushed leaders
+  settleBanners(s, ctx, batch, 'crushed by elephants', 'elephant retreat');
   if (s.winner) return;
   for (const l of survivorsWithLeader) if (leaderById(s, l.id)) leaderCheck(s, ctx, l, 2);
   for (const l of orphans) yield* leaderOrphaned(s, ctx, l);
@@ -1087,7 +1109,46 @@ export function nextTurn(s: GameState) {
   s.turn = newTurn(s.active, s.turn.number + 1);
 }
 
+// ---------------------------------------------------------------------------
+// pre-battle leader placement (117 Asculum, §17.4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Hexes where a leader of `side` may be placed before the battle (rule `leaderPlacement`), ascending: an own unit
+ * without a leader (he attaches), or an empty passable hex (no unit, no leader; he stands alone). Leaders placed
+ * already occupy their hexes.
+ */
+export function placementOptions(s: GameState, side: Side): HexId[] {
+  const out: HexId[] = [];
+  for (const h of ALL_HEXES) {
+    if (leaderAt(s, h)) continue;
+    const u = unitAt(s, h);
+    if (u ? u.side === side : !isImpassable(s, h)) out.push(h);
+  }
+  return out;
+}
+
+/** Ask for every leader in `special.unplaced`, in order (the Roman leaders first in 117); placement is not movement. */
+function* placementPhase(s: GameState, ctx: FlowCtx): Gen {
+  const sp = s.special;
+  while (sp.unplaced.length) {
+    const l = leaderById(s, sp.unplaced[0]);
+    if (!l) throw new Error(`unknown leader to place: ${sp.unplaced[0]}`);
+    const options = placementOptions(s, l.side);
+    if (!options.length) throw new Error(`no hex to place ${l.name || l.id}`);
+    const a = yield* ask(ctx, { kind: 'placeLeader', side: l.side, leader: l.id, options }, (a) =>
+      a.kind === 'hex' && a.hex !== null && options.includes(a.hex) ? null : 'Place the leader on a highlighted hex.');
+    const hex = (a as { hex: HexId }).hex;
+    l.hex = hex;
+    sp.unplaced.shift();
+    ctx.emit({ t: 'leaderPlaced', id: l.id, hex });
+    const u = unitAt(s, hex);
+    if (u && u.side === l.side) ctx.emit({ t: 'attach', leader: l.id, unit: u.id });
+  }
+}
+
 export function* gameFlow(s: GameState, ctx: FlowCtx): Gen {
+  yield* placementPhase(s, ctx);
   while (!s.winner) {
     if (s.turn.phase === 'done') nextTurn(s);
     yield* turnFlow(s, ctx);

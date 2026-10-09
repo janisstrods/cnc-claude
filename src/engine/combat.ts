@@ -188,10 +188,10 @@ function vsMountedCovers(target: Unit, f: DieFace): boolean {
 /**
  * Score close combat dice (elephant re-rolls must already be included in `faces`, in roll order).
  * `leaderHelmets`: a friendly leader is attached/adjacent to the striker (and the striker is not an elephant).
- * `role`: the striker's role in this combat (decides the target's rampart protection, §16).
+ * `role` (required): the striker's role in this combat (decides the target's rampart protection, §16).
  */
 export function scoreClose(
-  s: GameState, striker: Unit, target: Unit, faces: DieFace[], leaderHelmets: boolean, role: StrikeRole = 'attack',
+  s: GameState, striker: Unit, target: Unit, faces: DieFace[], leaderHelmets: boolean, role: StrikeRole,
 ): Scored {
   const st = UNIT_STATS[striker.type];
   const tst = UNIT_STATS[target.type];

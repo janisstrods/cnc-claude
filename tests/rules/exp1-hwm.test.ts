@@ -118,9 +118,9 @@ describe('heavy war machine: class and card membership', () => {
   it('red squares hit it, and so do the swords of sword-scoring units', () => {
     const s = build({ units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'bottom', type: 'LI', at: [5, 7] }, { side: 'top', type: 'HWM', at: [4, 6] }] });
     const [hi, li, hwm] = s.units;
-    expect(scoreClose(s, hi, hwm, ['heavy', 'medium', 'light', 'flag'], false).hits).toBe(1);
-    expect(scoreClose(s, hi, hwm, ['swords', 'heavy'], false).hits).toBe(2);
-    expect(scoreClose(s, li, hwm, ['swords', 'heavy'], false).hits).toBe(1);
+    expect(scoreClose(s, hi, hwm, ['heavy', 'medium', 'light', 'flag'], false, 'attack').hits).toBe(1);
+    expect(scoreClose(s, hi, hwm, ['swords', 'heavy'], false, 'attack').hits).toBe(2);
+    expect(scoreClose(s, li, hwm, ['swords', 'heavy'], false, 'attack').hits).toBe(1);
   });
   it('I Am Spartacus orders it with a red square', () => {
     const s = army();
@@ -231,7 +231,7 @@ describe('heavy war machine: close combat', () => {
   });
   it('swords never score hits for it', () => {
     const s = build({ units: [{ side: 'bottom', type: 'HWM', at: [5, 6] }, { side: 'top', type: 'HI', at: [4, 6] }] });
-    expect(scoreClose(s, s.units[0], s.units[1], ['swords', 'swords'], false).hits).toBe(0);
+    expect(scoreClose(s, s.units[0], s.units[1], ['swords', 'swords'], false, 'attack').hits).toBe(0);
     const d = toBattle(s, 'order4C', ['u1']);
     forceDice(['swords', 'swords', ...n('light', 5)]); // HI cannot evade: the roll is immediate
     must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });

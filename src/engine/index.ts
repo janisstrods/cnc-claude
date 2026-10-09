@@ -13,7 +13,7 @@ export * from './combat';
 export * from './retreat';
 export {
   gameFlow, turnFlow, nextTurn, battleTargets, closeTargets, pieceMoves, movablePieces, battleReady, ambushAvailable, ambushSections, gainBanner,
-  capturableCamp,
+  capturableCamp, placementOptions,
 } from './flow';
 export type { BattleTarget, Gen } from './flow';
 export * from './driver';

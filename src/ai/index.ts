@@ -20,8 +20,8 @@ import { orderCandidates } from './ordering';
 import { PERSONALITIES, personalityById, personalityFor, type Personality } from './personality';
 import { DIFFICULTY, candScore, decideBattle, makeCtx, planTurn, type Cand, type DiffCfg } from './planner';
 import {
-  chooseBonusCombat, chooseCavalryExtra, chooseIgnoreFlags, chooseLeaderEvade, chooseMomentum, chooseRetreat, defendChoice,
-  rallyAssign, spartacusAssign,
+  chooseBonusCombat, chooseCavalryExtra, chooseIgnoreFlags, chooseLeaderEvade, chooseMomentum, choosePlacement, chooseRetreat,
+  defendChoice, rallyAssign, spartacusAssign,
 } from './policies';
 import { Rng, entropySeed } from './rand';
 import { safeAnswer } from './sim';
@@ -160,6 +160,8 @@ export function isLegal(s: GameState, d: Decision, a: Answer): boolean {
       return a.kind === 'assign' && !validateRally(s, d.side, d.faces, a.ids);
     case 'spartacus':
       return a.kind === 'assign' && !validateSpartacus(s, d.side, d.faces, a.ids);
+    case 'placeLeader':
+      return a.kind === 'hex' && a.hex !== null && d.options.includes(a.hex);
   }
 }
 
@@ -476,6 +478,8 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       return { answer: { kind: 'assign', ids: rallyAssign(s, me, d.faces) } };
     case 'spartacus':
       return { answer: { kind: 'assign', ids: spartacusAssign(s, me, d.faces, W) } };
+    case 'placeLeader':
+      return { answer: { kind: 'hex', hex: choosePlacement(s, d) } };
   }
 }
 

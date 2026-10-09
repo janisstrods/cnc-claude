@@ -192,36 +192,36 @@ describe('hit scoring in close combat', () => {
   });
   const U = (id: string) => s.units.find((x) => x.id === id)!;
   it('light units without white border (LI, LB, LS, LC) never hit with swords; auxilia do', () => {
-    for (const id of ['u1', 'u2', 'u3', 'u4']) expect(scoreClose(s, U(id), U('u6'), ['swords', 'swords'], false).hits).toBe(0);
-    expect(scoreClose(s, U('u5'), U('u6'), ['swords', 'swords'], false).hits).toBe(2);
+    for (const id of ['u1', 'u2', 'u3', 'u4']) expect(scoreClose(s, U(id), U('u6'), ['swords', 'swords'], false, 'attack').hits).toBe(0);
+    expect(scoreClose(s, U('u5'), U('u6'), ['swords', 'swords'], false, 'attack').hits).toBe(2);
   });
   it('class symbol hits regardless of white border; non-matching symbols miss', () => {
-    expect(scoreClose(s, U('u9'), U('u6'), ['medium', 'light', 'heavy'], false).hits).toBe(1);
+    expect(scoreClose(s, U('u9'), U('u6'), ['medium', 'light', 'heavy'], false, 'attack').hits).toBe(1);
   });
   it('helmets hit only with a friendly leader attached/adjacent', () => {
-    expect(scoreClose(s, U('u9'), U('u6'), ['leader', 'leader'], false).hits).toBe(0);
-    expect(scoreClose(s, U('u9'), U('u6'), ['leader', 'leader'], true).hits).toBe(2);
+    expect(scoreClose(s, U('u9'), U('u6'), ['leader', 'leader'], false, 'attack').hits).toBe(0);
+    expect(scoreClose(s, U('u9'), U('u6'), ['leader', 'leader'], true, 'attack').hits).toBe(2);
   });
   it('flags never hit; they are counted', () => {
-    const r = scoreClose(s, U('u9'), U('u6'), ['flag', 'flag', 'medium'], true);
+    const r = scoreClose(s, U('u9'), U('u6'), ['flag', 'flag', 'medium'], true, 'attack');
     expect(r.hits).toBe(1);
     expect(r.flags).toBe(2);
   });
   it('heavy chariot ignores one sword hit', () => {
-    expect(scoreClose(s, U('u9'), U('u7'), ['swords', 'swords', 'swords'], false).hits).toBe(2);
+    expect(scoreClose(s, U('u9'), U('u7'), ['swords', 'swords', 'swords'], false, 'attack').hits).toBe(2);
   });
   it('foot unit on a fortified camp ignores one sword; mounted unit on a camp does not', () => {
-    expect(scoreClose(s, U('u10'), U('u12'), ['swords', 'swords'], false).hits).toBe(1);
-    expect(scoreClose(s, U('u9'), U('u13'), ['swords', 'swords'], false).hits).toBe(2);
+    expect(scoreClose(s, U('u10'), U('u12'), ['swords', 'swords'], false, 'attack').hits).toBe(1);
+    expect(scoreClose(s, U('u9'), U('u13'), ['swords', 'swords'], false, 'attack').hits).toBe(2);
   });
   it('elephants ignore all sword hits', () => {
-    expect(scoreClose(s, U('u9'), U('u8'), ['swords', 'swords', 'heavy'], false).hits).toBe(1);
+    expect(scoreClose(s, U('u9'), U('u8'), ['swords', 'swords', 'heavy'], false, 'attack').hits).toBe(1);
   });
   it('elephant ignores one red square from cavalry and chariots, not from infantry', () => {
-    expect(scoreClose(s, U('u10'), U('u8'), ['heavy', 'heavy'], false).hits).toBe(1);
-    expect(scoreClose(s, U('u11'), U('u8'), ['heavy', 'heavy'], false).hits).toBe(1);
-    expect(scoreClose(s, U('u9'), U('u8'), ['heavy', 'heavy'], false).hits).toBe(2);
-    expect(scoreClose(s, U('u4'), U('u8'), ['heavy'], false).hits).toBe(0); // LC is cavalry
+    expect(scoreClose(s, U('u10'), U('u8'), ['heavy', 'heavy'], false, 'attack').hits).toBe(1);
+    expect(scoreClose(s, U('u11'), U('u8'), ['heavy', 'heavy'], false, 'attack').hits).toBe(1);
+    expect(scoreClose(s, U('u9'), U('u8'), ['heavy', 'heavy'], false, 'attack').hits).toBe(2);
+    expect(scoreClose(s, U('u4'), U('u8'), ['heavy'], false, 'attack').hits).toBe(0); // LC is cavalry
   });
 });
 

@@ -2,9 +2,9 @@
 // Used both for live answers and inside Monte-Carlo simulations (for both sides).
 import { closeCombatDice, retreatPerFlag } from '../engine/combat';
 import { capturableCamp } from '../engine/flow';
-import { neighbours } from '../engine/hex';
+import { baselineRow, halfCol, neighbours, rowOf } from '../engine/hex';
 import { rallyCandidates, validateRally, validateSpartacus } from '../engine/orders';
-import { leaderById, other, unitById } from '../engine/query';
+import { leaderById, other, unitAt, unitById } from '../engine/query';
 import { retreatOptions, type ElephantRetreatOption } from '../engine/retreat';
 import { rangeOf } from '../engine/elites';
 import { terrainAt } from '../engine/terrain';
@@ -23,6 +23,32 @@ import type { Rng } from './rand';
 import { WIN_SCORE, blockVal, leaderVal, nextBanner, type Weights } from './values';
 
 type D<K extends Decision['kind']> = Extract<Decision, { kind: K }>;
+
+// ---------------------------------------------------------------------------
+// pre-battle leader placement (117 Asculum)
+// ---------------------------------------------------------------------------
+
+/**
+ * Temporary placement policy (Task 19 brings an evaluated one): join an own unit, never an empty hex. Heavy, then
+ * medium infantry first; then the hex nearest the centre (half-column 12), then nearest the own baseline; ties go to
+ * the lowest hex id. Deterministic. Falls back to the first option when no own unit is free.
+ */
+export function choosePlacement(s: GameState, d: D<'placeLeader'>): HexId {
+  let best = d.options[0];
+  let bestV = -Infinity;
+  for (const h of d.options) {
+    const u = unitAt(s, h);
+    if (!u || u.side !== d.side) continue;
+    const st = UNIT_STATS[u.type];
+    const tier = st.infantry ? (st.cls === 'heavy' ? 2 : st.cls === 'medium' ? 1 : 0) : 0;
+    const v = tier * 1000 - 10 * Math.abs(halfCol(h) - 12) - Math.abs(rowOf(h) - baselineRow(d.side));
+    if (v > bestV) {
+      bestV = v;
+      best = h;
+    }
+  }
+  return best;
+}
 
 // ---------------------------------------------------------------------------
 // battle
@@ -583,5 +609,6 @@ export function reactiveFast(s: GameState, d: Decision, W: Weights, rng: Rng): A
     case 'move': return { kind: 'endMove' };
     case 'orders': return { kind: 'orders', pieces: [] };
     case 'playCard': return { kind: 'playCard', card: s.players[d.side].hand[0] };
+    case 'placeLeader': return { kind: 'hex', hex: choosePlacement(s, d) };
   }
 }

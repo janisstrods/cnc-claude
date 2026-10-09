@@ -535,6 +535,17 @@ export class GameController {
       case 'attach':
         this.set({ display: after });
         break;
+      case 'leaderPlaced': {
+        // Asculum: a leader placed before the first turn
+        const side = this.sideOf(e.id, after);
+        this.addLog({ text: `${this.name(e.id, after)} takes position.`, side, kind: 'info' });
+        this.set({ display: after });
+        if (side !== human) {
+          this.flash(e.hex, this.name(e.id, after), 'info');
+          await sleep(this.dur(450));
+        }
+        break;
+      }
       case 'rampage':
         this.flash(this.hexOf(e.id, after), 'Rampage!', 'hit');
         this.set({ display: after });

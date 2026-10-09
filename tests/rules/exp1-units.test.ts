@@ -131,8 +131,8 @@ describe('class and card membership', () => {
   it('dice that hit them: green circle for LBC, blue triangle for CAM', () => {
     const t = build({ units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'LBC', at: [4, 6] }, { side: 'top', type: 'CAM', at: [4, 7] }] });
     const faces: DieFace[] = ['light', 'medium', 'heavy', 'heavy'];
-    expect(scoreClose(t, t.units[0], t.units[1], faces, false).hits).toBe(1);
-    expect(scoreClose(t, t.units[0], t.units[2], faces, false).hits).toBe(1);
+    expect(scoreClose(t, t.units[0], t.units[1], faces, false, 'attack').hits).toBe(1);
+    expect(scoreClose(t, t.units[0], t.units[2], faces, false, 'attack').hits).toBe(1);
   });
 });
 
@@ -216,7 +216,7 @@ describe('light bow cavalry: close combat', () => {
   });
   it('swords never score hits for it', () => {
     const s = build({ units: [{ side: 'bottom', type: 'LBC', at: [5, 6] }, { side: 'top', type: 'MI', at: [4, 6] }] });
-    expect(scoreClose(s, s.units[0], s.units[1], ['swords', 'swords'], false).hits).toBe(0);
+    expect(scoreClose(s, s.units[0], s.units[1], ['swords', 'swords'], false, 'attack').hits).toBe(0);
     const d = strikeNow('LBC', 'MI', ['swords', 'swords', ...n('light', 4)]);
     expect(u(d, 'u2')!.blocks).toBe(4);
   });
@@ -332,22 +332,22 @@ describe('camel: ignores 1 blue triangle from cavalry and chariots', () => {
   const twoBlue: DieFace[] = ['medium', 'medium'];
   it('a medium cavalry roll of two blue triangles scores 1 hit; heavy infantry scores 2', () => {
     const { s, of, target } = scoringState();
-    expect(scoreClose(s, of('MC'), target, twoBlue, false).hits).toBe(1);
-    expect(scoreClose(s, of('HI'), target, twoBlue, false).hits).toBe(2);
+    expect(scoreClose(s, of('MC'), target, twoBlue, false, 'attack').hits).toBe(1);
+    expect(scoreClose(s, of('HI'), target, twoBlue, false, 'attack').hits).toBe(2);
   });
   it('every cavalry and chariot type triggers it (LC, MC, HC, LBC, HCH)', () => {
     const { s, of, target } = scoringState();
-    for (const t of ['LC', 'MC', 'HC', 'LBC', 'HCH'] as UnitType[]) expect([t, scoreClose(s, of(t), target, twoBlue, false).hits]).toEqual([t, 1]);
+    for (const t of ['LC', 'MC', 'HC', 'LBC', 'HCH'] as UnitType[]) expect([t, scoreClose(s, of(t), target, twoBlue, false, 'attack').hits]).toEqual([t, 1]);
   });
   it('foot, elephants and other camels do not', () => {
     const { s, of, target } = scoringState();
-    for (const t of ['LI', 'MI', 'HI', 'EL', 'CAM'] as UnitType[]) expect([t, scoreClose(s, of(t), target, twoBlue, false).hits]).toEqual([t, 2]);
+    for (const t of ['LI', 'MI', 'HI', 'EL', 'CAM'] as UnitType[]) expect([t, scoreClose(s, of(t), target, twoBlue, false, 'attack').hits]).toEqual([t, 2]);
   });
   it('only one blue triangle per roll, and never a sword or a helmet', () => {
     const { s, of, target } = scoringState();
-    expect(scoreClose(s, of('HC'), target, ['medium', 'medium', 'medium'], false).hits).toBe(2);
-    expect(scoreClose(s, of('MC'), target, ['swords', 'swords', 'medium'], false).hits).toBe(2);
-    expect(scoreClose(s, of('MC'), target, ['leader', 'medium'], true).hits).toBe(1);
+    expect(scoreClose(s, of('HC'), target, ['medium', 'medium', 'medium'], false, 'attack').hits).toBe(2);
+    expect(scoreClose(s, of('MC'), target, ['swords', 'swords', 'medium'], false, 'attack').hits).toBe(2);
+    expect(scoreClose(s, of('MC'), target, ['leader', 'medium'], true, 'attack').hits).toBe(1);
   });
   it('flow: medium cavalry attacking a camel (the camel cannot evade it)', () => {
     const d = strikeNow('MC', 'CAM', ['medium', 'medium', 'light', 'light', 'light']);
@@ -397,8 +397,8 @@ describe('camel: flags', () => {
     const { s, of } = scoringState();
     const el = s.units.find((x) => x.type === 'EL')!;
     const ctx = { kind: 'close' as const, leaderAlive: false, fullAtStart: true };
-    expect(scoreClose(s, of('CAM'), el, ['heavy', 'heavy'], false).hits).toBe(2);
-    expect(scoreClose(s, of('HC'), el, ['heavy', 'heavy'], false).hits).toBe(1);
+    expect(scoreClose(s, of('CAM'), el, ['heavy', 'heavy'], false, 'attack').hits).toBe(2);
+    expect(scoreClose(s, of('HC'), el, ['heavy', 'heavy'], false, 'attack').hits).toBe(1);
     expect(ignorableFlags(s, el, { ...ctx, striker: of('CAM') })).toBe(0);
     expect(ignorableFlags(s, el, { ...ctx, striker: of('HC') })).toBe(1);
   });
