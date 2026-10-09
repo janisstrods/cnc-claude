@@ -8,10 +8,10 @@ import { isLoneLeader, leaderUnit, leadersOf, unitsOf } from '../engine/query';
 import { cloneState } from '../engine/setup';
 import { UNIT_STATS } from '../engine/units';
 import type { CardKind, GameState, Leader, SectionName, Side, Unit } from '../engine/types';
-import { Occ, hexDist, isRangedLight, supportOcc } from './board';
+import { Occ, advanceGap, hexDist, supportOcc } from './board';
 import { attackNowValue } from './estimate';
 import { battered, singleUnitRisk } from './evaluate';
-import type { Weights } from './values';
+import { isSacredLeader, type Weights } from './values';
 
 export interface OrderCandidate {
   pieces: string[];
@@ -29,10 +29,7 @@ function nearestEnemy(s: GameState, h: number, side: Side): number {
 function localScore(s: GameState, occ: Occ, u: Unit, W: Weights): number {
   let v = -W.riskSelf * singleUnitRisk(s, occ, u, W);
   const d = nearestEnemy(s, u.hex, u.side);
-  if (!battered(u)) {
-    const pref = isRangedLight(u) ? 2 : 1;
-    v -= W.adv * Math.min(8, Math.max(0, d - pref)) * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1) * 1.5;
-  }
+  if (!battered(u)) v -= W.adv * Math.min(8, advanceGap(u, d)) * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1) * 1.5;
   if (d <= 2) {
     const sc = supportOcc(occ, u);
     if (sc >= 2) v += W.support;
@@ -91,7 +88,7 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
       // a leader riding with a battered unit near the enemy should move to a healthier one
       const lu = leaderUnit(s, l)!;
       let b = 0;
-      if (s.special.sacredLeaderId === l.id && lu.blocks < lu.maxBlocks && nearestEnemy(s, lu.hex, side) <= 3) {
+      if (isSacredLeader(s, l) && lu.blocks < lu.maxBlocks && nearestEnemy(s, lu.hex, side) <= 3) {
         // the instant-loss leader leaves a damaged unit near the enemy for a full-strength one
         const refuge = unitsOf(s, side).some((u) => u !== lu && u.blocks === u.maxBlocks && hexDist(u.hex, l.hex) <= 3 && !occ.leader[u.hex]);
         if (refuge) b = 0.4;
@@ -111,7 +108,7 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
       if (g > b) b = g;
     }
     if (nearestEnemy(s, l.hex, side) <= 1) b += 0.15; // in danger: must move
-    if (s.special.sacredLeaderId === l.id && unitsOf(s, side).some((u) => u.blocks >= 2 && hexDist(u.hex, l.hex) <= 3 && !occ.leader[u.hex])) {
+    if (isSacredLeader(s, l) && unitsOf(s, side).some((u) => u.blocks >= 2 && hexDist(u.hex, l.hex) <= 3 && !occ.leader[u.hex])) {
       b = Math.max(b, 0.3); // a lone instant-loss leader always wants to rejoin a sound unit
     }
     out.set(l.id, b);

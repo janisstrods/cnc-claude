@@ -174,15 +174,35 @@ export function standEV(s: GameState, occ: Occ, a: Unit, t: Unit, n: number, mom
   return { ev, pElim: pe };
 }
 
-/** Attacker's expected value when the defender evades (class symbols only, no battle back). */
+/** A machine that stays keeps shooting with its full dice however few blocks it has left: worth more than its blocks. */
+const ABANDON_EXTRA = 0.1;
+
+/**
+ * Value lost by a war machine that survives its evade roll with `h` hits: it is abandoned after the evade move (§15), so
+ * every block is lost but no banner is scored; an attached leader was checked when hit and is left standing alone.
+ */
+function abandonValue(s: GameState, occ: Occ, t: Unit, h: number, bannerM: number): number {
+  const l = attachedLeaderOcc(occ, t);
+  let v = t.blocks * blockVal(t) + ABANDON_EXTRA;
+  if (l) v += (h > 0 ? (bannerM + leaderVal(s, l)) / 36 : 0) + 0.03;
+  return v;
+}
+
+/**
+ * Attacker's expected value when the defender evades (class symbols only, no battle back). A camel ignores 1 blue
+ * triangle of a horse's roll (§15); a war machine that survives the roll is abandoned anyway.
+ */
 export function evadeEV(s: GameState, occ: Occ, a: Unit, t: Unit, n: number): EV {
   const pmf = binom(n, SIXTH);
   const bm = nextBanner(s, a.side);
+  const ign = vsMountedIgnores(a, t);
+  const abandoned = UNIT_STATS[t.type].evadeRemoves;
   let ev = 0;
   let pe = 0;
   for (let k = 0; k <= n; k++) {
-    ev += pmf[k] * dmgValue(s, occ, t, k, bm);
-    if (k >= t.blocks) pe += pmf[k];
+    const h = Math.max(0, k - ign);
+    ev += pmf[k] * (abandoned && h < t.blocks ? abandonValue(s, occ, t, h, bm) : dmgValue(s, occ, t, h, bm));
+    if (h >= t.blocks) pe += pmf[k];
   }
   return { ev: ev + 0.015, pElim: pe, evade: true };
 }

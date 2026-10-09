@@ -1,25 +1,31 @@
 // Static evaluation of a position from one side's point of view (1.0 ~ one banner).
 import { defaultMods } from '../engine/cards';
-import { closeCombatDice, leaderDiceBonus, rampartShields, rangedDice, swordIgnores } from '../engine/combat';
+import {
+  closeCombatDice, frightAtFirstSight, leaderDiceBonus, rampartShields, rangedDice, swordIgnores, vsMountedIgnores,
+} from '../engine/combat';
 import { unitMoves } from '../engine/movement';
 import { halfCol, neighbours, rowOf } from '../engine/hex';
-import { leaderHas, other } from '../engine/query';
-import { ccCapOfHex, isHill, isImpassable } from '../engine/terrain';
+import { isRomanArmy, leaderHas, other } from '../engine/query';
+import { ccCapOfHex, isHill } from '../engine/terrain';
 import { eliteHas, rangeOf } from '../engine/elites';
 import { UNIT_STATS, canEvadeType, elephantDiceVs } from '../engine/units';
 import type { GameState, Leader, Side, Unit } from '../engine/types';
 import {
-  Occ, attachedLeaderOcc, canEvadeOcc, canFireOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, helmetsOcc, hexDist, ignorableOcc,
-  isRangedLight, reachOf, retreatRoom, supportOcc,
+  Occ, advanceGap, approachable, attachedLeaderOcc, canEvadeOcc, canFireOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, helmetsOcc,
+  hexDist, ignorableOcc, isRangedLight, reachOf, retreatRoom, supportOcc,
 } from './board';
 import { binom, pAnyHelmet } from './dice';
 import {
-  WIN_SCORE, bannerScore, blockVal, leaderVal, leaderWorth, nextBanner, unitWeight, type Weights,
+  WIN_SCORE, bannerScore, blockVal, isSacredLeader, leaderLossCost, leaderVal, leaderWorth, nextBanner, unitWeight, type Weights,
 } from './values';
 
 const SIXTH = 1 / 6;
 const RETREAT_COST = 0.07;
 const LEADER_ATTACHED = 0.03;
+/** Front-line bonus multiplier for a leader whose unit rolls +1 die (Alexander, `ccBonus`). */
+const CC_BONUS_FRONT = 1.6;
+/** A camel's advance gap is measured to the enemy horse while that is at most this many hexes further away. */
+const CAMEL_HORSE_PULL = 2;
 
 export function battered(u: Unit): boolean {
   return u.blocks === 1 || u.blocks * 2 < u.maxBlocks;
@@ -38,6 +44,15 @@ function hitP(s: GameState, occ: Occ, e: Unit, u: Unit): number {
   if (S.swordHits && !ignoresSwords) p += swordIgnores(s, u, e, 'attack') > 0 ? SIXTH * 0.5 : SIXTH;
   if (helmetsOcc(occ, e) || eliteHas(e, 'helmetHits')) p += SIXTH;
   return p;
+}
+
+/**
+ * Per-die share of the class hits a camel ignores from a horse's roll of n dice (1 blue triangle per roll, §15): E[hits
+ * dropped] / n. 0 for every other pairing (an elephant's red-square ignore is not modelled here).
+ */
+function camelIgnoreP(e: Unit, u: Unit, n: number): number {
+  if (n <= 0 || UNIT_STATS[u.type].elephantTable || !vsMountedIgnores(e, u)) return 0;
+  return (1 - Math.pow(5 / 6, n)) / n;
 }
 
 /** Close-combat dice an enemy would roll after moving next to u (no card bonus, cap from u's hex, Alexander's +1). */
@@ -66,9 +81,7 @@ function attackHexes(s: GameState, e: Unit): Set<number> {
 
 function hasFreeApproach(s: GameState, occ: Occ, e: Unit, target: number, reach: number): boolean {
   for (const nb of neighbours(target)) {
-    if (occ.unit[nb] || isImpassable(s, nb)) continue;
-    const l = occ.leader[nb];
-    if (l && l.side !== e.side) continue;
+    if (!approachable(s, occ, e, nb)) continue;
     if (hexDist(e.hex, nb) <= reach) return true;
   }
   return false;
@@ -78,11 +91,22 @@ interface VictimInfo {
   pFlagHit: number;
   /** pFlagHit against a roll its rampart protects it from (one more ignorable flag, §16); = pFlagHit off a rampart. */
   pFlagHitShielded: number;
+  /** pFlagHit against an elephant's roll under Fright at First Sight (116: no flag ignored); = pFlagHit otherwise. */
+  pFlagHitFright: number;
+  /** Share of flags that push it back (retreat cost): ordinary, across a protected rampart side, under Fright. */
   unignored: number;
+  unignoredShielded: number;
+  /** A foot unit on a rampart hex (protected against threats across its protected sides). */
+  onRampart: boolean;
+  /** A Roman infantry unit with Fright at First Sight in force (elephants' flags cannot be ignored). */
+  frightProne: boolean;
   lossPerFlag: number;
   canEv: boolean;
   leaderBonus: number;
 }
+
+/** Which flag rule a threat falls under: 0 ordinary, 1 across a protected rampart side (§16), 2 Fright at First Sight. */
+type FlagCase = 0 | 1 | 2;
 
 interface Threat {
   w: number;
@@ -90,6 +114,7 @@ interface Threat {
   p: number;
   flags: boolean;
   pk: number;
+  fk: FlagCase;
 }
 
 function orderFactor(s: GameState, side: Side): number {
@@ -104,20 +129,34 @@ function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number): VictimInfo {
   const room = retreatRoom(s, occ, u, per);
   const lossPerFlag = Math.min(2, per - room);
   const ign = ignorableOcc(s, occ, u, 'close', null);
-  const unignored = ign >= 2 ? 0.1 : ign === 1 ? 0.4 : 1;
+  const unignoredOf = (k: number) => (k >= 2 ? 0.1 : k === 1 ? 0.4 : 1);
+  const unignored = unignoredOf(ign);
   const flagHit = (k: number) => (lossPerFlag > 0 ? SIXTH * lossPerFlag * (k >= 2 ? 0.1 : k === 1 ? 0.35 : 1) : 0);
   const pFlagHit = flagHit(ign);
   // a foot unit on a rampart: one more ignorable flag against rolls coming across a protected side (decided per threat)
-  const pFlagHitShielded = s.rampart[u.hex] && st.foot ? flagHit(ign + 1) : pFlagHit;
+  const onRampart = !!s.rampart[u.hex] && st.foot;
+  const pFlagHitShielded = onRampart ? flagHit(ign + 1) : pFlagHit;
+  // Fright at First Sight (116): a Roman infantry unit ignores no flag an elephant rolls (decided per threat)
+  const frightProne = st.infantry && s.special.rules.includes('frightAtFirstSight') && isRomanArmy(s, u.side);
   const canEv = st.evade !== 'never' && canEvadeOcc(s, occ, u);
   const l = attachedLeaderOcc(occ, u);
-  return { pFlagHit, pFlagHitShielded, unignored, lossPerFlag, canEv, leaderBonus: l ? SIXTH * (bm + leaderVal(s, l)) : 0 };
+  return {
+    pFlagHit, pFlagHitShielded, pFlagHitFright: frightProne ? flagHit(0) : pFlagHit,
+    unignored, unignoredShielded: onRampart ? unignoredOf(ign + 1) : unignored, onRampart, frightProne,
+    lossPerFlag, canEv, leaderBonus: l ? SIXTH * (bm + leaderVal(s, l)) : 0,
+  };
 }
 
-/** Flag-loss chance per die of a threat by `e` against victim `u` (rampart-aware). */
-function flagHitP(s: GameState, vi: VictimInfo, u: Unit, e: Unit, kind: 'close' | 'ranged'): number {
-  if (vi.pFlagHitShielded === vi.pFlagHit) return vi.pFlagHit;
-  return rampartShields(s, u, e, kind, 'attack') ? vi.pFlagHitShielded : vi.pFlagHit;
+/** The flag rule of a threat by `e` against victim `u` (rampart side, Fright at First Sight, or ordinary). */
+function flagCase(s: GameState, vi: VictimInfo, u: Unit, e: Unit, kind: 'close' | 'ranged'): FlagCase {
+  if (vi.frightProne && frightAtFirstSight(s, u, e, kind)) return 2;
+  if (vi.onRampart && rampartShields(s, u, e, kind, 'attack')) return 1;
+  return 0;
+}
+
+/** Flag-loss chance per die of a threat under flag rule `fk`. */
+function flagHitP(vi: VictimInfo, fk: FlagCase): number {
+  return fk === 0 ? vi.pFlagHit : fk === 1 ? vi.pFlagHitShielded : vi.pFlagHitFright;
 }
 
 /** Expected value an attack of n dice with per-die hit chance p would take from u (used to rank targets). */
@@ -167,30 +206,37 @@ function threatsAgainst(
       const d = hexDist(e.hex, u.hex);
       if (d > 6) continue;
       const vi = info[j];
-      const evades = vi.canEv && canEvadeType(u.type, e.type);
+      // a war machine that evades is abandoned anyway (§15): price the threat as if it stands
+      const evades = vi.canEv && canEvadeType(u.type, e.type) && !UNIT_STATS[u.type].evadeRemoves;
       let n = 0;
       let base = 0;
       let p = 0;
       let flags = false;
+      let fk: FlagCase = 0;
       if (d === 1) {
         n = closeCombatDice(s, e, u, { role: 'attack', fullAtStart: e.blocks === e.maxBlocks, ordered: false });
         base = pAdj * (footSkirmisher ? 0.5 : 1);
-        p = evades ? SIXTH : hitP(s, occ, e, u) + flagHitP(s, vi, u, e, 'close');
+        fk = flagCase(s, vi, u, e, 'close');
+        p = evades ? SIXTH : hitP(s, occ, e, u) + flagHitP(vi, fk);
+        p -= camelIgnoreP(e, u, n);
         flags = !evades;
       } else if (range && d <= range && canFireOcc(s, occ, e, u.hex)) {
         n = rangedDice(s, e, u.hex, 0, false);
         base = pAdj * 0.85;
-        p = SIXTH + flagHitP(s, vi, u, e, 'ranged');
+        fk = flagCase(s, vi, u, e, 'ranged');
+        p = SIXTH + flagHitP(vi, fk);
         flags = true;
       } else if (d - 1 <= reach && canReach(u.hex)) {
         n = reachDice(s, e, u);
         base = pReach * (isRangedLight(e) ? (mounted ? 0.6 : 0.3) : 1);
         // not adjacent yet: the rampart counts when e lies on its protected side
-        p = evades ? SIXTH : hitP(s, occ, e, u) + flagHitP(s, vi, u, e, 'close');
+        fk = flagCase(s, vi, u, e, 'close');
+        p = evades ? SIXTH : hitP(s, occ, e, u) + flagHitP(vi, fk);
+        p -= camelIgnoreP(e, u, n);
         flags = !evades;
       } else continue;
       if (n <= 0) continue;
-      cand.push({ vi: j, base, t: { w: 0, n, p, flags, pk: 0 }, val: attackValue(u, vi, n, p, bm) });
+      cand.push({ vi: j, base, t: { w: 0, n, p, flags, pk: 0, fk }, val: attackValue(u, vi, n, p, bm) });
     }
     for (let k = 0; k < lone.length; k++) {
       const l = lone[k];
@@ -210,7 +256,7 @@ function threatsAgainst(
       } else continue;
       if (n <= 0) continue;
       const pk = pAnyHelmet(n);
-      cand.push({ vi: victims.length + k, base, t: { w: 0, n, p: 0, flags: false, pk }, val: pk * (bm + leaderVal(s, l)) + 0.05 });
+      cand.push({ vi: victims.length + k, base, t: { w: 0, n, p: 0, flags: false, pk, fk: 0 }, val: pk * (bm + leaderVal(s, l)) + 0.05 });
     }
     if (!cand.length) continue;
     let sum2 = 0;
@@ -230,7 +276,10 @@ function unitRisk(s: GameState, occ: Occ, u: Unit, info: VictimInfo, threats: Th
   const b = u.blocks;
   let dist0 = new Float64Array(b + 1);
   dist0[0] = 1;
+  // expected flags by flag rule (ordinary, across a protected rampart side, Fright at First Sight)
   let eFlags = 0;
+  let eFlagsShielded = 0;
+  let eFlagsFright = 0;
   for (const t of threats) {
     const pmf = binom(t.n, Math.min(0.95, t.p));
     const nx = new Float64Array(b + 1);
@@ -241,14 +290,20 @@ function unitRisk(s: GameState, occ: Occ, u: Unit, info: VictimInfo, threats: Th
       for (let x = 0; x < pmf.length; x++) nx[Math.min(b, h + x)] += pr * t.w * pmf[x];
     }
     dist0 = nx;
-    if (t.flags) eFlags += (t.w * t.n) / 6;
+    if (t.flags) {
+      const f = (t.w * t.n) / 6;
+      if (t.fk === 0) eFlags += f;
+      else if (t.fk === 1) eFlagsShielded += f;
+      else eFlagsFright += f;
+    }
   }
   let eh = 0;
   for (let h = 1; h <= b; h++) eh += h * dist0[h];
   const pel = dist0[b];
   let risk = eh * blockVal(u) + pel * bm;
   // being pushed back costs ground, breaks the line and lets the enemy advance
-  risk += eFlags * info.unignored * RETREAT_COST * (info.lossPerFlag > 0 ? 0.3 : 1);
+  const pushed = eFlags * info.unignored + eFlagsShielded * info.unignoredShielded + eFlagsFright;
+  risk += pushed * RETREAT_COST * (info.lossPerFlag > 0 ? 0.3 : 1);
   const l = attachedLeaderOcc(occ, u);
   if (l) {
     const lv = bm + leaderVal(s, l);
@@ -323,7 +378,7 @@ function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side
   for (const l of s.leaders) {
     if (l.side !== side || l.hex < 0) continue;
     const lu = occ.unit[l.hex];
-    const sacred = own && s.special.sacredLeaderId === l.id;
+    const sacred = own && isSacredLeader(s, l);
     if (lu && lu.side === side) {
       const d = near.get(lu) ?? 99;
       const health = lu.blocks / lu.maxBlocks;
@@ -336,7 +391,8 @@ function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side
         if (d <= 3) v -= 0.12 * (lu.maxBlocks - lu.blocks);
         continue;
       }
-      if (d <= 2) v += W.leaderFront * health * (UNIT_STATS[lu.type].noLeaderBenefit ? 0.2 : 1);
+      // Alexander (+1 die to his unit) belongs where the fighting is
+      if (d <= 2) v += W.leaderFront * health * (UNIT_STATS[lu.type].noLeaderBenefit ? 0.2 : leaderHas(l, 'ccBonus') ? CC_BONUS_FRONT : 1);
       continue;
     }
     if (sacred) {
@@ -362,14 +418,36 @@ function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side
   return v;
 }
 
+/** Distance to the nearest enemy cavalry or chariot (a camel's favourite prey: it ignores a hit and scares horses). */
+function nearestHorse(u: Unit, enemies: Unit[]): number {
+  let best = 99;
+  for (const e of enemies) {
+    const st = UNIT_STATS[e.type];
+    if (!st.cavalry && !st.chariot) continue;
+    const d = hexDist(u.hex, e.hex);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/** True for a camel (ignores a blue triangle of a horse's roll; the elephant's red-square ignore is the other case). */
+function isCamel(u: Unit): boolean {
+  const st = UNIT_STATS[u.type];
+  return st.vsMountedIgnoreHit !== null && !st.elephantTable;
+}
+
 function advancePenalty(units: Unit[], enemies: Unit[], W: Weights): number {
   if (!enemies.length) return 0;
   let pen = 0;
   for (const u of units) {
     if (battered(u)) continue;
     const d = nearestDist(u, enemies);
-    const pref = isRangedLight(u) ? 2 : 1;
-    const gap = Math.min(8, Math.max(0, d - pref));
+    let gap = Math.min(8, advanceGap(u, d));
+    if (isCamel(u)) {
+      // camels seek out the enemy horse when it is not much further away than the nearest enemy
+      const dh = nearestHorse(u, enemies);
+      if (dh <= d + CAMEL_HORSE_PULL) gap = Math.min(8, advanceGap(u, dh));
+    }
     pen += gap * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1);
   }
   return pen * W.adv;
@@ -438,6 +516,8 @@ export function evaluate(s: GameState, me: Side, next: Side, W: Weights, breakdo
   for (const u of s.special.reserveUnits) material += (u.side === me ? 0.75 : -0.75) * unitWeight(u);
   for (const l of s.leaders) if (l.hex >= 0) material += (l.side === me ? 1 : -1) * leaderWorth(l);
   for (const l of s.special.reserveLeaders) material += (l.side === me ? 0.75 : -0.75) * leaderWorth(l);
+  // Hellespont: each leader lost cost a card and a point of Command; the last one left decides the battle
+  material -= leaderLossCost(s, me) - leaderLossCost(s, opp);
 
   const riskMine = sideRisk(s, occ, mine, theirs, me, W);
   const riskTheirs = sideRisk(s, occ, theirs, mine, opp, W);
@@ -526,7 +606,7 @@ export function rawFeatures(s: GameState, me: Side, next: Side, W: Weights): Rec
     for (const u of units) {
       if (battered(u)) continue;
       const d = nearestDist(u, enemies);
-      gap += Math.min(8, Math.max(0, d - (isRangedLight(u) ? 2 : 1)));
+      gap += Math.min(8, advanceGap(u, d));
     }
     return { support, isolated, stray, front, lonely, gap };
   };

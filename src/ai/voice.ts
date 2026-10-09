@@ -1,6 +1,6 @@
 // Battle-log flavour lines in the commander's voice. Lines never reveal hidden information: card lines are spoken
 // only after the card is played (it is revealed anyway), and nothing refers to cards still in hand.
-import type { ArmyLook, CardKind, GameState, Side, UnitType } from '../engine/types';
+import type { ArmyLook, CardKind, EliteId, GameState, Side, UnitType } from '../engine/types';
 import type { Personality, Voice } from './personality';
 import type { Rng } from './rand';
 
@@ -134,7 +134,25 @@ const LINES: Record<Moment, Lines> = {
   },
 };
 
-/** Troop names by army look; a look without an entry (or a type without a name) is just "men". */
+/** Troop names any army falls back on. */
+const DEFAULT_TROOPS: Record<UnitType, string> = {
+  LI: 'skirmishers', LB: 'archers', LS: 'slingers', AX: 'auxiliaries', WA: 'warriors', MI: 'spearmen', HI: 'heavy infantry',
+  LC: 'light horse', MC: 'cavalry', HC: 'heavy cavalry', EL: 'war elephants', HCH: 'chariots', LBC: 'horse archers',
+  CAM: 'camel riders', HWM: 'war machines',
+};
+
+/** The Greek city armies of the Persian and Theban wars (hoplite phalanx, peltasts, psiloi). */
+const GREEK: Partial<Record<UnitType, string>> = {
+  LI: 'psiloi', LB: 'archers', LS: 'slingers', AX: 'peltasts', MI: 'hoplites', HI: 'hoplite phalanx', LC: 'light horse',
+  MC: 'Greek horse',
+};
+/** Macedonian-style armies (Philip, Alexander, the Successors, Pyrrhus). */
+const MACEDONIAN: Partial<Record<UnitType, string>> = {
+  LI: 'skirmishers', LB: 'Cretan archers', LS: 'slingers', AX: 'peltasts', MI: 'hypaspists', HI: 'phalanx', LC: 'prodromoi',
+  MC: 'Companion horse', HC: 'heavy horse', EL: 'war elephants', LBC: 'horse archers',
+};
+
+/** Troop names by army look (over the defaults). */
 const TROOPS: Partial<Record<ArmyLook, Partial<Record<UnitType, string>>>> = {
   roman: {
     LI: 'velites', LB: 'archers', LS: 'slingers', AX: 'auxilia', WA: 'Gallic allies', MI: 'hastati', HI: 'legionaries',
@@ -151,11 +169,46 @@ const TROOPS: Partial<Record<ArmyLook, Partial<Record<UnitType, string>>>> = {
     HI: 'hoplites', LC: 'light horse', MC: 'Greek horse', HC: 'heavy horse', EL: 'elephants', HCH: 'chariots',
     LBC: 'horse archers', CAM: 'camel riders', HWM: 'war machines',
   },
+  athenian: { ...GREEK, HI: 'Athenian hoplites', MI: 'Plataean hoplites' },
+  theban: { ...GREEK, HI: 'Theban phalanx', MC: 'Theban horse' },
+  spartan: { ...GREEK, HI: 'Spartiates', MI: 'allied hoplites', LI: 'helots', MC: 'Spartan horse' },
+  phocian: { ...GREEK, MI: 'mercenary hoplites', HI: 'Phocian hoplites' },
+  macedonian: { ...MACEDONIAN, MC: 'Thessalian horse', HWM: 'catapults', AX: 'Agrianians', LBC: 'Dahae horse archers' },
+  antigonid: { ...MACEDONIAN, AX: 'Thracians', MI: 'peltasts', MC: 'Macedonian horse' },
+  epirote: { ...MACEDONIAN, MI: 'Tarentine hoplites', WA: 'Samnites', LC: 'Tarentine horse', MC: 'Thessalian horse' },
+  craterus: { ...MACEDONIAN, HI: 'phalanx veterans' },
+  eumenes: { ...MACEDONIAN, MC: 'Cappadocian horse' },
+  antigonus: { ...MACEDONIAN, LC: 'Tarentines' },
+  seleucid: {
+    ...MACEDONIAN, HI: 'Seleucid phalanx', MI: 'thureophoroi', WA: 'Galatians', HC: 'cataphracts', HCH: 'scythed chariots',
+    CAM: 'Arab camel riders', LBC: 'Dahae horse archers', LC: 'Tarentines',
+  },
+  ptolemaic: { ...MACEDONIAN, HI: 'Ptolemaic phalanx', WA: 'Galatians', EL: 'African elephants', HC: 'royal horse' },
+  persian: {
+    LI: 'skirmishers', LB: 'Persian archers', LS: 'slingers', AX: 'Kardakes', MI: 'sparabara', HI: 'Greek mercenaries',
+    LC: 'light horse', MC: 'Persian horse', HC: 'Bactrian horse', HCH: 'scythed chariots', EL: 'war elephants',
+    LBC: 'Saka horse archers', CAM: 'camel riders',
+  },
+  scythian: { LC: 'Scythian riders', LBC: 'Scythian horse archers', MC: 'Scythian nobles' },
+  indian: { LB: 'Indian archers', AX: 'Indian foot', MC: 'Indian horse', HCH: 'Indian chariots', EL: 'war elephants' },
+  mauryan: { LB: 'Mauryan archers', AX: 'Indian foot', MC: 'Mauryan horse', HCH: 'Mauryan chariots', EL: 'war elephants', HI: 'Mauryan guard' },
 };
 
-export function troopName(s: GameState, side: Side, t: UnitType | undefined): string {
+/** Elite units are called by their own name (§17.1). */
+const ELITE_NAMES: Record<EliteId, string> = {
+  carthSacredBand: 'Sacred Band', thebanSacredBand: 'Sacred Band', silverShields: 'Silver Shields', companions: 'Companions',
+  immortals: 'Immortals', bowAuxilia: 'bowmen',
+};
+
+export function troopName(s: GameState, side: Side, t: UnitType | undefined, elite?: EliteId): string {
+  if (elite) return ELITE_NAMES[elite];
   if (!t) return 'men';
-  return TROOPS[s.players[side].look]?.[t] ?? 'men';
+  return TROOPS[s.players[side].look]?.[t] ?? DEFAULT_TROOPS[t];
+}
+
+/** "The Romans", "Craterus' Successors" (an army name already plural keeps its form). */
+function armyPlural(army: string): string {
+  return /s$/.test(army) ? army : `The ${army}s`;
 }
 
 export interface VoiceMemory {
@@ -192,7 +245,7 @@ export function cardMoment(kind: CardKind | null, attacking: boolean, regrouping
  */
 export function speak(
   s: GameState, side: Side, P: Personality, m: Moment, mem: VoiceMemory, rng: Rng,
-  opts: { troops?: UnitType; chance?: number } = {},
+  opts: { troops?: UnitType; elite?: EliteId; chance?: number } = {},
 ): string | undefined {
   const turn = s.turn.number;
   if (mem.sayTurn !== turn) {
@@ -213,8 +266,8 @@ export function speak(
   mem.saysThisTurn++;
   const opp = side === 'top' ? 'bottom' : 'top';
   const text = raw
-    .replace('{troops}', troopName(s, side, opts.troops))
-    .replace('{enemy}', `The ${s.players[opp].army}s`)
+    .replace('{troops}', troopName(s, side, opts.troops, opts.elite))
+    .replace('{enemy}', armyPlural(s.players[opp].army))
     .replace(/(^|[.!?]\s+)([a-z])/g, (_m, pre: string, c: string) => pre + c.toUpperCase());
   const who = s.players[side].commander || s.players[side].army;
   return `${who}: "${text}"`;

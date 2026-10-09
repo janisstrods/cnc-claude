@@ -53,7 +53,15 @@ export function personalityById(id: string): Personality {
 }
 
 const BY_NAME: [RegExp, string][] = [
-  [/hannibal|xanthippus|hamilcar|maharbal|mago/i, 'fox'],
+  // Expansion #1 commanders (first: some names would otherwise match a base-game pattern)
+  [/alexander|pyrrhus|craterus|chandragupta|maurya|decius/i, 'lion'],
+  [/epaminondas|seleucus|flamininus|paull?us|callimachus/i, 'strategist'],
+  [/eumenes|philip ii\b|satraces/i, 'fox'],
+  [/darius|ptolemy|perseus|pausanias|dentatus/i, 'shield'],
+  [/porus|mardonius|cleombrot|onomarchus|antiochus|philip v\b|laevinus/i, 'bull'],
+  [/datis|hamilcar|gelon|agesilaus|antigonus|mithridates|neoptolemus|alcet/i, 'veteran'],
+  // base game (Himilco stays the Shield in 122 Cronium too: same name, and the Akragas Himilco is one)
+  [/hannibal|xanthippus|maharbal|mago/i, 'fox'],
   [/varro|flaminius|sempronius|minucius|regulus/i, 'bull'],
   [/fabius|himilco|hanno/i, 'shield'],
   [/gnaeus/i, 'lion'],

@@ -132,6 +132,16 @@ export function retreatRoom(s: GameState, occ: Occ, u: Unit, need: number): numb
   return walk(u.hex, need);
 }
 
+/**
+ * Can an enemy unit `e` reach hex `nb` to attack from it (it is free, passable and not terrain `e` may not enter, such
+ * as broken ground or marsh for a war machine)?
+ */
+export function approachable(s: GameState, occ: Occ, e: Unit, nb: HexId): boolean {
+  if (occ.unit[nb] || isImpassable(s, nb) || forbidsTerrain(e.type, terrainAt(s, nb))) return false;
+  const l = occ.leader[nb];
+  return !(l && l.side !== e.side);
+}
+
 /** Can the unit evade at all (mirror of engine evadeOptions non-emptiness)? */
 export function canEvadeOcc(s: GameState, occ: Occ, u: Unit): boolean {
   const hasLeader = !!attachedLeaderOcc(occ, u);
@@ -200,7 +210,23 @@ export function reachOf(u: Unit): number {
   return UNIT_STATS[u.type].moveBattle;
 }
 
-/** Skirmisher: shoots and may always evade (LI, LB, LS, LC); it prefers to stand off and fire. */
+/** Skirmisher: shoots and may always evade (LI, LB, LS, LC, LBC; also HWM, see isWarMachine); it stands off and fires. */
 export function isRangedLight(u: Unit): boolean {
   return canShoot(u) && UNIT_STATS[u.type].evade === 'always';
+}
+
+/** War machine (HWM): shoots, but may not battle at all after moving, so it stays back and fires (§15). */
+export function isWarMachine(u: Unit): boolean {
+  return UNIT_STATS[u.type].moveBattle === 0 && canShoot(u);
+}
+
+/**
+ * Hexes a sound unit still has to close, given the distance `d` to the nearest enemy (0 = at or inside its preferred
+ * distance). Foot skirmishers stand off at 2, mounted ones at their range (LC 2, light bow cavalry 3); a war machine
+ * anywhere within its range but never adjacent (it cannot shoot there); everyone else wants contact.
+ */
+export function advanceGap(u: Unit, d: number): number {
+  if (isWarMachine(u)) return d <= 1 ? 2 : Math.max(0, d - rangeOf(u));
+  const pref = isRangedLight(u) ? (UNIT_STATS[u.type].mounted ? Math.max(2, rangeOf(u)) : 2) : 1;
+  return Math.max(0, d - pref);
 }

@@ -1,10 +1,11 @@
 // Fast decision policies: battle choice, defence, flags, retreats, leader evasion, momentum, bonus combat, rally.
 // Used both for live answers and inside Monte-Carlo simulations (for both sides).
+import { cardKind, sectionOrders } from '../engine/cards';
 import { closeCombatDice, retreatPerFlag } from '../engine/combat';
 import { capturableCamp } from '../engine/flow';
-import { baselineRow, halfCol, neighbours, rowOf } from '../engine/hex';
+import { neighbours, sectionsOf } from '../engine/hex';
 import { rallyCandidates, validateRally, validateSpartacus } from '../engine/orders';
-import { leaderById, other, unitAt, unitById } from '../engine/query';
+import { leaderById, other, unitById } from '../engine/query';
 import { retreatOptions, type ElephantRetreatOption } from '../engine/retreat';
 import { rangeOf } from '../engine/elites';
 import { terrainAt } from '../engine/terrain';
@@ -12,7 +13,7 @@ import { UNIT_STATS, bonusCombatEligible, escapeDice, forestFighter } from '../e
 import {
   OFF_BOARD, type Answer, type Decision, type DieFace, type GameState, type HexId, type RetreatOption, type Side, type Unit,
 } from '../engine/types';
-import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist } from './board';
+import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist, isWarMachine } from './board';
 import { pAnyHelmet } from './dice';
 import {
   attackOptions, closeAttackEV, closeProfile, dmgValue, evadeEV, leaderAttackEV, momentumValue, standEV, strikeValue, type AttackOpt,
@@ -20,7 +21,7 @@ import {
 import { battered, evaluate } from './evaluate';
 import { pieceBenefits } from './ordering';
 import type { Rng } from './rand';
-import { WIN_SCORE, blockVal, leaderVal, nextBanner, type Weights } from './values';
+import { WIN_SCORE, blockVal, isSacredLeader, leaderVal, nextBanner, unitWeight, type Weights } from './values';
 
 type D<K extends Decision['kind']> = Extract<Decision, { kind: K }>;
 
@@ -28,23 +29,128 @@ type D<K extends Decision['kind']> = Extract<Decision, { kind: K }>;
 // pre-battle leader placement (117 Asculum)
 // ---------------------------------------------------------------------------
 
+/** Candidate placements scored with the full evaluation (the rest are judged by the quick score only). */
+const PLACE_CANDIDATES = 12;
+
 /**
- * Temporary placement policy (Task 19 brings an evaluated one): join an own unit, never an empty hex. Heavy, then
- * medium infantry first; then the hex nearest the centre (half-column 12), then nearest the own baseline; ties go to
- * the lowest hex id. Deterministic. Falls back to the first option when no own unit is free.
+ * Value of a leader's hex for the cards in hand: orders there per section card, more for a Leadership card there (half
+ * weight: the hand changes, the unit does not).
  */
-export function choosePlacement(s: GameState, d: D<'placeLeader'>): HexId {
-  let best = d.options[0];
-  let bestV = -Infinity;
-  for (const h of d.options) {
-    const u = unitAt(s, h);
-    if (!u || u.side !== d.side) continue;
+function handFit(s: GameState, side: Side, h: HexId): number {
+  const secs = sectionsOf(h, side);
+  let v = 0;
+  for (const c of s.players[side].hand) {
+    const kind = cardKind(c);
+    const so = sectionOrders(kind);
+    if (so) {
+      let n = 0;
+      for (const x of secs) n = Math.max(n, so[x] ?? 0);
+      v += 0.0075 * n;
+      continue;
+    }
+    const lead = kind === 'inspiredL' ? 'left' : kind === 'inspiredC' ? 'center' : kind === 'inspiredR' ? 'right' : null;
+    if (lead && secs.includes(lead)) v += 0.03;
+    else if (kind === 'leadershipAny') v += 0.015;
+  }
+  return v;
+}
+
+/** Two leaders in different sections let more of the hand's cards use one of them. */
+const PLACE_SPREAD = 0.02;
+
+function spread(side: Side, a: HexId, b: HexId): number {
+  const sa = sectionsOf(a, side);
+  return sectionsOf(b, side).some((x) => sa.includes(x)) ? 0 : PLACE_SPREAD;
+}
+
+interface PlaceCand {
+  hex: HexId;
+  pre: number;
+}
+
+/**
+ * Quick score of placing a leader of `side` on hex h: a strong, healthy unit that benefits from a leader, not in the
+ * front line (the side's units nearest the enemy), beside friends that get his helmets, in a section the hand can order.
+ * Strong = medium or heavy (not a war machine: his helmets do nothing for its shooting). Light units, then units that gain
+ * nothing from leaders (elephants), then empty hexes are considered only when no better unit is free.
+ */
+function placeCands(s: GameState, side: Side, options: HexId[]): PlaceCand[] {
+  const occ = new Occ(s);
+  const enemies = s.units.filter((u) => u.side !== side && u.hex >= 0);
+  const near = (h: HexId) => {
+    let best = 99;
+    for (const e of enemies) best = Math.min(best, hexDist(h, e.hex));
+    return best;
+  };
+  let front = 99;
+  for (const u of s.units) if (u.side === side && u.hex >= 0) front = Math.min(front, near(u.hex));
+  const out: PlaceCand[] = [];
+  const light: PlaceCand[] = [];
+  const weak: PlaceCand[] = [];
+  const empty: PlaceCand[] = [];
+  for (const h of options) {
+    const u = occ.unit[h];
+    let aura = 0;
+    for (const nb of neighbours(h)) {
+      const x = occ.unit[nb];
+      if (x && x !== u && x.side === side && !UNIT_STATS[x.type].noLeaderBenefit) aura++;
+    }
+    if (!u) {
+      if (aura) empty.push({ hex: h, pre: 0.01 * Math.min(4, aura) + 0.002 * Math.min(8, near(h)) });
+      continue;
+    }
+    const pre = 0.1 * unitWeight(u) * (u.blocks / u.maxBlocks) + 0.01 * Math.min(4, aura) + handFit(s, side, h) -
+      (near(h) <= front ? 0.06 : 0);
     const st = UNIT_STATS[u.type];
-    const tier = st.infantry ? (st.cls === 'heavy' ? 2 : st.cls === 'medium' ? 1 : 0) : 0;
-    const v = tier * 1000 - 10 * Math.abs(halfCol(h) - 12) - Math.abs(rowOf(h) - baselineRow(d.side));
+    (st.noLeaderBenefit ? weak : st.cls === 'light' || isWarMachine(u) ? light : out).push({ hex: h, pre });
+  }
+  const pool = out.length ? out : light.length ? light : weak.length ? weak : empty;
+  return pool.sort((a, b) => b.pre - a.pre || a.hex - b.hex);
+}
+
+/**
+ * Pre-battle leader placement (117 Asculum, rule `leaderPlacement`): the best of up to 12 candidate hexes by the
+ * evaluation plus the quick score (unit strength and health, front line, helmet aura, hand). When the side places
+ * another leader next, each candidate is judged together with that leader's best follow-up. Never an empty hex while
+ * an own unit is free; deterministic (no random choices, ties to the higher quick score, then the lower hex).
+ */
+export function choosePlacement(s: GameState, d: D<'placeLeader'>, W: Weights): HexId {
+  const side = d.side;
+  const l = leaderById(s, d.leader);
+  const cands = placeCands(s, side, d.options);
+  if (!l || !cands.length) return d.options[0];
+  const nextId = s.special.unplaced[1];
+  const nextL = nextId ? leaderById(s, nextId) : undefined;
+  const second = nextL && nextL.side === side ? nextL : null;
+  const from = l.hex;
+  const from2 = second?.hex ?? OFF_BOARD;
+  let best = cands[0].hex;
+  let bestV = -Infinity;
+  for (const c of cands.slice(0, PLACE_CANDIDATES)) {
+    l.hex = c.hex;
+    let v = c.pre;
+    let h2: HexId | null = null;
+    if (second) {
+      // his best follow-up (the pair scores the same whichever leader takes which hex; ties go to the better first hex)
+      let b2 = -Infinity;
+      for (const c2 of placeCands(s, side, d.options.filter((h) => h !== c.hex))) {
+        const v2 = c2.pre + spread(side, c.hex, c2.hex);
+        if (v2 > b2) {
+          b2 = v2;
+          h2 = c2.hex;
+        }
+      }
+      if (h2 !== null) {
+        second.hex = h2;
+        v += b2;
+      }
+    }
+    v += evaluate(s, side, s.active, W);
+    if (second) second.hex = from2;
+    l.hex = from;
     if (v > bestV) {
       bestV = v;
-      best = h;
+      best = c.hex;
     }
   }
   return best;
@@ -219,7 +325,7 @@ export function chooseLeaderEvade(s: GameState, d: D<'leaderEvade'>, W: Weights)
   const from = l.hex;
   const next = other(l.side);
   const deathCost = nextBanner(s, other(l.side)) + leaderVal(s, l);
-  const sacred = s.special.sacredLeaderId === l.id;
+  const sacred = isSacredLeader(s, l);
   let best = 0;
   let bestV = -Infinity;
   d.options.forEach((o: RetreatOption, i) => {
@@ -609,6 +715,6 @@ export function reactiveFast(s: GameState, d: Decision, W: Weights, rng: Rng): A
     case 'move': return { kind: 'endMove' };
     case 'orders': return { kind: 'orders', pieces: [] };
     case 'playCard': return { kind: 'playCard', card: s.players[d.side].hand[0] };
-    case 'placeLeader': return { kind: 'hex', hex: choosePlacement(s, d) };
+    case 'placeLeader': return { kind: 'hex', hex: choosePlacement(s, d, W) };
   }
 }

@@ -12,7 +12,10 @@ import { validateOrders, validateRally, validateSpartacus } from '../engine/orde
 import { other, unitById } from '../engine/query';
 import { cloneState, newTurn } from '../engine/setup';
 import { rangeOf } from '../engine/elites';
-import { OFF_BOARD, type Answer, type CardKind, type Decision, type GameState, type HexId, type SectionName, type Side, type UnitType } from '../engine/types';
+import { UNIT_STATS } from '../engine/units';
+import {
+  OFF_BOARD, type Answer, type CardKind, type Decision, type EliteId, type GameState, type HexId, type SectionName, type Side, type UnitType,
+} from '../engine/types';
 import { hexDist } from './board';
 import { attackOptions } from './estimate';
 import { greedyMoveStep, type MoveCtx } from './moves';
@@ -177,7 +180,9 @@ function fallback(s: GameState, d: Decision, rng: Rng): Answer {
 // commentary helpers
 // ---------------------------------------------------------------------------
 
-function planShape(s: GameState, me: Side, b: Cand): { attacking: boolean; regrouping: boolean; advancing: boolean; focus?: UnitType } {
+function planShape(
+  s: GameState, me: Side, b: Cand,
+): { attacking: boolean; regrouping: boolean; advancing: boolean; focus?: UnitType; elite?: EliteId } {
   const ordered = (b.orders ?? []).map((id) => unitById(s, id)).filter((u): u is NonNullable<typeof u> => !!u);
   const dest = new Map<string, HexId>();
   for (const m of b.moves ?? []) if (m.kind === 'move') dest.set(m.piece, m.to);
@@ -185,6 +190,7 @@ function planShape(s: GameState, me: Side, b: Cand): { attacking: boolean; regro
   let back = 0;
   let fwd = 0;
   let focus: UnitType | undefined;
+  let elite: EliteId | undefined;
   const enemies = s.units.filter((u) => u.side !== me && u.hex >= 0);
   const noRanged = b.effective ? modsFor(b.effective).noRanged : false;
   for (const u of ordered) {
@@ -195,14 +201,20 @@ function planShape(s: GameState, me: Side, b: Cand): { attacking: boolean; regro
     const range = rangeOf(u);
     if (near <= 1 || (range > 0 && near <= range && !noRanged)) {
       attacking = true;
-      focus ??= u.type;
+      if (!focus) {
+        focus = u.type;
+        elite = u.elite;
+      }
     }
     if (near > nearBefore) back++;
     if (near < nearBefore) fwd++;
   }
   if (b.effective === 'clash' || b.effective === 'darken') attacking = true;
-  if (!focus && ordered.length) focus = ordered[0].type;
-  return { attacking, regrouping: !attacking && back > fwd, advancing: !attacking && fwd > 0, focus };
+  if (!focus && ordered.length) {
+    focus = ordered[0].type;
+    elite = ordered[0].elite;
+  }
+  return { attacking, regrouping: !attacking && back > fwd, advancing: !attacking && fwd > 0, focus, elite };
 }
 
 function commentCard(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rng, b: Cand): string | undefined {
@@ -225,7 +237,7 @@ function commentCard(s: GameState, me: Side, P: Personality, mem: AiMemory, rng:
   let m: Moment = cardMoment(b.effective, shape.attacking, shape.regrouping, shape.advancing);
   if (b.kind === 'counterAttack' && b.effective) m = rng.chance(0.6) ? 'counter' : m;
   const important = m === 'clash' || m === 'darken' || m === 'rally' || m === 'counter' || m === 'spartacus' || m === 'mounted';
-  return speak(s, me, P, m, mem.voice, rng, { troops: shape.focus, chance: important ? 0.75 : 0.35 });
+  return speak(s, me, P, m, mem.voice, rng, { troops: shape.focus, elite: shape.elite, chance: important ? 0.75 : 0.35 });
 }
 
 /** A Castulo break-out (unit leaving over the enemy baseline). */
@@ -442,8 +454,8 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       const u = unitById(s, d.target);
       const say = choice === 'firstStrike'
         ? speak(s, me, P, 'firstStrike', mem.voice, rng, { chance: 1.5 })
-        : choice === 'evade' && u && u.blocks <= 2
-          ? speak(s, me, P, 'evade', mem.voice, rng, { troops: u.type, chance: 0.35 })
+        : choice === 'evade' && u && u.blocks <= 2 && !UNIT_STATS[u.type].evadeRemoves // no cheering for abandoned machines
+          ? speak(s, me, P, 'evade', mem.voice, rng, { troops: u.type, elite: u.elite, chance: 0.35 })
           : undefined;
       return { answer: { kind: 'defend', choice }, say };
     }
@@ -461,7 +473,7 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       const bonusPossible = !(mem.bonusUnit === d.unit && mem.bonusTurn === turn);
       const yes = chooseMomentum(s, d, W, bonusPossible);
       const u = unitById(s, d.unit);
-      const say = yes && s.active === me ? speak(s, me, P, 'momentum', mem.voice, rng, { troops: u?.type, chance: 0.25 }) : undefined;
+      const say = yes && s.active === me ? speak(s, me, P, 'momentum', mem.voice, rng, { troops: u?.type, elite: u?.elite, chance: 0.25 }) : undefined;
       return { answer: { kind: 'yesno', yes }, say };
     }
     case 'cavalryExtra':
@@ -479,7 +491,7 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
     case 'spartacus':
       return { answer: { kind: 'assign', ids: spartacusAssign(s, me, d.faces, W) } };
     case 'placeLeader':
-      return { answer: { kind: 'hex', hex: choosePlacement(s, d) } };
+      return { answer: { kind: 'hex', hex: choosePlacement(s, d, W) } };
   }
 }
 

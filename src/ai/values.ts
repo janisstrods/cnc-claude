@@ -9,7 +9,7 @@ export type Difficulty = 'recruit' | 'tribune' | 'consul';
 export const TYPE_WEIGHT: Record<UnitType, number> = {
   LI: 0.45, LB: 0.5, LS: 0.5, AX: 0.55, WA: 0.65, MI: 0.75, HI: 0.9,
   LC: 0.55, MC: 0.72, HC: 0.85, EL: 0.8, HCH: 0.7,
-  // Expansion #1 (provisional until the AI task tunes them)
+  // Expansion #1: light bow cavalry ~ LC with a longer bow; camels ~ MC; war machines shoot far but are fragile (2 blocks)
   LBC: 0.6, CAM: 0.72, HWM: 0.55,
 };
 
@@ -74,9 +74,51 @@ export function leaderWorth(l: Leader): number {
   return leaderHas(l, 'ccBonus') ? CC_BONUS_LEADER * LEADER_VALUE : LEADER_VALUE;
 }
 
+/**
+ * Hellespont (`allLeadersSuddenDeath`, 112): eliminations of `side`'s leaders still needed for the instant win (Infinity
+ * without the rule). A leader who evaded off the board is never eliminated, so the count can exceed the leaders left.
+ */
+export function leadersToLose(s: GameState, side: Side): number {
+  const sp = s.special;
+  if (!sp.rules.includes('allLeadersSuddenDeath')) return Infinity;
+  return sp.leadersAtStart[side] - sp.leadersEliminated[side];
+}
+
+/** Killing this leader ends the battle at once: Castulo's Scipio, or the last leader of a Hellespont side. */
+export function isSacredLeader(s: GameState, l: Leader): boolean {
+  return s.special.sacredLeaderId === l.id || leadersToLose(s, l.side) <= 1;
+}
+
+/** Hellespont: a lost leader costs a card and a point of Command for the rest of the battle (`leaderLossCostsCard`). */
+const CARD_AND_COMMAND = 0.5;
+/** Hellespont: losing one of two leaders leaves the side one kill from defeat. */
+const SUDDEN_DEATH_STEP = 1;
+
+/** Extra value at stake when a leader of `side` is eliminated under the Hellespont rules (0 in every other battle). */
+function leaderLossStake(s: GameState, side: Side): number {
+  let v = 0;
+  const sp = s.special;
+  if (sp.rules.includes('leaderLossCostsCard') && s.players[side].command > 1) v += CARD_AND_COMMAND;
+  if (leadersToLose(s, side) === 2) v += SUDDEN_DEATH_STEP;
+  return v;
+}
+
+/**
+ * Standing cost to `side` of the leaders it has already lost under the Hellespont rules (part of the material term): the
+ * cards and Command they cost, and the liability of being one kill from defeat. 0 in every other battle.
+ */
+export function leaderLossCost(s: GameState, side: Side): number {
+  const sp = s.special;
+  if (!sp.rules.includes('leaderLossCostsCard') && !sp.rules.includes('allLeadersSuddenDeath')) return 0;
+  let v = 0;
+  if (sp.rules.includes('leaderLossCostsCard')) v += CARD_AND_COMMAND * sp.leadersEliminated[side];
+  if (leadersToLose(s, side) === 1 && s.leaders.some((l) => l.side === side && l.hex >= 0)) v += SUDDEN_DEATH_STEP;
+  return v;
+}
+
 export function leaderVal(s: GameState, l: Leader): number {
-  if (s.special.sacredLeaderId === l.id) return viewer === null || viewer === l.side ? SACRED_LEADER_VALUE : WINNING_BANNER;
-  return leaderWorth(l);
+  if (isSacredLeader(s, l)) return viewer === null || viewer === l.side ? SACRED_LEADER_VALUE : WINNING_BANNER;
+  return leaderWorth(l) + leaderLossStake(s, l.side);
 }
 
 export interface Weights {
