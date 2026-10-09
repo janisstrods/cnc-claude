@@ -1,0 +1,333 @@
+{
+  "id": "005",
+  "name": "Trebbia",
+  "year": "218 BC",
+  "top": {
+    "army": "Carthaginian",
+    "blocks": "car",
+    "commander": "Hannibal",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "commander": "Sempronius",
+    "cards": 5
+  },
+  "first": "bottom",
+  "banners": 7,
+  "terrain": [
+    {
+      "r": 7,
+      "c": 0,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 1,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 2,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 3,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 4,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 7,
+      "c": 5,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 6,
+      "t": "river",
+      "ford": true
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 0,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 0,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "WA",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "WA",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 6
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Hanno",
+      "r": 0,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "name": "Hannibal",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "name": "Sempronius",
+      "r": 6,
+      "c": 6
+    }
+  ],
+  "reserves": [
+    {
+      "side": "top",
+      "type": "MC"
+    },
+    {
+      "side": "top",
+      "type": "WA"
+    },
+    {
+      "side": "top",
+      "type": "WA"
+    }
+  ],
+  "reserveLeaders": [
+    {
+      "side": "top",
+      "name": "Mago"
+    }
+  ],
+  "specialRules": "The River Trebbia is fordable.\nMago's ambush may be ordered by playing a 'Leadership' card after the Carthaginian first turn.\n'Inspired Leadership' force enters in the section as noted, 'Leadership Any Section' the force enters in the section of Carthaginian player's choice. Each of Mago's three units, 1 medium cavalry and the 2 medium warriors, are set onto a baseline hex on the Roman side of the battlefield. Mago may be placed with any of these units. This set on counts as the first hex of movement for a unit this turn. Should these units have to retreat, they must retreat toward the Carthaginian side of the battlefield.",
+  "cardsNote": "",
+  "rosterCheck": {
+    "top": {
+      "LC": 2,
+      "EL": 2,
+      "MC": 3,
+      "HI": 2,
+      "AX": 2,
+      "MI": 2,
+      "LS": 3,
+      "WA": 2,
+      "LDR": 3
+    },
+    "bottom": {
+      "LI": 3,
+      "MC": 2,
+      "WA": 2,
+      "AX": 4,
+      "MI": 3,
+      "HI": 1,
+      "LDR": 1
+    },
+    "official": {
+      "car": {
+        "LS": 3,
+        "AX": 2,
+        "MI": 3,
+        "WA": 2,
+        "HI": 2,
+        "LC": 2,
+        "MC": 2,
+        "EL": 2,
+        "LDR": 3
+      },
+      "rom": {
+        "LI": 3,
+        "AX": 4,
+        "MI": 3,
+        "WA": 2,
+        "HI": 1,
+        "MC": 2,
+        "LDR": 1
+      }
+    },
+    "match": false
+  },
+  "notes": "ROSTER DISCREPANCY (trusted the image): official roster lists Carthaginian MI 3 / MC 2, but the map shows only 2 MI on board (1,5 and 1,6) and 3 MC in total (0,10, 0,11 plus 1 MC in Mago's off-board ambush force). The special rules text independently confirms the ambush force is '1 medium cavalry and the 2 medium warriors', so the roster's MI/MC split appears to be an error (total of 18 Carthaginian units agrees). Reserves: Mago's ambush force (MC, WA, WA + a Carthaginian leader) is drawn off-board along the bottom-right image edge; the leader portrait's caption is cut off by the image edge, the name 'Mago' comes from the special rules text. River: 7 fordable river hexes - runs along row 7 from the left board edge (7,0-7,5), bends at 7,5 and exits the bottom edge through 8,6. No other terrain. Leaders: Hanno with LC 0,1; Hannibal with HI 1,8; Sempronius with MI 6,6. Move First icon is in the Roman block. Special rules text: one mid-sentence HTML <br> ('This set on counts / as the first hex') was joined with a space."
+}

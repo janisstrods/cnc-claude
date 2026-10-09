@@ -1,0 +1,240 @@
+{
+  "id": "001",
+  "name": "Akragas",
+  "year": "406 BC",
+  "top": {
+    "army": "Carthaginian",
+    "blocks": "car",
+    "commander": "Himilco",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Syracusan",
+    "blocks": "rom",
+    "commander": "Daphnaeus",
+    "cards": 6
+  },
+  "first": "bottom",
+  "banners": 5,
+  "terrain": [],
+  "units": [
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "HCH",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "HCH",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 10
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Mago",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "name": "Himilco",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "name": "Daphaeus",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "name": "Dionysius",
+      "r": 7,
+      "c": 10
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": [],
+  "specialRules": "",
+  "cardsNote": "",
+  "rosterCheck": {
+    "top": {
+      "MI": 2,
+      "AX": 4,
+      "HI": 1,
+      "LC": 1,
+      "HCH": 2,
+      "LB": 1,
+      "LI": 1,
+      "LDR": 2
+    },
+    "bottom": {
+      "LB": 2,
+      "LI": 1,
+      "LC": 1,
+      "AX": 3,
+      "HI": 4,
+      "MC": 1,
+      "LDR": 2
+    },
+    "official": {
+      "car": {
+        "LI": 1,
+        "LB": 1,
+        "AX": 4,
+        "MI": 2,
+        "HI": 1,
+        "LC": 1,
+        "HCH": 2,
+        "LDR": 2
+      },
+      "rom": {
+        "LI": 1,
+        "LB": 2,
+        "AX": 3,
+        "HI": 4,
+        "LC": 1,
+        "MC": 1,
+        "LDR": 2
+      }
+    },
+    "match": true
+  },
+  "notes": "No terrain: the whole board is plain/clear. No special rules on the page. Leader caption on the map reads 'Daphaeus' (used verbatim for the leader name); the War Council text spells the commander 'Daphnaeus' (used for bottom.commander). All leaders are attached to units: Mago with HI 1,3; Himilco with AX 1,7; Daphaeus with HI 7,7; Dionysius with MC 7,10. Move First icon is in the Syracusan War Council block. Unit and leader counts match the official roster exactly."
+}

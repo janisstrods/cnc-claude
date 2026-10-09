@@ -1,0 +1,265 @@
+{
+  "id": "004",
+  "name": "Ticinus River",
+  "year": "218 BC",
+  "top": {
+    "army": "Carthaginian",
+    "blocks": "car",
+    "commander": "Hannibal",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "commander": "Publius Scipio",
+    "cards": 4
+  },
+  "first": "top",
+  "banners": 6,
+  "terrain": [
+    {
+      "r": 2,
+      "c": 12,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 4,
+      "c": 12,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 5,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 6,
+      "c": 12,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 7,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 8,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "HC",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "HC",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "HC",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "HC",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 10
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Maharbal",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "name": "Mago",
+      "r": 0,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "name": "Hasdrubal",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "name": "Scipio",
+      "r": 8,
+      "c": 7
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": [],
+  "specialRules": "Ticinus River is not fordable.",
+  "cardsNote": "",
+  "rosterCheck": {
+    "top": {
+      "LC": 8,
+      "HC": 4,
+      "LDR": 3
+    },
+    "bottom": {
+      "LI": 6,
+      "MC": 6,
+      "LDR": 1
+    },
+    "official": {
+      "car": {
+        "LC": 8,
+        "HC": 4,
+        "LDR": 3
+      },
+      "rom": {
+        "LI": 6,
+        "MC": 6,
+        "LDR": 1
+      }
+    },
+    "match": true
+  },
+  "notes": "River: 7 non-fordable river hexes down the right-hand (Carthaginian left / Roman right) edge, entering from the board's right edge at 2,12 and zig-zagging 2,12-3,11-4,12-5,11-6,12-7,11-8,11, exiting the bottom edge from 8,11. Rows 0-1 have no river. In 3,11 and 5,11 the blue band runs through the right half of the hex (the centre dot sits on its left bank) but the tile clearly occupies those hexes. No other terrain. Leader caption reads 'Scipio' (War Council: 'Publius Scipio', used for bottom.commander). War Council leader for the Carthaginians is Hannibal, but no Hannibal portrait is on the map: the three Carthaginian leaders are Maharbal (with LC 0,2), Mago (with LC 0,11) and Hasdrubal (with HC 1,5); Scipio is with MC 8,7. Move First icon is in the Carthaginian block. Counts match the official roster exactly."
+}

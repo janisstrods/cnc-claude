@@ -1,0 +1,325 @@
+{
+  "id": "009",
+  "name": "2nd Beneventum",
+  "year": "214 BC",
+  "top": {
+    "army": "Carthaginian",
+    "blocks": "car",
+    "commander": "Hanno",
+    "cards": 4
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "commander": "Gracchus",
+    "cards": 4
+  },
+  "first": "bottom",
+  "banners": 7,
+  "terrain": [
+    {
+      "r": 0,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 1,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 2,
+      "c": 1,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 3,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 4,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 5,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 6,
+      "c": 1,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 7,
+      "c": 0,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 8,
+      "c": 1,
+      "t": "river",
+      "ford": false
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "WA",
+      "r": 5,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "WA",
+      "r": 6,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 11
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Hanno",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "name": "Mago",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "name": "Gracchus",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "name": "",
+      "r": 7,
+      "c": 8
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": [],
+  "specialRules": "The Calor River in not fordable.\nWhen the Roman player gains his third victory banner block, he immediately draws two additional command cards. He will hold a hand of 6 Command Cards for the rest of the battle.",
+  "cardsNote": "When the Roman player gains his third victory banner block, he immediately draws two additional command cards. He will hold a hand of 6 Command Cards for the rest of the battle.",
+  "rosterCheck": {
+    "top": {
+      "HI": 2,
+      "MI": 3,
+      "WA": 2,
+      "LC": 2,
+      "LI": 3,
+      "LB": 1,
+      "EL": 1,
+      "LDR": 2
+    },
+    "bottom": {
+      "AX": 2,
+      "WA": 2,
+      "LI": 3,
+      "MI": 5,
+      "HI": 2,
+      "MC": 1,
+      "LDR": 2
+    },
+    "official": {
+      "car": {
+        "LI": 3,
+        "LB": 1,
+        "MI": 3,
+        "WA": 2,
+        "HI": 2,
+        "LC": 2,
+        "EL": 1,
+        "LDR": 2
+      },
+      "rom": {
+        "LI": 3,
+        "AX": 2,
+        "MI": 5,
+        "WA": 2,
+        "HI": 2,
+        "MC": 1,
+        "LDR": 2
+      }
+    },
+    "match": true
+  },
+  "notes": "Calor River runs down the left board edge through 9 hexes (0,0 1,0 2,1 3,0 4,0 5,0 6,1 7,0 8,1); not fordable per special rules (ford:false on every hex). The 'Calor River' caption sits in 2,0, which is plain. Roman War Council shows '4* Command Cards' (cards=4, rises to 6 per cardsNote). Roman moves first. Roman leader with the HI at 7,8 is uncaptioned on the map (name ''). Roman 'W' blocks (5,2 and 6,11) are Warriors (WA) in grey Roman blocks, matching roster rom WA=2. All counts match the official roster."
+}

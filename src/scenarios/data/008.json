@@ -1,0 +1,260 @@
+{
+  "id": "008",
+  "name": "Dertosa (Ebro)",
+  "year": "215 BC",
+  "top": {
+    "army": "Carthaginian",
+    "blocks": "car",
+    "commander": "Hasdrubal",
+    "cards": 4
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "commander": "Gnaeus & Publius Scipio",
+    "cards": 6
+  },
+  "first": "bottom",
+  "banners": 6,
+  "terrain": [],
+  "units": [
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 9
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Hasdrubal",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "name": "Gnaeus",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "name": "Publius Scipio",
+      "r": 6,
+      "c": 8
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": [],
+  "specialRules": "",
+  "cardsNote": "",
+  "rosterCheck": {
+    "top": {
+      "LC": 3,
+      "MC": 1,
+      "HI": 2,
+      "EL": 1,
+      "LS": 2,
+      "AX": 5,
+      "LDR": 1
+    },
+    "bottom": {
+      "LI": 2,
+      "AX": 2,
+      "MI": 7,
+      "MC": 2,
+      "HI": 2,
+      "LDR": 2
+    },
+    "official": {
+      "car": {
+        "LS": 2,
+        "AX": 5,
+        "HI": 2,
+        "LC": 3,
+        "MC": 1,
+        "EL": 1,
+        "LDR": 1
+      },
+      "rom": {
+        "LI": 2,
+        "AX": 2,
+        "MI": 7,
+        "HI": 2,
+        "MC": 2,
+        "LDR": 2
+      }
+    },
+    "match": true
+  },
+  "notes": "No terrain: open battlefield (the logo watermark around 4,4-4,7 is not terrain). No special rules on the page. Roman moves first. Roman commander given verbatim from the War Council ('Gnaeus & Publius Scipio'); on the map the two leaders are captioned 'Gnaeus' (6,4) and 'Publius Scipio' (6,8). All counts match the official roster."
+}

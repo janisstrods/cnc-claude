@@ -1,0 +1,343 @@
+{
+  "id": "010",
+  "name": "Castulo",
+  "year": "211 BC",
+  "top": {
+    "army": "Carthaginian",
+    "blocks": "car",
+    "commander": "Hasdrubal Gisgo",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "commander": "Publius Scipio",
+    "cards": 5
+  },
+  "first": "bottom",
+  "banners": 8,
+  "terrain": [
+    {
+      "r": 1,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 4,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 11,
+      "t": "forest"
+    },
+    {
+      "r": 5,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 6,
+      "c": 12,
+      "t": "forest"
+    },
+    {
+      "r": 7,
+      "c": 0,
+      "t": "forest"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 0,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 12
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 3,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 3,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 4,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 4,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 5,
+      "c": 0
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 5,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "WA",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 7
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Hasdrubal",
+      "r": 0,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "name": "Masinissa",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "name": "Mago",
+      "r": 4,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "name": "Scipio",
+      "r": 6,
+      "c": 7
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": [],
+  "specialRules": "If the Roman leader Publius Scipio is lost, Carthage wins at once.\nA Roman unit the exits off the Carthaginian side of the battlefield, from a center hex or a hex on the Roman right section, counts as one victory banner. The unit is removed from play.",
+  "cardsNote": "",
+  "rosterCheck": {
+    "top": {
+      "MC": 2,
+      "HI": 2,
+      "AX": 4,
+      "LC": 4,
+      "MI": 2,
+      "LS": 1,
+      "WA": 2,
+      "LI": 1,
+      "LDR": 3
+    },
+    "bottom": {
+      "LI": 3,
+      "MC": 3,
+      "AX": 3,
+      "MI": 4,
+      "WA": 1,
+      "HI": 2,
+      "LDR": 1
+    },
+    "official": {
+      "car": {
+        "LI": 1,
+        "LS": 1,
+        "AX": 4,
+        "MI": 2,
+        "WA": 2,
+        "HI": 2,
+        "LC": 4,
+        "MC": 2,
+        "LDR": 3
+      },
+      "rom": {
+        "LI": 3,
+        "AX": 3,
+        "MI": 4,
+        "WA": 1,
+        "HI": 2,
+        "MC": 3,
+        "LDR": 1
+      }
+    },
+    "match": true
+  },
+  "notes": "Terrain: 8 forest hexes (1,3 2,3 2,4 4,2 4,11 5,1 6,12 7,0); no other terrain. Roman moves first. Commanders taken from the War Council ('Hasdrubal Gisgo', 'Publius Scipio'); on the map the leaders are captioned 'Hasdrubal' (0,4, with HI) and 'Scipio' (6,7, with MI) - leader names use the map captions. The 'Hasdrubal' caption text extends into forest hex 1,3 but the leader portrait belongs to 0,4. Roman 'W' block at 7,3 is Warriors (WA) in a grey Roman block. Special rules: losing Publius Scipio (the single Roman leader, at 6,7) = immediate Carthaginian win; Roman units exiting off the Carthaginian (top) edge from a centre or Roman-right-section hex score 1 banner each. All counts match the official roster."
+}

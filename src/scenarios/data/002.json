@@ -1,0 +1,308 @@
+{
+  "id": "002",
+  "name": "Crimissos River",
+  "year": "341 BC",
+  "top": {
+    "army": "Carthaginian",
+    "blocks": "car",
+    "commander": "Hasdrubal",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Syracusan",
+    "blocks": "rom",
+    "commander": "Timoleon",
+    "cards": 5
+  },
+  "first": "bottom",
+  "banners": 5,
+  "terrain": [
+    {
+      "r": 0,
+      "c": 6,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 1,
+      "c": 6,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 2,
+      "c": 7,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 2,
+      "c": 8,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 8,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 9,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 4,
+      "c": 10,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 5,
+      "c": 10,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 6,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 7,
+      "c": 11,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 8,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 8,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 8,
+      "c": 7,
+      "t": "hill"
+    },
+    {
+      "r": 8,
+      "c": 8,
+      "t": "hill"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 0,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 12
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "HCH",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 3,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LS",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 1
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Hasdrubal",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "name": "Timoleon",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "name": "Mamaercus",
+      "r": 6,
+      "c": 7
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": [],
+  "specialRules": "The Crimissos River is fordable only at the five bends in the river.\nThe Carthaginian Sacred Band is a special unit. Place a Special Unit block (if playing with expansion blocks) or a Carthaginian Victory Banner block in the hex with the Sacred Band unit to distinguish it from other Carthaginian units. Sacred Band special abilities:\n• The Sacred Band will score one hit for each leader symbol rolled in close combat. A leader does not have to be attached or in an adjacent hex to confer this benefit.\n• The Sacred Band may ignore one flag.\n• The Sacred Band retains these special abilities until the last block of the unit has been removed from the battlefield.\nThe Special Unit/Victory banner block moves with the unit. It does not count as a block that can be removed to satisfy losses. This block is not transferable to any other unit. If the Sacred Band unit is eliminated, this block is removed from the map along with the last block of the unit.",
+  "cardsNote": "",
+  "rosterCheck": {
+    "top": {
+      "MI": 2,
+      "WA": 2,
+      "MC": 1,
+      "LI": 2,
+      "HCH": 1,
+      "HI": 2,
+      "AX": 2,
+      "LS": 1,
+      "LDR": 1
+    },
+    "bottom": {
+      "AX": 2,
+      "HI": 4,
+      "LS": 1,
+      "LI": 1,
+      "MC": 1,
+      "LDR": 2
+    },
+    "official": {
+      "car": {
+        "LI": 2,
+        "LS": 1,
+        "AX": 2,
+        "MI": 2,
+        "WA": 2,
+        "HI": 2,
+        "MC": 1,
+        "HCH": 1,
+        "LDR": 1
+      },
+      "rom": {
+        "LI": 1,
+        "LS": 1,
+        "AX": 2,
+        "HI": 4,
+        "MC": 1,
+        "LDR": 2
+      }
+    },
+    "match": true
+  },
+  "notes": "SACRED BAND: the Carthaginian HI at r3 c2 is captioned 'Sacred Band' on the map - it is the special unit described in the special rules (the other Carthaginian HI, at r2 c3, carries Hasdrubal). River: 10 river hexes, entering at the top board edge through 0,6 and running down-right to exit the right board edge from 7,11. Direction changes (bends) occur at 2,7 (turns right), 2,8 (turns down-right), 3,8 (turns right), 3,9 (turns down-right) and 7,11 (turns right to exit the board edge) - exactly five, matching 'fordable only at the five bends'; those five have ford=true, the straight hexes 0,6 1,6 4,10 5,10 6,11 have ford=false. Hills: five hachured hill tiles along the Syracusan baseline, 8,4-8,8. No other terrain. Leaders: Hasdrubal with HI 2,3; Timoleon with HI 6,4; Mamaercus with HI 6,7. Move First icon is in the Syracusan block. Counts match the official roster exactly (including 2 Carthaginian Warriors WA at 0,11 and 1,10)."
+}

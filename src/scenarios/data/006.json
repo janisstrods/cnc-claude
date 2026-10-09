@@ -1,0 +1,390 @@
+{
+  "id": "006",
+  "name": "Lake Trasimenus",
+  "year": "217 BC",
+  "top": {
+    "army": "Carthaginian",
+    "blocks": "car",
+    "commander": "Hannibal",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "commander": "Flaminius",
+    "cards": 2
+  },
+  "first": "top",
+  "banners": 6,
+  "terrain": [
+    {
+      "r": 2,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 2,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 9,
+      "t": "steep"
+    },
+    {
+      "r": 5,
+      "c": 8,
+      "t": "steep"
+    },
+    {
+      "r": 6,
+      "c": 9,
+      "t": "steep"
+    },
+    {
+      "r": 7,
+      "c": 8,
+      "t": "steep"
+    },
+    {
+      "r": 8,
+      "c": 2,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 3,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 4,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 5,
+      "t": "lake"
+    },
+    {
+      "r": 8,
+      "c": 6,
+      "t": "lake"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 2,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 12
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 3,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 3,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 3,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 3,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 3,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 4,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 4,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 4,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 4,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 0
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 9
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "name": "Hannibal",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "name": "",
+      "r": 3,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "name": "Flaminius",
+      "r": 7,
+      "c": 4
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": [],
+  "specialRules": "Lake Trasimenus is impassable.\nThe four steep hills hexes on the right side of the battlefield as noted, are impassable terrain.\nThe Roman player starts with 2 command cards. On turn 1 play one card, draw two cards. Roman player now holds 3 command cards. On turn 2 play one card, draw two cards. Roman player now holds 4 Command Cards. On turn 3 play one card, draw one card. Roman player hand size stays at 4 Command Cards for the rest of the battle.",
+  "cardsNote": "The Roman player starts with 2 command cards. On turn 1 play one card, draw two cards. Roman player now holds 3 command cards. On turn 2 play one card, draw two cards. Roman player now holds 4 Command Cards. On turn 3 play one card, draw one card. Roman player hand size stays at 4 Command Cards for the rest of the battle.",
+  "rosterCheck": {
+    "top": {
+      "LC": 4,
+      "MC": 2,
+      "HI": 2,
+      "MI": 2,
+      "AX": 4,
+      "WA": 3,
+      "LS": 2,
+      "LDR": 3
+    },
+    "bottom": {
+      "AX": 6,
+      "LI": 3,
+      "MI": 4,
+      "HI": 2,
+      "MC": 1,
+      "LDR": 1
+    },
+    "official": {
+      "car": {
+        "LS": 2,
+        "AX": 4,
+        "MI": 2,
+        "WA": 3,
+        "HI": 2,
+        "LC": 4,
+        "MC": 2,
+        "LDR": 3
+      },
+      "rom": {
+        "LI": 3,
+        "AX": 6,
+        "MI": 4,
+        "HI": 2,
+        "MC": 1,
+        "LDR": 2
+      }
+    },
+    "match": false
+  },
+  "notes": "Roman War Council shows '2* Command Cards' (cards=2, ramps to 4 per cardsNote). Carthaginian moves first. Uncaptioned Carthaginian leaders at 2,2 (with MC) and 3,6 (with AX) have name '' (only Hannibal and Flaminius are captioned). DISCREPANCY: official roster lists 2 Roman leaders but the map image shows only one (Flaminius at 7,4); image trusted, so Roman LDR=1. A forum post on the scenario page says the setup image is in error and a second Roman leader should be attached to the Roman heavy infantry in the Roman right section - that would be the HI at 8,9 (the only HI right of the section line); not added because it is not on the image. Terrain: 'steep' = the four captioned 'Steep' hill hexes (impassable per special rules); 'lake' = Lake Trasimenus along the bottom edge (8,2-8,6, impassable). Hills at 3,5 and 4,1 are partly hidden under unit blocks (hill texture visible around the blocks in the un-gridded map)."
+}

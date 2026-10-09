@@ -1,0 +1,322 @@
+{
+  "id": "003",
+  "name": "Bagradas",
+  "year": "253 BC",
+  "top": {
+    "army": "Carthaginian",
+    "blocks": "car",
+    "commander": "Xanthippus",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "commander": "Regulus",
+    "cards": 4
+  },
+  "first": "top",
+  "banners": 7,
+  "terrain": [],
+  "units": [
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "EL",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 10
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Hasdrubal",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "name": "Xanthippus",
+      "r": 0,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "name": "Hamilcar",
+      "r": 0,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "name": "",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "name": "Regulus",
+      "r": 7,
+      "c": 7
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": [],
+  "specialRules": "",
+  "cardsNote": "",
+  "rosterCheck": {
+    "top": {
+      "MC": 2,
+      "HI": 4,
+      "LC": 4,
+      "WA": 2,
+      "EL": 3,
+      "LI": 4,
+      "LDR": 3
+    },
+    "bottom": {
+      "LI": 4,
+      "LC": 2,
+      "AX": 4,
+      "MI": 4,
+      "MC": 2,
+      "HI": 2,
+      "LDR": 2
+    },
+    "official": {
+      "car": {
+        "LI": 4,
+        "WA": 2,
+        "HI": 4,
+        "LC": 4,
+        "MC": 2,
+        "EL": 3,
+        "LDR": 3
+      },
+      "rom": {
+        "LI": 4,
+        "AX": 4,
+        "MI": 4,
+        "HI": 2,
+        "LC": 2,
+        "MC": 2,
+        "LDR": 2
+      }
+    },
+    "match": true
+  },
+  "notes": "No terrain: the whole board is plain/clear. No special rules on the page. The second Roman leader (attached to MI at r7 c4) has NO name caption on the map (checked at high zoom; nothing is printed below the portrait and it is not hidden under the HI block at 8,4), so its name is left as an empty string - do not invent one. Other leaders: Hasdrubal with MC 0,2; Xanthippus with HI 0,4; Hamilcar with MC 0,10; Regulus with MI 7,7. Move First icon is in the Carthaginian block. Counts match the official roster exactly."
+}
