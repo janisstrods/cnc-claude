@@ -59,6 +59,7 @@ function describe(e: GameEvent, s: GameState): string | null {
     case 'roll': return `     roll [${e.faces.map((f, i) => (e.scoring[i] ? f.toUpperCase() : f)).join(' ')}]`;
     case 'damage': return `     ${e.id} -${e.amount} (${e.left} left) ${e.reason}`;
     case 'eliminated': return `     ${e.id} ELIMINATED`;
+    case 'removed': return `     ${e.id} REMOVED (${e.reason}, no banner)`;
     case 'leaderKilled': return `     leader ${e.id} KILLED`;
     case 'flags': return `     ${e.id} flags ${e.flags} ignored ${e.ignored}`;
     case 'retreat': return `     ${e.id} retreats ${e.path.map(hexLabel).join('>')}`;

@@ -1,8 +1,8 @@
 // Fast board helpers for the AI: distance table, occupancy, retreat room, LOS and flag rules mirrored with O(1) lookups.
 import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
-import { hillGroups, isCamp, isHill, isImpassable, terrainBlocksLOS } from '../engine/terrain';
+import { hillGroups, isCamp, isHill, isImpassable, terrainAt, terrainBlocksLOS } from '../engine/terrain';
 import { canShoot, eliteHas, rangeOf } from '../engine/elites';
-import { UNIT_STATS } from '../engine/units';
+import { UNIT_STATS, forbidsTerrain } from '../engine/units';
 import { COLS, ROWS, type GameState, type HexId, type Leader, type Side, type Unit } from '../engine/types';
 
 export const NHEX = ROWS * COLS;
@@ -104,7 +104,7 @@ export function retreatRoom(s: GameState, occ: Occ, u: Unit, need: number): numb
     if (left === 0) return 0;
     let best = 0;
     for (const h of rearHexes(cur, u.side)) {
-      if (isImpassable(s, h) || occ.unit[h]) continue;
+      if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || occ.unit[h]) continue;
       const l = occ.leader[h];
       if (l) {
         if (l.side !== u.side || hasLeader) continue;
@@ -123,7 +123,7 @@ export function retreatRoom(s: GameState, occ: Occ, u: Unit, need: number): numb
 export function canEvadeOcc(s: GameState, occ: Occ, u: Unit): boolean {
   const hasLeader = !!attachedLeaderOcc(occ, u);
   for (const h of rearHexes(u.hex, u.side)) {
-    if (isImpassable(s, h) || occ.unit[h]) continue;
+    if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || occ.unit[h]) continue;
     const l = occ.leader[h];
     if (l && (l.side !== u.side || hasLeader)) continue;
     return true;

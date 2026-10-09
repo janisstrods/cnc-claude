@@ -2,6 +2,7 @@
 import { rearHexes } from './hex';
 import { attachedLeader, leaderAt, unitAt } from './query';
 import { isImpassable, terrainAt } from './terrain';
+import { forbidsTerrain } from './units';
 import { OFF_BOARD, type GameState, type HexId, type Leader, type RetreatOption, type Unit } from './types';
 
 export interface ElephantRetreatOption extends RetreatOption {
@@ -29,6 +30,11 @@ function prune(s: GameState, opts: RetreatOption[]): RetreatOption[] {
   return [...byEnd.values()];
 }
 
+/** Impassable for this unit's retreat or evade: impassable terrain or terrain its type may not enter (§15 HWM). */
+function closedTo(s: GameState, u: Unit, h: HexId): boolean {
+  return isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h));
+}
+
 /** Retreat options for a (non-elephant) unit that must retreat `hexes` hexes toward its own side. */
 export function retreatOptions(s: GameState, u: Unit, hexes: number): RetreatOption[] {
   const hasLeader = !!attachedLeader(s, u);
@@ -40,7 +46,7 @@ export function retreatOptions(s: GameState, u: Unit, hexes: number): RetreatOpt
     }
     let moved = false;
     for (const h of rearHexes(cur, u.side)) {
-      if (isImpassable(s, h) || unitAt(s, h)) continue;
+      if (closedTo(s, u, h) || unitAt(s, h)) continue;
       const l = leaderAt(s, h);
       if (l) {
         if (l.side !== u.side || hasLeader) continue;
@@ -71,7 +77,7 @@ export function elephantRetreatOptions(s: GameState, u: Unit, hexes: number): El
     let edgeBlocked = 0;
     const rears = rearHexes(cur, u.side);
     for (const h of rears) {
-      if (isImpassable(s, h)) { edgeBlocked++; continue; }
+      if (closedTo(s, u, h)) { edgeBlocked++; continue; }
       const v = unitAt(s, h);
       if (v) { blockers.push(v.id); continue; }
       const l = leaderAt(s, h);
@@ -98,12 +104,15 @@ export function elephantRetreatOptions(s: GameState, u: Unit, hexes: number): El
   return out.filter((o) => o.losses === minLoss);
 }
 
-/** Evade options: 2 hexes toward own side (1 only if no 2-hex evade exists). Empty = cannot evade. */
+/**
+ * Evade options: 2 hexes toward own side (1 only if no 2-hex evade exists), not through units, lone enemy leaders,
+ * impassable terrain or terrain the unit may not enter. Empty = cannot evade.
+ */
 export function evadeOptions(s: GameState, u: Unit): RetreatOption[] {
   const hasLeader = !!attachedLeader(s, u);
   const two: RetreatOption[] = [];
   const one: RetreatOption[] = [];
-  const free = (h: HexId) => !isImpassable(s, h) && !unitAt(s, h);
+  const free = (h: HexId) => !closedTo(s, u, h) && !unitAt(s, h);
   for (const h1 of rearHexes(u.hex, u.side)) {
     if (!free(h1)) continue;
     const l1 = leaderAt(s, h1);

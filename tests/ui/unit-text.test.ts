@@ -36,6 +36,13 @@ const TOOLTIP: Record<UnitType, string[]> = {
     'Can evade foot & heavy mounted',
     'Ignores 1 blue-triangle hit when cavalry or chariots roll against it',
   ],
+  HWM: [
+    'Move 1, no battle after moving · Retreat 1/flag',
+    'Close combat 2 dice, swords miss',
+    'Missiles: range 6, 2 dice (not after moving)',
+    'Can evade',
+    'Abandoned after evading (no banner) · no momentum advance · cannot enter broken ground or marsh',
+  ],
 };
 
 /** Base-game rules-reference unit cards (stats line, notes line), captured the same way. */
@@ -59,6 +66,10 @@ const REFERENCE: Record<UnitType, [string, string]> = {
   CAM: [
     '3 blocks · move 3 · close combat 3/2 back · retreat 3',
     'Evades foot and heavy mounted. Ignores 1 blue-triangle hit when cavalry or chariots roll against it, frightens horses.',
+  ],
+  HWM: [
+    '2 blocks · move 1 (no battle after moving) · close combat 2 · range 6 · retreat 1',
+    'Evades any attack. Swords do not score hits. Abandoned after evading (no banner), no momentum advance, cannot enter broken ground or marsh.',
   ],
 };
 

@@ -1,10 +1,10 @@
 // Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges, plus the unit
 // descriptions shown in tooltips and the rules reference.
 import {
-  ALL_HEXES, CARD_DEFS, OFF_BOARD, UNIT_STATS, UNIT_TYPES, battleReady, battleTargets, cardKind, closeCombatDice, closeHitChance, eligiblePieces,
-  eliteDef, inSection, isLeaderId, leaderAt, leaderById, leaderUnit, mirrorKind, movablePieces, other, pieceMoves, rangeOf, rangedDice, unitAt,
-  unitById, type CardKind, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type SectionName, type Side, type Unit,
-  type UnitClass, type UnitStats, type UnitType,
+  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, battleReady, battleTargets, cardKind, closeCombatDice,
+  closeHitChance, eligiblePieces, eliteDef, inSection, isLeaderId, leaderAt, leaderById, leaderUnit, mirrorKind, movablePieces, other,
+  pieceMoves, rangeOf, rangedDice, unitAt, unitById, type CardKind, type Decision, type EliteAbility, type EvadeRule, type GameState,
+  type HexId, type SectionName, type Side, type Unit, type UnitClass, type UnitStats, type UnitType,
 } from '../../engine';
 import type { Highlight } from './Board';
 
@@ -283,6 +283,26 @@ function vsMountedText(st: UnitStats): string | null {
   return what.length ? `ignores ${what.join(' and ')} when cavalry or chariots roll against it` : null;
 }
 
+/** "a, b or c" */
+function orList(xs: string[]): string {
+  return xs.length > 1 ? `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}` : xs.join('');
+}
+
+/** Terrain the unit may not enter ("cannot enter broken ground or marsh"), or null. */
+function forbiddenTerrainText(st: UnitStats): string | null {
+  if (!st.forbiddenTerrain.length) return null;
+  return `cannot enter ${orList(st.forbiddenTerrain.map((t) => TERRAIN_NAMES[t].toLowerCase()))}`;
+}
+
+/** Abilities of war machines and the like: abandoned after evading, no momentum, forbidden terrain (in this order). */
+function machineTexts(st: UnitStats): (string | null)[] {
+  return [
+    st.evadeRemoves ? 'abandoned after evading (no banner)' : null,
+    st.noMomentum ? 'no momentum advance' : null,
+    forbiddenTerrainText(st),
+  ];
+}
+
 /** Unit types whose retreats this type lengthens (elephants and camels: cavalry and chariots). */
 function frightenedTypes(t: UnitType): UnitType[] {
   return UNIT_TYPES.filter((x) => UNIT_STATS[x].frightenedBy.includes(t));
@@ -317,6 +337,7 @@ export function unitSummary(u: Unit): string[] {
     swordIgnoreText(st, 'ignores sword hits', '1'),
     vsMountedText(st),
     st.elephantTable && 'rampages when it retreats',
+    ...machineTexts(st),
   ].filter(Boolean);
   if (special.length) lines.push(cap(special.join(' · ')));
   const elite = eliteDef(u);
@@ -344,6 +365,7 @@ export function unitCardLines(t: UnitType): [string, string] {
     vsMountedText(st),
     scared.length > 0 && `frightens ${scared.every((x) => UNIT_STATS[x].mounted) ? 'horses' : scared.map(unitNoun).join(', ')}`,
     st.elephantTable && 'rampages on retreat',
+    ...machineTexts(st),
   ].filter(Boolean);
   if (special.length) notes.push(`${cap(special.join(', '))}.`);
   return [stats, notes.join(' ')];

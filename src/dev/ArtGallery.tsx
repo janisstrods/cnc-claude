@@ -14,7 +14,7 @@ const ART: Record<ArmyName, { look: ArmyLook; blockColor: Blocks }> = {
   syracuse: { look: 'syracusan', blockColor: 'grk' },
 };
 const MAX: Record<UnitType, number> = {
-  LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HC: 3, EL: 2, HCH: 2, LBC: 3, CAM: 3,
+  LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HC: 3, EL: 2, HCH: 2, LBC: 3, CAM: 3, HWM: 2,
 };
 const ARMY_LABEL: Record<ArmyName, string> = { rome: 'Rome', carthage: 'Carthage', syracuse: 'Syracuse' };
 

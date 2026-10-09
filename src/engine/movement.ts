@@ -2,7 +2,7 @@
 import { inSection, neighbours, onBaseline, rowOf } from './hex';
 import { attachedLeader, enemyPieceAdjacent, leaderAt, leaderById, unitAt, unitById } from './query';
 import { isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
-import { UNIT_STATS, forestFighter, isLightFoot } from './units';
+import { UNIT_STATS, forbidsTerrain, forestFighter, isLightFoot } from './units';
 import { OFF_BOARD, type GameState, type HexId, type OrderMods, type SectionName, type Side, type Unit } from './types';
 
 export interface MoveTarget {
@@ -73,7 +73,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   const best = new Map<HexId, number>();
 
   const canEnter = (h: HexId): 'no' | 'pass' | 'stop' | 'yes' | 'attach' => {
-    if (isImpassable(s, h)) return 'no';
+    if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h))) return 'no';
     const v = unitAt(s, h);
     if (v) {
       // passing through means not stopping: impossible through a friend standing in stopping terrain

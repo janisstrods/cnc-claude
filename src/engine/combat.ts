@@ -166,15 +166,16 @@ export function helmetsCount(s: GameState, striker: Unit): boolean {
 }
 
 /**
- * Score ranged combat / evade rolls: only class symbols hit (flags counted for ranged). `ignore` class hits are dropped
- * (a camel evading a horse's attack ignores 1 blue triangle, §15).
+ * Score ranged combat / evade rolls: only class symbols hit (flags counted for ranged). Up to `vsMountedIgnore` hits that
+ * the target's `vsMountedIgnoreHit` covers are dropped (pass `vsMountedIgnores(striker, target)`: a camel evading a
+ * horse's attack ignores 1 blue triangle, §15); other class hits always score.
  */
-export function scoreClassOnly(target: Unit, faces: DieFace[], countFlags: boolean, ignore = 0): Scored {
+export function scoreClassOnly(target: Unit, faces: DieFace[], countFlags: boolean, vsMountedIgnore = 0): Scored {
   const cls = UNIT_STATS[target.type].cls;
   const scoring: boolean[] = [];
   let hits = 0;
   let flags = 0;
-  let ignoreLeft = ignore;
+  let ignoreLeft = vsMountedIgnore;
   for (const f of faces) {
     let hit = f === cls;
     if (hit && ignoreLeft > 0 && vsMountedCovers(target, f)) {

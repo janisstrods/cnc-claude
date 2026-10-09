@@ -1,5 +1,5 @@
 // Unit type table (rules-reference §2; Expansion #1 types §15).
-import type { Unit, UnitClass, UnitType } from './types';
+import type { TerrainType, Unit, UnitClass, UnitType } from './types';
 
 export type EvadeRule = 'always' | 'vsFootHeavyMounted' | 'vsFootElephant' | 'never';
 
@@ -66,13 +66,22 @@ export interface UnitStats {
   doubleTimeMove: number | null;
   /** Mounted Charge: may move 3 and battle. */
   mountedChargeMove: boolean;
+  /**
+   * Terrain it may not enter (HWM: broken ground, marsh). Movement and momentum advances skip these hexes; retreat and
+   * evade paths treat them as blocked, so a retreat hex it cannot enter is unfulfilled (1 block lost).
+   */
+  forbiddenTerrain: TerrainType[];
+  /** Never makes a momentum advance, so never a bonus close combat either, even with a leader or under any card (HWM). */
+  noMomentum: boolean;
+  /** After surviving the evade roll it makes the evade move and is then removed from the board, no banner (HWM: abandoned). */
+  evadeRemoves: boolean;
 }
 
 /** Ability fields a table row may leave out (it then has none of these abilities). */
 type OptionalAbilities = Pick<UnitStats,
   | 'elephantTable' | 'ignoreAllSwords' | 'swordIgnore' | 'frightenedBy' | 'vsMountedIgnoreHit' | 'vsMountedIgnoreFlag'
   | 'momentumExtraHex' | 'fullStrengthBonus' | 'chargeMove' | 'noFireAfterMove' | 'lightFoot' | 'forestFighter' | 'noRally'
-  | 'noLeaderBenefit' | 'doubleTimeMove' | 'mountedChargeMove'>;
+  | 'noLeaderBenefit' | 'doubleTimeMove' | 'mountedChargeMove' | 'forbiddenTerrain' | 'noMomentum' | 'evadeRemoves'>;
 
 const noAbilities = (): OptionalAbilities => ({
   elephantTable: false,
@@ -91,6 +100,9 @@ const noAbilities = (): OptionalAbilities => ({
   noLeaderBenefit: false,
   doubleTimeMove: null,
   mountedChargeMove: false,
+  forbiddenTerrain: [],
+  noMomentum: false,
+  evadeRemoves: false,
 });
 
 const U = (s: Omit<UnitStats, keyof OptionalAbilities> & Partial<OptionalAbilities>): UnitStats => ({ ...noAbilities(), ...s });
@@ -126,6 +138,10 @@ export const UNIT_STATS: Record<UnitType, UnitStats> = {
     elephantDiceAgainst: 2, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true }),
   CAM: U({ type: 'CAM', name: 'Camels', cls: 'medium', whiteBorder: false, foot: false, mounted: true, cavalry: false, chariot: false, blocks: 3, move: 3, moveBattle: 3, cc: 3, ccBack: 2, range: 0, retreat: 3, swordHits: true, evade: 'vsFootHeavyMounted',
     elephantDiceAgainst: 3, vsMountedIgnoreHit: 'medium', vsMountedIgnoreFlag: false }),
+  // Heavy war machines: move 1 and then no battle at all (moveBattle 0, so close combat only when it did not move); no fire
+  // after moving; evade only along a legal path, then abandoned (no banner).
+  HWM: U({ type: 'HWM', name: 'Heavy War Machines', cls: 'heavy', whiteBorder: false, foot: true, mounted: false, cavalry: false, chariot: false, blocks: 2, move: 1, moveBattle: 0, cc: 2, ccBack: 2, range: 6, retreat: 1, swordHits: false, evade: 'always',
+    elephantDiceAgainst: 2, noFireAfterMove: 1, forbiddenTerrain: ['broken', 'marsh'], noMomentum: true, evadeRemoves: true }),
 };
 
 export const UNIT_TYPES = Object.keys(UNIT_STATS) as UnitType[];
@@ -155,6 +171,11 @@ export function canEvadeType(defender: UnitType, attacker: UnitType): boolean {
   }
 }
 
+/** May a unit of type `t` not enter terrain `terrain` (movement, momentum, retreat and evade)? */
+export function forbidsTerrain(t: UnitType, terrain: TerrainType): boolean {
+  return UNIT_STATS[t].forbiddenTerrain.includes(terrain);
+}
+
 /** Units that may battle after moving into a forest. */
 export function forestFighter(t: UnitType): boolean {
   return UNIT_STATS[t].forestFighter;
@@ -171,9 +192,11 @@ export function escapeDice(u: Unit): number {
 
 /**
  * May the unit make a bonus close combat after a winning charge (momentum advance)? Charge-movers (warriors) and
- * mounted units always; other foot only with an attached leader. Callers add terrain and card restrictions.
+ * mounted units always; other foot only with an attached leader; never a unit without momentum (war machines). Callers
+ * add terrain and card restrictions.
  */
 export function bonusCombatEligible(st: UnitStats, hasAttachedLeader: boolean): boolean {
+  if (st.noMomentum) return false;
   return st.chargeMove || st.mounted || (st.foot && hasAttachedLeader);
 }
 

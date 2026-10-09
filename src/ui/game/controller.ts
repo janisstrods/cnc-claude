@@ -506,6 +506,14 @@ export class GameController {
         await sleep(this.dur(450));
         break;
       }
+      case 'removed': {
+        // Leaves the board like an eliminated unit, but no banner is awarded (a war machine abandoned after evading).
+        this.flash(this.hexOf(e.id, before), 'Abandoned', 'info');
+        this.addLog({ text: `${this.name(e.id, before)}: ${e.reason} (no banner).`, side: this.sideOf(e.id, before), kind: 'result' });
+        this.set({ display: after });
+        await sleep(this.dur(450));
+        break;
+      }
       case 'leaderKilled': {
         const hex = this.hexOf(e.id, before);
         this.flash(hex, 'Leader slain', 'hit');

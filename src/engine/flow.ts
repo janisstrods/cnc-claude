@@ -17,7 +17,7 @@ import { rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
 import { isFord, isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
 import { canShoot } from './elites';
-import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forestFighter } from './units';
+import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forbidsTerrain, forestFighter } from './units';
 import {
   OFF_BOARD,
   type Answer, type CardKind, type Decision, type DieFace, type FlowCtx, type GameState, type HexId, type Leader,
@@ -115,6 +115,12 @@ function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: stri
     return true;
   }
   return false;
+}
+
+/** Take a unit off the board without eliminating it: no banner (a war machine abandoned after evading, §15). */
+function removeUnit(s: GameState, ctx: FlowCtx, u: Unit, reason: string) {
+  s.units = s.units.filter((x) => x.id !== u.id);
+  ctx.emit({ t: 'removed', id: u.id, reason });
 }
 
 /** Leader casualty check (2 dice need 2 helmets; 1 die needs 1). Returns true if the leader survives. */
@@ -534,6 +540,9 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
       const opt = yield* chooseOption(ctx, tu.side, tu.id, opts, 'evade');
       yield* walkPath(s, ctx, tu, opt, 'evade', checked);
     }
+    // §15: a war machine that survived the roll is abandoned after its evade move (no banner, no leader casualty check);
+    // an attached leader stays on that hex as a lone leader.
+    if (UNIT_STATS[tu.type].evadeRemoves && unitById(s, tu.id)) removeUnit(s, ctx, tu, 'war machine abandoned');
     return false;
   }
 
@@ -565,6 +574,8 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
 
 function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attack' | 'bonus'): Gen {
   if (s.winner || !isEmptyHex(s, hex) || isImpassable(s, hex)) return;
+  // war machines never advance (§15), and no unit advances into terrain it may not enter
+  if (UNIT_STATS[u.type].noMomentum || forbidsTerrain(u.type, terrainAt(s, hex))) return;
   const op = s.turn.ordered[u.id];
   const fromT = terrainAt(s, u.hex);
   if ((fromT === 'marsh' || isFord(s, u.hex)) && op?.enteredHexThisTurn) return;
@@ -582,7 +593,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   if (st.momentumExtraHex && !stopped && fromT !== 'marsh') {
     const hasLeader = !!attachedLeader(s, u);
     const opts = neighbours(u.hex).filter((h) => {
-      if (isImpassable(s, h) || unitAt(s, h)) return false;
+      if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || unitAt(s, h)) return false;
       const l = leaderAt(s, h);
       if (l) return l.side === u.side && !hasLeader;
       return true;

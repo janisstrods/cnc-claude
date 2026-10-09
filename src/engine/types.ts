@@ -3,7 +3,7 @@
 
 export type Side = 'top' | 'bottom';
 
-export type UnitType = 'LI' | 'LB' | 'LS' | 'AX' | 'WA' | 'MI' | 'HI' | 'LC' | 'MC' | 'HC' | 'EL' | 'HCH' | 'LBC' | 'CAM';
+export type UnitType = 'LI' | 'LB' | 'LS' | 'AX' | 'WA' | 'MI' | 'HI' | 'LC' | 'MC' | 'HC' | 'EL' | 'HCH' | 'LBC' | 'CAM' | 'HWM';
 export type UnitClass = 'light' | 'medium' | 'heavy';
 
 /** Elite unit presets (see elites.ts). A unit with `elite` set gets that preset's abilities on top of its type's. */
@@ -242,6 +242,8 @@ export type GameEvent =
   | { t: 'roll'; purpose: RollPurpose; faces: DieFace[]; scoring: boolean[]; by: string | null; against: string | null }
   | { t: 'damage'; id: string; amount: number; left: number; reason: string }
   | { t: 'eliminated'; id: string }
+  /** Left the board without being eliminated, so no banner (a war machine abandoned after evading, §15). */
+  | { t: 'removed'; id: string; reason: string }
   | { t: 'leaderKilled'; id: string }
   | { t: 'leaderSafe'; id: string }
   | { t: 'flags'; id: string; flags: number; ignored: number }

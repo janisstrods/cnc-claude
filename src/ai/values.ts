@@ -9,7 +9,7 @@ export const TYPE_WEIGHT: Record<UnitType, number> = {
   LI: 0.45, LB: 0.5, LS: 0.5, AX: 0.55, WA: 0.65, MI: 0.75, HI: 0.9,
   LC: 0.55, MC: 0.72, HC: 0.85, EL: 0.8, HCH: 0.7,
   // Expansion #1 (provisional until the AI task tunes them)
-  LBC: 0.6, CAM: 0.72,
+  LBC: 0.6, CAM: 0.72, HWM: 0.55,
 };
 
 /** Multiplier on the weight of a unit carrying this elite preset (missing = 1). */

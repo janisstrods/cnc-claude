@@ -116,8 +116,9 @@ export function backDamage(s: GameState, occ: Occ, t: Unit, a: Unit): number {
 }
 
 export function momentumValue(s: GameState, occ: Occ, a: Unit, role: StrikeRole, W: Weights): number {
-  if (role === 'bonus') return 0.02;
   const st = UNIT_STATS[a.type];
+  if (st.noMomentum) return 0; // war machines never advance
+  if (role === 'bonus') return 0.02;
   const eligible = bonusCombatEligible(st, !!attachedLeaderOcc(occ, a));
   return 0.03 + (eligible && !s.turn.mods.noClose ? W.bonusValue : 0);
 }

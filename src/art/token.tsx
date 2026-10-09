@@ -15,13 +15,13 @@ export type UnitClassName = 'light' | 'medium' | 'heavy';
 export const UNIT_CLASS: Record<UnitType, UnitClassName> = {
   LI: 'light', LB: 'light', LS: 'light', AX: 'light', LC: 'light', LBC: 'light',
   WA: 'medium', MI: 'medium', MC: 'medium', CAM: 'medium',
-  HI: 'heavy', HC: 'heavy', EL: 'heavy', HCH: 'heavy',
+  HI: 'heavy', HC: 'heavy', EL: 'heavy', HCH: 'heavy', HWM: 'heavy',
 };
 
 const NAMES: Record<UnitType, string> = {
   LI: 'Light Infantry', LB: 'Light Bow', LS: 'Light Sling', AX: 'Auxilia', WA: 'Warriors', MI: 'Medium Infantry',
   HI: 'Heavy Infantry', LC: 'Light Cavalry', MC: 'Medium Cavalry', HC: 'Heavy Cavalry', EL: 'Elephants',
-  HCH: 'Heavy Chariots', LBC: 'Light Bow Cavalry', CAM: 'Camels',
+  HCH: 'Heavy Chariots', LBC: 'Light Bow Cavalry', CAM: 'Camels', HWM: 'Heavy War Machines',
 };
 
 export function unitTypeName(t: UnitType): string {
@@ -30,8 +30,8 @@ export function unitTypeName(t: UnitType): string {
 
 export const CLASS_COLORS: Record<UnitClassName, string> = { light: '#2f9e44', medium: '#2a6fd8', heavy: '#d0302a' };
 
-// TODO(Task 16): stand-in miniatures until the horse-archer and camel figures are drawn.
-const FIGURE_STAND_IN: Partial<Record<UnitType, UnitType>> = { LBC: 'LC', CAM: 'MC' };
+// TODO(Task 16): stand-in miniatures until the horse-archer, camel and war-machine figures are drawn.
+const FIGURE_STAND_IN: Partial<Record<UnitType, UnitType>> = { LBC: 'LC', CAM: 'MC', HWM: 'HI' };
 
 /** The unit type whose miniature is drawn for `t`. */
 function figureType(t: UnitType): UnitType {

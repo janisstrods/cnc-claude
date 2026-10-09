@@ -2,7 +2,8 @@
 // behaviour the engine had when the abilities were literal type checks.
 import { describe, expect, it } from 'vitest';
 import {
-  ELITES, UNIT_STATS, UNIT_TYPES, bonusCombatEligible, canShoot, createGame, eliteHas, elephantDiceVs, escapeDice, frightens, isLightFoot, rangeOf,
+  ELITES, UNIT_STATS, UNIT_TYPES, bonusCombatEligible, canShoot, createGame, eliteHas, elephantDiceVs, escapeDice, forbidsTerrain, frightens,
+  isLightFoot, rangeOf,
   type ScenarioSetup, type Unit, type UnitStats, type UnitType,
 } from '../../src/engine';
 import { setupOf } from './helpers';
@@ -10,7 +11,8 @@ import { setupOf } from './helpers';
 type AbilityField =
   | 'elephantTable' | 'elephantDiceAgainst' | 'ignoreAllSwords' | 'swordIgnore' | 'frightenedBy' | 'vsMountedIgnoreHit'
   | 'vsMountedIgnoreFlag' | 'momentumExtraHex' | 'fullStrengthBonus' | 'chargeMove' | 'noFireAfterMove' | 'lightFoot'
-  | 'forestFighter' | 'noRally' | 'noLeaderBenefit' | 'doubleTimeMove' | 'mountedChargeMove';
+  | 'forestFighter' | 'noRally' | 'noLeaderBenefit' | 'doubleTimeMove' | 'mountedChargeMove' | 'forbiddenTerrain' | 'noMomentum'
+  | 'evadeRemoves';
 type Abilities = Pick<UnitStats, AbilityField>;
 
 const NONE: Omit<Abilities, 'elephantDiceAgainst'> = {
@@ -30,6 +32,9 @@ const NONE: Omit<Abilities, 'elephantDiceAgainst'> = {
   noLeaderBenefit: false,
   doubleTimeMove: null,
   mountedChargeMove: false,
+  forbiddenTerrain: [],
+  noMomentum: false,
+  evadeRemoves: false,
 };
 
 const EXPECTED: Record<UnitType, Abilities> = {
@@ -50,10 +55,11 @@ const EXPECTED: Record<UnitType, Abilities> = {
   HCH: { ...NONE, elephantDiceAgainst: 3, swordIgnore: 1, frightenedBy: ['EL', 'CAM'], noRally: true, mountedChargeMove: true },
   LBC: { ...NONE, elephantDiceAgainst: 2, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true },
   CAM: { ...NONE, elephantDiceAgainst: 3, vsMountedIgnoreHit: 'medium', vsMountedIgnoreFlag: false },
+  HWM: { ...NONE, elephantDiceAgainst: 2, noFireAfterMove: 1, forbiddenTerrain: ['broken', 'marsh'], noMomentum: true, evadeRemoves: true },
 };
 
 /** Base stats of the Expansion #1 rows (§15). */
-const EXP1_STATS: Record<'LBC' | 'CAM', Partial<UnitStats>> = {
+const EXP1_STATS: Record<'LBC' | 'CAM' | 'HWM', Partial<UnitStats>> = {
   LBC: {
     name: 'Light Bow Cavalry', cls: 'light', whiteBorder: false, foot: false, mounted: true, cavalry: true, chariot: false, blocks: 3,
     move: 4, moveBattle: 4, cc: 2, ccBack: 2, range: 3, retreat: 4, swordHits: false, evade: 'always',
@@ -61,6 +67,10 @@ const EXP1_STATS: Record<'LBC' | 'CAM', Partial<UnitStats>> = {
   CAM: {
     name: 'Camels', cls: 'medium', whiteBorder: false, foot: false, mounted: true, cavalry: false, chariot: false, blocks: 3,
     move: 3, moveBattle: 3, cc: 3, ccBack: 2, range: 0, retreat: 3, swordHits: true, evade: 'vsFootHeavyMounted',
+  },
+  HWM: {
+    name: 'Heavy War Machines', cls: 'heavy', whiteBorder: false, foot: true, mounted: false, cavalry: false, chariot: false, blocks: 2,
+    move: 1, moveBattle: 0, cc: 2, ccBack: 2, range: 6, retreat: 1, swordHits: false, evade: 'always',
   },
 };
 
@@ -82,8 +92,8 @@ describe('unit ability fields', () => {
     });
   }
 
-  it('Expansion #1 rows: light bow cavalry and camels (§15)', () => {
-    for (const t of ['LBC', 'CAM'] as const) expect(UNIT_STATS[t], t).toMatchObject({ type: t, ...EXP1_STATS[t] });
+  it('Expansion #1 rows: light bow cavalry, camels and heavy war machines (§15)', () => {
+    for (const t of ['LBC', 'CAM', 'HWM'] as const) expect(UNIT_STATS[t], t).toMatchObject({ type: t, ...EXP1_STATS[t] });
   });
 
   it('elephantDiceVs reads elephantDiceAgainst', () => {
@@ -92,7 +102,7 @@ describe('unit ability fields', () => {
 });
 
 describe('unit ability helpers', () => {
-  it('escapeDice: normal attack dice, elephants 1, full-strength warriors +1, camels 3, light bow cavalry 2', () => {
+  it('escapeDice: normal attack dice, elephants 1, full-strength warriors +1, camels 3, light bow cavalry 2, war machines 2', () => {
     expect(escapeDice(unit('EL'))).toBe(1);
     expect(escapeDice(unit('WA'))).toBe(4);
     expect(escapeDice(unit('WA', 3))).toBe(3);
@@ -101,6 +111,7 @@ describe('unit ability helpers', () => {
     expect(escapeDice(unit('LC'))).toBe(2);
     expect(escapeDice(unit('CAM'))).toBe(3);
     expect(escapeDice(unit('LBC'))).toBe(2);
+    expect(escapeDice(unit('HWM'))).toBe(2);
   });
 
   it('isLightFoot: LI, LB, LS and AX only', () => {
@@ -108,7 +119,7 @@ describe('unit ability helpers', () => {
     expect(light.sort()).toEqual(['AX', 'LB', 'LI', 'LS']);
   });
 
-  it('bonusCombatEligible: warriors and mounted units always, other foot only with an attached leader', () => {
+  it('bonusCombatEligible: warriors and mounted units always, other foot only with an attached leader, war machines never', () => {
     for (const t of ['WA', 'MC', 'EL', 'LBC', 'CAM'] as const) {
       expect(bonusCombatEligible(UNIT_STATS[t], false), `${t} without leader`).toBe(true);
       expect(bonusCombatEligible(UNIT_STATS[t], true), `${t} with leader`).toBe(true);
@@ -116,6 +127,15 @@ describe('unit ability helpers', () => {
     expect(bonusCombatEligible(UNIT_STATS.HI, false)).toBe(false);
     expect(bonusCombatEligible(UNIT_STATS.HI, true)).toBe(true);
     expect(bonusCombatEligible(UNIT_STATS.LI, false)).toBe(false);
+    expect(bonusCombatEligible(UNIT_STATS.HWM, true)).toBe(false);
+  });
+
+  it('forbidsTerrain: only war machines, and only broken ground and marsh', () => {
+    for (const t of UNIT_TYPES) {
+      for (const terr of ['plain', 'hill', 'forest', 'marsh', 'broken', 'river', 'camp'] as const) {
+        expect(forbidsTerrain(t, terr), `${t} ${terr}`).toBe(t === 'HWM' && (terr === 'marsh' || terr === 'broken'));
+      }
+    }
   });
 
   it('frightens: elephants and camels frighten cavalry and chariots only', () => {
