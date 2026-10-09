@@ -91,7 +91,8 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     if (isImpassable(s, h)) return 'no';
     const v = unitAt(s, h);
     if (v) {
-      if (passThrough && v.side === u.side) return 'pass';
+      // passing through means not stopping: impossible through a friend standing in stopping terrain
+      if (passThrough && v.side === u.side && !stopsAll(s, h)) return 'pass';
       return 'no';
     }
     const l = leaderAt(s, h);

@@ -67,7 +67,8 @@ Flags never hit; they cause retreats (except against lone leaders and eliminated
   Hills (CC only): attacking a unit that is on a hill from a non-hill hex: max 2 (any unit). Attacking from a hill to a
   non-hill hex, or hill to hill: foot max 3, mounted max 2. Battle back uses the same logic from the battling-back unit's side.
 * Caps in ranged combat: target in forest: max 1; firer in marsh or fordable river: max 1.
-* Fortified camp: a unit on a camp hex rolls 1 fewer die when it battles.
+* Fortified camp: a unit on a camp hex rolls 1 fewer die when it battles. A foot unit on a camp ignores 1 sword hit in
+  close combat (and may ignore 1 flag, see §10).
 * Card bonus (only for ordered units, on the active turn): Clash of Shields +2 CC, Mounted Charge +1 CC (incl. bonus CC),
   I Am Spartacus +1 (CC and ranged). Bonuses are added after caps (cards "modify the maximum").
 
@@ -130,7 +131,7 @@ Sequence for each attack (attacker = ordered unit adjacent to target unit or lon
    entering forest/marsh/ford/broken (mounted) ends the cavalry extra hex; advancing into marsh rolls the marsh check.
    A unit in a fordable river or marsh may advance out only if it did not move this turn.
 7. Otherwise, if the defender survived and did not retreat (or could not complete its retreat) it may **battle back**
-   (always taken by default) against the attacker, with its own dice/caps; leader helmets count; attacker may need to
+   (always taken: it can never hurt the defender **[Interp]**) against the attacker, with its own dice/caps; leader helmets count; attacker may need to
    retreat (attacker can ignore flags as usual). No battle back after an evade, a First Strike, or vs a lone leader.
 
 ## 10. Flags & retreat
@@ -143,12 +144,15 @@ Sequence for each attack (attacker = ordered unit adjacent to target unit or lon
   leaders, impassable terrain or leave the board. Lone friendly leader hex: the unit stops there and the leader attaches
   (only if the unit has no attached leader). Terrain otherwise ignored, except marsh: roll the marsh check per marsh hex.
 * Each hex of retreat that cannot be completed = 1 block lost. If a full retreat is possible it must be taken.
+* Only one leader casualty check per combat sequence: if the unit is later eliminated by retreat losses in the same
+  sequence, the leader simply evades.
 * Attached leaders retreat with their unit.
 * **Elephant rampage**: before an elephant retreats, roll 2 dice against every adjacent hex with a unit or lone leader
   (friend or foe; owner's opponent rolls for each side). Matching class symbol = 1 hit; helmet eliminates a lone leader,
   otherwise the lone leader must evade. Then the elephant retreats; if its path is blocked by units or a lone enemy leader
   it does not lose blocks: instead every unit/enemy leader in the blocked rear hexes loses 1 block per unfulfilled hex (a lone
-  enemy leader is removed, banner). Blocked by board edge/impassable: elephant loses blocks normally.
+  enemy leader is removed, banner). Blocked by board edge/impassable: elephant loses blocks normally. These losses are
+  simultaneous: if both armies reach their final banner at once the battle is a draw.
 
 ## 11. Leaders
 
@@ -182,7 +186,8 @@ Tactic (17):
 * Clash of Shields x1 — every unit adjacent to an enemy unit is ordered; no movement; +2 CC dice; may momentum advance
   (bonus CC at normal dice); no ranged.
 * Counter Attack x2 — repeat the opponent's last turn card (Left/Right swapped for Section and Inspired cards; Any Section
-  stays). Cannot copy First Strike. Bound by the same "if you have none, 1 unit" rule.
+  stays and may use any leader **[Interp]**). Cannot copy First Strike. Bound by the same "if you have none, 1 unit" rule.
+  A Counter Attack that copies a Leadership card counts as a Leadership order (e.g. for Mago's ambush) **[Interp]**.
 * Darken the Sky x1 — every missile unit is ordered and may fire twice (each shot resolved separately, may retarget); no
   movement. None? order 1 unit.
 * Double Time x2 — up to 4 foot units in linked hexes; each may move 2 and still close combat; WA may move 2 or 3 but

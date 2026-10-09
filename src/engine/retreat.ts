@@ -60,6 +60,7 @@ export function retreatOptions(s: GameState, u: Unit, hexes: number): RetreatOpt
 /** Elephant retreat: blocked by units or lone enemy leaders, those pieces lose blocks instead. */
 export function elephantRetreatOptions(s: GameState, u: Unit, hexes: number): ElephantRetreatOption[] {
   const out: ElephantRetreatOption[] = [];
+  const hasLeader = !!attachedLeader(s, u);
   const walk = (cur: HexId, path: HexId[], left: number) => {
     if (left === 0) {
       out.push({ path, end: cur, losses: 0, attachLeader: null, blockers: [] });
@@ -76,6 +77,7 @@ export function elephantRetreatOptions(s: GameState, u: Unit, hexes: number): El
       const l = leaderAt(s, h);
       if (l) {
         if (l.side !== u.side) { blockers.push(l.id); continue; }
+        if (hasLeader) { edgeBlocked++; continue; } // only one leader per hex
         moved = true;
         out.push({ path: [...path, h], end: h, losses: 0, attachLeader: l.id, blockers: [] });
         continue;

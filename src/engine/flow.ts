@@ -188,9 +188,17 @@ function* leaderEvade(s: GameState, ctx: FlowCtx, l: Leader): Gen {
   if (u && u.side === l.side) ctx.emit({ t: 'attach', leader: l.id, unit: u.id });
 }
 
-/** After a leader's unit is eliminated: 1-die check, then the leader must evade. */
-function* leaderOrphaned(s: GameState, ctx: FlowCtx, l: Leader): Gen {
+/**
+ * After a leader's unit is eliminated: 1-die check, then the leader must evade.
+ * Only one casualty check is made per combat sequence: if one was already rolled, the leader just evades.
+ */
+function* leaderOrphaned(s: GameState, ctx: FlowCtx, l: Leader, checked?: { done: boolean }): Gen {
   if (!leaderById(s, l.id)) return;
+  if (checked?.done) {
+    yield* leaderEvade(s, ctx, l);
+    return;
+  }
+  if (checked) checked.done = true;
   if (leaderCheck(s, ctx, l, 1)) yield* leaderEvade(s, ctx, l);
 }
 
@@ -202,7 +210,7 @@ function* marshCheckUnit(s: GameState, ctx: FlowCtx, u: Unit, leaderChecked: { d
   if (f !== cls) return false;
   const l = attachedLeader(s, u);
   if (loseBlocks(s, ctx, u, 1, 'sunk in the marsh')) {
-    if (l) yield* leaderOrphaned(s, ctx, l);
+    if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
     return true;
   }
   if (l && !leaderChecked.done) {
@@ -293,6 +301,65 @@ function* walkPath(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, kind
   return false;
 }
 
+/**
+ * Units (and lone enemy leaders) blocking an elephant's retreat lose blocks simultaneously; if both sides reach
+ * their final banner at once the battle is a draw.
+ */
+function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: string; n: number }[]): Gen {
+  const gains: Side[] = [];
+  const orphans: Leader[] = [];
+  const survivorsWithLeader: Leader[] = [];
+  for (const b of blockers) {
+    if (isLeaderId(b.id)) {
+      const l = leaderById(s, b.id);
+      if (!l) continue;
+      s.leaders = s.leaders.filter((x) => x.id !== l.id);
+      ctx.emit({ t: 'leaderKilled', id: l.id });
+      log(s, ctx, `${l.name || 'A leader'} (${sideName(s, l.side)}) is crushed by the elephants!`, l.side);
+      if (s.special.sacredLeaderId === l.id && !s.winner) {
+        s.winner = other(l.side);
+        s.winReason = `${l.name} has fallen`;
+        ctx.emit({ t: 'victory', winner: s.winner, reason: s.winReason });
+        return;
+      }
+      gains.push(other(l.side));
+      continue;
+    }
+    const v = unitById(s, b.id);
+    if (!v) continue;
+    const l = attachedLeader(s, v);
+    const k = Math.min(b.n, v.blocks);
+    v.blocks -= k;
+    ctx.emit({ t: 'damage', id: v.id, amount: k, left: v.blocks, reason: 'crushed by retreating elephants' });
+    if (v.blocks <= 0) {
+      s.units = s.units.filter((x) => x.id !== v.id);
+      ctx.emit({ t: 'eliminated', id: v.id });
+      log(s, ctx, `${sideName(s, v.side)} ${unitName(v)} eliminated.`, v.side);
+      gains.push(other(v.side));
+      if (l) orphans.push(l);
+    } else if (l) survivorsWithLeader.push(l);
+  }
+  // award banners together
+  const before = { top: s.players.top.banners, bottom: s.players.bottom.banners };
+  const add = { top: gains.filter((x) => x === 'top').length, bottom: gains.filter((x) => x === 'bottom').length };
+  const winTop = before.top + add.top >= s.bannersToWin && add.top > 0;
+  const winBottom = before.bottom + add.bottom >= s.bannersToWin && add.bottom > 0;
+  if (winTop && winBottom) {
+    s.players.top.banners += add.top;
+    s.players.bottom.banners += add.bottom;
+    ctx.emit({ t: 'banner', side: 'top', total: s.players.top.banners, reason: 'elephant retreat' });
+    ctx.emit({ t: 'banner', side: 'bottom', total: s.players.bottom.banners, reason: 'elephant retreat' });
+    s.winner = 'draw';
+    s.winReason = 'Both armies broke at the same moment';
+    ctx.emit({ t: 'victory', winner: 'draw', reason: s.winReason });
+    return;
+  }
+  for (const g of gains) gainBanner(s, ctx, g, 'crushed by elephants');
+  if (s.winner) return;
+  for (const l of survivorsWithLeader) if (leaderById(s, l.id)) leaderCheck(s, ctx, l, 2);
+  for (const l of orphans) yield* leaderOrphaned(s, ctx, l);
+}
+
 function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leaderChecked: { done: boolean }): Gen<HitOutcome> {
   const start = u.hex;
   if (u.type === 'EL') {
@@ -301,22 +368,13 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
     const opts = elephantRetreatOptions(s, u, hexes);
     const opt = yield* chooseOption<ElephantRetreatOption>(ctx, u.side, u.id, opts, 'retreat');
     if (yield* walkPath(s, ctx, u, opt, 'retreat', leaderChecked)) return { eliminated: true, vacated: true };
-    for (const b of opt.blockers) {
-      if (s.winner) break;
-      if (isLeaderId(b.id)) {
-        const l = leaderById(s, b.id);
-        if (l) killLeader(s, ctx, l, 'leader crushed by elephants');
-        continue;
-      }
-      const v = unitById(s, b.id);
-      if (!v) continue;
-      const l = attachedLeader(s, v);
-      if (loseBlocks(s, ctx, v, b.n, 'crushed by retreating elephants')) {
-        if (l) yield* leaderOrphaned(s, ctx, l);
-      } else if (l) leaderCheck(s, ctx, l, 2);
-    }
+    if (opt.blockers.length) yield* elephantBlockerLosses(s, ctx, opt.blockers);
     if (opt.losses > 0 && unitById(s, u.id)) {
-      if (loseBlocks(s, ctx, u, opt.losses, 'could not retreat')) return { eliminated: true, vacated: true };
+      const l = attachedLeader(s, u);
+      if (loseBlocks(s, ctx, u, opt.losses, 'could not retreat')) {
+        if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
+        return { eliminated: true, vacated: true };
+      }
     }
     return { eliminated: false, vacated: u.hex !== start };
   }
@@ -326,7 +384,7 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
   if (opt.losses > 0) {
     const l = attachedLeader(s, u);
     if (loseBlocks(s, ctx, u, opt.losses, 'retreat blocked')) {
-      if (l) yield* leaderOrphaned(s, ctx, l);
+      if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
       return { eliminated: true, vacated: true };
     }
     if (l && !leaderChecked.done) {
@@ -404,6 +462,7 @@ function* strike(s: GameState, ctx: FlowCtx, striker: Unit, target: Unit, role: 
 
 function* attackLoneLeader(s: GameState, ctx: FlowCtx, striker: Unit, l: Leader, kind: 'close' | 'ranged', dice: number): Gen {
   ctx.emit({ t: 'combat', purpose: kind === 'ranged' ? 'ranged' : 'close', attacker: striker.id, target: l.id, dice });
+  if (dice <= 0) return;
   const faces = rollDice(s, dice);
   emitRoll(ctx, kind === 'ranged' ? 'ranged' : 'close', faces, faces.map((f) => f === 'leader'), striker.id, l.id);
   if (faces.includes('leader')) killLeader(s, ctx, l, 'leader killed');
@@ -520,10 +579,10 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   if (!(a as { yes: boolean }).yes) return;
   const from = u.hex;
   relocate(s, u, hex);
+  if (op) op.enteredHexThisTurn = true;
   ctx.emit({ t: 'advance', id: u.id, path: [from, hex] });
   const checked = { done: false };
   if (terrainAt(s, hex) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
-  captureCamp(s, ctx, u);
   if (s.winner || role === 'bonus') return;
   const st = UNIT_STATS[u.type];
   const stopped = stopsAll(s, hex) || (st.mounted && stopsMounted(s, hex));
@@ -547,7 +606,6 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
         ctx.emit({ t: 'advance', id: u.id, path: [f2, to] });
         if (joining && joining.side === u.side) ctx.emit({ t: 'attach', leader: joining.id, unit: u.id });
         if (terrainAt(s, to) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
-        captureCamp(s, ctx, u);
         if (s.winner) return;
       }
     }
@@ -595,14 +653,19 @@ export function battleTargets(s: GameState, unitId: string): BattleTarget[] {
   if (!u || !op || op.isLeader || op.battlesLeft <= 0 || !op.canBattle || u.hex < 0) return [];
   const m = s.turn.mods;
   const out: BattleTarget[] = [];
-  if (!m.noClose) for (const h of closeTargets(s, u)) out.push({ hex: h, kind: 'close' });
+  if (!m.noClose) {
+    for (const h of closeTargets(s, u)) {
+      const t = unitAt(s, h) ?? leaderAt(s, h);
+      if (t && closeCombatDice(s, u, t, { role: 'attack', fullAtStart: u.blocks === u.maxBlocks, ordered: true }) > 0) out.push({ hex: h, kind: 'close' });
+    }
+  }
   if (!m.noRanged && hasRanged(u.type) && !(u.type === 'AX' && op.moved >= 2)) {
     const hexes = new Set<HexId>();
     for (const v of s.units) if (v.side !== u.side && v.hex >= 0) hexes.add(v.hex);
     for (const l of s.leaders) if (l.side !== u.side && l.hex >= 0 && !leaderUnit(s, l)) hexes.add(l.hex);
     for (const h of hexes) {
       if (out.some((x) => x.hex === h)) continue;
-      if (canFireAt(s, u, h)) out.push({ hex: h, kind: 'ranged' });
+      if (canFireAt(s, u, h) && rangedDice(s, u, h, op.moved, true) > 0) out.push({ hex: h, kind: 'ranged' });
     }
   }
   return out;
@@ -882,6 +945,8 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
       op.battlesLeft = 0;
       op.mustBattle = false;
       yield* closeCombat(s, ctx, u, a.target, 'attack');
+      // Baecula: a camp counts only where the attacking unit finally stops.
+      if (!s.winner && unitById(s, u.id)) captureCamp(s, ctx, u);
     }
   }
 }
