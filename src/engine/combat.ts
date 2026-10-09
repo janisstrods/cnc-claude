@@ -2,7 +2,7 @@
 import { distance, hasLineOfSight, neighbours } from './hex';
 import { attachedLeader, enemyUnitAdjacent, leaderAt, leaderNear, supportCount, unitAt } from './query';
 import { ccCapOfHex, hillGroups, isCamp, isHill, rangedFromCap, rangedTargetCap, terrainBlocksLOS } from './terrain';
-import { UNIT_STATS, elephantDiceVs } from './units';
+import { UNIT_STATS, elephantDiceVs, frightens } from './units';
 import type { DieFace, GameState, HexId, Leader, Unit } from './types';
 
 export type StrikeRole = 'attack' | 'bonus' | 'back' | 'firstStrike';
@@ -28,9 +28,9 @@ export function closeCombatDice(s: GameState, striker: Unit, target: Unit | Lead
   const st = UNIT_STATS[striker.type];
   const targetIsUnit = 'type' in target;
   let base: number;
-  if (striker.type === 'EL') base = targetIsUnit ? elephantDiceVs((target as Unit).type) : 1;
+  if (st.elephantTable) base = targetIsUnit ? elephantDiceVs((target as Unit).type) : 1;
   else base = opts.role === 'back' || opts.role === 'firstStrike' ? st.ccBack : st.cc;
-  if (striker.type === 'WA' && opts.fullAtStart) base += 1;
+  if (st.fullStrengthBonus && opts.fullAtStart) base += 1;
   const cap = Math.min(ccCapOfHex(s, striker.hex), ccCapOfHex(s, target.hex), capForHills(s, striker.hex, target.hex, striker));
   let dice = Math.min(base, cap);
   if (isCamp(s, striker.hex)) dice -= 1;
@@ -97,17 +97,22 @@ export interface Scored {
 
 /** How many sword hits the target ignores in close combat (before elephant re-rolls). */
 export function swordIgnores(s: GameState, target: Unit): number {
-  if (target.type === 'EL') return 99;
-  let n = 0;
-  if (target.type === 'HCH') n += 1;
-  if (isCamp(s, target.hex) && UNIT_STATS[target.type].foot) n += 1;
+  const t = UNIT_STATS[target.type];
+  if (t.ignoreAllSwords) return 99;
+  let n = t.swordIgnore;
+  if (isCamp(s, target.hex) && t.foot) n += 1;
   return n;
 }
 
-/** Red-square hits an elephant ignores from a cavalry/chariot striker. */
-export function redIgnores(striker: Unit, target: Unit): number {
+/** Is the striker a cavalry or chariot unit (the rollers that `vsMounted*` abilities react to)? */
+function cavalryOrChariot(striker: Unit): boolean {
   const st = UNIT_STATS[striker.type];
-  return target.type === 'EL' && (st.cavalry || st.chariot) ? 1 : 0;
+  return st.cavalry || st.chariot;
+}
+
+/** Hits of the target's `vsMountedIgnoreHit` class it ignores from a cavalry/chariot striker (EL: 1 red square). */
+export function vsMountedIgnores(striker: Unit, target: Unit): number {
+  return UNIT_STATS[target.type].vsMountedIgnoreHit !== null && cavalryOrChariot(striker) ? 1 : 0;
 }
 
 /**
@@ -116,16 +121,17 @@ export function redIgnores(striker: Unit, target: Unit): number {
  */
 export function scoreClose(s: GameState, striker: Unit, target: Unit, faces: DieFace[], leaderHelmets: boolean): Scored {
   const st = UNIT_STATS[striker.type];
-  const cls = UNIT_STATS[target.type].cls;
+  const tst = UNIT_STATS[target.type];
+  const cls = tst.cls;
   let swordsLeft = swordIgnores(s, target);
-  let redLeft = redIgnores(striker, target);
+  let vsMountedLeft = vsMountedIgnores(striker, target);
   const scoring: boolean[] = [];
   let hits = 0;
   let flags = 0;
   for (const f of faces) {
     let hit = false;
     if (f === cls) {
-      if (f === 'heavy' && redLeft > 0) redLeft--;
+      if (f === tst.vsMountedIgnoreHit && vsMountedLeft > 0) vsMountedLeft--;
       else hit = true;
     } else if (f === 'swords') {
       if (st.swordHits) {
@@ -143,9 +149,9 @@ export function scoreClose(s: GameState, striker: Unit, target: Unit, faces: Die
   return { faces, scoring, hits, flags };
 }
 
-/** Whether helmets score for this striker (leader attached/adjacent, not an elephant). */
+/** Whether helmets score for this striker (leader attached/adjacent, and the striker benefits from leaders). */
 export function helmetsCount(s: GameState, striker: Unit): boolean {
-  if (striker.type === 'EL') return false;
+  if (UNIT_STATS[striker.type].noLeaderBenefit) return false;
   return leaderNear(s, striker.hex, striker.side);
 }
 
@@ -176,36 +182,33 @@ export interface IgnoreContext {
 
 /** Number of flags the target may ignore (bolster morale, terrain, special). */
 export function ignorableFlags(s: GameState, target: Unit, ctx: IgnoreContext): number {
-  if (target.type === 'EL') {
-    if (ctx.kind === 'close' && ctx.striker) {
-      const st = UNIT_STATS[ctx.striker.type];
-      if (st.cavalry || st.chariot) return 1;
-    }
-    return 0;
-  }
+  const t = UNIT_STATS[target.type];
   let n = 0;
-  if (ctx.leaderAlive && attachedLeader(s, target)) n++;
-  if (supportCount(s, target) >= 2) n++;
-  if (isCamp(s, target.hex) && UNIT_STATS[target.type].foot) n++;
-  if (target.type === 'WA' && ctx.fullAtStart) n++;
+  if (!t.noLeaderBenefit) {
+    if (ctx.leaderAlive && attachedLeader(s, target)) n++;
+    if (supportCount(s, target) >= 2) n++;
+  }
+  if (isCamp(s, target.hex) && t.foot) n++;
+  if (t.fullStrengthBonus && ctx.fullAtStart) n++;
   if (target.sacredBand) n++;
+  if (t.vsMountedIgnoreFlag && ctx.kind === 'close' && ctx.striker && cavalryOrChariot(ctx.striker)) n++;
   return n;
 }
 
 /** Retreat hexes per accepted flag for `target`, given who rolled the flags. */
 export function retreatPerFlag(target: Unit, striker: Unit | null): number {
-  const st = UNIT_STATS[target.type];
-  let n = st.retreat;
-  if (striker && striker.type === 'EL' && (st.cavalry || st.chariot)) n += 1;
+  let n = UNIT_STATS[target.type].retreat;
+  if (striker && frightens(striker, target)) n += 1;
   return n;
 }
 
 /** Probability helpers for UI/AI: chance a single die hits a target of this class in close combat. */
 export function closeHitChance(s: GameState, striker: Unit, target: Unit): number {
-  const cls = UNIT_STATS[target.type].cls;
+  const sst = UNIT_STATS[striker.type];
+  const tst = UNIT_STATS[target.type];
   let p = 1 / 6; // class symbol
-  if (UNIT_STATS[striker.type].swordHits && target.type !== 'EL') p += 1 / 6;
-  if (striker.type !== 'EL' && (helmetsCount(s, striker) || striker.sacredBand)) p += 1 / 6;
-  if (cls === 'heavy' && redIgnores(striker, target)) p -= 1 / 18; // rough
+  if (sst.swordHits && !tst.ignoreAllSwords) p += 1 / 6;
+  if (!sst.noLeaderBenefit && (helmetsCount(s, striker) || striker.sacredBand)) p += 1 / 6;
+  if (tst.cls === tst.vsMountedIgnoreHit && vsMountedIgnores(striker, target)) p -= 1 / 18; // rough
   return p;
 }

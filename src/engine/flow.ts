@@ -16,7 +16,7 @@ import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOption
 import { rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
 import { isFord, isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
-import { UNIT_STATS, canEvadeType, forestFighter, hasRanged } from './units';
+import { UNIT_STATS, canEvadeType, escapeDice, forestFighter, hasRanged } from './units';
 import {
   OFF_BOARD,
   type Answer, type CardKind, type Decision, type DieFace, type FlowCtx, type GameState, type HexId, type Leader,
@@ -127,14 +127,6 @@ function leaderCheck(s: GameState, ctx: FlowCtx, l: Leader, dice: 1 | 2): boolea
   }
   ctx.emit({ t: 'leaderSafe', id: l.id });
   return true;
-}
-
-/** Normal close-combat dice of a unit (used for leader escape): attacking dice, no terrain, no card bonus. */
-function escapeDice(u: Unit): number {
-  if (u.type === 'EL') return 1;
-  let d = UNIT_STATS[u.type].cc;
-  if (u.type === 'WA' && u.blocks === u.maxBlocks) d += 1;
-  return d;
 }
 
 function* leaderEvade(s: GameState, ctx: FlowCtx, l: Leader): Gen {
@@ -362,7 +354,7 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
 
 function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leaderChecked: { done: boolean }): Gen<HitOutcome> {
   const start = u.hex;
-  if (u.type === 'EL') {
+  if (UNIT_STATS[u.type].elephantTable) {
     yield* rampage(s, ctx, u);
     if (s.winner || !unitById(s, u.id)) return { eliminated: !unitById(s, u.id), vacated: true };
     const opts = elephantRetreatOptions(s, u, hexes);
@@ -439,7 +431,7 @@ function purposeOf(role: StrikeRole): RollPurpose {
 /** Roll close combat dice including elephant sword re-rolls. */
 function rollClose(s: GameState, striker: Unit, target: Unit, n: number): DieFace[] {
   const faces = rollDice(s, n);
-  if (striker.type !== 'EL') return faces;
+  if (!UNIT_STATS[striker.type].elephantTable) return faces;
   let ignore = swordIgnores(s, target);
   for (let i = 0; i < faces.length && faces.length < 40; i++) {
     if (faces[i] !== 'swords') continue;
@@ -586,7 +578,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   if (s.winner || role === 'bonus') return;
   const st = UNIT_STATS[u.type];
   const stopped = stopsAll(s, hex) || (st.mounted && stopsMounted(s, hex));
-  if (st.cavalry && !stopped && fromT !== 'marsh') {
+  if (st.momentumExtraHex && !stopped && fromT !== 'marsh') {
     const hasLeader = !!attachedLeader(s, u);
     const opts = neighbours(u.hex).filter((h) => {
       if (isImpassable(s, h) || unitAt(s, h)) return false;
@@ -612,7 +604,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   }
   // bonus close combat
   const terr = terrainAt(s, u.hex);
-  let eligible = u.type === 'WA' || st.mounted || (st.foot && !!attachedLeader(s, u));
+  let eligible = st.chargeMove || st.mounted || (st.foot && !!attachedLeader(s, u));
   if (terr === 'forest' && !forestFighter(u.type)) eligible = false;
   if (terr === 'broken' && st.mounted) eligible = false;
   if (s.turn.mods.noClose) eligible = false;
@@ -659,7 +651,7 @@ export function battleTargets(s: GameState, unitId: string): BattleTarget[] {
       if (t && closeCombatDice(s, u, t, { role: 'attack', fullAtStart: u.blocks === u.maxBlocks, ordered: true }) > 0) out.push({ hex: h, kind: 'close' });
     }
   }
-  if (!m.noRanged && hasRanged(u.type) && !(u.type === 'AX' && op.moved >= 2)) {
+  if (!m.noRanged && hasRanged(u.type) && op.moved < UNIT_STATS[u.type].noFireAfterMove) {
     const hexes = new Set<HexId>();
     for (const v of s.units) if (v.side !== u.side && v.hex >= 0) hexes.add(v.hex);
     for (const l of s.leaders) if (l.side !== u.side && l.hex >= 0 && !leaderUnit(s, l)) hexes.add(l.hex);

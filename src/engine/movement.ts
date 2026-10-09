@@ -2,7 +2,7 @@
 import { inSection, neighbours, onBaseline, rowOf } from './hex';
 import { attachedLeader, enemyPieceAdjacent, leaderAt, leaderById, unitAt, unitById } from './query';
 import { isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
-import { UNIT_STATS, forestFighter } from './units';
+import { UNIT_STATS, forestFighter, isLightFoot } from './units';
 import { OFF_BOARD, type GameState, type HexId, type OrderMods, type SectionName, type Side, type Unit } from './types';
 
 export interface MoveTarget {
@@ -25,23 +25,12 @@ export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: Gam
   const st = UNIT_STATS[u.type];
   let max = st.move;
   let battleMax = st.moveBattle;
-  let chargeFrom: number | null = null;
-  if (u.type === 'WA') {
-    max = 2;
-    battleMax = 2;
-    chargeFrom = 2;
+  const chargeFrom: number | null = st.chargeMove ? 2 : null;
+  if (mods.doubleTime && st.doubleTimeMove !== null) {
+    max = st.doubleTimeMove;
+    battleMax = st.doubleTimeMove;
   }
-  if (mods.doubleTime && st.foot) {
-    if (u.type === 'WA') {
-      max = 3;
-      battleMax = 3;
-      chargeFrom = 2;
-    } else if (u.type === 'MI' || u.type === 'HI' || u.type === 'AX') {
-      max = 2;
-      battleMax = 2;
-    }
-  }
-  if (mods.mountedCharge && (u.type === 'HC' || u.type === 'EL' || u.type === 'HCH')) {
+  if (mods.mountedCharge && st.mountedChargeMove) {
     max = 3;
     battleMax = 3;
   }
@@ -54,10 +43,6 @@ export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: Gam
     battleMax = Math.min(battleMax, 1);
   }
   return { max, battleMax, chargeFrom };
-}
-
-function lightFoot(u: Unit): boolean {
-  return u.type === 'LI' || u.type === 'LB' || u.type === 'LS' || u.type === 'AX';
 }
 
 export interface UnitMoveOptions {
@@ -80,7 +65,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   const lim = unitMoveLimits(u, mods, fromReserve ? OFF_BOARD : startHex, s);
   const st = UNIT_STATS[u.type];
   const hasLeader = !fromReserve && !!attachedLeader(s, u);
-  const passThrough = mods.passThrough && lightFoot(u);
+  const passThrough = mods.passThrough && isLightFoot(u);
   const results = new Map<HexId, MoveTarget>();
 
   type Node = { hex: HexId; dist: number; path: HexId[]; stopped: boolean };
@@ -169,7 +154,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   for (const t of results.values()) {
     if (t.hex === OFF_BOARD) continue;
     let can = t.dist <= lim.battleMax;
-    if (u.type === 'AX' && t.dist >= 2 && !mods.doubleTime) can = false;
+    if (t.dist >= st.noFireAfterMove && !mods.doubleTime) can = false;
     if (lim.chargeFrom !== null && t.dist >= lim.chargeFrom) {
       if (enemyPieceAdjacent(s, t.hex, u.side)) t.mustBattle = true;
       else {

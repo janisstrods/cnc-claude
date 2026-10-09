@@ -193,11 +193,11 @@ export function validateOrders(s: GameState, side: Side, kind: CardKind | null, 
   }
 }
 
-/** Units that the Rally card may restore: damaged, not EL/HCH, in or adjacent to a friendly leader's hex. */
+/** Units that the Rally card may restore: damaged, not `noRally` (EL/HCH), in or adjacent to a friendly leader's hex. */
 export function rallyCandidates(s: GameState, side: Side): Unit[] {
   const leaders = leadersOf(s, side);
   return unitsOf(s, side).filter(
-    (u) => u.blocks < u.maxBlocks && u.type !== 'EL' && u.type !== 'HCH' &&
+    (u) => u.blocks < u.maxBlocks && !UNIT_STATS[u.type].noRally &&
       leaders.some((l) => l.hex === u.hex || areAdjacent(l.hex, u.hex)),
   );
 }

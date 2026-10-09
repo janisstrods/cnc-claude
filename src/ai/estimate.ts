@@ -1,6 +1,6 @@
 // Analytic combat estimator: expected value (in banner units) of attacks, battle backs, evades and ranged fire.
 import { battleTargets } from '../engine/flow';
-import { closeCombatDice, rangedDice, redIgnores, retreatPerFlag, swordIgnores, type StrikeRole } from '../engine/combat';
+import { closeCombatDice, rangedDice, retreatPerFlag, swordIgnores, vsMountedIgnores, type StrikeRole } from '../engine/combat';
 import { neighbours } from '../engine/hex';
 import { unitById } from '../engine/query';
 import { UNIT_STATS, canEvadeType, hasRanged } from '../engine/units';
@@ -29,7 +29,7 @@ export function closeProfile(s: GameState, occ: Occ, st: Unit, t: Unit, n: numbe
     ps = 0.2;
     pf = 0.2;
   }
-  return { n, pc, ps, ph, pf, sw, rd: redIgnores(st, t) };
+  return { n, pc, ps, ph, pf, sw, rd: vsMountedIgnores(st, t) };
 }
 
 export function rangedProf(n: number): Prof {
