@@ -1,10 +1,11 @@
 // Game session controller: owns the engine driver, runs the AI, and turns engine events into paced animations.
 import {
-  CARD_DEFS, GameDriver, OFF_BOARD, UNIT_STATS, cloneState, createGame, freshSeed, leaderById, other, randomAnswer, unitById,
+  CARD_DEFS, CARD_LIST, GameDriver, OFF_BOARD, UNIT_STATS, cloneState, createGame, freshSeed, leaderById, other, randomAnswer, unitById,
   type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameState, type HexId, type QueuedEvent, type RollPurpose, type Side,
 } from '../../engine';
 import { scenarioById } from '../../scenarios';
 import type { Opponent } from './opponent';
+import { sfx } from '../sound';
 
 export type Difficulty = 'recruit' | 'tribune' | 'consul';
 
@@ -15,6 +16,8 @@ export interface SessionConfig {
   seed: number;
   /** Personality id override (optional). */
   personality?: string;
+  /** Dev/testing: card kinds dealt into the human's opening hand. */
+  devCards?: CardKind[];
 }
 
 export interface SavedGame {
@@ -73,6 +76,7 @@ export interface ViewState {
   canUndo: boolean;
   speed: number; // 1 = normal, 2 = fast, 0.6 = slow
   lastCombatOdds: string | null;
+  toast: { id: number; text: string } | null;
 }
 
 const SAVE_KEY = 'cca-autosave-v1';
@@ -115,6 +119,17 @@ export class GameController {
     this.opponent = opponent;
     const sc = scenarioById(config.scenarioId);
     const initial = createGame(sc.setup, config.seed);
+    if (config.devCards?.length) {
+      const hand = initial.players[config.humanSide].hand;
+      config.devCards.forEach((k, i) => {
+        const id = initial.deck.findIndex((c) => CARD_LIST[c] === k);
+        if (id >= 0 && i < hand.length) {
+          const card = initial.deck.splice(id, 1)[0];
+          initial.deck.push(hand[i]);
+          hand[i] = card;
+        }
+      });
+    }
     if (answers.length) {
       this.driver = GameDriver.replay(initial, answers, { snapshots: true });
     } else {
@@ -142,6 +157,7 @@ export class GameController {
       canUndo: false,
       speed,
       lastCombatOdds: null,
+      toast: null,
     };
     if (answers.length) this.addLog({ text: 'Battle resumed from your last save.', kind: 'info' });
     else {
@@ -237,11 +253,19 @@ export class GameController {
         if (st.winner || !this.driver.pending) {
           const winner = st.winner ?? 'draw';
           this.set({ over: { winner, reason: st.winReason }, pending: null, display: cloneState(st), aiThinking: false });
+          if (winner === this.config.humanSide) sfx.victory();
+          else sfx.defeat();
           this.save();
           return;
         }
         const d = this.driver.pending;
         if (d.side === this.config.humanSide) {
+          if (d.kind === 'playCard') {
+            sfx.turn();
+            const toast = { id: seq++, text: 'Your turn' };
+            this.set({ toast });
+            setTimeout(() => { if (this.view.toast?.id === toast.id) this.set({ toast: null }); }, 1400);
+          }
           this.set({ pending: d, display: cloneState(st), canUndo: this.driver.canUndo(), aiThinking: false, combat: d.kind === 'battle' || d.kind === 'move' || d.kind === 'playCard' || d.kind === 'orders' ? null : this.view.combat });
           return;
         }
@@ -309,6 +333,7 @@ export class GameController {
   private async walk(id: string, path: HexId[], stepMs: number) {
     const steps = path.filter((h) => h >= 0);
     for (let i = 1; i < steps.length; i++) {
+      if (!this.skipAnim) sfx.march();
       this.set({ walking: { ...this.view.walking, [id]: steps[i] } });
       await sleep(this.dur(stepMs));
     }
@@ -330,6 +355,7 @@ export class GameController {
         const def = CARD_DEFS[e.kind];
         const eff = e.effective !== e.kind ? ` → ${CARD_DEFS[e.effective].title}` : '';
         this.addLog({ text: `${after.players[e.side].army} play ${def.title}${eff}.`, side: e.side, kind: 'card' });
+        sfx.card();
         if (e.side !== human) {
           this.set({ display: after, cardShow: { id: seq++, kind: e.kind, side: e.side, mirrored: false } });
           await sleep(this.dur(1600));
@@ -372,6 +398,7 @@ export class GameController {
           close: 'attacks', ranged: 'fires on', battleBack: 'battles back against', firstStrike: 'strikes first at', bonus: 'presses on into',
           evade: 'attacks', escape: 'tries to catch', rampage: 'tramples',
         };
+        if (e.purpose === 'close' || e.purpose === 'bonus' || e.purpose === 'battleBack' || e.purpose === 'firstStrike') sfx.clash();
         if (e.purpose !== 'evade') {
           this.addLog({ text: `${this.name(e.attacker, after)} ${verb[e.purpose] ?? 'attacks'} ${this.name(e.target, after)} (${e.dice} ${e.dice === 1 ? 'die' : 'dice'}).`, side: this.sideOf(e.attacker, after), kind: 'combat' });
         }
@@ -383,6 +410,7 @@ export class GameController {
         const title = this.rollTitle(e.purpose, e.by, e.against, after);
         const id = seq++;
         const sub = this.rollSummary(e.purpose, e.faces, e.scoring);
+        sfx.dice(e.faces.length);
         this.set({ dice: { id, title, subtitle: '', faces: e.faces, scoring: e.scoring, rolling: true, purpose: e.purpose } });
         await sleep(this.dur(650));
         this.set({ dice: { id, title, subtitle: sub, faces: e.faces, scoring: e.scoring, rolling: false, purpose: e.purpose }, display: after });
@@ -392,6 +420,7 @@ export class GameController {
       case 'damage': {
         const hex = this.hexOf(e.id, before);
         this.flash(hex, `−${e.amount}`, 'hit');
+        sfx.hit();
         this.addLog({ text: `${this.name(e.id, before)} loses ${e.amount} block${e.amount > 1 ? 's' : ''} (${e.reason}).`, side: this.sideOf(e.id, before), kind: 'result' });
         this.set({ display: after });
         await sleep(this.dur(380));
@@ -435,6 +464,7 @@ export class GameController {
         await sleep(this.dur(450));
         break;
       case 'banner': {
+        sfx.banner();
         this.addLog({ text: `${after.players[e.side].army} gain a Victory Banner (${e.total}/${after.bannersToWin}) — ${e.reason}.`, side: e.side, kind: 'banner' });
         this.set({ display: after });
         await sleep(this.dur(500));

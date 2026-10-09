@@ -4,6 +4,7 @@ import { GameController, clearSaved, loadSaved, newSessionConfig, type Difficult
 import { GameScreen } from './game/GameScreen';
 import { makeOpponent } from './game/makeOpponent';
 import { MainMenu, ScenarioSelect } from './screens/Menus';
+import { ErrorBoundary } from './ErrorBoundary';
 import './kit';
 
 const ArtGallery = lazy(() => import('../dev/ArtGallery'));
@@ -38,6 +39,8 @@ export function App() {
     devStarted.current = true;
     const cfg = newSessionConfig(m[1], m[2] as Side, m[3] as Difficulty);
     if (m[4]) cfg.seed = Number(m[4]);
+    const cards = window.location.hash.match(/[?&]cards=([a-zA-Z0-9,]+)/);
+    if (cards) cfg.devCards = cards[1].split(',') as SessionConfig['devCards'];
     setScreen({ kind: 'game', controller: startController(cfg) });
   }, []);
   const [saved, setSaved] = useState<SavedGame | null>(() => loadSaved());
@@ -53,7 +56,13 @@ export function App() {
     setScreen({ kind: 'menu' });
   };
 
-  if (screen.kind === 'game') return <GameScreen key={screen.controller.config.seed} controller={screen.controller} onExit={toMenu} />;
+  if (screen.kind === 'game') {
+    return (
+      <ErrorBoundary onReset={toMenu}>
+        <GameScreen key={screen.controller.config.seed} controller={screen.controller} onExit={toMenu} />
+      </ErrorBoundary>
+    );
+  }
   if (screen.kind === 'select') {
     return (
       <ScenarioSelect

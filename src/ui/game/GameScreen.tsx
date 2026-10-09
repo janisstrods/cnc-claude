@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import {
   CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, cardKind, isLeaderId, leaderAt, leaderById, leaderUnit,
   other, pieceMoves, rallyCandidates, terrainAt, isFord, unitAt, unitById, validateOrders, validateRally, validateSpartacus,
-  battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf,
+  battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf, sectionsOf,
   type Answer, type DieFace, type GameState, type HexId, type SectionName, type Side,
 } from '../../engine';
 import { UnitIcon, unitTypeName } from '../../art';
@@ -12,6 +12,7 @@ import { Board } from './Board';
 import type { GameController, LogLine } from './controller';
 import { attackDice, boardUi, effectiveKind, expectedHits, pieceHexOf, unitSummary, type UiSel } from './uiModel';
 import { RulesReference } from '../screens/RulesReference';
+import { isMuted, setMuted } from '../sound';
 import './game.css';
 
 const EMPTY_SEL: UiSel = { selCard: null, hoverCard: null, orderSel: [], selPiece: null, hoverHex: null };
@@ -34,6 +35,8 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
+  const [mutedState, setMutedState] = useState(isMuted());
+  const [assignFocus, setAssignFocus] = useState<string[]>([]);
 
   // reset local selection whenever a new decision arrives
   useEffect(() => {
@@ -51,7 +54,16 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
 
   const answer = (a: Answer) => controller.answer(a);
 
-  const bui = useMemo(() => boardUi(s, d, ui, human), [s, d, ui, human]);
+  const bui = useMemo(() => {
+    const b = boardUi(s, d, ui, human);
+    if (d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus')) {
+      for (const id of assignFocus) {
+        const h = pieceHexOf(s, id);
+        if (h >= 0) b.highlights.set(h, 'selected');
+      }
+    }
+    return b;
+  }, [s, d, ui, human, assignFocus]);
 
   const orderedIds = useMemo(() => new Set(Object.keys(s.turn.ordered)), [s]);
   const doneIds = useMemo(() => {
@@ -335,6 +347,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
               <option value={4}>Very fast</option>
             </select>
           </label>
+          <Button variant="ghost" onClick={() => { setMuted(!mutedState); setMutedState(!mutedState); }} title="Sound effects">{mutedState ? 'Sound: off' : 'Sound: on'}</Button>
           <Button variant="ghost" onClick={() => setShowRules(true)}>Rules</Button>
           <Button variant="ghost" onClick={() => setConfirmExit(true)}>Menu</Button>
         </div>
@@ -365,6 +378,9 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
             onHexHover={(h) => setUi((u) => (u.hoverHex === h ? u : { ...u, hoverHex: h }))}
             onLeaderClick={onLeaderClick}
           />
+          {view.toast && (
+            <div className="turn-toast" key={view.toast.id}>{view.toast.text}</div>
+          )}
           {view.cardShow && (
             <div className="card-show" key={view.cardShow.id}>
               <div className="card-show-label">{s.players[view.cardShow.side].commander} plays</div>
@@ -462,7 +478,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
       )}
 
       {d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus') && (
-        <AssignDialog state={s} side={human} kind={d.kind} faces={d.faces} onDone={(ids) => answer({ kind: 'assign', ids })} error={view.error} />
+        <AssignDialog state={s} side={human} kind={d.kind} faces={d.faces} onChange={setAssignFocus} onDone={(ids) => answer({ kind: 'assign', ids })} error={view.error} />
       )}
 
       <Modal open={showRules} title="Rules Reference" onClose={() => setShowRules(false)} width={880}>
@@ -511,18 +527,29 @@ function LogPanel({ log, human }: { log: LogLine[]; human: Side }) {
   );
 }
 
-function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'spartacus'; faces: DieFace[]; error: string | null; onDone: (ids: (string | null)[]) => void }) {
+function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'spartacus'; faces: DieFace[]; error: string | null; onChange: (ids: string[]) => void; onDone: (ids: (string | null)[]) => void }) {
   const { state: s, side, faces } = p;
   const [ids, setIds] = useState<(string | null)[]>(() => suggest());
+  useEffect(() => {
+    p.onChange(ids.filter((x): x is string => !!x));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ids]);
+  function where(h: HexId) {
+    const secs = sectionsOf(h, side);
+    const sec = secs.length === 2 ? `${secs[0]}/${secs[1]}` : secs[0];
+    const r = Math.floor(h / 13);
+    const depth = side === 'bottom' ? 8 - r : r;
+    return `${sec}${depth === 0 ? ', rear' : depth >= 3 ? ', forward' : ''}`;
+  }
   function options(face: DieFace): { id: string; label: string }[] {
     if (p.kind === 'rally') {
       return rallyCandidates(s, side)
         .filter((u) => face === 'leader' || UNIT_STATS[u.type].cls === face)
-        .map((u) => ({ id: u.id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) at ${hexName(u.hex)}` }));
+        .map((u) => ({ id: u.id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) — ${where(u.hex)}` }));
     }
     if (face === 'flag' || face === 'swords') return [];
-    const units = unitsOf(s, side).filter((u) => face === 'leader' || UNIT_STATS[u.type].cls === face).map((u) => ({ id: u.id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) at ${hexName(u.hex)}` }));
-    const leaders = face === 'leader' ? leadersOf(s, side).map((l) => ({ id: l.id, label: `Leader ${l.name || ''} at ${hexName(l.hex)}` })) : [];
+    const units = unitsOf(s, side).filter((u) => face === 'leader' || UNIT_STATS[u.type].cls === face).map((u) => ({ id: u.id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) — ${where(u.hex)}` }));
+    const leaders = face === 'leader' ? leadersOf(s, side).map((l) => ({ id: l.id, label: `Leader ${l.name || ''} — ${where(l.hex)}` })) : [];
     return [...units, ...leaders];
   }
   function suggest(): (string | null)[] {
@@ -541,7 +568,8 @@ function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'sparta
   }
   const err = p.kind === 'rally' ? validateRally(s, side, faces, ids) : validateSpartacus(s, side, faces, ids);
   return (
-    <Modal open title={p.kind === 'rally' ? 'Rally your troops' : 'I Am Spartacus'} width={620}>
+    <div className="assign-float">
+      <div className="assign-title">{p.kind === 'rally' ? 'Rally your troops' : 'I Am Spartacus'}</div>
       <p className="modal-p">
         {p.kind === 'rally'
           ? 'Each unit symbol restores one block to a damaged unit of that type in or next to a leader\'s hex. Helmets restore any type.'
@@ -569,12 +597,8 @@ function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'sparta
       <div className="modal-buttons">
         <Button disabled={!!err} onClick={() => p.onDone(ids)}>Confirm</Button>
       </div>
-    </Modal>
+    </div>
   );
-}
-
-function hexName(h: HexId) {
-  return `${Math.floor(h / 13) + 1}-${(h % 13) + 1}`;
 }
 
 export { pieceHexOf };
