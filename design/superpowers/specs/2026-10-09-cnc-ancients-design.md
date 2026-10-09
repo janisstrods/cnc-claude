@@ -85,7 +85,7 @@ src/
 Full base game: units LI, LB, LS, AX, WA, MI, HI, LC, MC, HC, EL, HCH, leaders; all 60 command cards;
 terrain needed by the 15 scenarios; all scenario special rules (Sacred Band, Mago's ambush, Trasimenus hand
 growth, Beneventum hand growth, Castulo exit banners + Scipio sudden death, Baecula camp banners, fordable
-rivers per scenario). The authoritative condensed rules are in `docs/rules-reference.md`.
+rivers per scenario). The authoritative condensed rules are in `design/rules-reference.md`.
 
 ## Testing
 

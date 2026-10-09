@@ -9,8 +9,8 @@
 with original illustrated-miniature art.
 
 **Architecture:** Pure TS rules engine (generator-based turn flow yielding decisions, seeded RNG, replayable), AI in a
-Web Worker (Monte-Carlo plan search + heuristics), React + SVG UI. See `docs/superpowers/specs/2026-10-09-cnc-ancients-design.md`
-and the rules spec `docs/rules-reference.md`.
+Web Worker (Monte-Carlo plan search + heuristics), React + SVG UI. See `design/superpowers/specs/2026-10-09-cnc-ancients-design.md`
+and the rules spec `design/rules-reference.md`.
 
 **Tech Stack:** Vite 5, React 18, TypeScript 5 (strict), Vitest, @fontsource/cinzel, @fontsource/eb-garamond.
 
@@ -105,7 +105,7 @@ Acceptance: beats a random-legal-move player >90% over 40 games; AI-vs-AI comple
 average decision time < 1.5 s at "Tribune".
 
 ### Task E: Independent rules tests (agent, after Phase 3; owns `tests/rules/**`)
-Writes scenario-style tests derived only from `docs/rules-reference.md` (not from engine code) using `GameDriver`
+Writes scenario-style tests derived only from `design/rules-reference.md` (not from engine code) using `GameDriver`
 and helper builders; reports failures to lead.
 
 ## Phase 3 — Engine implementation (lead, TDD)
