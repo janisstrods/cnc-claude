@@ -131,7 +131,7 @@ function dedupe(cands: OrderCandidate[]): OrderCandidate[] {
   return out;
 }
 
-/** Candidate order selections for a card (best first). `full`: also offer a section card's whole allotment. */
+/** Candidate order selections for a card (best first). `full`: also offer the card's whole allotment. */
 export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Weights, max = 3, full = true): OrderCandidate[] {
   const mode = orderMode(s, side, kind);
   const ben = pieceBenefits(s, side, kind, W);
@@ -154,6 +154,22 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
   const push = (pieces: string[]) => {
     if (valid(pieces)) out.push({ pieces, benefit: total(pieces) });
   };
+  // Benefits are judged unit by unit: units whose first step towards the enemy costs each of them more risk alone than
+  // it gains score nothing and are left out (whole wings idle for the game). The full version of an order set adds
+  // sound units, front first, while the order stays valid (rescanning, so a chain can grow through a new link); the
+  // rollouts decide whether they move. Only the first candidate is used when max is 1.
+  const near = (u: Unit) => nearestEnemy(s, u.hex, side);
+  const pushFull = (sel0: string[], pool: Unit[]) => {
+    if (!full || max <= 1) return;
+    const sel = [...sel0];
+    const rest = pool.filter((u) => !sel.includes(u.id) && !battered(u)).sort((x, y) => b(y.id) - b(x.id) || near(x) - near(y));
+    for (let i = 0; i < rest.length; i++) {
+      if (sel.includes(rest[i].id) || !valid([...sel, rest[i].id])) continue;
+      sel.push(rest[i].id);
+      i = -1;
+    }
+    if (sel.length > sel0.length) push(sel);
+  };
   // lone leaders, plus attached leaders worth detaching when the card allows it
   const loneLeaders = leaders.filter((l) => isLoneLeader(s, l) || (CARD_DEFS[kind].detach && b(l.id) > 0.05));
   switch (mode.mode) {
@@ -166,18 +182,7 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
       ]);
       const a = fill(elig);
       push(a);
-      if (full) {
-        // Benefits are judged unit by unit: a line whose first step costs each unit more risk alone than it gains
-        // would never be ordered (whole wings idle for the game). Top up with sound units, front first; the
-        // rollouts decide whether they move.
-        const near = (u: Unit) => nearestEnemy(s, u.hex, side);
-        const rest = units
-          .filter((u) => inAny(u.hex) && !a.includes(u.id) && !battered(u))
-          .sort((x, y) => b(y.id) - b(x.id) || near(x) - near(y));
-        const sel = [...a];
-        for (const u of rest) if (valid([...sel, u.id])) sel.push(u.id);
-        if (sel.length > a.length) push(sel);
-      }
+      pushFull(a, units.filter((u) => inAny(u.hex)));
       if (a.length) {
         // cluster around the most promising unit
         const top = units.find((u) => u.id === a[0]);
@@ -204,6 +209,7 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
         if (b(id) > 0.002 || sel.length === 0) sel.push(id);
       }
       push(sel);
+      pushFull(sel, units.filter(mode.filter));
       break;
     }
     case 'leadership': {
@@ -214,7 +220,10 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
         per.push(...leadershipChains(s, side, kind, l, mode.chain, b, units));
       }
       per.sort((x, y) => y.benefit - x.benefit);
-      for (const c of per.slice(0, 2)) push(c.pieces);
+      per.slice(0, 2).forEach((c, i) => {
+        push(c.pieces);
+        if (i === 0) pushFull(c.pieces, units);
+      });
       const singles = sortByBen(units.filter((u) => !sec || inSection(u.hex, side, sec)).map((u) => u.id));
       if (singles.length) push([singles[0]]);
       break;
@@ -223,8 +232,9 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
       const foot = units.filter((u) => UNIT_STATS[u.type].foot);
       const seeds = sortByBen(foot.map((u) => u.id));
       const used = new Set<string>();
+      let groups = 0;
       for (const seed of seeds) {
-        if (used.has(seed) || out.length >= 2) continue;
+        if (used.has(seed) || groups >= 2) continue;
         const sel = [seed];
         const cap = mode.max ?? 99;
         let grew = true;
@@ -244,6 +254,7 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
         }
         sel.forEach((id) => used.add(id));
         push(sel);
+        if (groups++ === 0) pushFull(sel, foot);
       }
       break;
     }

@@ -2,11 +2,11 @@
 // opt-in script: npx vite-node scripts/ai-match.ts -- --bot greedy (strength A/Bs need a same-seed baseline).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  CARD_LIST, GameDriver, createGame, distance, forceDice, hexId, newTurn, randomAnswer, type Decision, type GameState,
+  CARD_LIST, GameDriver, createGame, distance, forceDice, hexId, newTurn, randomAnswer, type CardKind, type Decision, type GameState,
   type ScenarioSetup, type Side, type TerrainType, type UnitType,
 } from '../../src/engine';
 import { SCENARIOS } from '../../src/scenarios';
-import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityById, personalityFor, type AiOptions } from '../../src/ai';
+import { DIFFICULTY, PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityById, personalityFor, type AiOptions } from '../../src/ai';
 import { orderCandidates } from '../../src/ai/ordering';
 import { chooseCavalryExtra } from '../../src/ai/policies';
 import { NEUTRAL_W, weightsFor } from '../../src/ai/values';
@@ -137,11 +137,13 @@ describe('Castulo: Publius Scipio (losing him loses the battle)', () => {
   });
 
   it('keeps Scipio out of contact against a greedy attacker over fixed seeds', () => {
+    // The contact rate is about 10% and varies a lot from game to game (7-17% over blocks of 10 games), so it is
+    // measured over 30 games: a real doubling still fails, an unrelated change in the AI's choices does not.
     const sc = SCENARIOS.find((x) => x.id === '010')!;
     let turns = 0;
     let adjacent = 0;
     let deaths = 0;
-    for (let g = 0; g < 10; g++) {
+    for (let g = 0; g < 30; g++) {
       const seed = 41000 + 97 * g;
       const d = new GameDriver(createGame(sc.setup, seed));
       const sid = d.state.special.sacredLeaderId!;
@@ -167,10 +169,10 @@ describe('Castulo: Publius Scipio (losing him loses the battle)', () => {
         for (const { e } of d.drainEvents()) if (e.t === 'leaderKilled' && e.id === sid) deaths++;
       }
     }
-    expect(turns).toBeGreaterThan(50);
-    expect(adjacent / turns).toBeLessThanOrEqual(0.1);
+    expect(turns).toBeGreaterThan(150);
+    expect(adjacent / turns).toBeLessThanOrEqual(0.15);
     expect(deaths).toBeLessThanOrEqual(1);
-  });
+  }, 240000);
 });
 
 describe('battle phase', () => {
@@ -197,24 +199,39 @@ describe('battle phase', () => {
 });
 
 describe('order selection', () => {
-  it('offers a section card in full when its units only gain by advancing together (Out Flanked, wings out of reach)', () => {
-    // Seen in play (Cannae): one step towards the enemy costs each unit more risk on its own than it gains, so
-    // Hannibal ordered a single unit with Out Flanked and his wings never moved all game.
-    const s = position({
-      units: [
-        { side: 'top', type: 'HI', at: [1, 2] },
-        { side: 'top', type: 'HI', at: [1, 3] },
-        { side: 'top', type: 'HI', at: [1, 8] },
-        { side: 'top', type: 'HI', at: [1, 9] },
-        { side: 'bottom', type: 'MI', at: [5, 3] },
-        { side: 'bottom', type: 'MI', at: [5, 5] },
-        { side: 'bottom', type: 'MI', at: [5, 7] },
-        { side: 'bottom', type: 'MC', at: [6, 10] },
-        { side: 'bottom', type: 'MC', at: [6, 1] },
-      ],
-    });
-    const cands = orderCandidates(s, 'top', 'outFlanked', weightsFor(personalityById('fox')), 2);
-    expect(cands.map((c) => [...c.pieces].sort())).toContainEqual(['u1', 'u2', 'u3', 'u4']);
+  // Seen in play (Cannae): one step towards the enemy costs each unit more risk on its own than it gains, so
+  // Hannibal ordered a single unit with Out Flanked and his wings never moved all game. Each kind of card should
+  // be offered in full among the order sets a tribune tries; the rollouts decide whether the units move.
+  const outOfReach = (hi: [number, number][], leaders: Pos['leaders'] = []) => position({
+    units: [
+      ...hi.map((at) => ({ side: 'top' as Side, type: 'HI' as UnitType, at })),
+      { side: 'bottom', type: 'MI', at: [5, 3] },
+      { side: 'bottom', type: 'MI', at: [5, 5] },
+      { side: 'bottom', type: 'MI', at: [5, 7] },
+      { side: 'bottom', type: 'MC', at: [6, 10] },
+      { side: 'bottom', type: 'MC', at: [6, 1] },
+    ],
+    leaders,
+  });
+  const offered = (s: GameState, kind: CardKind) =>
+    orderCandidates(s, 'top', kind, weightsFor(personalityById('fox')), DIFFICULTY.tribune.orderCands).map((c) => [...c.pieces].sort());
+  const wings: [number, number][] = [[1, 2], [1, 3], [1, 8], [1, 9]];
+
+  it('section card: Out Flanked orders both wings', () => {
+    expect(offered(outOfReach(wings), 'outFlanked')).toContainEqual(['u1', 'u2', 'u3', 'u4']);
+  });
+
+  it('troop card: Order Heavy Troops orders every heavy unit (within Command)', () => {
+    expect(offered(outOfReach(wings), 'orderHeavy')).toContainEqual(['u1', 'u2', 'u3', 'u4']);
+  });
+
+  it('leadership card: Inspired Left links the unit beside the leader', () => {
+    const s = outOfReach(wings, [{ side: 'top', name: 'Hannibal', at: [1, 8] }]);
+    expect(offered(s, 'inspiredL')).toContainEqual([s.leaders[0].id, 'u3', 'u4']);
+  });
+
+  it('Double Time orders the whole linked line', () => {
+    expect(offered(outOfReach([[1, 7], [1, 8], [1, 9], [1, 10]]), 'doubleTime')).toContainEqual(['u1', 'u2', 'u3', 'u4']);
   });
 });
 
