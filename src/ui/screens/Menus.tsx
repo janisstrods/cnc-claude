@@ -6,6 +6,7 @@ import { BoardArt } from '../terrain';
 import { Button, Icon, Modal, Panel } from '../kit';
 import { BOARD_H, BOARD_W, hexCenterId } from '../geometry';
 import type { Difficulty, SavedGame } from '../game/controller';
+import { PERSONALITIES, personalityFor } from '../../ai';
 import { RulesReference } from './RulesReference';
 import './screens.css';
 
@@ -101,7 +102,7 @@ const DIFFS: { id: Difficulty; name: string; text: string }[] = [
   { id: 'consul', name: 'Consul', text: 'Thinks deeper and punishes errors.' },
 ];
 
-export function ScenarioSelect(p: { onBack: () => void; onStart: (scenarioId: string, side: Side, difficulty: Difficulty) => void }) {
+export function ScenarioSelect(p: { onBack: () => void; onStart: (scenarioId: string, side: Side, difficulty: Difficulty, personality?: string) => void }) {
   const [sel, setSel] = useState<ScenarioInfo>(SCENARIOS[0]);
   const [side, setSide] = useState<Side>('bottom');
   const [diff, setDiff] = useState<Difficulty>(() => {
@@ -112,6 +113,9 @@ export function ScenarioSelect(p: { onBack: () => void; onStart: (scenarioId: st
     }
   });
   const preview = useMemo(() => createGame(sel.setup, 1), [sel]);
+  const [persona, setPersona] = useState<string>('');
+  const enemy = sel.setup[side === 'top' ? 'bottom' : 'top'];
+  const historical = personalityFor(enemy.commander, enemy.army);
   const armies = { top: sel.setup.top, bottom: sel.setup.bottom };
   const start = () => {
     try {
@@ -119,7 +123,7 @@ export function ScenarioSelect(p: { onBack: () => void; onStart: (scenarioId: st
     } catch {
       /* ignore */
     }
-    p.onStart(sel.id, side, diff);
+    p.onStart(sel.id, side, diff, persona || undefined);
   };
   return (
     <div className="select-root">
@@ -175,6 +179,19 @@ export function ScenarioSelect(p: { onBack: () => void; onStart: (scenarioId: st
                 <small>{d.text}</small>
               </button>
             ))}
+          </div>
+          <div className="choose-group persona-group">
+            <div className="choose-label">General</div>
+            <label className="persona">
+              <span className="persona-name">{enemy.commander}</span>
+              <select value={persona} onChange={(e) => setPersona(e.target.value)}>
+                <option value="">{historical.name} (historical)</option>
+                {PERSONALITIES.filter((x) => x.id !== historical.id).map((x) => (
+                  <option key={x.id} value={x.id}>{x.name}</option>
+                ))}
+              </select>
+              <small>{(persona ? PERSONALITIES.find((x) => x.id === persona)! : historical).epithet}</small>
+            </label>
           </div>
           <Button className="start-btn" onClick={start}>To Battle!</Button>
         </div>

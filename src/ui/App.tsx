@@ -74,9 +74,11 @@ export function App() {
       <ErrorBoundary onReset={resetMenus}>
       <ScenarioSelect
         onBack={toMenu}
-        onStart={(id: string, side: Side, diff: Difficulty) => {
+        onStart={(id: string, side: Side, diff: Difficulty, personality?: string) => {
           clearSaved();
-          setScreen({ kind: 'game', controller: startController(newSessionConfig(id, side, diff)) });
+          const cfg = newSessionConfig(id, side, diff);
+          if (personality) cfg.personality = personality;
+          setScreen({ kind: 'game', controller: startController(cfg) });
         }}
       />
       </ErrorBoundary>

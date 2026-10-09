@@ -13,6 +13,7 @@ import type { GameController, LogLine } from './controller';
 import { attackDice, boardUi, effectiveKind, expectedHits, pieceHexOf, unitSummary, type UiSel } from './uiModel';
 import { RulesReference } from '../screens/RulesReference';
 import { isMuted, setMuted } from '../sound';
+import { opponentPersonality } from './makeOpponent';
 import './game.css';
 
 const EMPTY_SEL: UiSel = { selCard: null, hoverCard: null, orderSel: [], selPiece: null, hoverHex: null };
@@ -405,6 +406,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
 
   const me = s.players[human];
   const them = s.players[ai];
+  const persona = useMemo(() => opponentPersonality(controller.config), [controller]);
 
   return (
     <div className="game-root">
@@ -472,7 +474,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
             <div className="army-row">
               <div>
                 <div className="army-name them">{them.army}</div>
-                <div className="army-cmd" title={`${them.commander} · ${DIFF_LABEL[controller.config.difficulty]} · Command ${them.command}`}>{them.commander} · {DIFF_LABEL[controller.config.difficulty]} · Command {them.command}</div>
+                <div className="army-cmd" title={`${them.commander} — ${persona.name}: ${persona.epithet} · ${DIFF_LABEL[controller.config.difficulty]} · Command ${them.command}`}>{them.commander} · {persona.name} · {DIFF_LABEL[controller.config.difficulty]}</div>
               </div>
               <div className="ai-hand" title={`${them.hand.length} command cards`}>
                 {Array.from({ length: them.hand.length }).map((_, i) => <CardBack key={i} size="sm" style={{ fontSize: '1.7px', marginLeft: i ? -9 : 0 }} />)}
