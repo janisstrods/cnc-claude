@@ -304,8 +304,8 @@ export const BLOCK_COLORS: Record<Blocks, { edge: string; edgeShade: string; edg
 
 Phase 1 mapping: base JSON gets per side `"blocks"` = current `"blocks"` value (`rom`/`car`) and `"look"`
 (`roman`, `carthaginian`, or `syracusan` for the Syracusan army). Palettes: `roman` = today's `rome`, `carthaginian` =
-`carthage`, `syracusan` = `syracuse`; block colours `rom` = today's Roman base edge, `car` = Carthaginian; `syracusan`
-look keeps drawing with `rom` blocks in base scenarios, so appearance is identical. Only those three looks exist in
+`carthage`, `syracusan` = `syracuse`; block colours `rom` = today's Roman base edge, `car` = Carthaginian, `grk` = the
+Syracusan blue (base 001/002 Syracusans switch to `grk` blocks — appearance identical; implemented in da90fed). Only those three looks exist in
 Phase 1 (`LOOKS` is `Partial` until Task 15 adds the rest). `romanSide(s)` in `flow.ts` keeps using `army === 'Roman'`.
 
 - [ ] **Step 1:** Change types; fix compile errors file by file (`npm run typecheck` drives the list).
@@ -518,8 +518,9 @@ Commit per agent batch.
 **Agent A owns** `src/art/palettes.ts`, `src/art/parts.tsx`, `src/art/foot.tsx`, `src/art/mounted.tsx`,
 `src/art/leader.tsx`, `src/dev/ArtGallery.tsx`.
 
-Produces full `LOOKS` (19 looks) and `BLOCK_COLORS` (`grk` light blue, `eas` ochre-tan; checked for contrast against
-`rom` red, `car` purple and the board green), kits `macedonian` (sarissa phalanx HI, hypaspist MI, Thracian/Boeotian
+Produces full `LOOKS` (19 looks) and the missing `BLOCK_COLORS.eas` (ochre-tan; checked for contrast against `rom`
+red, `car` purple, `grk` blue and the board green). `grk` stays the Syracusan blue `#1f4fb4` (changing it repaints
+001/002 and must update `tests/art` deliberately), kits `macedonian` (sarissa phalanx HI, hypaspist MI, Thracian/Boeotian
 helmets, linothorax), `persian` (tiara, spara, scale), `scythian` (pointed cap, gorytos, trousers), `indian`
 (turban, longbow, dhoti), Greek hoplite variants (Spartan red cloaks/lambda, Theban club). Acceptance: the gallery shows
 every look × every unit type it fields × block colours; figures readable at 85 px hex width; lead reviews screenshots.
