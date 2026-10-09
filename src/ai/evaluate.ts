@@ -147,7 +147,7 @@ function threatsAgainst(
     };
     const range = rangeOf(e);
     const mounted = UNIT_STATS[e.type].mounted;
-    const lightFoot = isRangedLight(e) && !mounted;
+    const footSkirmisher = isRangedLight(e) && !mounted;
     for (let j = 0; j < victims.length; j++) {
       const u = victims[j];
       const d = hexDist(e.hex, u.hex);
@@ -160,7 +160,7 @@ function threatsAgainst(
       let flags = false;
       if (d === 1) {
         n = closeCombatDice(s, e, u, { role: 'attack', fullAtStart: e.blocks === e.maxBlocks, ordered: false });
-        base = pAdj * (lightFoot ? 0.5 : 1);
+        base = pAdj * (footSkirmisher ? 0.5 : 1);
         p = evades ? SIXTH : hitP(s, occ, e, u) + vi.pFlagHit;
         flags = !evades;
       } else if (range && d <= range && canFireOcc(s, occ, e, u.hex)) {

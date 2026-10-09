@@ -17,7 +17,7 @@ import { rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
 import { isFord, isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
 import { canShoot } from './elites';
-import { UNIT_STATS, canEvadeType, escapeDice, forestFighter } from './units';
+import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forestFighter } from './units';
 import {
   OFF_BOARD,
   type Answer, type CardKind, type Decision, type DieFace, type FlowCtx, type GameState, type HexId, type Leader,
@@ -605,7 +605,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   }
   // bonus close combat
   const terr = terrainAt(s, u.hex);
-  let eligible = st.chargeMove || st.mounted || (st.foot && !!attachedLeader(s, u));
+  let eligible = bonusCombatEligible(st, !!attachedLeader(s, u));
   if (terr === 'forest' && !forestFighter(u.type)) eligible = false;
   if (terr === 'broken' && st.mounted) eligible = false;
   if (s.turn.mods.noClose) eligible = false;

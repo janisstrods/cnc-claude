@@ -207,14 +207,39 @@ function cap(x: string): string {
   return x.charAt(0).toUpperCase() + x.slice(1);
 }
 
+/** Wording of the movement allowance of a unit that cannot battle after a full move: tooltip and rules reference. */
+interface MoveFormat {
+  /** Moves `battle` hexes and battles, or up to `max` without battle (auxilia). */
+  withoutBattle: (battle: number, max: number) => string;
+  /** May not battle at all after moving (heavy war machines). */
+  noBattle: (max: number) => string;
+}
+
+const MOVE_TOOLTIP: MoveFormat = {
+  withoutBattle: (b, m) => `${b}, or ${m} without battle`,
+  noBattle: (m) => `${m}, no battle after moving`,
+};
+
+const MOVE_REFERENCE: MoveFormat = {
+  withoutBattle: (b, m) => `${b} (${m} without battle)`,
+  noBattle: (m) => `${m} (no battle after moving)`,
+};
+
 /**
  * Movement allowance: warriors "1 (2 to charge)" (moving 2 or more must end in close combat); a unit that moves further
- * when it does not battle (auxilia) is described by `withoutBattle(battleMax, max)`; otherwise the plain number.
+ * when it does not battle (auxilia) or may not battle after moving at all is described by `fmt`; otherwise the plain number.
  */
-function moveText(st: UnitStats, withoutBattle: (battle: number, max: number) => string): string {
+function moveText(st: UnitStats, fmt: MoveFormat): string {
   if (st.chargeMove) return `1 (${st.move} to charge)`;
-  if (st.moveBattle < st.move) return withoutBattle(st.moveBattle, st.move);
+  if (st.moveBattle === 0) return fmt.noBattle(st.move);
+  if (st.moveBattle < st.move) return fmt.withoutBattle(st.moveBattle, st.move);
   return String(st.move);
+}
+
+/** Missile line of a tooltip: 2 dice standing and 1 after moving, or no fire after moving at all (heavy war machines). */
+function missileText(st: UnitStats, range: number): string {
+  const noFireAfterMoving = st.noFireAfterMove <= 1 || st.moveBattle === 0;
+  return `Missiles: range ${range}, 2 dice (${noFireAfterMoving ? 'not after moving' : '1 after moving'})`;
 }
 
 /**
@@ -266,11 +291,11 @@ const ELITE_TEXT: Record<EliteAbility, (u: Unit) => string> = {
 export function unitSummary(u: Unit): string[] {
   const st = UNIT_STATS[u.type];
   const lines: string[] = [];
-  lines.push(`Move ${moveText(st, (b, m) => `${b}, or ${m} without battle`)} · Retreat ${st.retreat}/flag`);
+  lines.push(`Move ${moveText(st, MOVE_TOOLTIP)} · Retreat ${st.retreat}/flag`);
   if (st.elephantTable) lines.push(`Close combat: same dice as the enemy unit (${elephantDiceNote()})`);
   else lines.push(`Close combat ${st.cc}${st.ccBack !== st.cc ? ` (${st.ccBack} battling back)` : ''} dice${st.fullStrengthBonus ? ' (+1 at full strength)' : ''}${st.swordHits ? '' : ', swords miss'}`);
   const range = rangeOf(u);
-  if (range) lines.push(`Missiles: range ${range}, 2 dice (1 after moving)`);
+  if (range) lines.push(missileText(st, range));
   lines.push(EVADE_TEXT[st.evade][0]);
   const special = [swordIgnoreText(st, 'ignores sword hits', '1'), st.elephantTable && 'rampages when it retreats'].filter(Boolean);
   if (special.length) lines.push(cap(special.join(' · ')));
@@ -287,7 +312,7 @@ export function unitCardLines(t: UnitType): [string, string] {
   const st = UNIT_STATS[t];
   const cc = st.elephantTable ? 'as enemy' : `${st.cc}${st.ccBack !== st.cc ? `/${st.ccBack} back` : ''}`;
   const stats =
-    `${st.blocks} blocks · move ${moveText(st, (b, m) => `${b} (${m} without battle)`)} · close combat ${cc}` +
+    `${st.blocks} blocks · move ${moveText(st, MOVE_REFERENCE)} · close combat ${cc}` +
     `${st.range ? ` · range ${st.range}` : ''} · retreat ${st.retreat}`;
   const notes = [EVADE_TEXT[st.evade][1]];
   if (!st.swordHits) notes.push('Swords do not score hits.');

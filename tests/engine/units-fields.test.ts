@@ -2,7 +2,7 @@
 // behaviour the engine had when the abilities were literal type checks.
 import { describe, expect, it } from 'vitest';
 import {
-  ELITES, UNIT_STATS, UNIT_TYPES, canShoot, createGame, eliteHas, elephantDiceVs, escapeDice, frightens, isLightFoot, rangeOf,
+  ELITES, UNIT_STATS, UNIT_TYPES, bonusCombatEligible, canShoot, createGame, eliteHas, elephantDiceVs, escapeDice, frightens, isLightFoot, rangeOf,
   type ScenarioSetup, type Unit, type UnitStats, type UnitType,
 } from '../../src/engine';
 import { setupOf } from './helpers';
@@ -86,6 +86,16 @@ describe('unit ability helpers', () => {
   it('isLightFoot: LI, LB, LS and AX only', () => {
     const light = UNIT_TYPES.filter((t) => isLightFoot(unit(t)));
     expect(light.sort()).toEqual(['AX', 'LB', 'LI', 'LS']);
+  });
+
+  it('bonusCombatEligible: warriors and mounted units always, other foot only with an attached leader', () => {
+    for (const t of ['WA', 'MC', 'EL'] as const) {
+      expect(bonusCombatEligible(UNIT_STATS[t], false), `${t} without leader`).toBe(true);
+      expect(bonusCombatEligible(UNIT_STATS[t], true), `${t} with leader`).toBe(true);
+    }
+    expect(bonusCombatEligible(UNIT_STATS.HI, false)).toBe(false);
+    expect(bonusCombatEligible(UNIT_STATS.HI, true)).toBe(true);
+    expect(bonusCombatEligible(UNIT_STATS.LI, false)).toBe(false);
   });
 
   it('frightens: elephants frighten cavalry and chariots only', () => {

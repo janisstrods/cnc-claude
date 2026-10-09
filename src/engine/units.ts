@@ -161,6 +161,14 @@ export function escapeDice(u: Unit): number {
   return d;
 }
 
+/**
+ * May the unit make a bonus close combat after a winning charge (momentum advance)? Charge-movers (warriors) and
+ * mounted units always; other foot only with an attached leader. Callers add terrain and card restrictions.
+ */
+export function bonusCombatEligible(st: UnitStats, hasAttachedLeader: boolean): boolean {
+  return st.chargeMove || st.mounted || (st.foot && hasAttachedLeader);
+}
+
 /** Light foot (LI, LB, LS, AX): may pass through friends with Order Light Troops / Move-Fire-Move. */
 export function isLightFoot(u: Unit): boolean {
   return UNIT_STATS[u.type].lightFoot;

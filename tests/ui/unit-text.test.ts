@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ELITES, UNIT_STATS, UNIT_TYPES, type Unit, type UnitType } from '../../src/engine';
-import { unitSummary } from '../../src/ui/game/uiModel';
+import { ELITES, UNIT_STATS, UNIT_TYPES, type Unit, type UnitStats, type UnitType } from '../../src/engine';
+import { unitCardLines, unitSummary } from '../../src/ui/game/uiModel';
 import { Units } from '../../src/ui/screens/RulesReference';
 
 const unit = (t: UnitType, extra: Partial<Unit> = {}): Unit =>
@@ -78,6 +78,41 @@ describe('unit tooltip (unitSummary)', () => {
       if (saved) ELITES.bowAuxilia = saved;
       else delete ELITES.bowAuxilia;
     }
+  });
+});
+
+/** Run `fn` with the stats row of `t` temporarily replaced by a patched copy (no extra row stays in UNIT_STATS). */
+function withStats<T>(t: UnitType, patch: Partial<UnitStats>, fn: () => T): T {
+  const saved = UNIT_STATS[t];
+  UNIT_STATS[t] = { ...saved, ...patch };
+  try {
+    return fn();
+  } finally {
+    UNIT_STATS[t] = saved;
+  }
+}
+
+describe('generated missile and move text for rows the base game lacks', () => {
+  // A synthetic heavy war machine: move 1 but no battle after moving, range 6, no fire after moving.
+  const HWM: Partial<UnitStats> = { move: 1, moveBattle: 0, range: 6, noFireAfterMove: 1 };
+
+  it('a unit that cannot fire after moving says so, and a no-battle move is spelled out', () => {
+    withStats('LB', HWM, () => {
+      expect(unitSummary(unit('LB'))).toEqual([
+        'Move 1, no battle after moving · Retreat 2/flag',
+        'Close combat 2 dice, swords miss',
+        'Missiles: range 6, 2 dice (not after moving)',
+        'Can evade',
+      ]);
+      expect(unitCardLines('LB')[0]).toBe('4 blocks · move 1 (no battle after moving) · close combat 2 · range 6 · retreat 2');
+    });
+  });
+
+  it('either field alone selects the wording, and the base-game rows are unchanged afterwards', () => {
+    withStats('LB', { noFireAfterMove: 1 }, () => expect(unitSummary(unit('LB'))[2]).toBe('Missiles: range 3, 2 dice (not after moving)'));
+    withStats('LB', { moveBattle: 0 }, () => expect(unitSummary(unit('LB'))[2]).toBe('Missiles: range 3, 2 dice (not after moving)'));
+    withStats('LB', { noFireAfterMove: 2 }, () => expect(unitSummary(unit('LB'))[2]).toBe('Missiles: range 3, 2 dice (1 after moving)'));
+    expect(unitSummary(unit('LB'))).toEqual(TOOLTIP.LB);
   });
 });
 

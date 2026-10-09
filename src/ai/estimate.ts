@@ -4,7 +4,7 @@ import { closeCombatDice, rangedDice, retreatPerFlag, swordIgnores, vsMountedIgn
 import { neighbours } from '../engine/hex';
 import { unitById } from '../engine/query';
 import { canShoot, eliteHas, rangeOf } from '../engine/elites';
-import { UNIT_STATS, canEvadeType } from '../engine/units';
+import { UNIT_STATS, bonusCombatEligible, canEvadeType } from '../engine/units';
 import type { GameState, HexId, Leader, Unit } from '../engine/types';
 import {
   Occ, attachedLeaderOcc, canEvadeOcc, canFireOcc, helmetsOcc, hexDist, ignorableOcc, retreatRoom,
@@ -118,7 +118,7 @@ export function backDamage(s: GameState, occ: Occ, t: Unit, a: Unit): number {
 export function momentumValue(s: GameState, occ: Occ, a: Unit, role: StrikeRole, W: Weights): number {
   if (role === 'bonus') return 0.02;
   const st = UNIT_STATS[a.type];
-  const eligible = st.chargeMove || st.mounted || (st.foot && !!attachedLeaderOcc(occ, a));
+  const eligible = bonusCombatEligible(st, !!attachedLeaderOcc(occ, a));
   return 0.03 + (eligible && !s.turn.mods.noClose ? W.bonusValue : 0);
 }
 
