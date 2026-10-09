@@ -351,17 +351,21 @@ Test: `tests/rules/exp1-units.test.ts`.
 Rows: `LBC: { cls:'light', mounted, cavalry, blocks:3, move:4, moveBattle:4, cc:2, ccBack:2, range:3, retreat:4,
 swordHits:false, evade:'always', momentumExtraHex:true, frightenedBy:['EL','CAM'], elephantDiceAgainst:2 }`;
 `CAM: { cls:'medium', mounted, cavalry:false, chariot:false, blocks:3, move:3, moveBattle:3, cc:3, ccBack:2, range:0,
-retreat:3, swordHits:true, evade:'vsFootHeavyMounted', vsMountedIgnoreHit:'any', elephantDiceAgainst:3 }`; add `'CAM'` to
-`frightenedBy` of LC, MC, HCH (and HC only if the rulings say so).
+retreat:3, swordHits:true, evade:'vsFootHeavyMounted', vsMountedIgnoreHit:'medium', vsMountedIgnoreFlag:false,
+elephantDiceAgainst:3 }`; add `'CAM'` to `frightenedBy` of LC, MC, **HC**, HCH and LBC (every cavalry and chariot type —
+living rules). `ccBack` 2 is used for battle back and First Strike (already the engine's convention). Camel escape dice
+for a leader passing through: 3 (`escapeDice` uses `cc`).
 
 Tests (use `tests/rules/helpers.ts`; bottom attacker at (5,6), top defender at (4,6); `forceDice` to script faces):
 - [ ] LBC attack dice 2; battle back 2; swords miss; ranged range 3 with 2 dice still and 1 after moving; can fire at
   distance 3, not 4; may always evade; after an eliminated defender: momentum prompt, then `cavalryExtra` prompt;
   after a *bonus* combat no `cavalryExtra`; ordered by Order Light Troops and Order Mounted; retreats 4 per flag and
   5 per flag against an elephant or camel striker.
-- [ ] CAM: attack 3 dice, battle back 2; MC attacking a camel with faces `['medium','medium']` scores 1 hit (one
-  ignored); same vs foot HI scores 2; LC hit by a camel's flag retreats 4+1 hexes per flag; camel may evade an HI attack
-  but not an MC attack; elephants roll 3 against camels; momentum then bonus combat offered.
+- [ ] CAM: attack 3 dice, battle back 2, First Strike 2; MC attacking a camel with faces `['medium','medium']` scores 1
+  hit (one ignored); an HI attacking it with the same faces scores 2; a camel's flag never gets ignored *by* the camel
+  rule (no flag-ignore vs cavalry); LC and HC hit by a camel's flag retreat (4+1) and (2+1) hexes per flag; camel may
+  evade an HI attack but not an MC attack; elephants roll 3 against camels; momentum then bonus combat offered, no
+  cavalry extra hex.
 - [ ] Each test FAILS first, then implement, then PASS. `npm test` green. Commit `feat(engine): light bow cavalry and camels`.
 
 ### Task 8: Heavy war machine (HWM)
@@ -372,13 +376,16 @@ Tests (use `tests/rules/helpers.ts`; bottom attacker at (5,6), top defender at (
 `combat.ts`/`battleTargets` (CC only if not moved; ranged not after moving). Test: `tests/rules/exp1-hwm.test.ts`.
 
 Row: `HWM: { cls:'heavy', foot:true, mounted:false, blocks:2, move:1, moveBattle:0, cc:2, ccBack:2, range:6,
-retreat:1, swordHits:false, evade:'always' (per rulings), noFireAfterMove:1, elephantDiceAgainst:2 }`.
+retreat:1, swordHits:false, evade:'always', noFireAfterMove:1, elephantDiceAgainst:2, doubleTimeMove:null,
+lightFoot:false, forestFighter:false, noRally:false }` (rulings: `design/exp1-rulings.md` Q14).
 
-- [ ] Tests: fires at range 6 with 2 dice if it did not move; no battle at all after moving 1; CC 2 dice only when it
-  did not move; cannot enter broken ground or marsh (not in `unitMoves`, not a retreat/evade hex); when attacked it may
-  evade, the attacker rolls, and if it survives it leaves the board with **no banner** (`eliminated`-like event
-  `{ t: 'removed', id, reason: 'war machine abandoned' }`), banner count unchanged; eliminated by hits → banner; never
-  offered momentum or bonus combat; ordered by Order Heavy Troops; excluded from Double Time's extra move.
+- [ ] Tests: fires at range 6 with 2 dice if it did not move, normal line of sight, not at an adjacent unit; no battle
+  at all after moving 1; CC 2 dice only when it did not move, swords miss; battles back with 2; cannot enter broken
+  ground or marsh (not in `unitMoves`, not a retreat/evade hex); when attacked it may evade only if it has a 1–2 hex evade
+  path, the attacker rolls and only red squares hit; if it survives it makes the evade move and then leaves the board with
+  **no banner** (event `{ t: 'removed', id, reason: 'war machine abandoned' }`), banner count unchanged; eliminated by
+  hits → banner; never offered momentum or bonus combat (even with a leader attached); ordered by Order Heavy Troops and
+  Line Command; in a Double Time group it moves only 1; Darken the Sky fires twice; can be rallied.
 - [ ] Fail → implement → pass; commit `feat(engine): heavy war machines`.
 
 ### Task 9: Elite presets and leader traits
@@ -400,18 +407,20 @@ retreat:1, swordHits:false, evade:'always' (per rulings), noFireAfterMove:1, ele
 
 ### Task 10: Terrain — sea, rampart, no-cap ford
 
-**Files:** `types.ts` (`TerrainType` += `'sea' | 'rampart'`; `GameState.noCap: boolean[]`, `GameState.facing:
-(Side | null)[]`), `setup.ts` (terrain entries `ford?: boolean | 'nocap'`, `faces?: Side`), `terrain.ts`
-(`sea` = lake rules; rampart helpers `rampartProtects(s, defHex, fromHex): boolean`), `combat.ts` (`swordIgnores` +1 and
-`ignorableFlags` +1 for a foot defender attacked across a protected hexside; ranged: +1 flag-ignore when the line enters
-through a protected hexside **[Interp: firer in one of the two forward neighbour directions' half-plane]**),
-`src/ui/terrain` names. Test: `tests/rules/exp1-terrain.test.ts`.
-
-Protected hexsides of a rampart facing `top`: the two neighbours in row r-1; facing `bottom`: the two in row r+1.
-For ranged fire the test is whether the firer's hex lies strictly in front of the rampart row (row < r for `top`).
+**Files:** `types.ts` (`TerrainType` += `'sea' | 'rampart'`; `GameState.noCap: boolean[]`, `GameState.rampart:
+number[]` — 6-bit mask per hex, bit i = neighbour direction i of `hex.ts` (E, NE, NW, W, SW, SE)), `setup.ts` (terrain
+entries `ford?: boolean | 'nocap'`, `faces?: Side`, `edges?: ('E'|'NE'|'NW'|'W'|'SW'|'SE')[]`; `faces:'top'` = NW+NE,
+`faces:'bottom'` = SW+SE), `hex.ts` (`directionTo(from, to): number` for neighbours; `sideCrossed(target, firer):
+number[]` = the hexside(s) of `target` the centre line to `firer` passes through — two when it passes exactly through a
+corner), `terrain.ts` (`sea` = lake rules; `rampartProtects(s, defHex, fromHex): boolean`), `combat.ts` (`swordIgnores`
++1 and `ignorableFlags` +1 for a foot defender attacked in close combat across a protected edge; ranged: +1
+flag-ignore when the line enters through a protected edge — corner case: either edge protected **[Interp]**),
+`src/ui/terrain` names. Test: `tests/rules/exp1-terrain.test.ts`. Rulings: `design/exp1-rulings.md` Q16.
 
 - [ ] Tests: sea impassable for move/retreat/evade/leader evade, does not block LOS; foot unit on a rampart attacked
-  from a front neighbour ignores 1 sword and may ignore +1 flag; attacked from a side/rear neighbour → no benefit;
+  from a front neighbour ignores 1 sword (an elephant does not re-roll it) and may ignore +1 flag; attacked from a
+  side/rear neighbour → no benefit; a 3-edge corner piece protects its third edge; the rampart unit attacking out gets no
+  bonus or penalty;
   mounted unit on a rampart → no benefit; ranged from in front → +1 flag-ignore only; rampart doesn't stop movement or
   block LOS; Pinarus-style no-cap ford: entering stops, CC dice not capped (HI attacks with 5 from a no-cap ford),
   ranged from it not capped.
@@ -428,13 +437,16 @@ HexId[] } | null`; events `{ t: 'cardLost'; side: Side; card: number }`), `setup
 
 - [ ] `leaderLossCostsCard`: leader killed on own turn → `command` −1, no draw at end of that turn; killed on the
   opponent's turn → `command` −1 and one random card (seeded `randInt`) leaves the hand to the discard with `cardLost`.
-  Tests for both, plus two losses in one turn.
-- [ ] `allLeadersSuddenDeath`: last enemy leader killed → immediate victory with reason; not before.
+  Tests for both, plus two losses in one turn; a leader evading off his baseline changes nothing.
+- [ ] `allLeadersSuddenDeath`: track `special.leadersLost: Record<Side, number>` and the starting count; when a side's
+  eliminated count reaches its starting count → immediate victory for the other side with reason; a leader who evaded off
+  the board means it can no longer trigger.
 - [ ] `frightAtFirstSight`: Roman (army `Roman`) foot unit with attached leader and 2 supports takes 1 flag from an
-  elephant → must retreat (max ignorable 0); same unit vs an HI flag → may ignore; elephant flags while battling back
-  also count (per ruling).
-- [ ] `tacticalFlexibility`: non-Roman HI with < 2 supports battling back vs Roman MI/HI rolls 3; supported → 5;
-  vs Roman AX → 5; option off → 5.
+  elephant → must retreat (max ignorable 0); same unit vs an HI flag → may ignore; elephant flags while battling back,
+  in bonus combat and on First Strike also count.
+- [ ] `tacticalFlexibility`: non-Roman HI with < 2 supports, not on broken ground, battling back vs Roman MI/HI rolls 3
+  (also vs their bonus attack); supported → 5; on broken ground → normal (capped) dice; vs Roman AX → 5; First Strike →
+  5; option off → 5.
 - [ ] `campCapture`: Gabiene-style — side top stopping on the listed camp hex gains 1 banner once; passing through does
   not; Baecula unchanged (golden + existing Baecula tests).
 - [ ] Fail → implement → pass; commit `feat(engine): Expansion #1 scenario rules`.
@@ -445,12 +457,14 @@ HexId[] } | null`; events `{ t: 'cardLost'; side: Side; card: number }`), `setup
 string; options: HexId[] }`; event `{ t: 'leaderPlaced'; id: string; hex: HexId }`; `ScenarioSpecial.unplaced:
 string[]`), `setup.ts` (leaders listed under `placeLeaders: { side, name }[]` start at `OFF_BOARD` and go to
 `special.unplaced` in placement order), `flow.ts` (`gameFlow`: before the first `turnFlow`, while `unplaced` is
-non-empty ask `placeLeader` for each; options = own unit hexes without a leader per ruling), `legal.ts` (`randomAnswer`
+non-empty ask `placeLeader` for each; options = own unit hexes without a leader plus every empty passable hex — RAW,
+`design/exp1-rulings.md` Q11), `legal.ts` (`randomAnswer`
 picks a random option), `src/ai/index.ts` (temporary: first option; Task 19 adds the real policy). Test:
 `tests/rules/exp1-placement.test.ts`.
 
-- [ ] Tests: decisions come Roman, Roman, Epirote, Epirote before the first `playCard`; an illegal hex is rejected; the
-  placed leader is attached to the unit; replay through `GameDriver.replay` reproduces the placements.
+- [ ] Tests: decisions come Roman, Roman, Epirote, Epirote before the first `playCard`; an illegal hex (enemy unit, other
+  leader, impassable) is rejected; a leader placed on a unit is attached; a leader placed on an empty hex stands alone;
+  replay through `GameDriver.replay` reproduces the placements.
 - [ ] Fail → implement → pass; commit `feat(engine): pre-battle leader placement`.
 
 ---
@@ -485,7 +499,10 @@ Lead adds the `EXTRA` texts (blurb, specialText, hint, rules) in `src/scenarios/
 
 Method: download the map to the scratchpad, read hex rows top to bottom using the odd-r layout (row 0 = top, even rows
 13 hexes, odd rows 12 shifted right), record terrain, units (type, side, r, c), leaders (name, r, c), elites, rampart
-facings; cross-check per-type counts with the page's unit table; conflicts → map wins, noted with reason.
+edges; cross-check per-type counts with the page's unit table; conflicts → official errata first (spec "Rulings" table:
+Granicus MI 2 / MC 3 with the satraps on MC; Magnesia Greek blocks + camel; Himera's Eumachus MC Syracusan; Beneventum
+leader Dentatus; Gaugamela 331 BC; Asculum 6 banners), then map for positions, table for counts; noted with reason.
+For 122–124 also read GMT's Bonus Pack #2 PDF maps (https://s3-us-west-2.amazonaws.com/gmtwebsiteassets/cca/CCBonusPack-2.pdf).
 
 **Verifier agent V owns nothing in `src/`**: for each battle opens `#/gallery/scenario/<id>` on the dev server and the
 map image, compares hex by hex, writes discrepancies to `design/exp1-verification.md`; transcribers fix; repeat until

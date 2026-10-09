@@ -23,8 +23,31 @@ art, and AI support. Base-game play must not change.
 
 * Scenario pages and map images on commandsandcolors.net (`/ancients/maps/...`, `CCA_maps/1xx.jpg`).
 * Expansion #1 box pages (New Unit Types, New Game Mechanic, Official Scenarios), the site's unit and terrain pages.
-* Survey of all 24 scenarios (counts, leaders, terrain, special rules, conflicts): summarised in the scenario table below;
-  every setup decision is recorded in `design/exp1-scenario-notes.md`.
+* Survey of all 24 scenarios (counts, leaders, terrain, special rules, conflicts): `design/exp1-survey.md`; every setup
+  decision is recorded in `design/exp1-scenario-notes.md`.
+* Rulings research (GMT living rules 2009, GMT Bonus Pack #2 = scenarios 122–124, Richard Borg's 2008 FAQ, the site FAQ,
+  BGG): `design/exp1-rulings.md`. Its outcomes are folded into this spec; see **Rulings** below.
+
+## Rulings (outcome of the research)
+
+| Point | Decision | Basis |
+|---|---|---|
+| Alexander +1 | All close combat (attack, bonus, battle back, First Strike), added after terrain caps; not mirrored by elephants; not in leader-escape rolls | Designer FAQ (caps); battle back **[Interp]** (no ruling) |
+| Companions | Ignore 1 sword rolled against them in any close combat (not re-rolled by elephants); flag-ignore stacks | Living rules + community |
+| Immortals / bow auxilia | Range 3, 2 dice still / 1 moved; AX "no fire after moving 2" kept | Official (Exp. 6 text) |
+| Satraps (Granicus) | Leadership card orders only the satrap + his unit (a lone satrap: only him); still gives support | Scenario text; support RAW |
+| Hellespont | Command shrinks with the hand; random discard if lost on the enemy's turn; leaders evading off the board count for neither rule; win when every enemy leader has been eliminated | Scenario text + living rules |
+| Siris bends (Heraclea) | Fordable river rules | **[Interp]** (Crimissos precedent) |
+| Fright at First Sight | All Roman foot; any close combat with an elephant (its attack, battle back, bonus, First Strike) | Plain reading |
+| Pinarus (Issus) | Stop on entry; no close-combat or ranged caps | **[Interp]** |
+| Asculum | 6 banners; placement on any hex with an own unit without a leader or any empty passable hex (RAW: no restriction stated), Romans place both first | Scenario text; RAW |
+| Tactical Flexibility | Unsupported (fewer than 2 adjacent friendly units/lone leaders) Greek-army HI **not on broken ground**, battling back against a Roman MI/HI (incl. their bonus attacks): 3 dice; First Strike unaffected | GMT Bonus Pack #2 text |
+| Camel | Ignores 1 blue-triangle hit when cavalry/chariots roll against it (close combat only); **every** cavalry and chariot unit (LC, MC, HC, LBC, HCH) retreats +1 hex per camel flag; no flag-ignore; 2 dice battling back and on First Strike; elephants roll 3 | Living rules |
+| War machine | Range 6, 2 dice still, no battle after moving; close combat 2 (swords miss) and battles back with 2; evades like a light unit if it has a 1–2 hex path, only red squares hit, then removed with no banner; retreat 1; normal LOS; support as usual; can be rallied; Order Heavy, Line Command, Darken the Sky (twice), Clash of Shields; no Double Time extra move; elephants roll 2 | Living rules + Truceless War sheet |
+| LBC | Light, mounted, cavalry (all troop cards); elephants roll 2 | Living rules |
+| Rampart | Per hexside: the forward edges of the tile (2, or 3 on a corner piece); defender only (no attack-out bonus or penalty); foot only; close combat across a protected edge: ignore 1 sword + may ignore 1 flag; ranged fire entering through a protected edge: may ignore 1 flag | Living rules p.20 + GMT staff |
+| Impassable hills | `steep` | Equivalent |
+| Data errata | Granicus Persian MI 2 / MC 3 (satrap units are MC; map wrong); Magnesia Seleucids on Greek blocks and the camel is real; Himera's Eumachus MC is Syracusan (Greek blocks); Beneventum's Roman leader is Dentatus; Gaugamela 331 BC; Marathon sea/delta impassable; 122–124 are the official Bonus Pack #2 battles | Official errata / GMT staff / BP2 |
 
 ## Scope at a glance
 
@@ -89,22 +112,24 @@ No new command cards (the base 60 are used). No reserves, hand growth or exit ba
 | Blocks | 3 | 2 | 3 |
 | Move | 4, may battle | 1, may not battle after moving | 3, may battle |
 | Ranged | range 3, 2 dice still / 1 moved | range 6, 2 dice, not after moving | — |
-| Close combat | 2, swords miss | 2, only if it did not move, swords miss | 3 attacking, 2 battling back |
-| Evade | always | yes; if it survives it is removed, no banner | vs foot and heavy mounted |
+| Close combat | 2, swords miss | 2, only if it did not move, swords miss; battles back with 2 | 3 attacking, 2 battling back and on First Strike |
+| Evade | always | needs a 1–2 hex path; only red squares hit; if it survives it is removed, no banner | vs foot and heavy mounted |
 | Momentum | advance + 1 extra hex (not after bonus CC) | none | advance + bonus CC |
 | Retreat / flag | 4 (+1 per elephant/camel flag) | 1 | 3 |
-| Special | — | may not enter broken ground or marsh | ignores 1 hit when cavalry/chariots roll against it; frightens cavalry and chariots like elephants |
+| Special | — | may not enter broken ground or marsh; can be rallied; Order Heavy / Line Command; no Double Time extra move | ignores 1 blue-triangle hit when cavalry/chariots roll against it; every cavalry and chariot unit retreats +1 hex per camel flag; no flag-ignore |
 
-Elephants roll 2 against LBC, 2 against HWM, 3 against camels **[Interp]** (elephant table: "what the target would
-roll", camels listed with 3 by the official summary).
+Elephants roll 2 against LBC, 2 against HWM, 3 against camels (living rules).
 
 **Terrain**
 
 * `sea` — exactly the rules of `lake` (impassable, does not block line of sight); coastal art (beach, surf).
-* `rampart` — a hex terrain with a facing (`faces: 'top' | 'bottom'`, the direction the defenders look). Protects across
-  its two forward hexsides: a foot unit attacked in close combat across them ignores 1 sword hit and may ignore 1 flag;
-  against ranged fire through them it may ignore 1 flag. No effect on movement or line of sight; mounted units gain
-  nothing. (Source: the site's rampart terrain page; neither scenario states rampart rules.)
+* `rampart` — a hex terrain with protected hexsides (`edges`: any of `E, NE, NW, W, SW, SE`; shorthand
+  `faces: 'top'` = `NW, NE`, `faces: 'bottom'` = `SW, SE`; a corner piece lists 3). A foot defender attacked in close
+  combat across a protected edge ignores 1 sword hit (not re-rolled by elephants) and may ignore 1 flag; against ranged
+  fire whose line enters the hex through a protected edge it may ignore 1 flag (a line exactly through a corner counts
+  if either edge is protected **[Interp]**). Defender only: a unit attacking out of a rampart gets no bonus or penalty.
+  No effect on movement or line of sight; mounted units gain nothing. Stored as a 6-bit mask per hex
+  (`GameState.rampart: number[]`, bit i = neighbour direction i of `src/engine/hex.ts`: E, NE, NW, W, SW, SE).
 * Ford without caps: river hexes may carry `ford: 'nocap'` (Issus Pinarus): fordable, stop on entry **[Interp]**, no
   close-combat or ranged dice caps.
 * Impassable hills (101, 113) use `steep`.
@@ -121,24 +146,28 @@ roll", camels listed with 3 by the official summary).
 | `bowAuxilia` | AX | ranged range 3 (AX "not after moving 2" kept) | 123 |
 
 **Leader traits:** Alexander `ccBonus` (+1 die in all close combat of the unit he is attached to — attacking, bonus,
-battle back and First Strike — added after terrain caps like a card bonus **[Interp]**). Granicus satraps
-`attachedOnly`: their helmets count only for the attached unit; a Leadership card played on such a leader orders him and
-his unit only; he still gives his unit the leader flag-ignore.
+battle back and First Strike — added after terrain caps like a card bonus; not mirrored by elephants; not used for
+leader-escape rolls). Granicus satraps `attachedOnly`: their helmets count only for the attached unit; a Leadership card
+played on such a leader orders him and his unit only (a lone satrap: only him); he still gives his unit the leader
+flag-ignore and still counts as support.
 
 **Scenario rules** (`SpecialRuleId` additions)
 
-* `leaderLossCostsCard` (112): a side that loses a leader permanently loses 1 Command. Lost on its own turn: it does not
-  draw at the end of that turn. Lost on the opponent's turn: one card is taken at random from its hand and discarded
-  (seeded RNG; event `cardLost`).
-* `allLeadersSuddenDeath` (112): eliminating every enemy leader wins at once (generalises Castulo's single named leader).
+* `leaderLossCostsCard` (112): a side whose leader is eliminated permanently loses 1 Command (hand size). Lost on its
+  own turn: it does not draw at the end of that turn. Lost on the opponent's turn: one card is taken at random from its
+  hand and discarded (seeded RNG; event `cardLost`). A leader evading off his baseline is not "eliminated".
+* `allLeadersSuddenDeath` (112): when every leader a side started with has been eliminated (not evaded off the board),
+  the other side wins at once (generalises Castulo's single named leader).
 * `frightAtFirstSight` (116): a Roman foot unit in close combat with an elephant may not ignore any flags rolled by the
-  elephant (no leader, support or other exceptions) **[Interp: attacking or battling back]**.
+  elephant (no leader, support or other exceptions) — whether the elephant attacks, battles back, makes a bonus attack
+  or uses First Strike.
 * `leaderPlacement` (117): before the first turn and after the deal, the Roman side places its 2 leaders, then the
   Epirote side places its 2. New decision `{ kind: 'placeLeader' }`, answered with a hex; legal = a hex with an own unit
-  and no leader **[Interp]**.
-* `tacticalFlexibility` (120, 121, 124; optional): an unsupported HI of the non-Roman army battling back against a Roman
-  MI or HI rolls 3 dice; "unsupported" = fewer than 2 adjacent friendly units/lone leaders as for flag support
-  **[Interp]**. Exposed as a scenario option (default **on**), stored in the game config.
+  and no leader, or any empty passable hex (RAW: no restriction stated).
+* `tacticalFlexibility` (120, 121, 124; optional): an unsupported HI of the non-Roman army that is not on broken ground,
+  battling back against a Roman MI or HI (including their bonus attacks), rolls 3 dice; "unsupported" = fewer than 2
+  adjacent friendly units/lone leaders as for flag support; First Strike is not affected. Exposed as a scenario option
+  (default **on**), stored in the game config.
 * `campCapture` generalised: data names the capturing side and the camp hexes (Baecula's Roman/Carthaginian camps,
   Gabiene's Eumenes camp) instead of `army === 'Roman'`.
 * Lone leaders at setup (102 Hamilcar) are supported.
@@ -146,21 +175,22 @@ his unit only; he still gives his unit the leader flag-ignore.
 ## 2. Battle data and verification
 
 * **Files:** `src/scenarios/data/101.json` … `124.json`, current format plus: per side `blocks` and `look`; per unit
-  optional `elite`; per leader optional `traits`; terrain `sea`, `rampart` (+ `faces`), `ford: true | 'nocap'`;
+  optional `elite`; per leader optional `traits`; terrain `sea`, `rampart` (+ `faces` or `edges`), `ford: true | 'nocap'`;
   per scenario `expansion: 'base' | 'exp1'`, `options` (e.g. `tacticalFlexibility`), `campCapture`.
   Base files gain `blocks`/`look` with their current appearance; their setups do not change.
 * **Transcription:** hex by hex from each official map image; War Council for cards, banners, first player, leader
   names; unit tables for counts. `index.ts` gets an original blurb, paraphrased special rules and a hint per battle.
-* **Conflicts:** the map wins for setup; every decision with its reason goes in `design/exp1-scenario-notes.md`
-  (known: Granicus Persian MI 4 / MC 1 per map; Magnesia Greek-blue Seleucids with a camel per map; Beneventum's Roman
-  leader Dentatus per map; Asculum banners per the rulings research).
+* **Conflicts:** official errata first, then the map for positions and the unit table for counts; every decision with
+  its reason goes in `design/exp1-scenario-notes.md`. Known (see Rulings): Granicus Persian MI 2 / MC 3 (the satraps'
+  units are MC); Magnesia Seleucids on Greek blocks with a camel; Himera's Eumachus MC is Syracusan; Beneventum's Roman
+  leader is Dentatus; Asculum 6 banners; 122–124 are cross-checked against GMT's Bonus Pack #2 PDF maps.
 * **Verification:**
   1. Dev-only route `#/gallery/scenario/<id>` renders our board beside the official map image (loaded from
      commandsandcolors.net in dev only; never bundled or published). A reviewer agent other than the transcriber compares
      every battle hex by hex until there are no differences.
   2. `tests/scenarios/exp1.test.ts`: each battle builds; per-side/per-type counts equal a manifest taken from the unit
      tables (map counts where the notes say so); leaders, banners, cards, first player; units only on passable hexes;
-     one piece per hex; elites on the right unit types; ramparts face the enemy.
+     one piece per hex; elites on the right unit types; rampart edges face the enemy.
   3. AI-vs-AI soak over all 24 battles from both sides: no crashes/stalls, games end; win rates logged and lopsided
      results flagged for a second look at the setup.
 
@@ -182,8 +212,8 @@ his unit only; he still gives his unit the leader flag-ignore.
 * **New figures:** LBC horse archers (scythian, persian, macedonian/successor, seleucid kits), camel archer, HWM
   bolt-thrower with crew (macedonian, roman), elephants with crews for indian, seleucid, ptolemaic, epirote,
   macedonian/successor and roman; chariots for persian, indian, seleucid; Roman heavy cavalry.
-* **Terrain art:** `sea` coastline (beach edge following the land, surf), `rampart` (earth bank and stakes along the two
-  forward hexsides). Existing camp art covers Himera/Beneventum/Pydna/Gabiene camps.
+* **Terrain art:** `sea` coastline (beach edge following the land, surf), `rampart` (earth bank and stakes along the
+  protected hexsides). Existing camp art covers Himera/Beneventum/Pydna/Gabiene camps.
 * Dev galleries: `#/gallery/art` shows every look × unit type and the elites; `#/gallery/terrain` shows sea and rampart.
 
 ### 3.2 Screens
