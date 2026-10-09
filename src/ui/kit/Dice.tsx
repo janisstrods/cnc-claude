@@ -87,6 +87,17 @@ function SymbolDefs({ uid }: { uid: string }) {
   );
 }
 
+/** A die face's symbol on its own, without the die body (e.g. the troop-class badge on cards). */
+export function DieSymbol({ face, className }: { face: DieFace; className?: string }) {
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
+  return (
+    <svg className={className} viewBox="0 0 100 100" aria-hidden="true">
+      <SymbolDefs uid={uid} />
+      <Symbol face={face} uid={uid} />
+    </svg>
+  );
+}
+
 /** An ivory battle die. `rolling` tumbles and cycles faces; `state` marks the resolved result. */
 export function DieView(p: {
   face: DieFace;

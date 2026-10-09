@@ -1,7 +1,7 @@
 // Command cards (rules-reference §6, §12).
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  CARD_LIST, closeCombatDice, pieceMoves, sectionsOf, validateOrders, type CardKind, type Side,
+  CARD_LIST, closeCombatDice, orderLimit, pieceMoves, sectionsOf, validateOrders, type CardKind, type Side,
 } from '../../src/engine';
 import { H, build, combatDice, ev, forceDice, forcedDiceLeft, giveCard, leaderId, must, n, noFirstStrike, play, u, type Pos } from './helpers';
 import { GameDriver } from '../../src/engine';
@@ -230,6 +230,34 @@ describe('Line Command and Double Time groups', () => {
     const t = build({ units: [{ side: 'bottom', type: 'HC', at: [6, 6] }, { side: 'bottom', type: 'LC', at: [6, 8] }] });
     expect(validateOrders(t, 'bottom', 'lineCommand', ['u1'])).toBeNull();
     expect(validateOrders(t, 'bottom', 'doubleTime', ['u1', 'u2'])).not.toBeNull();
+  });
+});
+
+describe('order limits (UI counter)', () => {
+  const s = build({
+    units: [{ side: 'bottom', type: 'MI', at: [6, 2] }, { side: 'bottom', type: 'MI', at: [6, 3] }, { side: 'bottom', type: 'LI', at: [6, 6] }],
+    leaders: [{ side: 'bottom', at: [6, 2] }, { side: 'bottom', at: [7, 5] }],
+  });
+  const lim = (k: CardKind, ids: string[] = []) => orderLimit(s, 'bottom', k, ids);
+  it('section cards: the orders printed on the card', () => {
+    expect(lim('order3L')).toBe(3);
+    expect(lim('outFlanked')).toBe(4);
+    expect(lim('coordinated')).toBe(3);
+  });
+  it('troop cards: Command, or 1 when no unit of that kind', () => {
+    expect(lim('orderLight')).toBe(5);
+    expect(lim('orderHeavy')).toBe(1);
+  });
+  it('groups: Double Time 4, Line Command unbounded', () => {
+    expect(lim('doubleTime')).toBe(4);
+    expect(lim('lineCommand')).toBeNull();
+  });
+  it('leadership: unknown until a leader is chosen, then leader + his unit + chain', () => {
+    expect(lim('leadershipAny')).toBeNull();
+    expect(lim('leadershipAny', [leaderId(s, 0)])).toBe(5);
+    expect(lim('leadershipAny', [leaderId(s, 1)])).toBe(4);
+    expect(lim('inspiredL', [leaderId(s, 0)])).toBe(6);
+    expect(lim('inspiredR', [leaderId(s, 0)])).toBeNull(); // leader outside the named section
   });
 });
 

@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExterna
 import {
   CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, cardKind, isLeaderId, leaderAt, leaderById, leaderUnit,
   other, pieceMoves, rallyCandidates, terrainAt, isFord, unitAt, unitById, validateOrders, validateRally, validateSpartacus,
-  battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf, sectionsOf, orderMode,
+  battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf, sectionsOf, orderMode, orderLimit,
   type Answer, type DieFace, type GameState, type HexId, type RetreatOption, type SectionName, type Side,
 } from '../../engine';
 import { UnitIcon, unitTypeName } from '../../art';
@@ -253,15 +253,18 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         const err = validateOrders(s, human, d.card, ui.orderSel);
         const amb = ambushAvailable(s, human, d.card);
         const mode = orderMode(s, human, d.card).mode;
-        const buttons = [
-          btn(ui.orderSel.length ? `Confirm ${ui.orderSel.length} order${ui.orderSel.length > 1 ? 's' : ''}` : 'Order nothing', () => answer({ kind: 'orders', pieces: ui.orderSel }), { disabled: !!err, variant: ui.orderSel.length ? 'primary' : 'secondary' }),
-        ];
-        if (ui.orderSel.length) buttons.push(btn('Clear', () => setUi({ ...ui, orderSel: [] }), { variant: 'ghost' }));
         const all = eligiblePieces(s, human, d.card);
-        if (mode === 'troop' && ui.orderSel.length === 0) {
+        const n = ui.orderSel.length;
+        const limit = orderLimit(s, human, d.card, ui.orderSel);
+        const max = limit === null ? null : Math.min(limit, all.length);
+        const count = max === null ? `${n}` : `${n}/${max}`;
+        const buttons = [
+          btn(n ? `Confirm ${count} order${(max ?? n) > 1 ? 's' : ''}` : 'Order nothing', () => answer({ kind: 'orders', pieces: ui.orderSel }), { disabled: !!err, variant: n ? 'primary' : 'secondary', key: 'confirm' }),
+        ];
+        if (n) buttons.push(btn('Clear', () => setUi({ ...ui, orderSel: [] }), { variant: 'ghost' }));
+        if (mode === 'troop' && n === 0) {
           const units = all.filter((id) => !isLeaderId(id));
-          const max = s.players[human].command;
-          if (units.length > 0 && units.length <= max) buttons.push(btn('Select all', () => setUi({ ...ui, orderSel: units }), { variant: 'secondary' }));
+          if (units.length > 0 && units.length <= s.players[human].command) buttons.push(btn('Select all', () => setUi({ ...ui, orderSel: units }), { variant: 'secondary' }));
         }
         if (amb) {
           for (const sec of ambushSections(d.card)) buttons.push(btn(`Ambush: ${SECTION_LABEL[sec]}`, () => answer({ kind: 'orders', pieces: [], ambushSection: sec }), { variant: 'secondary', key: `amb-${sec}`, title: "Spring Mago's ambush: his force enters on the Roman baseline in this section" }));

@@ -8,7 +8,7 @@ Browser game: TypeScript + Vite + React, pure rules engine in `src/engine`, AI i
 |---|---|
 | `npm install` | Install dependencies |
 | `npm run dev` | Dev server on http://localhost:5173 (launch config `dev`) |
-| `npm test` | All Vitest tests (engine, rules, AI; ~25 s) |
+| `npm test` | All Vitest tests (engine, rules, AI; ~2 min) |
 | `npm run typecheck` | `tsc --noEmit -p .` |
 | `npm run build` | Type-check, then build the static site into `docs/` |
 
