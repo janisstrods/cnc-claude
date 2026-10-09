@@ -1,4 +1,5 @@
 // The 15 base-game battles. Setups are transcribed data (src/scenarios/data); texts are original summaries.
+import { ELITES } from '../engine/elites';
 import type { ScenarioSetup } from '../engine/setup';
 import type { ArmyLook, Blocks, Side, SpecialRuleId, TerrainType, UnitType } from '../engine/types';
 
@@ -53,7 +54,7 @@ const EXTRA: Record<string, Extra> = {
     rules: ['sacredBand'],
     hint: 'River crossing, elite Sacred Band.',
     patch: (s) => {
-      const sb = s.units.find((u) => u.side === 'top' && u.type === 'HI' && u.r === 3 && u.c === 2);
+      const sb = s.units.find((u) => u.side === 'top' && u.r === 3 && u.c === 2 && !!ELITES.carthSacredBand?.types.includes(u.type));
       if (sb) sb.elite = 'carthSacredBand';
     },
   },

@@ -1,8 +1,10 @@
-// Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges.
+// Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges, plus the unit
+// descriptions shown in tooltips and the rules reference.
 import {
-  ALL_HEXES, CARD_DEFS, OFF_BOARD, UNIT_STATS, battleReady, battleTargets, cardKind, closeCombatDice, closeHitChance, eligiblePieces,
-  eliteDef, eliteHas, inSection, isLeaderId, leaderAt, leaderById, leaderUnit, mirrorKind, movablePieces, other, pieceMoves, rangedDice, unitAt, unitById,
-  type CardKind, type Decision, type GameState, type HexId, type SectionName, type Side, type Unit,
+  ALL_HEXES, CARD_DEFS, OFF_BOARD, UNIT_STATS, UNIT_TYPES, battleReady, battleTargets, cardKind, closeCombatDice, closeHitChance, eligiblePieces,
+  eliteDef, inSection, isLeaderId, leaderAt, leaderById, leaderUnit, mirrorKind, movablePieces, other, pieceMoves, rangeOf, rangedDice, unitAt,
+  unitById, type CardKind, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type SectionName, type Side, type Unit,
+  type UnitStats, type UnitType,
 } from '../../engine';
 import type { Highlight } from './Board';
 
@@ -190,23 +192,113 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
   return { highlights, leaderHighlights, badges, sectionShade, pathPreview };
 }
 
+// ---------------------------------------------------------------------------
+// unit descriptions (tooltips and the rules reference), generated from the unit table
+// ---------------------------------------------------------------------------
+
+/** Short plural noun for a unit type ("Heavy Chariots" → "chariots"). */
+function unitNoun(t: UnitType): string {
+  const words = UNIT_STATS[t].name.split(' ');
+  return words[words.length - 1].toLowerCase();
+}
+
+/** Capitalise the first letter. */
+function cap(x: string): string {
+  return x.charAt(0).toUpperCase() + x.slice(1);
+}
+
+/**
+ * Movement allowance: warriors "1 (2 to charge)" (moving 2 or more must end in close combat); a unit that moves further
+ * when it does not battle (auxilia) is described by `withoutBattle(battleMax, max)`; otherwise the plain number.
+ */
+function moveText(st: UnitStats, withoutBattle: (battle: number, max: number) => string): string {
+  if (st.chargeMove) return `1 (${st.move} to charge)`;
+  if (st.moveBattle < st.move) return withoutBattle(st.moveBattle, st.move);
+  return String(st.move);
+}
+
+/**
+ * Where elephants' dice differ from what the enemy would roll: "3 vs elephants, warriors, chariots" (elephants first,
+ * then units whose own dice vary: battling back, full-strength bonus).
+ */
+function elephantDiceNote(): string {
+  const odd = UNIT_TYPES.filter((t) => {
+    const st = UNIT_STATS[t];
+    return st.elephantTable || st.fullStrengthBonus || st.elephantDiceAgainst !== st.cc || st.elephantDiceAgainst !== st.ccBack;
+  }).sort((a, b) => Number(UNIT_STATS[b].elephantTable) - Number(UNIT_STATS[a].elephantTable));
+  const byDice = new Map<number, string[]>();
+  for (const t of odd) {
+    const n = UNIT_STATS[t].elephantDiceAgainst;
+    byDice.set(n, [...(byDice.get(n) ?? []), unitNoun(t)]);
+  }
+  return [...byDice].map(([n, names]) => `${n} vs ${names.join(', ')}`).join('; ');
+}
+
+/** Sword hits a unit type ignores, or null (`one` spells out a single hit). */
+function swordIgnoreText(st: UnitStats, all: string, one: string): string | null {
+  if (st.ignoreAllSwords) return all;
+  const n = st.swordIgnore;
+  if (!n) return null;
+  return `ignores ${n === 1 ? one : n} sword hit${n === 1 ? '' : 's'}`;
+}
+
+/** Unit types whose retreats this type lengthens (elephants: cavalry and chariots). */
+function frightenedTypes(t: UnitType): UnitType[] {
+  return UNIT_TYPES.filter((x) => UNIT_STATS[x].frightenedBy.includes(t));
+}
+
+/** Evade rule wording: [tooltip, rules reference]. */
+const EVADE_TEXT: Record<EvadeRule, [string, string]> = {
+  always: ['Can evade', 'Evades any attack.'],
+  never: ['Cannot evade', 'Cannot evade.'],
+  vsFootElephant: ['Can evade foot & elephants', 'Evades foot and elephants.'],
+  vsFootHeavyMounted: ['Can evade foot & heavy mounted', 'Evades foot and heavy mounted.'],
+};
+
+const ELITE_TEXT: Record<EliteAbility, (u: Unit) => string> = {
+  helmetHits: () => 'helmets always hit',
+  ignoreFlag: () => 'ignores 1 flag',
+  ignoreSword: () => 'ignores 1 sword hit',
+  ranged: (u) => `missile fire (range ${rangeOf(u)})`,
+};
+
 /** Stats line for tooltips. */
 export function unitSummary(u: Unit): string[] {
   const st = UNIT_STATS[u.type];
   const lines: string[] = [];
-  const mv = u.type === 'WA' ? '1 (2 to charge)' : u.type === 'AX' ? '1, or 2 without battle' : String(st.move);
-  lines.push(`Move ${mv} · Retreat ${st.retreat}/flag`);
-  if (u.type === 'EL') lines.push('Close combat: same dice as the enemy unit (3 vs elephants, warriors, chariots)');
-  else lines.push(`Close combat ${st.cc}${st.ccBack !== st.cc ? ` (${st.ccBack} battling back)` : ''} dice${u.type === 'WA' ? ' (+1 at full strength)' : ''}${st.swordHits ? '' : ', swords miss'}`);
-  if (st.range) lines.push(`Missiles: range ${st.range}, 2 dice (1 after moving)`);
-  const ev = st.evade === 'always' ? 'Can evade' : st.evade === 'never' ? 'Cannot evade' : st.evade === 'vsFootElephant' ? 'Can evade foot & elephants' : 'Can evade foot & heavy mounted';
-  lines.push(ev);
-  if (u.type === 'EL') lines.push('Ignores sword hits · rampages when it retreats');
-  if (u.type === 'HCH') lines.push('Ignores 1 sword hit');
+  lines.push(`Move ${moveText(st, (b, m) => `${b}, or ${m} without battle`)} · Retreat ${st.retreat}/flag`);
+  if (st.elephantTable) lines.push(`Close combat: same dice as the enemy unit (${elephantDiceNote()})`);
+  else lines.push(`Close combat ${st.cc}${st.ccBack !== st.cc ? ` (${st.ccBack} battling back)` : ''} dice${st.fullStrengthBonus ? ' (+1 at full strength)' : ''}${st.swordHits ? '' : ', swords miss'}`);
+  const range = rangeOf(u);
+  if (range) lines.push(`Missiles: range ${range}, 2 dice (1 after moving)`);
+  lines.push(EVADE_TEXT[st.evade][0]);
+  const special = [swordIgnoreText(st, 'ignores sword hits', '1'), st.elephantTable && 'rampages when it retreats'].filter(Boolean);
+  if (special.length) lines.push(cap(special.join(' · ')));
   const elite = eliteDef(u);
   if (elite) {
-    const perks = [eliteHas(u, 'helmetHits') && 'helmets always hit', eliteHas(u, 'ignoreFlag') && 'ignores 1 flag'].filter(Boolean);
+    const perks = elite.abilities.map((a) => ELITE_TEXT[a](u));
     if (perks.length) lines.push(`${elite.name}: ${perks.join(', ')}`);
   }
   return lines;
+}
+
+/** Rules-reference card of a unit type: [stats line, notes line]. */
+export function unitCardLines(t: UnitType): [string, string] {
+  const st = UNIT_STATS[t];
+  const cc = st.elephantTable ? 'as enemy' : `${st.cc}${st.ccBack !== st.cc ? `/${st.ccBack} back` : ''}`;
+  const stats =
+    `${st.blocks} blocks · move ${moveText(st, (b, m) => `${b} (${m} without battle)`)} · close combat ${cc}` +
+    `${st.range ? ` · range ${st.range}` : ''} · retreat ${st.retreat}`;
+  const notes = [EVADE_TEXT[st.evade][1]];
+  if (!st.swordHits) notes.push('Swords do not score hits.');
+  if (st.fullStrengthBonus) notes.push('+1 die and ignores a flag at full strength.');
+  const scared = frightenedTypes(t);
+  const special = [
+    swordIgnoreText(st, 'ignores swords', 'one'),
+    st.elephantTable && 're-rolls its own swords',
+    scared.length > 0 && `frightens ${scared.every((x) => UNIT_STATS[x].mounted) ? 'horses' : scared.map(unitNoun).join(', ')}`,
+    st.elephantTable && 'rampages on retreat',
+  ].filter(Boolean);
+  if (special.length) notes.push(`${cap(special.join(', '))}.`);
+  return [stats, notes.join(' ')];
 }

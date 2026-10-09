@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CARD_DEFS, UNIT_STATS, UNIT_TYPES, type CardKind } from '../../engine';
 import { UnitIcon } from '../../art';
 import { CardView, DieView } from '../kit';
+import { unitCardLines } from '../game/uiModel';
 import './screens.css';
 
 type Tab = 'basics' | 'units' | 'combat' | 'terrain' | 'cards';
@@ -61,11 +62,13 @@ function Basics() {
   );
 }
 
-function Units() {
+/** Units tab: one card per unit type (exported for the unit-text test). */
+export function Units() {
   return (
     <div className="rules-units">
       {UNIT_TYPES.map((t) => {
         const st = UNIT_STATS[t];
+        const [statsLine, notesLine] = unitCardLines(t);
         return (
           <div key={t} className="unit-card">
             <svg width={64} height={64} viewBox="-30 -34 60 60">
@@ -73,18 +76,8 @@ function Units() {
             </svg>
             <div>
               <div className="unit-card-title">{st.name} <span className={`cls cls-${st.cls}`}>{st.cls}</span></div>
-              <div className="unit-card-line">
-                {st.blocks} blocks · move {t === 'WA' ? '1 (2 to charge)' : t === 'AX' ? '1 (2 without battle)' : st.move}
-                {' · '}close combat {t === 'EL' ? 'as enemy' : st.cc}{st.ccBack !== st.cc && t !== 'EL' ? `/${st.ccBack} back` : ''}
-                {st.range ? ` · range ${st.range}` : ''} · retreat {st.retreat}
-              </div>
-              <div className="unit-card-line muted">
-                {st.evade === 'always' ? 'Evades any attack.' : st.evade === 'never' ? 'Cannot evade.' : st.evade === 'vsFootElephant' ? 'Evades foot and elephants.' : 'Evades foot and heavy mounted.'}
-                {!st.swordHits ? ' Swords do not score hits.' : ''}
-                {t === 'WA' ? ' +1 die and ignores a flag at full strength.' : ''}
-                {t === 'EL' ? ' Ignores swords, re-rolls its own swords, frightens horses, rampages on retreat.' : ''}
-                {t === 'HCH' ? ' Ignores one sword hit.' : ''}
-              </div>
+              <div className="unit-card-line">{statsLine}</div>
+              <div className="unit-card-line muted">{notesLine}</div>
             </div>
           </div>
         );

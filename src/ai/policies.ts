@@ -7,7 +7,7 @@ import { leaderById, other, unitById } from '../engine/query';
 import { retreatOptions, type ElephantRetreatOption } from '../engine/retreat';
 import { rangeOf } from '../engine/elites';
 import { isCamp, terrainAt } from '../engine/terrain';
-import { UNIT_STATS, forestFighter } from '../engine/units';
+import { UNIT_STATS, escapeDice, forestFighter } from '../engine/units';
 import {
   OFF_BOARD, type Answer, type Decision, type DieFace, type GameState, type HexId, type RetreatOption, type Side, type Unit,
 } from '../engine/types';
@@ -160,11 +160,6 @@ export function chooseRetreat(s: GameState, d: D<'retreat'>, W: Weights): number
   return best;
 }
 
-function escapeDice(u: Unit): number {
-  if (u.type === 'EL') return 1;
-  return UNIT_STATS[u.type].cc + (u.type === 'WA' && u.blocks === u.maxBlocks ? 1 : 0);
-}
-
 /**
  * Chance a lone leader standing on `h` survives the rest of the enemy's current battle phase: ordered enemy units that
  * can still battle and are adjacent (or in range), plus a unit that just won a close combat next to the hex the leader
@@ -185,7 +180,7 @@ function survivesActiveTurn(s: GameState, l: { side: Side; hex: HexId }, h: HexI
       else if (dNow > 1 && rangeOf(e) >= dNow && !s.turn.mods.noRanged) surv *= 1 - pAnyHelmet(1);
     } else if (from >= 0 && hexDist(e.hex, from) === 1 && hexDist(h, from) === 1 && !s.turn.mods.noClose) {
       const st = UNIT_STATS[e.type];
-      const bonusOk = e.type === 'WA' || st.mounted || (st.foot && !!attachedLeaderOcc(occ, e));
+      const bonusOk = st.chargeMove || st.mounted || (st.foot && !!attachedLeaderOcc(occ, e));
       if (bonusOk) surv *= 1 - 0.7 * pAnyHelmet(escapeDice(e));
     }
   }
@@ -268,7 +263,7 @@ export function chooseIgnoreFlags(s: GameState, d: D<'ignoreFlags'>, W: Weights)
 function bonusEligibleAt(s: GameState, u: Unit, hex: HexId, hasLeader: boolean): boolean {
   if (s.turn.mods.noClose) return false;
   const st = UNIT_STATS[u.type];
-  let ok = u.type === 'WA' || st.mounted || (st.foot && hasLeader);
+  let ok = st.chargeMove || st.mounted || (st.foot && hasLeader);
   const t = terrainAt(s, hex);
   if (t === 'forest' && !forestFighter(u.type)) ok = false;
   if (t === 'broken' && st.mounted) ok = false;

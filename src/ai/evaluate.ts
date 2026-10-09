@@ -28,16 +28,19 @@ export function battered(u: Unit): boolean {
 /** Per-die chance that `e` scores a hit on `u` in close combat (approximate, flags excluded). */
 function hitP(s: GameState, occ: Occ, e: Unit, u: Unit): number {
   const S = UNIT_STATS[e.type];
-  if (e.type === 'EL') return u.type === 'EL' ? SIXTH : 0.4;
+  const ignoresSwords = UNIT_STATS[u.type].ignoreAllSwords;
+  // elephants re-roll swords: ~0.4 per die, unless the target ignores swords altogether
+  if (S.elephantTable) return ignoresSwords ? SIXTH : 0.4;
   let p = SIXTH;
-  if (S.swordHits && u.type !== 'EL') p += swordIgnores(s, u) > 0 ? SIXTH * 0.5 : SIXTH;
+  if (S.swordHits && !ignoresSwords) p += swordIgnores(s, u) > 0 ? SIXTH * 0.5 : SIXTH;
   if (helmetsOcc(occ, e) || eliteHas(e, 'helmetHits')) p += SIXTH;
   return p;
 }
 
 /** Close-combat dice an enemy would roll after moving next to u (no card bonus, cap from u's hex). */
 function reachDice(s: GameState, e: Unit, u: Unit): number {
-  let n = e.type === 'EL' ? elephantDiceVs(u.type) : UNIT_STATS[e.type].cc + (e.type === 'WA' && e.blocks === e.maxBlocks ? 1 : 0);
+  const S = UNIT_STATS[e.type];
+  let n = S.elephantTable ? elephantDiceVs(u.type) : S.cc + (S.fullStrengthBonus && e.blocks === e.maxBlocks ? 1 : 0);
   n = Math.min(n, ccCapOfHex(s, u.hex));
   if (isHill(s, u.hex)) n = Math.min(n, 2);
   return n;
@@ -143,7 +146,8 @@ function threatsAgainst(
       return hasFreeApproach(s, occ, e, target, reach);
     };
     const range = rangeOf(e);
-    const lightFoot = isRangedLight(e) && e.type !== 'LC';
+    const mounted = UNIT_STATS[e.type].mounted;
+    const lightFoot = isRangedLight(e) && !mounted;
     for (let j = 0; j < victims.length; j++) {
       const u = victims[j];
       const d = hexDist(e.hex, u.hex);
@@ -166,7 +170,7 @@ function threatsAgainst(
         flags = true;
       } else if (d - 1 <= reach && canReach(u.hex)) {
         n = reachDice(s, e, u);
-        base = pReach * (isRangedLight(e) ? (e.type === 'LC' ? 0.6 : 0.3) : 1);
+        base = pReach * (isRangedLight(e) ? (mounted ? 0.6 : 0.3) : 1);
         p = evades ? SIXTH : hitP(s, occ, e, u) + vi.pFlagHit;
         flags = !evades;
       } else continue;
@@ -186,7 +190,7 @@ function threatsAgainst(
         n = rangedDice(s, e, l.hex, 0, false);
         base = pAdj * 0.85;
       } else if (d - 1 <= reach && canReach(l.hex)) {
-        n = Math.min(e.type === 'EL' ? 1 : UNIT_STATS[e.type].cc, ccCapOfHex(s, l.hex));
+        n = Math.min(UNIT_STATS[e.type].elephantTable ? 1 : UNIT_STATS[e.type].cc, ccCapOfHex(s, l.hex));
         base = pReach;
       } else continue;
       if (n <= 0) continue;
@@ -317,7 +321,7 @@ function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side
         if (d <= 3) v -= 0.12 * (lu.maxBlocks - lu.blocks);
         continue;
       }
-      if (d <= 2) v += W.leaderFront * health * (lu.type === 'EL' ? 0.2 : 1);
+      if (d <= 2) v += W.leaderFront * health * (UNIT_STATS[lu.type].noLeaderBenefit ? 0.2 : 1);
       continue;
     }
     if (sacred) {
@@ -335,7 +339,7 @@ function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side
     let aura = 0;
     for (const h of neighbours(l.hex)) {
       const x = occ.unit[h];
-      if (x && x.side === side && x.type !== 'EL' && (near.get(x) ?? 99) === 1) aura++;
+      if (x && x.side === side && !UNIT_STATS[x.type].noLeaderBenefit && (near.get(x) ?? 99) === 1) aura++;
     }
     v += W.helmetAura * Math.min(3, aura);
   }

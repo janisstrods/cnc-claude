@@ -1,7 +1,7 @@
 // Fast board helpers for the AI: distance table, occupancy, retreat room, LOS and flag rules mirrored with O(1) lookups.
 import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
 import { hillGroups, isCamp, isHill, isImpassable, terrainBlocksLOS } from '../engine/terrain';
-import { eliteHas, rangeOf } from '../engine/elites';
+import { canShoot, eliteHas, rangeOf } from '../engine/elites';
 import { UNIT_STATS } from '../engine/units';
 import { COLS, ROWS, type GameState, type HexId, type Leader, type Side, type Unit } from '../engine/types';
 
@@ -65,25 +65,25 @@ export function enemyUnitsAdjacent(occ: Occ, h: HexId, side: Side): number {
 
 /** Mirror of engine ignorableFlags using the occupancy table. */
 export function ignorableOcc(s: GameState, occ: Occ, t: Unit, kind: 'close' | 'ranged', striker: Unit | null): number {
-  if (t.type === 'EL') {
-    if (kind === 'close' && striker) {
-      const st = UNIT_STATS[striker.type];
-      if (st.cavalry || st.chariot) return 1;
-    }
-    return 0;
-  }
+  const T = UNIT_STATS[t.type];
   let n = 0;
-  if (attachedLeaderOcc(occ, t)) n++;
-  if (supportOcc(occ, t) >= 2) n++;
-  if (isCamp(s, t.hex) && UNIT_STATS[t.type].foot) n++;
-  if (t.type === 'WA' && t.blocks === t.maxBlocks) n++;
+  if (!T.noLeaderBenefit) {
+    if (attachedLeaderOcc(occ, t)) n++;
+    if (supportOcc(occ, t) >= 2) n++;
+  }
+  if (isCamp(s, t.hex) && T.foot) n++;
+  if (T.fullStrengthBonus && t.blocks === t.maxBlocks) n++;
   if (eliteHas(t, 'ignoreFlag')) n++;
+  if (T.vsMountedIgnoreFlag && kind === 'close' && striker) {
+    const st = UNIT_STATS[striker.type];
+    if (st.cavalry || st.chariot) n++;
+  }
   return n;
 }
 
-/** Leader attached to or adjacent to the striker (helmets hit in close combat). */
+/** Leader attached to or adjacent to the striker (helmets hit in close combat), for units that benefit from leaders. */
 export function helmetsOcc(occ: Occ, u: Unit): boolean {
-  if (u.type === 'EL') return false;
+  if (UNIT_STATS[u.type].noLeaderBenefit) return false;
   const l = occ.leader[u.hex];
   if (l && l.side === u.side) return true;
   for (const h of neighbours(u.hex)) {
@@ -182,14 +182,12 @@ export function rowsToEnemyEdge(h: HexId, side: Side): number {
   return side === 'bottom' ? rowOf(h) : ROWS - 1 - rowOf(h);
 }
 
-/** Max hexes an enemy unit can move and still close combat with a normal order. */
+/** Max hexes an enemy unit can move and still close combat with a normal order (warriors' charge included). */
 export function reachOf(u: Unit): number {
-  const st = UNIT_STATS[u.type];
-  if (u.type === 'WA') return 2;
-  if (u.type === 'AX') return 1;
-  return st.moveBattle;
+  return UNIT_STATS[u.type].moveBattle;
 }
 
+/** Skirmisher: shoots and may always evade (LI, LB, LS, LC); it prefers to stand off and fire. */
 export function isRangedLight(u: Unit): boolean {
-  return u.type === 'LI' || u.type === 'LB' || u.type === 'LS' || u.type === 'LC';
+  return canShoot(u) && UNIT_STATS[u.type].evade === 'always';
 }

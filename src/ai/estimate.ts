@@ -19,12 +19,12 @@ export function closeProfile(s: GameState, occ: Occ, st: Unit, t: Unit, n: numbe
   const S = UNIT_STATS[st.type];
   let pc = SIXTH;
   let ps = S.swordHits ? SIXTH : 0;
-  const ph = (st.type !== 'EL' && helmetsOcc(occ, st)) || eliteHas(st, 'helmetHits') ? SIXTH : 0;
+  const ph = helmetsOcc(occ, st) || eliteHas(st, 'helmetHits') ? SIXTH : 0;
   let pf = SIXTH;
   let sw = 0;
-  if (t.type === 'EL') ps = 0;
+  if (UNIT_STATS[t.type].ignoreAllSwords) ps = 0;
   else if (ps) sw = swordIgnores(s, t);
-  if (st.type === 'EL' && ps && sw === 0) {
+  if (S.elephantTable && ps && sw === 0) {
     // elephants re-roll every sword: ~0.4 hits and ~0.2 flags per die
     pc = 0.2;
     ps = 0.2;
@@ -57,7 +57,8 @@ function roomFn(s: GameState, occ: Occ, u: Unit): (need: number) => number {
   return (need: number) => {
     const m = memo[need];
     if (m !== undefined) return m;
-    const r = u.type === 'EL' ? need : retreatRoom(s, occ, u, need);
+    // a blocked elephant retreat costs the blocking pieces, not the elephant: treat its room as unlimited
+    const r = UNIT_STATS[u.type].elephantTable ? need : retreatRoom(s, occ, u, need);
     memo[need] = r;
     return r;
   };
@@ -117,7 +118,7 @@ export function backDamage(s: GameState, occ: Occ, t: Unit, a: Unit): number {
 export function momentumValue(s: GameState, occ: Occ, a: Unit, role: StrikeRole, W: Weights): number {
   if (role === 'bonus') return 0.02;
   const st = UNIT_STATS[a.type];
-  const eligible = a.type === 'WA' || st.mounted || (st.foot && !!attachedLeaderOcc(occ, a));
+  const eligible = st.chargeMove || st.mounted || (st.foot && !!attachedLeaderOcc(occ, a));
   return 0.03 + (eligible && !s.turn.mods.noClose ? W.bonusValue : 0);
 }
 
@@ -273,7 +274,7 @@ export function attackNowValue(s: GameState, occ: Occ, u: Unit, moved: number, c
   }
   if (mustBattle) return bestClose === -Infinity ? -0.5 : bestClose;
   if (bestClose > best) best = bestClose;
-  if (!m.noRanged && canShoot(u) && !(u.type === 'AX' && moved >= 2)) {
+  if (!m.noRanged && canShoot(u) && moved < UNIT_STATS[u.type].noFireAfterMove) {
     const range = rangeOf(u);
     for (const v of s.units) {
       if (v.side === u.side || v.hex < 0) continue;
