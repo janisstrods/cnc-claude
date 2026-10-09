@@ -138,15 +138,18 @@ const LINES: Record<Moment, Lines> = {
 const TROOPS: Partial<Record<ArmyLook, Partial<Record<UnitType, string>>>> = {
   roman: {
     LI: 'velites', LB: 'archers', LS: 'slingers', AX: 'auxilia', WA: 'Gallic allies', MI: 'hastati', HI: 'legionaries',
-    LC: 'light horse', MC: 'equites', HC: 'heavy horse', EL: 'elephants', HCH: 'chariots',
+    LC: 'light horse', MC: 'equites', HC: 'heavy horse', EL: 'elephants', HCH: 'chariots', LBC: 'horse archers',
+    CAM: 'camel riders',
   },
   carthaginian: {
     LI: 'skirmishers', LB: 'archers', LS: 'Balearic slingers', AX: 'Iberian foot', WA: 'Gauls', MI: 'Libyan spearmen',
     HI: 'Libyan veterans', LC: 'Numidians', MC: 'Iberian horse', HC: 'Carthaginian horse', EL: 'elephants', HCH: 'war chariots',
+    LBC: 'horse archers', CAM: 'camel riders',
   },
   syracusan: {
     LI: 'peltasts', LB: 'Cretan archers', LS: 'slingers', AX: 'mercenary peltasts', WA: 'Campanians', MI: 'mercenary spearmen',
     HI: 'hoplites', LC: 'light horse', MC: 'Greek horse', HC: 'heavy horse', EL: 'elephants', HCH: 'chariots',
+    LBC: 'horse archers', CAM: 'camel riders',
   },
 };
 

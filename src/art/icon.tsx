@@ -19,6 +19,9 @@ const BOX: Record<UnitType, [top: number, bottom: number, left: number, right: n
   HC: [-42.9, 0.6, -19.7, 21.4],
   EL: [-45.9, 0.9, -18.9, 25.6],
   HCH: [-43.3, 0.8, -27.8, 31],
+  // TODO(Task 16): the boxes of the stand-in figures (LC, MC) until the new miniatures are measured.
+  LBC: [-38.9, 0.4, -19.7, 20.9],
+  CAM: [-52.4, 0.6, -19.7, 20.9],
 };
 
 function UnitIconImpl({ type, look, blockColor, size }: { type: UnitType; look: ArmyLook; blockColor: Blocks; size: number }) {

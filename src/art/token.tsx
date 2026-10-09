@@ -13,15 +13,15 @@ export type Facing = 'left' | 'right';
 export type UnitClassName = 'light' | 'medium' | 'heavy';
 
 export const UNIT_CLASS: Record<UnitType, UnitClassName> = {
-  LI: 'light', LB: 'light', LS: 'light', AX: 'light', LC: 'light',
-  WA: 'medium', MI: 'medium', MC: 'medium',
+  LI: 'light', LB: 'light', LS: 'light', AX: 'light', LC: 'light', LBC: 'light',
+  WA: 'medium', MI: 'medium', MC: 'medium', CAM: 'medium',
   HI: 'heavy', HC: 'heavy', EL: 'heavy', HCH: 'heavy',
 };
 
 const NAMES: Record<UnitType, string> = {
   LI: 'Light Infantry', LB: 'Light Bow', LS: 'Light Sling', AX: 'Auxilia', WA: 'Warriors', MI: 'Medium Infantry',
   HI: 'Heavy Infantry', LC: 'Light Cavalry', MC: 'Medium Cavalry', HC: 'Heavy Cavalry', EL: 'Elephants',
-  HCH: 'Heavy Chariots',
+  HCH: 'Heavy Chariots', LBC: 'Light Bow Cavalry', CAM: 'Camels',
 };
 
 export function unitTypeName(t: UnitType): string {
@@ -30,8 +30,17 @@ export function unitTypeName(t: UnitType): string {
 
 export const CLASS_COLORS: Record<UnitClassName, string> = { light: '#2f9e44', medium: '#2a6fd8', heavy: '#d0302a' };
 
+// TODO(Task 16): stand-in miniatures until the horse-archer and camel figures are drawn.
+const FIGURE_STAND_IN: Partial<Record<UnitType, UnitType>> = { LBC: 'LC', CAM: 'MC' };
+
+/** The unit type whose miniature is drawn for `t`. */
+function figureType(t: UnitType): UnitType {
+  return FIGURE_STAND_IN[t] ?? t;
+}
+
 type Kind = 'foot' | 'horse' | 'elephant' | 'chariot';
-export function figureKind(t: UnitType): Kind {
+export function figureKind(type: UnitType): Kind {
+  const t = figureType(type);
   if (t === 'LC' || t === 'MC' || t === 'HC') return 'horse';
   if (t === 'EL') return 'elephant';
   if (t === 'HCH') return 'chariot';
@@ -76,7 +85,7 @@ function slotsFor(type: UnitType, n: number): Slot[] {
 /** One miniature of the given type in its local frame (facing right, feet at 0,0). */
 export function Miniature({ type, p, i }: { type: UnitType; p: Palette; i: number }) {
   const k = figureKind(type);
-  if (k === 'horse') return <MountedFigure type={type} p={p} i={i} />;
+  if (k === 'horse') return <MountedFigure type={figureType(type)} p={p} i={i} />;
   if (k === 'elephant') return <ElephantFigure p={p} i={i} />;
   if (k === 'chariot') return <ChariotFigure p={p} i={i} />;
   return <FootFigure kit={footKit(type, p.kit, i)} p={p} i={i} />;
@@ -184,9 +193,9 @@ export function Badge({ type, blocks, maxBlocks, sacred }: { type: UnitType; blo
         y={cyB + 3.3}
         fontFamily="Cinzel, 'Trajan Pro', Georgia, serif"
         fontWeight={700}
-        fontSize={type === 'HCH' ? 8 : 9.4}
+        fontSize={type.length > 2 ? 8 : 9.4}
         fill="#fbf1d6"
-        letterSpacing={type === 'HCH' ? -0.3 : 0.1}
+        letterSpacing={type.length > 2 ? -0.3 : 0.1}
       >
         {type}
       </text>

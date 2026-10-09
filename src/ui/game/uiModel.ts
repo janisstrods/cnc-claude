@@ -4,7 +4,7 @@ import {
   ALL_HEXES, CARD_DEFS, OFF_BOARD, UNIT_STATS, UNIT_TYPES, battleReady, battleTargets, cardKind, closeCombatDice, closeHitChance, eligiblePieces,
   eliteDef, inSection, isLeaderId, leaderAt, leaderById, leaderUnit, mirrorKind, movablePieces, other, pieceMoves, rangeOf, rangedDice, unitAt,
   unitById, type CardKind, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type SectionName, type Side, type Unit,
-  type UnitStats, type UnitType,
+  type UnitClass, type UnitStats, type UnitType,
 } from '../../engine';
 import type { Highlight } from './Board';
 
@@ -244,12 +244,13 @@ function missileText(st: UnitStats, range: number): string {
 
 /**
  * Where elephants' dice differ from what the enemy would roll: "3 vs elephants, warriors, chariots" (elephants first,
- * then units whose own dice vary: battling back, full-strength bonus).
+ * then units whose base attacking dice the elephant does not copy, or whose dice vary with strength). Camels roll 3
+ * attacking and 2 battling back; the elephant's 3 matches their attack, so they are not listed.
  */
 function elephantDiceNote(): string {
   const odd = UNIT_TYPES.filter((t) => {
     const st = UNIT_STATS[t];
-    return st.elephantTable || st.fullStrengthBonus || st.elephantDiceAgainst !== st.cc || st.elephantDiceAgainst !== st.ccBack;
+    return st.elephantTable || st.fullStrengthBonus || st.elephantDiceAgainst !== st.cc;
   }).sort((a, b) => Number(UNIT_STATS[b].elephantTable) - Number(UNIT_STATS[a].elephantTable));
   const byDice = new Map<number, string[]>();
   for (const t of odd) {
@@ -267,7 +268,22 @@ function swordIgnoreText(st: UnitStats, all: string, one: string): string | null
   return `ignores ${n === 1 ? one : n} sword hit${n === 1 ? '' : 's'}`;
 }
 
-/** Unit types whose retreats this type lengthens (elephants: cavalry and chariots). */
+/** Name of the die symbol that hits a class ("blue-triangle"). */
+const CLASS_SYMBOL: Record<UnitClass, string> = { light: 'green-circle', medium: 'blue-triangle', heavy: 'red-square' };
+
+/**
+ * The hit / flag a unit ignores when cavalry or chariots roll against it (camels: "ignores 1 blue-triangle hit when
+ * cavalry or chariots roll against it"), or null. Elephants have the same fields but keep their base-game wording.
+ */
+function vsMountedText(st: UnitStats): string | null {
+  if (st.elephantTable) return null;
+  const what: string[] = [];
+  if (st.vsMountedIgnoreHit !== null) what.push(st.vsMountedIgnoreHit === 'any' ? '1 hit' : `1 ${CLASS_SYMBOL[st.vsMountedIgnoreHit]} hit`);
+  if (st.vsMountedIgnoreFlag) what.push('1 flag');
+  return what.length ? `ignores ${what.join(' and ')} when cavalry or chariots roll against it` : null;
+}
+
+/** Unit types whose retreats this type lengthens (elephants and camels: cavalry and chariots). */
 function frightenedTypes(t: UnitType): UnitType[] {
   return UNIT_TYPES.filter((x) => UNIT_STATS[x].frightenedBy.includes(t));
 }
@@ -297,7 +313,11 @@ export function unitSummary(u: Unit): string[] {
   const range = rangeOf(u);
   if (range) lines.push(missileText(st, range));
   lines.push(EVADE_TEXT[st.evade][0]);
-  const special = [swordIgnoreText(st, 'ignores sword hits', '1'), st.elephantTable && 'rampages when it retreats'].filter(Boolean);
+  const special = [
+    swordIgnoreText(st, 'ignores sword hits', '1'),
+    vsMountedText(st),
+    st.elephantTable && 'rampages when it retreats',
+  ].filter(Boolean);
   if (special.length) lines.push(cap(special.join(' · ')));
   const elite = eliteDef(u);
   if (elite) {
@@ -321,6 +341,7 @@ export function unitCardLines(t: UnitType): [string, string] {
   const special = [
     swordIgnoreText(st, 'ignores swords', 'one'),
     st.elephantTable && 're-rolls its own swords',
+    vsMountedText(st),
     scared.length > 0 && `frightens ${scared.every((x) => UNIT_STATS[x].mounted) ? 'horses' : scared.map(unitNoun).join(', ')}`,
     st.elephantTable && 'rampages on retreat',
   ].filter(Boolean);

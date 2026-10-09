@@ -2,7 +2,7 @@
 import { CARD_DEFS, cardKind, defaultMods, mirrorKind, modsFor } from './cards';
 import {
   canFireAt, closeCombatDice, helmetsCount, ignorableFlags, rangedDice, retreatPerFlag, scoreClassOnly, scoreClose,
-  swordIgnores, type StrikeRole,
+  swordIgnores, vsMountedIgnores, type StrikeRole,
 } from './combat';
 import { areAdjacent, neighbours, rowOf } from './hex';
 import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './movement';
@@ -517,7 +517,7 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
     ctx.emit({ t: 'combat', purpose: 'evade', attacker: attacker.id, target: tu.id, dice });
     log(s, ctx, `${sideName(s, tu.side)} ${unitName(tu)} evades.`, tu.side);
     const faces = rollDice(s, dice);
-    const sc = scoreClassOnly(tu, faces, false);
+    const sc = scoreClassOnly(tu, faces, false, vsMountedIgnores(attacker, tu)); // camels vs horses [Interp] §15
     emitRoll(ctx, 'evade', faces, sc.scoring, attacker.id, tu.id);
     const l = attachedLeader(s, tu);
     const checked = { done: false };

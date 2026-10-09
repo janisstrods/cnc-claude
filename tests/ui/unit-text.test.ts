@@ -28,6 +28,14 @@ const TOOLTIP: Record<UnitType, string[]> = {
     'Ignores sword hits · rampages when it retreats',
   ],
   HCH: ['Move 2 · Retreat 2/flag', 'Close combat 4 (3 battling back) dice', 'Can evade foot & elephants', 'Ignores 1 sword hit'],
+  // Expansion #1 (§15): generated from the same table.
+  LBC: ['Move 4 · Retreat 4/flag', 'Close combat 2 dice, swords miss', 'Missiles: range 3, 2 dice (1 after moving)', 'Can evade'],
+  CAM: [
+    'Move 3 · Retreat 3/flag',
+    'Close combat 3 (2 battling back) dice',
+    'Can evade foot & heavy mounted',
+    'Ignores 1 blue-triangle hit when cavalry or chariots roll against it',
+  ],
 };
 
 /** Base-game rules-reference unit cards (stats line, notes line), captured the same way. */
@@ -47,10 +55,15 @@ const REFERENCE: Record<UnitType, [string, string]> = {
     'Cannot evade. Ignores swords, re-rolls its own swords, frightens horses, rampages on retreat.',
   ],
   HCH: ['2 blocks · move 2 · close combat 4/3 back · retreat 2', 'Evades foot and elephants. Ignores one sword hit.'],
+  LBC: ['3 blocks · move 4 · close combat 2 · range 3 · retreat 4', 'Evades any attack. Swords do not score hits.'],
+  CAM: [
+    '3 blocks · move 3 · close combat 3/2 back · retreat 3',
+    'Evades foot and heavy mounted. Ignores 1 blue-triangle hit when cavalry or chariots roll against it, frightens horses.',
+  ],
 };
 
 describe('unit tooltip (unitSummary)', () => {
-  it('base-game types keep their hand-written lines', () => {
+  it('base-game types keep their hand-written lines; Expansion #1 types are generated the same way', () => {
     for (const t of UNIT_TYPES) expect(unitSummary(unit(t)), t).toEqual(TOOLTIP[t]);
   });
 
@@ -116,8 +129,20 @@ describe('generated missile and move text for rows the base game lacks', () => {
   });
 });
 
+describe('generated hit/flag-ignore text versus cavalry and chariots', () => {
+  it('words any hit and the flag ignore; elephants keep their base-game wording', () => {
+    withStats('MC', { vsMountedIgnoreHit: 'any', vsMountedIgnoreFlag: true }, () => {
+      expect(unitSummary(unit('MC')).at(-1)).toBe('Ignores 1 hit and 1 flag when cavalry or chariots roll against it');
+    });
+    withStats('MC', { vsMountedIgnoreFlag: true }, () => {
+      expect(unitSummary(unit('MC')).at(-1)).toBe('Ignores 1 flag when cavalry or chariots roll against it');
+    });
+    expect(unitSummary(unit('EL'))).toEqual(TOOLTIP.EL);
+  });
+});
+
 describe('rules reference unit cards', () => {
-  it('base-game types keep their hand-written lines', () => {
+  it('base-game types keep their hand-written lines; Expansion #1 types are generated the same way', () => {
     const html = renderToStaticMarkup(createElement(Units));
     const lines = [...html.matchAll(/<div class="unit-card-line(?: muted)?">([\s\S]*?)<\/div>/g)].map((m) => m[1].replace(/<[^>]*>/g, ''));
     const cards = UNIT_TYPES.map((t, i) => [t, lines[2 * i], lines[2 * i + 1]]);

@@ -1,4 +1,4 @@
-// Unit type table (rules-reference §2).
+// Unit type table (rules-reference §2; Expansion #1 types §15).
 import type { Unit, UnitClass, UnitType } from './types';
 
 export type EvadeRule = 'always' | 'vsFootHeavyMounted' | 'vsFootElephant' | 'never';
@@ -11,7 +11,7 @@ export interface UnitStats {
   whiteBorder: boolean;
   foot: boolean;
   mounted: boolean;
-  /** Cavalry proper (LC, MC, HC); elephants/chariots are mounted but not cavalry. */
+  /** Cavalry proper (LC, MC, HC, LBC); elephants, chariots and camels are mounted but not cavalry. */
   cavalry: boolean;
   chariot: boolean;
   blocks: number;
@@ -38,9 +38,12 @@ export interface UnitStats {
   ignoreAllSwords: boolean;
   /** Sword hits ignored in close combat (HCH 1). */
   swordIgnore: number;
-  /** Strikers of these types make this unit retreat +1 hex per flag. */
+  /** Strikers of these types make this unit retreat +1 hex per flag (elephants and camels scare cavalry and chariots). */
   frightenedBy: UnitType[];
-  /** When a cavalry or chariot unit rolls against it in close combat: ignores 1 hit of this class (null = none) and 1 flag. */
+  /**
+   * When a cavalry or chariot unit rolls against it in close combat: ignores 1 hit of this class (null = none; EL red
+   * square, CAM blue triangle) and, with `vsMountedIgnoreFlag`, 1 flag (EL only).
+   */
   vsMountedIgnoreHit: UnitClass | 'any' | null;
   vsMountedIgnoreFlag: boolean;
   /** After an initial successful close combat: momentum advance plus 1 more hex. */
@@ -108,16 +111,21 @@ export const UNIT_STATS: Record<UnitType, UnitStats> = {
   HI: U({ type: 'HI', name: 'Heavy Infantry', cls: 'heavy', whiteBorder: false, foot: true, mounted: false, cavalry: false, chariot: false, blocks: 4, move: 1, moveBattle: 1, cc: 5, ccBack: 5, range: 0, retreat: 1, swordHits: true, evade: 'never',
     elephantDiceAgainst: 5, doubleTimeMove: 2 }),
   LC: U({ type: 'LC', name: 'Light Cavalry', cls: 'light', whiteBorder: false, foot: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 4, moveBattle: 4, cc: 2, ccBack: 2, range: 2, retreat: 4, swordHits: false, evade: 'always',
-    elephantDiceAgainst: 2, frightenedBy: ['EL'], momentumExtraHex: true }),
+    elephantDiceAgainst: 2, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true }),
   MC: U({ type: 'MC', name: 'Medium Cavalry', cls: 'medium', whiteBorder: false, foot: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 3, moveBattle: 3, cc: 3, ccBack: 3, range: 0, retreat: 3, swordHits: true, evade: 'vsFootHeavyMounted',
-    elephantDiceAgainst: 3, frightenedBy: ['EL'], momentumExtraHex: true }),
+    elephantDiceAgainst: 3, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true }),
   HC: U({ type: 'HC', name: 'Heavy Cavalry', cls: 'heavy', whiteBorder: false, foot: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 2, moveBattle: 2, cc: 4, ccBack: 4, range: 0, retreat: 2, swordHits: true, evade: 'vsFootElephant',
-    elephantDiceAgainst: 4, frightenedBy: ['EL'], momentumExtraHex: true, mountedChargeMove: true }),
+    elephantDiceAgainst: 4, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true, mountedChargeMove: true }),
   EL: U({ type: 'EL', name: 'Elephants', cls: 'heavy', whiteBorder: false, foot: false, mounted: true, cavalry: false, chariot: false, blocks: 2, move: 2, moveBattle: 2, cc: 0, ccBack: 0, range: 0, retreat: 1, swordHits: true, evade: 'never',
     elephantDiceAgainst: 3, elephantTable: true, ignoreAllSwords: true, vsMountedIgnoreHit: 'heavy', vsMountedIgnoreFlag: true,
     noRally: true, noLeaderBenefit: true, mountedChargeMove: true }),
   HCH: U({ type: 'HCH', name: 'Heavy Chariots', cls: 'heavy', whiteBorder: false, foot: false, mounted: true, cavalry: false, chariot: true, blocks: 2, move: 2, moveBattle: 2, cc: 4, ccBack: 3, range: 0, retreat: 2, swordHits: true, evade: 'vsFootElephant',
-    elephantDiceAgainst: 3, swordIgnore: 1, frightenedBy: ['EL'], noRally: true, mountedChargeMove: true }),
+    elephantDiceAgainst: 3, swordIgnore: 1, frightenedBy: ['EL', 'CAM'], noRally: true, mountedChargeMove: true }),
+  // Expansion #1 (§15). Camels: 3 dice attacking, 2 battling back and on First Strike; ignore 1 blue triangle from horses.
+  LBC: U({ type: 'LBC', name: 'Light Bow Cavalry', cls: 'light', whiteBorder: false, foot: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 4, moveBattle: 4, cc: 2, ccBack: 2, range: 3, retreat: 4, swordHits: false, evade: 'always',
+    elephantDiceAgainst: 2, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true }),
+  CAM: U({ type: 'CAM', name: 'Camels', cls: 'medium', whiteBorder: false, foot: false, mounted: true, cavalry: false, chariot: false, blocks: 3, move: 3, moveBattle: 3, cc: 3, ccBack: 2, range: 0, retreat: 3, swordHits: true, evade: 'vsFootHeavyMounted',
+    elephantDiceAgainst: 3, vsMountedIgnoreHit: 'medium', vsMountedIgnoreFlag: false }),
 };
 
 export const UNIT_TYPES = Object.keys(UNIT_STATS) as UnitType[];
@@ -143,7 +151,7 @@ export function canEvadeType(defender: UnitType, attacker: UnitType): boolean {
     case 'vsFootHeavyMounted':
       return a.foot || (a.mounted && a.cls === 'heavy');
     case 'vsFootElephant':
-      return a.foot || attacker === 'EL';
+      return a.foot || a.elephantTable;
   }
 }
 

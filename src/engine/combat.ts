@@ -111,9 +111,15 @@ function cavalryOrChariot(striker: Unit): boolean {
   return st.cavalry || st.chariot;
 }
 
-/** Hits of the target's `vsMountedIgnoreHit` class it ignores from a cavalry/chariot striker (EL: 1 red square). */
+/** Hits it ignores from a cavalry/chariot striker's close-combat roll (EL: 1 red square, CAM: 1 blue triangle). */
 export function vsMountedIgnores(striker: Unit, target: Unit): number {
   return UNIT_STATS[target.type].vsMountedIgnoreHit !== null && cavalryOrChariot(striker) ? 1 : 0;
+}
+
+/** Does a scoring die face fall under the target's `vsMountedIgnoreHit` (its class symbol, or 'any' hit)? */
+function vsMountedCovers(target: Unit, f: DieFace): boolean {
+  const h = UNIT_STATS[target.type].vsMountedIgnoreHit;
+  return h === 'any' || h === f;
 }
 
 /**
@@ -132,8 +138,7 @@ export function scoreClose(s: GameState, striker: Unit, target: Unit, faces: Die
   for (const f of faces) {
     let hit = false;
     if (f === cls) {
-      if (f === tst.vsMountedIgnoreHit && vsMountedLeft > 0) vsMountedLeft--;
-      else hit = true;
+      hit = true;
     } else if (f === 'swords') {
       if (st.swordHits) {
         if (swordsLeft > 0) swordsLeft--;
@@ -143,6 +148,10 @@ export function scoreClose(s: GameState, striker: Unit, target: Unit, faces: Die
       hit = leaderHelmets || eliteHas(striker, 'helmetHits');
     } else if (f === 'flag') {
       flags++;
+    }
+    if (hit && vsMountedLeft > 0 && vsMountedCovers(target, f)) {
+      vsMountedLeft--;
+      hit = false;
     }
     scoring.push(hit || f === 'flag');
     if (hit) hits++;
@@ -156,14 +165,22 @@ export function helmetsCount(s: GameState, striker: Unit): boolean {
   return leaderNear(s, striker.hex, striker.side);
 }
 
-/** Score ranged combat / evade rolls: only class symbols hit (flags counted for ranged). */
-export function scoreClassOnly(target: Unit, faces: DieFace[], countFlags: boolean): Scored {
+/**
+ * Score ranged combat / evade rolls: only class symbols hit (flags counted for ranged). `ignore` class hits are dropped
+ * (a camel evading a horse's attack ignores 1 blue triangle, §15).
+ */
+export function scoreClassOnly(target: Unit, faces: DieFace[], countFlags: boolean, ignore = 0): Scored {
   const cls = UNIT_STATS[target.type].cls;
   const scoring: boolean[] = [];
   let hits = 0;
   let flags = 0;
+  let ignoreLeft = ignore;
   for (const f of faces) {
-    const hit = f === cls;
+    let hit = f === cls;
+    if (hit && ignoreLeft > 0 && vsMountedCovers(target, f)) {
+      ignoreLeft--;
+      hit = false;
+    }
     const flag = countFlags && f === 'flag';
     if (hit) hits++;
     if (flag) flags++;
@@ -210,6 +227,6 @@ export function closeHitChance(s: GameState, striker: Unit, target: Unit): numbe
   let p = 1 / 6; // class symbol
   if (sst.swordHits && !tst.ignoreAllSwords) p += 1 / 6;
   if (!sst.noLeaderBenefit && (helmetsCount(s, striker) || eliteHas(striker, 'helmetHits'))) p += 1 / 6;
-  if (tst.cls === tst.vsMountedIgnoreHit && vsMountedIgnores(striker, target)) p -= 1 / 18; // rough
+  if (vsMountedCovers(target, tst.cls) && vsMountedIgnores(striker, target)) p -= 1 / 18; // rough
   return p;
 }
