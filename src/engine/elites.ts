@@ -14,12 +14,17 @@ export interface EliteDef {
   types: UnitType[];
 }
 
-/** Presets defined so far; the rest of EliteId is filled in as the expansion units arrive. */
-export const ELITES: Partial<Record<EliteId, EliteDef>> = {
+/** Every elite preset (rules-reference §17.1). */
+export const ELITES: Record<EliteId, EliteDef> = {
   carthSacredBand: { id: 'carthSacredBand', name: 'Sacred Band', abilities: ['helmetHits', 'ignoreFlag'], types: ['HI'] },
+  thebanSacredBand: { id: 'thebanSacredBand', name: 'Theban Sacred Band', abilities: ['helmetHits', 'ignoreFlag'], types: ['MI'] },
+  silverShields: { id: 'silverShields', name: 'Silver Shields', abilities: ['helmetHits', 'ignoreFlag'], types: ['HI'] },
+  companions: { id: 'companions', name: 'Companions', abilities: ['ignoreSword', 'ignoreFlag'], types: ['MC'] },
+  immortals: { id: 'immortals', name: 'Immortals', abilities: ['ranged'], range: 3, types: ['MI'] },
+  bowAuxilia: { id: 'bowAuxilia', name: 'Bow-armed auxilia', abilities: ['ranged'], range: 3, types: ['AX'] },
 };
 
-/** The preset of a unit's elite id (undefined for ordinary units and for ids without a preset). */
+/** The preset of a unit's elite id (undefined for ordinary units). */
 export function eliteDef(u: Unit): EliteDef | undefined {
   return u.elite ? ELITES[u.elite] : undefined;
 }

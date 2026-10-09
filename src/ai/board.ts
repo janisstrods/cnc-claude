@@ -2,6 +2,7 @@
 import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
 import { hillGroups, isCamp, isHill, isImpassable, terrainAt, terrainBlocksLOS } from '../engine/terrain';
 import { canShoot, eliteHas, rangeOf } from '../engine/elites';
+import { leaderHas } from '../engine/query';
 import { UNIT_STATS, forbidsTerrain } from '../engine/units';
 import { COLS, ROWS, type GameState, type HexId, type Leader, type Side, type Unit } from '../engine/types';
 
@@ -81,14 +82,17 @@ export function ignorableOcc(s: GameState, occ: Occ, t: Unit, kind: 'close' | 'r
   return n;
 }
 
-/** Leader attached to or adjacent to the striker (helmets hit in close combat), for units that benefit from leaders. */
+/**
+ * Leader attached to or adjacent to the striker (helmets hit in close combat), for units that benefit from leaders.
+ * Mirror of engine helmetsCount: a satrap (`attachedOnly`) counts only for his own unit.
+ */
 export function helmetsOcc(occ: Occ, u: Unit): boolean {
   if (UNIT_STATS[u.type].noLeaderBenefit) return false;
   const l = occ.leader[u.hex];
   if (l && l.side === u.side) return true;
   for (const h of neighbours(u.hex)) {
     const x = occ.leader[h];
-    if (x && x.side === u.side) return true;
+    if (x && x.side === u.side && !leaderHas(x, 'attachedOnly')) return true;
   }
   return false;
 }

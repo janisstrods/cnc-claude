@@ -165,7 +165,7 @@ describe('elite units', () => {
     expect(ELITES.carthSacredBand).toMatchObject({ id: 'carthSacredBand', name: 'Sacred Band', abilities: ['helmetHits', 'ignoreFlag'], types: ['HI'] });
   });
 
-  it('rangeOf / canShoot reproduce the base-game range of every unit type (no elite is ranged yet)', () => {
+  it('rangeOf / canShoot reproduce the base-game range of every unit type; ranged elites add theirs', () => {
     expect(rangeOf(unit('LI'))).toBe(2);
     for (const t of UNIT_TYPES) {
       expect(rangeOf(unit(t)), t).toBe(UNIT_STATS[t].range);
@@ -173,6 +173,9 @@ describe('elite units', () => {
     }
     expect(rangeOf({ ...unit('HI'), elite: 'carthSacredBand' })).toBe(0);
     expect(canShoot({ ...unit('HI'), elite: 'carthSacredBand' })).toBe(false);
+    expect(rangeOf({ ...unit('MI'), elite: 'immortals' })).toBe(3);
+    expect(rangeOf({ ...unit('AX'), elite: 'bowAuxilia' })).toBe(3);
+    expect(canShoot({ ...unit('MI'), elite: 'immortals' })).toBe(true);
   });
 });
 

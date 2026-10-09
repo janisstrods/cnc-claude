@@ -1,7 +1,7 @@
 // Card knowledge: how valuable it is to keep a card in hand for later, and a quick estimate of what a card can do now.
 import { ambushAvailable } from '../engine/flow';
 import { inSection } from '../engine/hex';
-import { leadersOf, unitsOf } from '../engine/query';
+import { leaderHas, leadersOf, unitsOf } from '../engine/query';
 import { canShoot } from '../engine/elites';
 import { UNIT_STATS } from '../engine/units';
 import type { CardKind, GameState, SectionName, Side, Unit } from '../engine/types';
@@ -49,10 +49,16 @@ export function cardRetention(s: GameState, side: Side, kind: CardKind, W: Weigh
       case 'inspiredC':
       case 'inspiredR': {
         const secn: SectionName = kind === 'inspiredL' ? 'left' : kind === 'inspiredC' ? 'center' : 'right';
-        v = leadersOf(s, side).some((l) => inSection(l.hex, side, secn)) ? 0.22 : 0.05;
+        const there = leadersOf(s, side).filter((l) => inSection(l.hex, side, secn));
+        // a satrap's Leadership orders only himself and his unit (§17.2)
+        v = there.some((l) => !leaderHas(l, 'attachedOnly')) ? 0.22 : there.length ? 0.08 : 0.05;
         break;
       }
-      case 'leadershipAny': v = leadersOf(s, side).length ? 0.15 : 0.03; break;
+      case 'leadershipAny': {
+        const ls = leadersOf(s, side);
+        v = ls.some((l) => !leaderHas(l, 'attachedOnly')) ? 0.15 : ls.length ? 0.06 : 0.03;
+        break;
+      }
       case 'clash': v = 0.45; break;
       case 'counterAttack': v = 0.1; break;
       case 'darken': v = 0.18 * Math.min(1, countOf(canShoot) / 3); break;
@@ -98,7 +104,8 @@ export function quickCardScore(s: GameState, side: Side, kind: CardKind, ben: Ma
       let best = topN(units.filter((u) => !secn || inSection(u.hex, side, secn)), 1);
       for (const l of leadersOf(s, side)) {
         if (secn && !inSection(l.hex, side, secn)) continue;
-        const near = units.filter((u) => hexDist(u.hex, l.hex) <= 2);
+        // a satrap orders only his own unit (§17.2)
+        const near = units.filter((u) => (leaderHas(l, 'attachedOnly') ? u.hex === l.hex : hexDist(u.hex, l.hex) <= 2));
         best = Math.max(best, topN(near, kind === 'leadershipAny' ? 4 : 5));
       }
       return best;

@@ -1,6 +1,6 @@
 // Pure combat calculations: dice counts, hit scoring, flag ignores (rules-reference §3, §4, §10).
 import { distance, hasLineOfSight, neighbours } from './hex';
-import { attachedLeader, enemyUnitAdjacent, leaderAt, leaderNear, supportCount, unitAt } from './query';
+import { attachedLeader, enemyUnitAdjacent, leaderAt, leaderHas, leaderNear, supportCount, unitAt } from './query';
 import { ccCapOfHex, hillGroups, isCamp, isHill, rangedFromCap, rangedTargetCap, terrainBlocksLOS } from './terrain';
 import { eliteHas, rangeOf } from './elites';
 import { UNIT_STATS, elephantDiceVs, frightens } from './units';
@@ -24,7 +24,20 @@ function capForHills(s: GameState, from: HexId, to: HexId, striker: Unit): numbe
   return 99;
 }
 
-/** Number of dice `striker` rolls in close combat against `target` (a unit or a lone leader). */
+/**
+ * Extra close-combat dice from the striker's attached leader: Alexander's +1 (`ccBonus`, §17.2). Checked when the dice
+ * are counted, so a leader killed earlier in the combat gives nothing; never for elephants (they gain nothing from leaders).
+ */
+export function leaderDiceBonus(s: GameState, striker: Unit): number {
+  if (UNIT_STATS[striker.type].noLeaderBenefit) return 0;
+  const l = attachedLeader(s, striker);
+  return l && leaderHas(l, 'ccBonus') ? 1 : 0;
+}
+
+/**
+ * Number of dice `striker` rolls in close combat against `target` (a unit or a lone leader): base dice, capped by
+ * terrain, -1 on a camp, then card bonuses and Alexander's +1 (§4, §17.2).
+ */
 export function closeCombatDice(s: GameState, striker: Unit, target: Unit | Leader, opts: CloseDiceOpts): number {
   const st = UNIT_STATS[striker.type];
   const targetIsUnit = 'type' in target;
@@ -40,6 +53,7 @@ export function closeCombatDice(s: GameState, striker: Unit, target: Unit | Lead
     if (opts.role === 'attack') dice += m.ccBonus;
     else if (opts.role === 'bonus' && m.ccBonusOnBonusCombat) dice += m.ccBonus;
   }
+  dice += leaderDiceBonus(s, striker);
   return Math.max(0, dice);
 }
 
@@ -96,12 +110,13 @@ export interface Scored {
   flags: number;
 }
 
-/** How many sword hits the target ignores in close combat (before elephant re-rolls). */
+/** How many sword hits the target ignores in close combat (an elephant does not re-roll an ignored sword). */
 export function swordIgnores(s: GameState, target: Unit): number {
   const t = UNIT_STATS[target.type];
   if (t.ignoreAllSwords) return 99;
   let n = t.swordIgnore;
   if (isCamp(s, target.hex) && t.foot) n += 1;
+  if (eliteHas(target, 'ignoreSword')) n += 1;
   return n;
 }
 
@@ -159,7 +174,10 @@ export function scoreClose(s: GameState, striker: Unit, target: Unit, faces: Die
   return { faces, scoring, hits, flags };
 }
 
-/** Whether helmets score for this striker (leader attached/adjacent, and the striker benefits from leaders). */
+/**
+ * Whether helmets score for this striker (leader attached/adjacent, and the striker benefits from leaders). A satrap
+ * (`attachedOnly`) counts only for his own unit.
+ */
 export function helmetsCount(s: GameState, striker: Unit): boolean {
   if (UNIT_STATS[striker.type].noLeaderBenefit) return false;
   return leaderNear(s, striker.hex, striker.side);

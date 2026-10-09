@@ -1,7 +1,7 @@
 // Board queries shared by rules, AI and UI.
 import { areAdjacent, neighbours } from './hex';
 import { UNIT_STATS } from './units';
-import type { GameState, HexId, Leader, Side, Unit, UnitClass } from './types';
+import type { GameState, HexId, Leader, LeaderTrait, Side, Unit, UnitClass } from './types';
 
 export function other(side: Side): Side {
   return side === 'top' ? 'bottom' : 'top';
@@ -53,6 +53,14 @@ export function leaderUnit(s: GameState, l: Leader): Unit | undefined {
   return undefined;
 }
 
+/** Every leader trait (§17.2), for validating scenario data. */
+export const LEADER_TRAITS: readonly LeaderTrait[] = ['ccBonus', 'attachedOnly'];
+
+/** Does the leader have trait `t`? Ordinary leaders have none. */
+export function leaderHas(l: Leader, t: LeaderTrait): boolean {
+  return l.traits?.includes(t) ?? false;
+}
+
 export function isLoneLeader(s: GameState, l: Leader): boolean {
   return l.hex >= 0 && !leaderUnit(s, l);
 }
@@ -93,11 +101,14 @@ export function supportCount(s: GameState, u: Unit): number {
   return n;
 }
 
-/** A friendly leader attached to or adjacent to hex h (for leader helmet hits). */
+/**
+ * A friendly leader attached to or adjacent to hex h (for leader helmet hits). An `attachedOnly` leader (a satrap, §17.2)
+ * counts only for the unit he is attached to, i.e. only on his own hex.
+ */
 export function leaderNear(s: GameState, h: HexId, side: Side): boolean {
   for (const l of s.leaders) {
     if (l.side !== side || l.hex < 0) continue;
-    if (l.hex === h || areAdjacent(l.hex, h)) return true;
+    if (l.hex === h || (areAdjacent(l.hex, h) && !leaderHas(l, 'attachedOnly'))) return true;
   }
   return false;
 }

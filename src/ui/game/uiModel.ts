@@ -4,7 +4,7 @@ import {
   ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, battleReady, battleTargets, cardKind, closeCombatDice,
   closeHitChance, eligiblePieces, eliteDef, inSection, isLeaderId, leaderAt, leaderById, leaderUnit, mirrorKind, movablePieces, other,
   pieceMoves, rangeOf, rangedDice, unitAt, unitById, type CardKind, type Decision, type EliteAbility, type EvadeRule, type GameState,
-  type HexId, type SectionName, type Side, type Unit, type UnitClass, type UnitStats, type UnitType,
+  type HexId, type Leader, type LeaderTrait, type SectionName, type Side, type Unit, type UnitClass, type UnitStats, type UnitType,
 } from '../../engine';
 import type { Highlight } from './Board';
 
@@ -346,6 +346,16 @@ export function unitSummary(u: Unit): string[] {
     if (perks.length) lines.push(`${elite.name}: ${perks.join(', ')}`);
   }
   return lines;
+}
+
+const LEADER_TRAIT_TEXT: Record<LeaderTrait, string> = {
+  ccBonus: '+1 close combat die to his unit',
+  attachedOnly: 'Commands only his own unit',
+};
+
+/** Tooltip lines for a leader's traits (none for an ordinary leader). */
+export function leaderTraitLines(l: Leader): string[] {
+  return (l.traits ?? []).map((t) => LEADER_TRAIT_TEXT[t]);
 }
 
 /** Rules-reference card of a unit type: [stats line, notes line]. */

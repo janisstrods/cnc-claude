@@ -1,9 +1,9 @@
 // Static evaluation of a position from one side's point of view (1.0 ~ one banner).
 import { defaultMods } from '../engine/cards';
-import { closeCombatDice, rangedDice, swordIgnores } from '../engine/combat';
+import { closeCombatDice, leaderDiceBonus, rangedDice, swordIgnores } from '../engine/combat';
 import { unitMoves } from '../engine/movement';
 import { halfCol, neighbours, rowOf } from '../engine/hex';
-import { other } from '../engine/query';
+import { leaderHas, other } from '../engine/query';
 import { ccCapOfHex, isHill, isImpassable } from '../engine/terrain';
 import { eliteHas, rangeOf } from '../engine/elites';
 import { UNIT_STATS, canEvadeType, elephantDiceVs } from '../engine/units';
@@ -14,7 +14,7 @@ import {
 } from './board';
 import { binom, pAnyHelmet } from './dice';
 import {
-  LEADER_VALUE, WIN_SCORE, bannerScore, blockVal, leaderVal, nextBanner, unitWeight, type Weights,
+  WIN_SCORE, bannerScore, blockVal, leaderVal, leaderWorth, nextBanner, unitWeight, type Weights,
 } from './values';
 
 const SIXTH = 1 / 6;
@@ -37,13 +37,13 @@ function hitP(s: GameState, occ: Occ, e: Unit, u: Unit): number {
   return p;
 }
 
-/** Close-combat dice an enemy would roll after moving next to u (no card bonus, cap from u's hex). */
+/** Close-combat dice an enemy would roll after moving next to u (no card bonus, cap from u's hex, Alexander's +1). */
 function reachDice(s: GameState, e: Unit, u: Unit): number {
   const S = UNIT_STATS[e.type];
   let n = S.elephantTable ? elephantDiceVs(u.type) : S.cc + (S.fullStrengthBonus && e.blocks === e.maxBlocks ? 1 : 0);
   n = Math.min(n, ccCapOfHex(s, u.hex));
   if (isHill(s, u.hex)) n = Math.min(n, 2);
-  return n;
+  return n + leaderDiceBonus(s, e);
 }
 
 const DEFAULT_MODS = defaultMods();
@@ -190,7 +190,7 @@ function threatsAgainst(
         n = rangedDice(s, e, l.hex, 0, false);
         base = pAdj * 0.85;
       } else if (d - 1 <= reach && canReach(l.hex)) {
-        n = Math.min(UNIT_STATS[e.type].elephantTable ? 1 : UNIT_STATS[e.type].cc, ccCapOfHex(s, l.hex));
+        n = Math.min(UNIT_STATS[e.type].elephantTable ? 1 : UNIT_STATS[e.type].cc, ccCapOfHex(s, l.hex)) + leaderDiceBonus(s, e);
         base = pReach;
       } else continue;
       if (n <= 0) continue;
@@ -336,6 +336,7 @@ function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side
       v -= Math.min(0.6, (closest <= 3 ? 0.2 : 0.1) + 0.04 * threat);
     }
     if (friendlyUnitsAdjacent(occ, l.hex, side) === 0) v -= W.lonelyLeader;
+    if (leaderHas(l, 'attachedOnly')) continue; // a lone satrap's helmets help nobody
     let aura = 0;
     for (const h of neighbours(l.hex)) {
       const x = occ.unit[h];
@@ -423,8 +424,8 @@ export function evaluate(s: GameState, me: Side, next: Side, W: Weights, breakdo
   for (const u of mine) material += (unitWeight(u) * u.blocks) / u.maxBlocks;
   for (const u of theirs) material -= (unitWeight(u) * u.blocks) / u.maxBlocks;
   for (const u of s.special.reserveUnits) material += (u.side === me ? 0.75 : -0.75) * unitWeight(u);
-  for (const l of s.leaders) if (l.hex >= 0) material += (l.side === me ? 1 : -1) * LEADER_VALUE;
-  for (const l of s.special.reserveLeaders) material += (l.side === me ? 0.75 : -0.75) * LEADER_VALUE;
+  for (const l of s.leaders) if (l.hex >= 0) material += (l.side === me ? 1 : -1) * leaderWorth(l);
+  for (const l of s.special.reserveLeaders) material += (l.side === me ? 0.75 : -0.75) * leaderWorth(l);
 
   const riskMine = sideRisk(s, occ, mine, theirs, me, W);
   const riskTheirs = sideRisk(s, occ, theirs, mine, opp, W);

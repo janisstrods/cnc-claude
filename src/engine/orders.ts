@@ -1,10 +1,12 @@
 // Which units/leaders a card may order (rules-reference §6, §12).
 import { sectionOrders } from './cards';
 import { areAdjacent, inSection, sectionsOf } from './hex';
-import { attachedLeader, isLeaderId, isLoneLeader, leaderById, leaderUnit, leadersOf, unitById, unitsOf, enemyUnitAdjacent } from './query';
+import {
+  attachedLeader, isLeaderId, isLoneLeader, leaderById, leaderHas, leaderUnit, leadersOf, unitById, unitsOf, enemyUnitAdjacent,
+} from './query';
 import { canShoot } from './elites';
 import { UNIT_STATS } from './units';
-import type { CardKind, DieFace, GameState, SectionName, Side, Unit, UnitClass } from './types';
+import type { CardKind, DieFace, GameState, Leader, SectionName, Side, Unit, UnitClass } from './types';
 
 export type OrderMode =
   | { mode: 'section'; counts: Partial<Record<SectionName, number>> }
@@ -52,6 +54,14 @@ export function orderMode(s: GameState, side: Side, kind: CardKind | null): Orde
   }
 }
 
+/**
+ * Chain length a Leadership card gives when `l` is the commanding leader: the card's chain, or none for a satrap
+ * (`attachedOnly`, §17.2), who orders only himself and his own unit.
+ */
+export function leadershipChain(l: Leader, chain: number): number {
+  return leaderHas(l, 'attachedOnly') ? 0 : chain;
+}
+
 /** Pieces ordered automatically by Clash of Shields / Darken the Sky. */
 export function autoOrders(s: GameState, side: Side, kind: CardKind): string[] {
   const units = unitsOf(s, side);
@@ -80,6 +90,11 @@ export function eligiblePieces(s: GameState, side: Side, kind: CardKind | null):
       for (const l of leaders) {
         if (sec && !inSection(l.hex, side, sec)) continue;
         out.add(l.id);
+        if (leadershipChain(l, m.chain) === 0) {
+          const own = leaderUnit(s, l);
+          if (own) out.add(own.id);
+          continue;
+        }
         // anything within chain distance could be linked
         for (const u of units) out.add(u.id);
         for (const l2 of leaders) if (isLoneLeader(s, l2)) out.add(l2.id);
@@ -112,7 +127,7 @@ export function orderLimit(s: GameState, side: Side, kind: CardKind | null, piec
         .filter(isLeaderId)
         .map((id) => leaderById(s, id))
         .find((l) => l && (!m.section || inSection(l.hex, side, m.section)));
-      return cmd ? 1 + (leaderUnit(s, cmd) ? 1 : 0) + m.chain : null;
+      return cmd ? 1 + (leaderUnit(s, cmd) ? 1 : 0) + leadershipChain(cmd, m.chain) : null;
     }
     default:
       return null;
@@ -207,9 +222,13 @@ export function validateOrders(s: GameState, side: Side, kind: CardKind | null, 
           otherHexes.add(l.hex);
         }
         if (!ok) continue;
-        if (otherHexes.size > m.chain) continue;
+        if (otherHexes.size > leadershipChain(cmd, m.chain)) continue;
         if (!connected([...otherHexes], cmd.hex)) continue;
         return null;
+      }
+      const only = leaders.length === 1 ? leaders[0] : null;
+      if (only && leadershipChain(only, m.chain) === 0 && (!m.section || inSection(only.hex, side, m.section))) {
+        return `${only.name || 'This leader'} commands only himself and his own unit.`;
       }
       return m.section
         ? `Choose a leader in the ${m.section} section and up to ${m.chain} linked units.`

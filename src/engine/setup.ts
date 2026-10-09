@@ -2,11 +2,13 @@
 import { CARD_LIST, defaultMods } from './cards';
 import { hexId, onBoard } from './hex';
 import { shuffle } from './rng';
-import { ELITES } from './elites';
+import { ELITES, type EliteDef } from './elites';
+import { LEADER_TRAITS } from './query';
 import { UNIT_STATS } from './units';
 import {
   COLS, OFF_BOARD, ROWS,
-  type ArmyLook, type Blocks, type EliteId, type GameState, type Leader, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
+  type ArmyLook, type Blocks, type EliteId, type GameState, type Leader, type LeaderTrait, type Side, type SpecialRuleId, type TerrainType,
+  type TurnState, type Unit, type UnitType,
 } from './types';
 
 export interface SideSetup {
@@ -26,9 +28,10 @@ export interface ScenarioSetup {
   banners: number;
   terrain: { r: number; c: number; t: TerrainType; ford?: boolean }[];
   units: { side: Side; type: UnitType; r: number; c: number; elite?: EliteId }[];
-  leaders: { side: Side; name: string; r: number; c: number }[];
+  /** `traits`: Expansion #1 leader traits (§17.2), e.g. Alexander's `ccBonus`. */
+  leaders: { side: Side; name: string; r: number; c: number; traits?: LeaderTrait[] }[];
   reserves: { side: Side; type: UnitType }[];
-  reserveLeaders: { side: Side; name: string }[];
+  reserveLeaders: { side: Side; name: string; traits?: LeaderTrait[] }[];
   rules: SpecialRuleId[];
   /** Castulo: name of the leader whose loss ends the game. */
   sacredLeader?: { side: Side; name: string };
@@ -41,6 +44,13 @@ export function newTurn(side: Side, number: number): TurnState {
     number, side, card: null, effective: null, mirrored: false, phase: 'card', ordered: {},
     mods: defaultMods(), firstStrikeBy: null, reshuffleAfter: false, ambushSection: null,
   };
+}
+
+/** Give a scenario leader its traits (validated); a leader without traits gets no `traits` field. */
+function withTraits(l: Leader, traits: LeaderTrait[] | undefined): Leader {
+  if (!traits?.length) return l;
+  for (const t of traits) if (!LEADER_TRAITS.includes(t)) throw new Error(`unknown leader trait ${t} (${l.name})`);
+  return { ...l, traits: [...traits] };
 }
 
 export function createGame(setup: ScenarioSetup, seed: number): GameState {
@@ -63,7 +73,7 @@ export function createGame(setup: ScenarioSetup, seed: number): GameState {
     const st = UNIT_STATS[u.type];
     const unit: Unit = { id: `u${nextId++}`, side: u.side, type: u.type, hex: hexId(u.r, u.c), blocks: st.blocks, maxBlocks: st.blocks };
     if (u.elite) {
-      const def = ELITES[u.elite];
+      const def: EliteDef | undefined = ELITES[u.elite]; // guards untyped scenario data
       if (!def) throw new Error(`unknown elite preset ${u.elite}`);
       if (!def.types.includes(u.type)) {
         throw new Error(`elite ${def.name} (${def.id}) cannot be a ${u.type} unit (allowed: ${def.types.join(', ')})`);
@@ -72,12 +82,12 @@ export function createGame(setup: ScenarioSetup, seed: number): GameState {
     }
     return unit;
   });
-  const leaders: Leader[] = setup.leaders.map((l) => ({ id: `L${nextId++}`, side: l.side, name: l.name, hex: hexId(l.r, l.c) }));
+  const leaders: Leader[] = setup.leaders.map((l) => withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: hexId(l.r, l.c) }, l.traits));
   const reserveUnits: Unit[] = setup.reserves.map((u) => {
     const st = UNIT_STATS[u.type];
     return { id: `u${nextId++}`, side: u.side, type: u.type, hex: OFF_BOARD, blocks: st.blocks, maxBlocks: st.blocks };
   });
-  const reserveLeaders: Leader[] = setup.reserveLeaders.map((l) => ({ id: `L${nextId++}`, side: l.side, name: l.name, hex: OFF_BOARD }));
+  const reserveLeaders: Leader[] = setup.reserveLeaders.map((l) => withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: OFF_BOARD }, l.traits));
 
   const rngHolder = { rng: seed >>> 0, rngCalls: 0 };
   const deck = shuffle(rngHolder, CARD_LIST.map((_, i) => i));

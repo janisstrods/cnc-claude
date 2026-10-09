@@ -3,7 +3,7 @@ import { CARD_DEFS, modsFor } from '../engine/cards';
 import { ambushAvailable, ambushSections } from '../engine/flow';
 import { areAdjacent, inSection } from '../engine/hex';
 import { unitMoves } from '../engine/movement';
-import { orderMode, validateOrders } from '../engine/orders';
+import { leadershipChain, orderMode, validateOrders } from '../engine/orders';
 import { isLoneLeader, leaderUnit, leadersOf, unitsOf } from '../engine/query';
 import { cloneState } from '../engine/setup';
 import { UNIT_STATS } from '../engine/units';
@@ -217,7 +217,8 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
       const per: OrderCandidate[] = [];
       for (const l of leaders) {
         if (sec && !inSection(l.hex, side, sec)) continue;
-        per.push(...leadershipChains(s, side, kind, l, mode.chain, b, units));
+        // a satrap's chain is empty (§17.2): he orders only himself and his unit
+        per.push(...leadershipChains(s, side, kind, l, leadershipChain(l, mode.chain), b, units));
       }
       per.sort((x, y) => y.benefit - x.benefit);
       per.slice(0, 2).forEach((c, i) => {

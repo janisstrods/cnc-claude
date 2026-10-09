@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ELITES, UNIT_STATS, UNIT_TYPES, type Unit, type UnitStats, type UnitType } from '../../src/engine';
-import { unitCardLines, unitSummary } from '../../src/ui/game/uiModel';
+import { ELITES, UNIT_STATS, UNIT_TYPES, type Leader, type LeaderTrait, type Unit, type UnitStats, type UnitType } from '../../src/engine';
+import { leaderTraitLines, unitCardLines, unitSummary } from '../../src/ui/game/uiModel';
 import { Units } from '../../src/ui/screens/RulesReference';
 
 const unit = (t: UnitType, extra: Partial<Unit> = {}): Unit =>
@@ -99,9 +99,37 @@ describe('unit tooltip (unitSummary)', () => {
         'Test Elite: ignores 1 sword hit, missile fire (range 3)',
       ]);
     } finally {
-      if (saved) ELITES.bowAuxilia = saved;
-      else delete ELITES.bowAuxilia;
+      ELITES.bowAuxilia = saved;
     }
+  });
+
+  it('names every Expansion #1 elite preset and its abilities', () => {
+    expect(unitSummary(unit('MI', { elite: 'thebanSacredBand' })).at(-1)).toBe('Theban Sacred Band: helmets always hit, ignores 1 flag');
+    expect(unitSummary(unit('HI', { elite: 'silverShields' })).at(-1)).toBe('Silver Shields: helmets always hit, ignores 1 flag');
+    expect(unitSummary(unit('MC', { elite: 'companions' })).at(-1)).toBe('Companions: ignores 1 sword hit, ignores 1 flag');
+    expect(unitSummary(unit('MI', { elite: 'immortals' }))).toEqual([
+      'Move 1 · Retreat 1/flag',
+      'Close combat 4 dice',
+      'Missiles: range 3, 2 dice (1 after moving)',
+      'Cannot evade',
+      'Immortals: missile fire (range 3)',
+    ]);
+    expect(unitSummary(unit('AX', { elite: 'bowAuxilia' }))).toEqual([
+      'Move 1, or 2 without battle · Retreat 1/flag',
+      'Close combat 3 dice',
+      'Missiles: range 3, 2 dice (1 after moving)',
+      'Cannot evade',
+      'Bow-armed auxilia: missile fire (range 3)',
+    ]);
+  });
+});
+
+describe('leader tooltip (leaderTraitLines)', () => {
+  const leader = (traits?: LeaderTrait[]): Leader => ({ id: 'L1', side: 'top', name: 'X', hex: 0, ...(traits ? { traits } : {}) });
+  it('lists the leader traits; an ordinary leader has none', () => {
+    expect(leaderTraitLines(leader())).toEqual([]);
+    expect(leaderTraitLines(leader(['ccBonus']))).toEqual(['+1 close combat die to his unit']);
+    expect(leaderTraitLines(leader(['attachedOnly']))).toEqual(['Commands only his own unit']);
   });
 });
 

@@ -10,7 +10,7 @@ import { BannerTrack, Button, CardBack, CardView, DiceTray, DieView, Modal, Pane
 import { terrainName } from '../terrain';
 import { Board } from './Board';
 import type { GameController, LogLine } from './controller';
-import { attackDice, boardUi, effectiveKind, expectedHits, pieceHexOf, unitSummary, type UiSel } from './uiModel';
+import { attackDice, boardUi, effectiveKind, expectedHits, leaderTraitLines, pieceHexOf, unitSummary, type UiSel } from './uiModel';
 import { RulesReference } from '../screens/RulesReference';
 import { isMuted, setMuted } from '../sound';
 import { opponentPersonality } from './makeOpponent';
@@ -555,6 +555,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
           </>
         )}
         {hoverInfo?.l && <div className="tip-line tip-leader">Leader: {hoverInfo.l.name || 'unnamed'}{leaderUnit(s, hoverInfo.l) ? ' (attached)' : ' (alone)'}</div>}
+        {hoverInfo?.l && leaderTraitLines(hoverInfo.l).map((x) => <div key={x} className="tip-line tip-leader">{x}</div>)}
         {hoverInfo?.terr && <div className="tip-line tip-terrain">Terrain: {hoverInfo.terr}</div>}
       </HoverTip>
 

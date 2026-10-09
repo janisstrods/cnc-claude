@@ -1,4 +1,5 @@
 // Valuation constants and personality-derived weights. One banner ~ 1.0 point.
+import { leaderHas } from '../engine/query';
 import type { EliteId, GameState, Leader, Side, Unit, UnitType } from '../engine/types';
 import type { Personality } from './personality';
 
@@ -12,18 +13,25 @@ export const TYPE_WEIGHT: Record<UnitType, number> = {
   LBC: 0.6, CAM: 0.72, HWM: 0.55,
 };
 
-/** Multiplier on the weight of a unit carrying this elite preset (missing = 1). */
-export const ELITE_WEIGHT: Partial<Record<EliteId, number>> = {
+/** Multiplier on the weight of a unit carrying this elite preset. */
+export const ELITE_WEIGHT: Record<EliteId, number> = {
   carthSacredBand: 1.25,
+  thebanSacredBand: 1.25,
+  silverShields: 1.25,
+  companions: 1.2,
+  immortals: 1.15,
+  bowAuxilia: 1.1,
 };
 
 export const LEADER_VALUE = 0.4;
+/** Alexander (`ccBonus`, +1 close-combat die to his unit) is worth more than an ordinary leader. */
+const CC_BONUS_LEADER = 1.5;
 export const WIN_SCORE = 100;
 /** Cap on the value of the opponent's winning banner used in risk estimates (they are approximate). */
 const WINNING_BANNER = 6;
 
 export function unitWeight(u: Unit): number {
-  return TYPE_WEIGHT[u.type] * (u.elite ? ELITE_WEIGHT[u.elite] ?? 1 : 1);
+  return TYPE_WEIGHT[u.type] * (u.elite ? ELITE_WEIGHT[u.elite] : 1);
 }
 
 export function blockVal(u: Unit): number {
@@ -61,9 +69,14 @@ export function setViewer(side: Side | null): void {
   viewer = side;
 }
 
+/** Material worth of a leader on the board (traits included, scenario objectives not). */
+export function leaderWorth(l: Leader): number {
+  return leaderHas(l, 'ccBonus') ? CC_BONUS_LEADER * LEADER_VALUE : LEADER_VALUE;
+}
+
 export function leaderVal(s: GameState, l: Leader): number {
   if (s.special.sacredLeaderId === l.id) return viewer === null || viewer === l.side ? SACRED_LEADER_VALUE : WINNING_BANNER;
-  return LEADER_VALUE;
+  return leaderWorth(l);
 }
 
 export interface Weights {

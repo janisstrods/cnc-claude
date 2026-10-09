@@ -43,11 +43,20 @@ export interface Unit {
   elite?: EliteId;
 }
 
+/**
+ * Leader traits (Expansion #1, rules-reference §17.2). `ccBonus` (Alexander): the unit he is attached to rolls +1 close
+ * combat die. `attachedOnly` (the Persian satraps): his helmets count and a Leadership card played on him orders only for
+ * his own unit.
+ */
+export type LeaderTrait = 'ccBonus' | 'attachedOnly';
+
 export interface Leader {
   id: string; // "L<n>"
   side: Side;
   name: string;
   hex: HexId;
+  /** Special abilities (see LeaderTrait); absent for ordinary leaders. */
+  traits?: LeaderTrait[];
 }
 
 export interface PlayerState {

@@ -55,7 +55,7 @@ const EXTRA: Record<string, Extra> = {
     hint: 'River crossing, elite Sacred Band.',
     patch: (s) => {
       // The Sacred Band is the Carthaginian heavy infantry at r3 c2; the ELITES type list guards against another unit type there.
-      const sb = s.units.find((u) => u.side === 'top' && u.r === 3 && u.c === 2 && !!ELITES.carthSacredBand?.types.includes(u.type));
+      const sb = s.units.find((u) => u.side === 'top' && u.r === 3 && u.c === 2 && ELITES.carthSacredBand.types.includes(u.type));
       if (sb) sb.elite = 'carthSacredBand';
     },
   },
