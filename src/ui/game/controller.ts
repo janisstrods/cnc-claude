@@ -284,8 +284,10 @@ export class GameController {
     if (!this.driver.canUndo() || this.busy) return;
     this.driver = this.driver.undo();
     this.driver.drainEvents();
-    this.set({ display: cloneState(this.driver.state), pending: this.driver.pending, canUndo: this.driver.canUndo(), error: null, walking: {} });
+    const p = this.driver.pending;
+    this.set({ display: cloneState(this.driver.state), pending: p && p.side === this.config.humanSide ? p : null, canUndo: p?.kind === 'move' && this.driver.canUndo(), error: null, walking: {} });
     this.save();
+    if (p && p.side !== this.config.humanSide) this.run();
   }
 
   // ---------------------------------------------------------------- main loop
@@ -317,7 +319,7 @@ export class GameController {
           const combat = d.kind === 'defend'
             ? { from: this.hexOf(d.attacker, st), to: this.hexOf(d.target, st) }
             : d.kind === 'battle' || d.kind === 'move' || d.kind === 'playCard' || d.kind === 'orders' ? null : this.view.combat;
-          this.set({ pending: d, display: cloneState(st), canUndo: this.driver.canUndo(), aiThinking: false, combat });
+          this.set({ pending: d, display: cloneState(st), canUndo: d.kind === 'move' && this.driver.canUndo(), aiThinking: false, combat });
           return;
         }
         // AI decision
@@ -328,7 +330,22 @@ export class GameController {
         try {
           res = await Promise.race([
             this.opponent.decide(cloneState(st), d),
-            new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new Error('AI timeout')), 30000); }),
+            new Promise<never>((_, rej) => {
+              // Last-resort guard (the AI client has its own in-thread fallback). If the page was frozen
+              // (e.g. a backgrounded tab) the timer fires late: give the AI a little more time instead.
+              const limit = 90000;
+              let due = Date.now() + limit;
+              const arm = (ms: number) => {
+                timer = setTimeout(() => {
+                  const late = Date.now() - due;
+                  if (late > 2000) {
+                    due = Date.now() + 5000;
+                    arm(5000);
+                  } else rej(new Error('AI timeout'));
+                }, ms);
+              };
+              arm(limit);
+            }),
           ]);
         } catch (e) {
           console.error('AI failed', e);

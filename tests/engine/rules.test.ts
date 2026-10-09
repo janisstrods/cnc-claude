@@ -419,15 +419,25 @@ describe('turn flow', () => {
     must(d, { kind: 'orders', pieces: ['u3'] });
   });
   it('replay reproduces the same state; undo removes a move', () => {
+    const s = state({ units: [{ side: 'bottom', type: 'MI', at: [6, 4] }, { side: 'bottom', type: 'MI', at: [6, 6] }, { side: 'top', type: 'MI', at: [2, 4] }] });
+    const card = giveCard(s, 'bottom', 'order2C');
+    const d = drive(s);
+    must(d, { kind: 'playCard', card });
+    must(d, { kind: 'orders', pieces: ['u1', 'u2'] });
+    must(d, { kind: 'move', piece: 'u1', to: H(5, 4) });
+    expect(d.canUndo()).toBe(true);
+    const u = d.undo();
+    expect(u.state.units[0].hex).toBe(H(6, 4));
+    expect(u.pending!.kind).toBe('move');
+  });
+  it('cannot undo once the turn has passed to the other side', () => {
     const s = state({ units: [{ side: 'bottom', type: 'MI', at: [6, 4] }, { side: 'top', type: 'MI', at: [2, 4] }] });
     const card = giveCard(s, 'bottom', 'order2C');
     const d = drive(s);
     must(d, { kind: 'playCard', card });
     must(d, { kind: 'orders', pieces: ['u1'] });
     must(d, { kind: 'move', piece: 'u1', to: H(5, 4) });
-    expect(d.canUndo()).toBe(true);
-    const u = d.undo();
-    expect(u.state.units[0].hex).toBe(H(6, 4));
-    expect(u.pending!.kind).toBe('move');
+    expect(d.pending).toMatchObject({ kind: 'playCard', side: 'top' });
+    expect(d.canUndo()).toBe(false);
   });
 });

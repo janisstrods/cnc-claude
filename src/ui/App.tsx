@@ -24,7 +24,13 @@ function useHash(): string {
 type Screen = { kind: 'menu' } | { kind: 'select' } | { kind: 'game'; controller: GameController };
 
 function startController(config: SessionConfig, answers: SavedGame['answers'] = [], check?: SavedGame['check']): GameController {
-  return new GameController(config, makeOpponent(config), answers, check);
+  const opponent = makeOpponent(config);
+  try {
+    return new GameController(config, opponent, answers, check);
+  } catch (e) {
+    opponent.dispose();
+    throw e;
+  }
 }
 
 export function App() {
