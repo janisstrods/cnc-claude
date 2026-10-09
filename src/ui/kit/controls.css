@@ -204,6 +204,7 @@
   inset: 0;
   z-index: 1000;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 24px;
   background: radial-gradient(circle at 50% 45%, rgba(20, 10, 4, .55) 0%, rgba(8, 4, 2, .82) 100%);

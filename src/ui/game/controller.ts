@@ -456,7 +456,7 @@ export class GameController {
         const walking = { ...this.view.walking };
         delete walking[e.id];
         this.set({ display: after, walking });
-        if (e.t === 'retreat') this.addLog({ text: `${this.name(e.id, after)} retreats ${Math.max(0, path.length - 1)} hex${path.length === 2 ? '' : 'es'}.`, side: this.sideOf(e.id, after), kind: 'result' });
+        if (e.t === 'retreat' && path.length > 1) this.addLog({ text: `${this.name(e.id, after)} retreats ${Math.max(0, path.length - 1)} hex${path.length === 2 ? '' : 'es'}.`, side: this.sideOf(e.id, after), kind: 'result' });
         if (e.t === 'evade') this.flash(path[path.length - 1], 'Evaded', 'info');
         if (e.t === 'leaderEvade' && e.offBoard) this.addLog({ text: `${this.name(e.id, before)} escapes the battlefield.`, kind: 'result' });
         break;

@@ -259,7 +259,7 @@ body {
 .assign-row { display: flex; gap: 12px; align-items: center; }
 .assign-row select { flex: 1; padding: 5px; font-family: inherit; font-size: 15px; background: #fbf3dc; border: 1px solid #b0823a; border-radius: 4px; }
 .assign-none { color: #7a6448; font-style: italic; }
-.victory { min-width: 360px; }
+.victory { min-width: min(360px, 100%); }
 
 @media (max-width: 1180px) {
   .game-root { grid-template-columns: 1fr 260px; }

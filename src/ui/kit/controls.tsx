@@ -60,7 +60,7 @@ export function Modal(p: { open: boolean; title?: string; children: ReactNode; o
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
-      <div className="kit-modal__box" role="dialog" aria-modal="true" aria-label={p.title} style={{ width: p.width }}>
+      <div className="kit-modal__box" role="dialog" aria-modal="true" aria-label={p.title} style={p.width === undefined ? undefined : { width: `min(${typeof p.width === 'number' ? `${p.width}px` : p.width}, 100%)` }}>
         <div className="kit-modal__inner kit-parchment">
           {onClose ? (
             <button type="button" className="kit-modal__close" onClick={onClose} aria-label="Close">
