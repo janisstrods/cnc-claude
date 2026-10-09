@@ -480,7 +480,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
                 {Array.from({ length: them.hand.length }).map((_, i) => <CardBack key={i} size="sm" style={{ fontSize: '1.7px', marginLeft: i ? -9 : 0 }} />)}
               </div>
             </div>
-            <BannerTrack count={them.banners} target={s.bannersToWin} look={s.players[human].look} blockColor={s.players[human].blocks} label="Banners won" />
+            <BannerTrack count={them.banners} target={s.bannersToWin} blockColor={s.players[human].blocks} label="Banners won" />
             <div className="divider" />
             <div className="army-row">
               <div>
@@ -488,7 +488,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
                 <div className="army-cmd">{me.commander} · Command {me.command}</div>
               </div>
             </div>
-            <BannerTrack count={me.banners} target={s.bannersToWin} look={s.players[ai].look} blockColor={s.players[ai].blocks} label="Banners won" />
+            <BannerTrack count={me.banners} target={s.bannersToWin} blockColor={s.players[ai].blocks} label="Banners won" />
             <div className="deck-row">Deck {s.deck.length} · Discards {s.discard.length}</div>
           </Panel>
           <div className="dice-slot">

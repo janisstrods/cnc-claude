@@ -280,10 +280,10 @@ export default function KitGallery() {
 
       <Heading sub="captured banners in the opponent's colours; slots up to the scenario target">Banner tracks</Heading>
       <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        <BannerTrack label="Rome" count={banners} target={6} look="carthaginian" blockColor="car" />
-        <BannerTrack label="Carthage" count={2} target={6} look="roman" blockColor="rom" />
-        <BannerTrack label="Syracuse" count={4} target={5} look="roman" blockColor="rom" />
-        <BannerTrack label="Rome" count={5} target={5} look="syracusan" blockColor="rom" />
+        <BannerTrack label="Rome" count={banners} target={6} blockColor="car" />
+        <BannerTrack label="Carthage" count={2} target={6} blockColor="rom" />
+        <BannerTrack label="Syracuse" count={4} target={5} blockColor="rom" />
+        <BannerTrack label="Rome" count={5} target={5} blockColor="grk" />
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <Button variant="secondary" onClick={() => setBanners((b) => Math.min(6, b + 1))}>
             Capture
@@ -296,16 +296,16 @@ export default function KitGallery() {
       <div style={{ display: 'flex', gap: 22, marginTop: 18 }}>
         {(
           [
-            ['rome', 'roman', 'rom'],
-            ['carthage', 'carthaginian', 'car'],
-            ['syracuse', 'syracusan', 'rom'],
+            ['rome', 'rom'],
+            ['carthage', 'car'],
+            ['syracuse', 'grk'],
           ] as const
-        ).map(([f, look, blocks]) => (
+        ).map(([f, blocks]) => (
           <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {(['light', 'main', 'dark'] as const).map((t) => (
               <span
                 key={t}
-                style={{ width: 22, height: 22, borderRadius: 4, background: bannerCloth(look, blocks)[t], boxShadow: '0 0 0 1px rgba(0,0,0,.5)' }}
+                style={{ width: 22, height: 22, borderRadius: 4, background: bannerCloth(blocks)[t], boxShadow: '0 0 0 1px rgba(0,0,0,.5)' }}
               />
             ))}
             <span style={{ fontFamily: 'var(--kit-font-title)', fontSize: 12, letterSpacing: '.14em', textTransform: 'uppercase', color: '#d8c49a' }}>{f}</span>

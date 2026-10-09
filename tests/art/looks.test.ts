@@ -1,12 +1,13 @@
 // Appearance guard for the split of `Faction` into blocks (side colour) and look (figure kit + palette):
-// every base army must still be painted with exactly the swatches it had before. palette-baseline.json is the
+// every base army must still be painted with exactly the swatches it had before (the Syracusans' blue now belongs
+// to the Greek blocks, `grk`, which scenarios 001 and 002 seat them on). palette-baseline.json is the
 // serialised FACTION_PALETTES / FACTION_COLORS of the last commit that still had `Faction`.
 import { describe, expect, it } from 'vitest';
 import baselineJson from './palette-baseline.json';
 import { createGame } from '../../src/engine';
 import type { ArmyLook, Blocks } from '../../src/engine/types';
 import { BLOCK_COLORS, LOOKS, blockColors, lookDef, paletteFor, type Kit } from '../../src/art/palettes';
-import { BANNER_CLOTH, bannerCloth } from '../../src/ui/kit/theme';
+import { bannerCloth } from '../../src/ui/kit/theme';
 import { SCENARIOS } from '../../src/scenarios';
 
 const baseline = baselineJson as unknown as {
@@ -20,7 +21,7 @@ type OldFaction = 'rome' | 'carthage' | 'syracuse';
 const ARMIES: { old: OldFaction; look: ArmyLook; blocks: Blocks; kit: Kit }[] = [
   { old: 'rome', look: 'roman', blocks: 'rom', kit: 'roman' },
   { old: 'carthage', look: 'carthaginian', blocks: 'car', kit: 'punic' },
-  { old: 'syracuse', look: 'syracusan', blocks: 'rom', kit: 'greek' },
+  { old: 'syracuse', look: 'syracusan', blocks: 'grk', kit: 'greek' },
 ];
 
 describe('base armies are painted exactly as before', () => {
@@ -34,26 +35,39 @@ describe('base armies are painted exactly as before', () => {
     });
 
     it(`${a.look} on ${a.blocks} blocks has the old '${a.old}' banner-track cloth`, () => {
-      expect(bannerCloth(a.look, a.blocks)).toEqual(baseline.FACTION_COLORS[a.old]);
+      expect(bannerCloth(a.blocks)).toEqual(baseline.FACTION_COLORS[a.old]);
     });
   }
 
-  it('block colours: rom and car are the old Roman and Carthaginian base edge and banner', () => {
-    for (const [blocks, old] of [['rom', 'rome'], ['car', 'carthage']] as const) {
+  it('block colours: rom, car and grk are the old Roman, Carthaginian and Syracusan base edge, banner and banner-track cloth', () => {
+    for (const [blocks, old] of [['rom', 'rome'], ['car', 'carthage'], ['grk', 'syracuse']] as const) {
       const p = baseline.FACTION_PALETTES[old];
       expect(blockColors(blocks)).toEqual({
         edge: p.baseEdge, edgeShade: p.baseEdgeShade, edgeLight: p.baseEdgeLight, banner: p.banner, bannerShade: p.bannerShade,
+        cloth: baseline.FACTION_COLORS[old],
       });
-      expect(BANNER_CLOTH[blocks]).toEqual(baseline.FACTION_COLORS[old]);
+      expect(bannerCloth(blocks)).toEqual(baseline.FACTION_COLORS[old]);
     }
   });
 
-  it('the Syracusans keep their own blue side colours whatever the blocks', () => {
-    const blue = paletteFor('syracusan', 'rom');
-    const rom = paletteFor('roman', 'rom');
-    expect(blue.baseEdge).not.toBe(rom.baseEdge);
-    expect(blue.banner).not.toBe(rom.banner);
-    expect(paletteFor('syracusan', 'car')).toEqual(blue);
+  it('side colours depend only on the block set, never on the look', () => {
+    const sideOf = (p: ReturnType<typeof paletteFor>) => ({
+      baseEdge: p.baseEdge, baseEdgeShade: p.baseEdgeShade, baseEdgeLight: p.baseEdgeLight, banner: p.banner, bannerShade: p.bannerShade,
+    });
+    for (const blocks of ['rom', 'car', 'grk'] as const) {
+      const expected = sideOf(paletteFor('roman', blocks));
+      expect(sideOf(paletteFor('carthaginian', blocks))).toEqual(expected);
+      expect(sideOf(paletteFor('syracusan', blocks))).toEqual(expected);
+    }
+    // the Syracusans on Roman blocks are Roman red (their blue is the Greek blocks', not the look's)
+    const onRom = paletteFor('syracusan', 'rom');
+    const roman = paletteFor('roman', 'rom');
+    expect(sideOf(onRom)).toEqual(sideOf(roman));
+    expect(onRom.tunic).toBe(paletteFor('syracusan', 'grk').tunic); // the look still decides the figure swatches
+    expect(onRom.tunic).not.toBe(roman.tunic);
+    // and the Roman side colours are not the Greek blue
+    expect(roman.baseEdge).not.toBe(paletteFor('syracusan', 'grk').baseEdge);
+    expect(roman.banner).not.toBe(paletteFor('syracusan', 'grk').banner);
   });
 
   it('a resolved palette is shared, not rebuilt (tokens are memoised on it)', () => {
@@ -62,8 +76,8 @@ describe('base armies are painted exactly as before', () => {
 });
 
 describe('every base scenario seats its armies in the old colours', () => {
-  /** What `faction()` in src/scenarios/index.ts used to compute from the JSON. */
-  const oldFaction = (blocks: Blocks, army: string): OldFaction => (blocks === 'car' ? 'carthage' : army === 'Syracusan' ? 'syracuse' : 'rome');
+  /** The old faction of an army (what `faction()` in src/scenarios/index.ts used to compute from the JSON). */
+  const oldFaction = (army: string): OldFaction => (army === 'Carthaginian' ? 'carthage' : army === 'Syracusan' ? 'syracuse' : 'rome');
 
   it('covers all 15 battles', () => {
     expect(SCENARIOS).toHaveLength(15);
@@ -77,14 +91,14 @@ describe('every base scenario seats its armies in the old colours', () => {
         const player = g.players[side];
         expect(player.blocks).toBe(setup.blocks);
         expect(player.look).toBe(setup.look);
-        // the look follows the army, the blocks follow the side
+        // the look and the blocks both follow the army (Syracusans: syracusan look on Greek blocks)
         expect(setup.look).toBe(setup.army === 'Syracusan' ? 'syracusan' : setup.army === 'Roman' ? 'roman' : 'carthaginian');
-        expect(setup.blocks).toBe(setup.army === 'Carthaginian' ? 'car' : 'rom');
-        const old = oldFaction(setup.blocks, setup.army);
+        expect(setup.blocks).toBe(setup.army === 'Carthaginian' ? 'car' : setup.army === 'Syracusan' ? 'grk' : 'rom');
+        const old = oldFaction(setup.army);
         const { faction: _f, ...expected } = baseline.FACTION_PALETTES[old];
         const { kit: _k, ...drawn } = paletteFor(player.look, player.blocks);
         expect(drawn, `${side} ${setup.army}`).toEqual(expected);
-        expect(bannerCloth(player.look, player.blocks)).toEqual(baseline.FACTION_COLORS[old]);
+        expect(bannerCloth(player.blocks)).toEqual(baseline.FACTION_COLORS[old]);
       }
     });
   }
@@ -97,13 +111,13 @@ describe('missing art fails loudly', () => {
   });
 
   it('blocks without colours throw and name the blocks', () => {
-    expect(() => blockColors('grk')).toThrow(/grk/);
+    expect(() => blockColors('eas')).toThrow(/eas/);
     expect(() => paletteFor('roman', 'eas')).toThrow(/eas/);
-    expect(() => bannerCloth('roman', 'grk')).toThrow(/grk/);
+    expect(() => bannerCloth('eas')).toThrow(/eas/);
   });
 
-  it('Phase 1 has art for exactly the three base looks and two block sets', () => {
+  it('Phase 1 has art for exactly the three base looks and the three base block sets', () => {
     expect(Object.keys(LOOKS).sort()).toEqual(['carthaginian', 'roman', 'syracusan']);
-    expect(Object.keys(BLOCK_COLORS).sort()).toEqual(['car', 'rom']);
+    expect(Object.keys(BLOCK_COLORS).sort()).toEqual(['car', 'grk', 'rom']);
   });
 });

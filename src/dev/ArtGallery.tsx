@@ -11,7 +11,7 @@ const ARMY_NAMES: ArmyName[] = ['rome', 'carthage', 'syracuse'];
 const ART: Record<ArmyName, { look: ArmyLook; blockColor: Blocks }> = {
   rome: { look: 'roman', blockColor: 'rom' },
   carthage: { look: 'carthaginian', blockColor: 'car' },
-  syracuse: { look: 'syracusan', blockColor: 'rom' }, // the base battles seat the Syracusans on Roman blocks
+  syracuse: { look: 'syracusan', blockColor: 'grk' },
 };
 const MAX: Record<UnitType, number> = {
   LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HC: 3, EL: 2, HCH: 2,

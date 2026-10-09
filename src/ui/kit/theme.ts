@@ -1,28 +1,11 @@
-import type { ArmyLook, Blocks, CardGroup } from '../../engine/types';
+import type { Blocks, CardGroup } from '../../engine/types';
+import { blockColors, type BannerCloth } from '../../art/palettes';
 
-/** Cloth colours of a captured banner. */
-export interface BannerCloth {
-  main: string;
-  light: string;
-  dark: string;
-}
+export type { BannerCloth };
 
-/** Banner cloth of each block set (rom crimson, car tyrian purple). Greek and Eastern blocks arrive with Expansion #1. */
-export const BANNER_CLOTH: Partial<Record<Blocks, BannerCloth>> = {
-  rom: { main: '#9b1f1c', light: '#c9483a', dark: '#5a0f0e' },
-  car: { main: '#6a1e5c', light: '#9c4f8c', dark: '#3a0c33' },
-};
-
-/** Looks that keep their own banner cloth whatever blocks they fight on (the Syracusans' deep blue; see `sideColors` in art/palettes). */
-const LOOK_CLOTH: Partial<Record<ArmyLook, BannerCloth>> = {
-  syracusan: { main: '#1f417e', light: '#4b72b6', dark: '#0f2149' },
-};
-
-/** Cloth colour of the banners an army captured; throws when its blocks have none. */
-export function bannerCloth(look: ArmyLook, blocks: Blocks): BannerCloth {
-  const c = LOOK_CLOTH[look] ?? BANNER_CLOTH[blocks];
-  if (!c) throw new Error(`No banner colour for blocks "${blocks}"`);
-  return c;
+/** Cloth colour of the banners an army captured: it comes from the army's block set (`BLOCK_COLORS` in art/palettes); throws when the blocks have none. */
+export function bannerCloth(blocks: Blocks): BannerCloth {
+  return blockColors(blocks).cloth;
 }
 
 /** Colour coding of the four card groups. */
@@ -70,7 +53,6 @@ export const theme = {
     ivory: '#f6efdc',
   },
   group: GROUP_COLORS,
-  banner: BANNER_CLOTH,
   radius: { sm: 4, md: 8, lg: 14 },
   shadow: {
     soft: '0 2px 6px rgba(0,0,0,.35)',

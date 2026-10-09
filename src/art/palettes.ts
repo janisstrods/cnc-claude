@@ -3,13 +3,22 @@ import type { ArmyLook, Blocks } from '../engine/types';
 /** Figure kit: the shapes (helmets, shields, torsos, mounts) an army's miniatures are built from. */
 export type Kit = 'roman' | 'punic' | 'greek' | 'macedonian' | 'persian' | 'scythian' | 'indian';
 
-/** Base-edge and standard colours of a block set: the colour that says which side a piece belongs to. */
+/** Cloth colours of a captured banner (the victory banner track). */
+export interface BannerCloth {
+  main: string;
+  light: string;
+  dark: string;
+}
+
+/** Base-edge, standard and banner-track colours of a block set: the colour that says which side a piece belongs to. */
 export interface SideColors {
   edge: string;
   edgeShade: string;
   edgeLight: string;
   banner: string;
   bannerShade: string;
+  /** Cloth of this side's standards on the victory banner track (shown when its banners are captured). */
+  cloth: BannerCloth;
 }
 
 /** The swatches that belong to an army's look (everything except the side colours, which come from the blocks). */
@@ -219,31 +228,33 @@ const SYRACUSAN: LookPalette = {
   bannerEmblem: '#f2c94f',
 };
 
-/** Side colours of each block set (base edge and standard cloth). Greek and Eastern blocks arrive with Expansion #1. */
+/** Side colours of each block set (base edge and standard cloth). Eastern (`eas`) blocks arrive with Expansion #1. */
 export const BLOCK_COLORS: Partial<Record<Blocks, SideColors>> = {
-  rom: { edge: '#b81d24', edgeShade: '#6e0f14', edgeLight: '#e2534c', banner: '#b51f27', bannerShade: '#771219' },
-  car: { edge: '#6a1f78', edgeShade: '#3c0e46', edgeLight: '#9a4aa8', banner: '#5f1d68', bannerShade: '#3a0f40' },
+  rom: {
+    edge: '#b81d24', edgeShade: '#6e0f14', edgeLight: '#e2534c', banner: '#b51f27', bannerShade: '#771219',
+    cloth: { main: '#9b1f1c', light: '#c9483a', dark: '#5a0f0e' },
+  },
+  car: {
+    edge: '#6a1f78', edgeShade: '#3c0e46', edgeLight: '#9a4aa8', banner: '#5f1d68', bannerShade: '#3a0f40',
+    cloth: { main: '#6a1e5c', light: '#9c4f8c', dark: '#3a0c33' },
+  },
+  // Greek blocks: the base game's Syracusans (scenarios 001 and 002) and the Greek armies of Expansion #1.
+  grk: {
+    edge: '#1f4fb4', edgeShade: '#0f2a6a', edgeLight: '#5582dc', banner: '#22439a', bannerShade: '#132a66',
+    cloth: { main: '#1f417e', light: '#4b72b6', dark: '#0f2149' },
+  },
 };
 
 export interface LookDef {
   kit: Kit;
   palette: LookPalette;
-  /**
-   * Pins this look's side colours whatever blocks it fights on. Only the Syracusans use it: the base battles seat them
-   * on `rom` blocks but they have always been drawn in their own blue.
-   */
-  sideColors?: SideColors;
 }
 
 /** Every army look with art. Looks of the Greece and Eastern Kingdoms expansion are added with their kits. */
 export const LOOKS: Partial<Record<ArmyLook, LookDef>> = {
   roman: { kit: 'roman', palette: ROMAN },
   carthaginian: { kit: 'punic', palette: CARTHAGINIAN },
-  syracusan: {
-    kit: 'greek',
-    palette: SYRACUSAN,
-    sideColors: { edge: '#1f4fb4', edgeShade: '#0f2a6a', edgeLight: '#5582dc', banner: '#22439a', bannerShade: '#132a66' },
-  },
+  syracusan: { kit: 'greek', palette: SYRACUSAN },
 };
 
 /** The art of a look; throws when the look has none (so a missing look fails loudly instead of drawing wrong). */
@@ -268,7 +279,7 @@ export function paletteFor(look: ArmyLook, blocks: Blocks): Palette {
   let p = resolved.get(key);
   if (!p) {
     const d = lookDef(look);
-    const sc = d.sideColors ?? blockColors(blocks);
+    const sc = blockColors(blocks);
     p = {
       ...d.palette,
       kit: d.kit,
