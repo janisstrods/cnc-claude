@@ -94,6 +94,30 @@ export function eligiblePieces(s: GameState, side: Side, kind: CardKind | null):
   }
 }
 
+/** Most pieces this card can order given the selection so far (for the UI counter), or null when unbounded or not yet known. */
+export function orderLimit(s: GameState, side: Side, kind: CardKind | null, pieces: string[]): number | null {
+  const m = orderMode(s, side, kind);
+  switch (m.mode) {
+    case 'section':
+      return Object.values(m.counts).reduce((a, n) => a + (n ?? 0), 0);
+    case 'troop':
+    case 'group':
+      return m.max;
+    case 'one':
+      return 1;
+    case 'leadership': {
+      // Until a commanding leader is picked, the order may still be a chain or a single unit.
+      const cmd = pieces
+        .filter(isLeaderId)
+        .map((id) => leaderById(s, id))
+        .find((l) => l && (!m.section || inSection(l.hex, side, m.section)));
+      return cmd ? 1 + (leaderUnit(s, cmd) ? 1 : 0) + m.chain : null;
+    }
+    default:
+      return null;
+  }
+}
+
 function connected(hexes: number[], extraRoot?: number): boolean {
   if (hexes.length === 0) return true;
   const all = extraRoot !== undefined ? [extraRoot, ...hexes] : hexes;

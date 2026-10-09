@@ -1,6 +1,7 @@
 import type { CSSProperties, KeyboardEvent } from 'react';
 import { CARD_DEFS, mirrorKind, sectionOrders } from '../../engine/cards';
-import type { CardKind, SectionName } from '../../engine/types';
+import type { CardKind, SectionName, UnitClass } from '../../engine/types';
+import { DieSymbol } from './Dice';
 import { Icon, type IconName } from './Icon';
 import { SectionMiniMap } from './SectionMiniMap';
 import { GROUP_COLORS } from './theme';
@@ -27,6 +28,14 @@ export const CARD_ICONS: Partial<Record<CardKind, IconName>> = {
   mountedCharge: 'cavalry',
   moveFireMove: 'bowman',
   rally: 'trumpetFlag',
+};
+
+/** Cards that order one troop class carry that class's die symbol. */
+export const CARD_CLASS: Partial<Record<CardKind, UnitClass>> = {
+  orderLight: 'light',
+  orderMedium: 'medium',
+  orderHeavy: 'heavy',
+  moveFireMove: 'light',
 };
 
 const GOLD = ['#fff0bf', '#e6c06a', '#b38532', '#8a6020'];
@@ -92,6 +101,7 @@ export function CardView(p: {
     ? Object.fromEntries(Object.entries(rawCounts).map(([s, n]) => [swapped ? SWAP[s as SectionName] : s, n]))
     : undefined;
   const icon = CARD_ICONS[shownKind];
+  const troopClass = CARD_CLASS[shownKind];
   const clickable = !!p.onClick && !p.disabled;
   const textLen = def.text.length;
   const textClass = textLen > 172 ? 'kit-card__text--xlong' : textLen > 140 ? 'kit-card__text--long' : textLen < 90 ? 'kit-card__text--short' : '';
@@ -145,6 +155,11 @@ export function CardView(p: {
         <header className="kit-card__header">
           <span className="kit-card__title">{def.title}</span>
           {def.detach ? <HelmetBadge /> : null}
+          {troopClass ? (
+            <div className="kit-card__class" title={`Orders ${troopClass} units`}>
+              <DieSymbol face={troopClass} />
+            </div>
+          ) : null}
           {p.mirrored ? (
             <div className="kit-card__mirror" title="Left and right swapped">
               &#8644;

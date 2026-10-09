@@ -6,10 +6,10 @@ import './controls.css';
 
 export { theme, FACTION_COLORS, GROUP_COLORS } from './theme';
 export type { Theme } from './theme';
-export { CardView, CardBack, CARD_ICONS, Ornament } from './CardView';
+export { CardView, CardBack, CARD_ICONS, CARD_CLASS, Ornament } from './CardView';
 export type { CardSize } from './CardView';
 export { SectionMiniMap, toRoman } from './SectionMiniMap';
-export { DieView, DiceTray, ALL_DIE_FACES } from './Dice';
+export { DieView, DieSymbol, DiceTray, ALL_DIE_FACES } from './Dice';
 export type { DieState } from './Dice';
 export { BannerTrack, BannerIcon } from './BannerTrack';
 export { Button, Panel, Modal, Tooltip, Tabletop } from './controls';
