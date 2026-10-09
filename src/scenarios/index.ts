@@ -233,9 +233,26 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   };
 }
 
-export const SCENARIOS: ScenarioInfo[] = Object.values(files)
-  .map(scenarioFromJson)
-  .sort((a, b) => a.id.localeCompare(b.id));
+/**
+ * Build every scenario file (path -> JSON), sorted by id. A malformed file throws an Error naming the file and its id,
+ * with the original error as `cause`.
+ */
+export function scenariosFromFiles(byPath: Record<string, ScenarioJson>): ScenarioInfo[] {
+  return Object.entries(byPath)
+    .map(([path, json]) => {
+      try {
+        return scenarioFromJson(json);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        const id = json && typeof json === 'object' && typeof json.id === 'string' ? json.id : undefined;
+        const named = id !== undefined && msg.includes(`(${id})`);
+        throw new Error(`scenario file ${path}${id !== undefined && !named ? ` (${id})` : ''}: ${msg}`, { cause: e });
+      }
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+export const SCENARIOS: ScenarioInfo[] = scenariosFromFiles(files);
 
 export function scenarioById(id: string): ScenarioInfo {
   const s = SCENARIOS.find((x) => x.id === id);

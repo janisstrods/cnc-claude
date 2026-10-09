@@ -6,8 +6,13 @@
 // - 121 Magnesia: the Seleucids use Greek blocks and field the camel the map shows (the table omits it).
 // Leader names follow the maps, with the fixes recorded in design/exp1-scenario-notes.md (Alcetas, Peucestas,
 // Nicarchus, Flamininus); names given to leaders the maps leave unnamed are plausible picks, not sources.
+//
+// `terrain` and `checksum` fingerprint the board (see checksum.ts): a tally of terrain hexes by type, river crossing and
+// rampart edge, and one checksum over every terrain hex and one over every unit and leader position and elite. They
+// were generated from the verified data files, so a moved piece, a changed terrain hex or ford, or a moved elite shows.
 import type { GameOptions } from '../../src/engine/setup';
 import type { ArmyLook, Blocks, EliteId, Side, SpecialRuleId, UnitType } from '../../src/engine/types';
+import type { Checksums, TerrainTally } from './checksum';
 
 type PerSide<T> = Record<Side, T>;
 
@@ -32,6 +37,10 @@ export interface BattleManifest {
   rules: SpecialRuleId[];
   /** Optional rules the battle offers, with their default. */
   options?: GameOptions;
+  /** Terrain hexes by type (plain excluded), river crossing and rampart edge. */
+  terrain: TerrainTally;
+  /** FNV-1a checksums of the terrain and of the unit and leader positions. */
+  checksum: Checksums;
 }
 
 export const MANIFEST: Record<string, BattleManifest> = {
@@ -47,6 +56,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 2, LB: 3, AX: 6, MI: 2, MC: 2 },
     },
     elites: [], rules: [],
+    terrain: { types: { sea: 8, steep: 9, river: 9 }, rivers: { ford: 9, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '7edbb5e3', pieces: '12fe0a62' },
   },
   '102': {
     name: 'Himera', year: '480 BC', banners: 6, first: 'bottom',
@@ -60,6 +71,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 1, LS: 1, MI: 6, HI: 3, MC: 3 },
     },
     elites: [], rules: [],
+    terrain: { types: { rampart: 7, sea: 5, camp: 3 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 7, edges: 14 } },
+    checksum: { terrain: '25ad0387', pieces: 'faa8ff23' },
   },
   '103': {
     name: 'Plataea', year: '479 BC', banners: 5, first: 'top',
@@ -73,6 +86,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LB: 3, AX: 5, MI: 3, LC: 1, MC: 3 },
     },
     elites: [], rules: [],
+    terrain: { types: { hill: 6 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: 'ff667d41', pieces: '30df2c9f' },
   },
   '104': {
     name: 'Leuctra', year: '371 BC', banners: 4, first: 'top',
@@ -86,6 +101,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { AX: 4, MI: 6, HI: 1, MC: 1 },
     },
     elites: [['top', 'thebanSacredBand', 'MI']], rules: [],
+    terrain: { types: {}, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '811c9dc5', pieces: 'b0d9a288' },
   },
   '105': {
     name: 'Mantinea', year: '362 BC', banners: 6, first: 'top',
@@ -99,6 +116,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 2, MI: 4, HI: 3, MC: 2 },
     },
     elites: [], rules: [],
+    terrain: { types: { hill: 10, forest: 3 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '899b6e0e', pieces: '85dc7367' },
   },
   '106': {
     name: 'Crocus Plain', year: '352 BC', banners: 6, first: 'top',
@@ -112,6 +131,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 2, LB: 1, LS: 1, AX: 2, MI: 4, LC: 1 },
     },
     elites: [], rules: [],
+    terrain: { types: { lake: 11 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: 'fff82d48', pieces: '4213215d' },
   },
   '107': {
     name: 'Granicus', year: '334 BC', banners: 6, first: 'top',
@@ -125,6 +146,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 2, LB: 2, AX: 2, MI: 2, LC: 2, MC: 3, HC: 1 },
     },
     elites: [['top', 'companions', 'MC']], rules: [],
+    terrain: { types: { river: 12 }, rivers: { ford: 12, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '39525d57', pieces: '6e269bf6' },
   },
   '108': {
     name: 'Issus', year: '333 BC', banners: 8, first: 'top',
@@ -138,6 +161,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 3, LB: 2, LS: 2, AX: 5, MI: 4, LC: 3, MC: 2, HC: 1 },
     },
     elites: [['top', 'companions', 'MC'], ['bottom', 'immortals', 'MI']], rules: [],
+    terrain: { types: { hill: 13, sea: 7, river: 10 }, rivers: { ford: 0, blocked: 0, nocap: 10 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '30fa8c5a', pieces: '2cec59c3' },
   },
   '109': {
     name: 'Gaugamela', year: '331 BC', banners: 7, first: 'top',
@@ -151,6 +176,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 2, LB: 2, AX: 3, MI: 2, LC: 2, LBC: 1, MC: 3, HC: 1, EL: 1, HCH: 2 },
     },
     elites: [['top', 'companions', 'MC']], rules: [],
+    terrain: { types: {}, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '811c9dc5', pieces: '6736c3ca' },
   },
   '110': {
     name: 'Jaxartes River', year: '328 BC', banners: 5, first: 'top',
@@ -164,6 +191,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LC: 4, LBC: 4, MC: 1 },
     },
     elites: [['top', 'companions', 'MC']], rules: [],
+    terrain: { types: { river: 12, hill: 7 }, rivers: { ford: 12, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: 'f351a361', pieces: '629c232d' },
   },
   '111': {
     name: 'Hydaspes', year: '326 BC', banners: 7, first: 'top',
@@ -177,6 +206,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LB: 4, AX: 4, LC: 1, MC: 1, EL: 3, HCH: 2 },
     },
     elites: [['top', 'companions', 'MC'], ['top', 'companions', 'MC']], rules: [],
+    terrain: { types: { river: 9, forest: 3 }, rivers: { ford: 0, blocked: 9, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '5f670ff9', pieces: '17b8cce7' },
   },
   '112': {
     name: 'Hellespont', year: '323 BC', banners: 6, first: 'top',
@@ -190,6 +221,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LB: 2, AX: 4, MI: 2, HI: 2, LC: 1, MC: 4 },
     },
     elites: [], rules: ['leaderLossCostsCard', 'allLeadersSuddenDeath'],
+    terrain: { types: {}, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '811c9dc5', pieces: 'c2085fbb' },
   },
   '113': {
     name: 'Paraitacene', year: '317 BC', banners: 7, first: 'bottom',
@@ -203,6 +236,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 4, AX: 2, MI: 1, HI: 4, LC: 1, LBC: 1, MC: 1, HC: 1, EL: 2 },
     },
     elites: [['bottom', 'silverShields', 'HI']], rules: [],
+    terrain: { types: { steep: 6 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '38309d6a', pieces: '727f719b' },
   },
   '114': {
     name: 'Gabiene', year: '316 BC', banners: 7, first: 'top',
@@ -216,6 +251,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 3, AX: 3, MI: 1, HI: 3, LBC: 1, MC: 1, HC: 1, EL: 3 },
     },
     elites: [['bottom', 'silverShields', 'HI']], rules: ['campCapture'],
+    terrain: { types: { camp: 1 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: 'ebd59ccd', pieces: '5d096d11' },
   },
   '115': {
     name: 'Ipsus', year: '301 BC', banners: 8, first: 'top',
@@ -229,6 +266,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 3, LB: 2, AX: 1, HI: 4, LC: 2, HC: 2, EL: 4, HCH: 2 },
     },
     elites: [], rules: [],
+    terrain: { types: {}, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '811c9dc5', pieces: 'd26b1225' },
   },
   '116': {
     name: 'Heraclea', year: '280 BC', banners: 7, first: 'top',
@@ -242,6 +281,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 3, AX: 1, MI: 4, HI: 3, MC: 4 },
     },
     elites: [], rules: ['frightAtFirstSight'],
+    terrain: { types: { hill: 2, river: 5 }, rivers: { ford: 2, blocked: 3, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '1f416b52', pieces: '8199bb45' },
   },
   '117': {
     name: 'Asculum', year: '279 BC', banners: 6, first: 'bottom',
@@ -256,6 +297,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 3, AX: 2, MI: 4, HI: 2, MC: 2 },
     },
     elites: [], rules: ['leaderPlacement'],
+    terrain: { types: {}, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '811c9dc5', pieces: '30765fc7' },
   },
   '118': {
     name: 'Beneventum', year: '275 BC', banners: 7, first: 'top',
@@ -269,6 +312,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 3, AX: 2, MI: 6, HI: 2, MC: 2, HWM: 2 },
     },
     elites: [], rules: [],
+    terrain: { types: { forest: 9, camp: 3, rampart: 4 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 4, edges: 8 } },
+    checksum: { terrain: '7cc83a5a', pieces: 'bd257c39' },
   },
   '119': {
     name: 'Raphia', year: '217 BC', banners: 8, first: 'bottom',
@@ -282,6 +327,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 4, LB: 2, AX: 3, MI: 2, HI: 2, LC: 1, MC: 2, HC: 1, EL: 2 },
     },
     elites: [], rules: [],
+    terrain: { types: {}, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '811c9dc5', pieces: 'fe5977c8' },
   },
   '120': {
     name: 'Cynoscephalae', year: '197 BC', banners: 6, first: 'bottom',
@@ -295,6 +342,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 3, AX: 4, MI: 4, HI: 2, LC: 1, MC: 2, EL: 1 },
     },
     elites: [], rules: [], options: { tacticalFlexibility: true },
+    terrain: { types: { hill: 18 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '9e8af8cb', pieces: 'b3823bb6' },
   },
   '121': {
     name: 'Magnesia', year: '190 BC', banners: 7, first: 'bottom',
@@ -308,6 +357,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 4, LB: 2, AX: 2, MI: 4, HI: 1, MC: 2, EL: 1 },
     },
     elites: [], rules: [], options: { tacticalFlexibility: true },
+    terrain: { types: { river: 7 }, rivers: { ford: 0, blocked: 7, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: 'f5aa154b', pieces: 'b6dedc83' },
   },
   '122': {
     name: 'Cronium', year: '376 BC', banners: 7, first: 'bottom',
@@ -321,6 +372,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 1, LB: 1, LS: 1, AX: 2, WA: 1, MI: 4, HI: 3, LC: 2, MC: 1, HC: 1 },
     },
     elites: [], rules: [],
+    terrain: { types: {}, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '811c9dc5', pieces: 'dab7bbc7' },
   },
   '123': {
     name: 'Indus', year: '306 BC', banners: 6, first: 'bottom',
@@ -334,6 +387,8 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 2, LB: 1, AX: 3, HI: 1, LC: 3, MC: 2, EL: 1, HCH: 2 },
     },
     elites: [['bottom', 'bowAuxilia', 'AX'], ['bottom', 'bowAuxilia', 'AX'], ['bottom', 'bowAuxilia', 'AX']], rules: [],
+    terrain: { types: { forest: 5, hill: 5, river: 8 }, rivers: { ford: 8, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '515351c8', pieces: '7bfe05f5' },
   },
   '124': {
     name: 'Pydna', year: '168 BC', banners: 8, first: 'top',
@@ -347,5 +402,7 @@ export const MANIFEST: Record<string, BattleManifest> = {
       bottom: { LI: 3, AX: 2, MI: 5, HI: 2, LC: 2, MC: 1, HC: 1, EL: 2 },
     },
     elites: [], rules: [], options: { tacticalFlexibility: true },
+    terrain: { types: { broken: 7, camp: 2 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '420c6f0a', pieces: '8e9b23d8' },
   },
 };

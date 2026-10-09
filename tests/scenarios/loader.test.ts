@@ -2,7 +2,7 @@
 // setup errors name the scenario they come from.
 import { describe, expect, it } from 'vitest';
 import { OFF_BOARD, createGame, hexId } from '../../src/engine';
-import { scenarioById, scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
+import { scenarioById, scenarioFromJson, scenariosFromFiles, type ScenarioJson } from '../../src/scenarios';
 
 const H = (r: number, c: number) => hexId(r, c);
 
@@ -143,9 +143,81 @@ describe('setup errors name the scenario', () => {
     expect(() => createGame(st, 1)).toThrow(/unknown leader trait flying.*\(199\)/);
   });
 
+  it('a leader off the board', () => {
+    const st = setup();
+    st.leaders[0].r = 9;
+    expect(() => createGame(st, 1)).toThrow(/^leader Alexander off board 9,\d+ \(199\)$/);
+    st.leaders[0].r = 1;
+    st.leaders[0].c = -1;
+    expect(() => createGame(st, 1)).toThrow(/^leader Alexander off board 1,-1 \(199\)$/);
+  });
+
+  it('leaders to place before the first turn start off the board and are not checked against it', () => {
+    const { setup: st } = scenarioFromJson(RAW);
+    expect(createGame(st, 1).leaders.filter((l) => l.hex === OFF_BOARD)).toHaveLength(2);
+  });
+
+  it('the error is a new Error that keeps the original as its cause', () => {
+    const st = setup();
+    st.units[0].r = 9;
+    let thrown: unknown;
+    try {
+      createGame(st, 1);
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    const err = thrown as Error;
+    expect(err.message).toBe('unit off board 9,5 (199)');
+    expect(err.cause).toBeInstanceOf(Error);
+    expect((err.cause as Error).message).toBe('unit off board 9,5'); // the original error is not rewritten
+  });
+
   it('a message that already names the scenario is left alone', () => {
     const st = setup();
     st.rules = ['campCapture'];
     expect(() => createGame(st, 1)).toThrow(/^rule campCapture needs scenario data campCapture \(199\)$/);
+    try {
+      createGame(st, 1);
+    } catch (e) {
+      expect((e as Error).cause).toBeUndefined(); // thrown as it was, not wrapped again
+    }
+  });
+});
+
+describe('malformed scenario files', () => {
+  it('a file that breaks the loader throws an Error naming the file and the scenario', () => {
+    const broken = { ...RAW, id: '198', terrain: undefined } as unknown as ScenarioJson;
+    let thrown: unknown;
+    try {
+      scenariosFromFiles({ './data/199.json': RAW, './data/198.json': broken });
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toMatch(/^scenario file \.\/data\/198\.json \(198\): /);
+    expect((thrown as Error).cause).toBeInstanceOf(TypeError);
+  });
+
+  it('a file with no top-level shape at all still names the file', () => {
+    expect(() => scenariosFromFiles({ './data/nothing.json': null as unknown as ScenarioJson })).toThrow(/^scenario file \.\/data\/nothing\.json: /);
+  });
+
+  it('an error that already names the scenario is not given its id twice', () => {
+    const msg = (() => {
+      try {
+        scenariosFromFiles({ './data/199.json': { ...RAW, expansion: 'exp9' as ScenarioJson['expansion'] } });
+      } catch (e) {
+        return (e as Error).message;
+      }
+      return '';
+    })();
+    expect(msg).toBe('scenario file ./data/199.json: unknown expansion exp9 (199)');
+  });
+
+  it('well-formed files build as before, sorted by id', () => {
+    const list = scenariosFromFiles({ './b.json': { ...RAW, id: '199' }, './a.json': { ...RAW, id: '198' } });
+    expect(list.map((x) => x.id)).toEqual(['198', '199']);
+    expect(scenarioById('108').name).toBe('Issus');
   });
 });

@@ -2,10 +2,11 @@
 // the battle-specific data (ramparts, fords, camp objective, leader placement, optional rules) reaches the game state.
 import { describe, expect, it } from 'vitest';
 import {
-  ELITES, GameDriver, HEX_DIRS, OFF_BOARD, createGame, hexId, isImpassable, isLoneLeader, leaderUnit, rowOf,
-  type GameState, type HexDir, type Side, type UnitType,
+  COLS, ELITES, GameDriver, HEX_DIRS, OFF_BOARD, createGame, hexId, isImpassable, isLoneLeader, leaderUnit, rowOf,
+  type GameState, type HexDir, type ScenarioSetup, type Side, type UnitType,
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
+import { checksums, fnv1a, terrainTally } from './checksum';
 import { MANIFEST } from './manifest';
 
 const H = (r: number, c: number) => hexId(r, c);
@@ -131,6 +132,12 @@ for (const id of EXP1) {
       for (const u of game(id).units) if (u.elite) expect(ELITES[u.elite].types, `${u.elite} on ${u.type}`).toContain(u.type);
     });
 
+    it('terrain tallies and position checksums match the verified map', () => {
+      const s = game(id);
+      expect(terrainTally(s), 'terrain tally').toEqual(m.terrain);
+      expect(checksums(s), 'checksums (terrain, unit and leader positions)').toEqual(m.checksum);
+    });
+
     it('ramparts protect the edges facing away from their own army', () => {
       const s = game(id);
       for (let h = 0; h < s.terrain.length; h++) {
@@ -249,6 +256,22 @@ describe('battle-specific setup', () => {
     }
   });
 
+  it("Alexander rides with the Companions (107-111), Coenus does too in 111, and Darius stands with the Immortals in 108", () => {
+    const attachedElite = (id: string, side: Side, name: string) => {
+      const s = game(id);
+      const leader = s.leaders.find((l) => l.side === side && l.name === name);
+      expect(leader, `${id} ${name}`).toBeDefined();
+      const u = leaderUnit(s, leader!);
+      expect(u, `${id}: ${name} is attached to a unit`).toBeDefined();
+      return [u!.type, u!.elite];
+    };
+    for (const id of ['107', '108', '109', '110', '111']) {
+      expect(attachedElite(id, 'top', 'Alexander'), `${id} Alexander`).toEqual(['MC', 'companions']);
+    }
+    expect(attachedElite('111', 'top', 'Coenus')).toEqual(['MC', 'companions']);
+    expect(attachedElite('108', 'bottom', 'Darius')).toEqual(['MI', 'immortals']);
+  });
+
   it('the base battles are base-game battles with no Expansion #1 data', () => {
     for (const id of BASE) {
       const sc = scenarioById(id);
@@ -257,5 +280,174 @@ describe('battle-specific setup', () => {
       expect([id, sc.setup.units.some((u) => u.elite && u.elite !== 'carthSacredBand')]).toEqual([id, false]);
       expect([id, sc.setup.terrain.some((t) => t.t === 'rampart' || t.t === 'sea' || t.ford === 'nocap')]).toEqual([id, false]);
     }
+  });
+});
+
+describe('the manifest notices a changed battle', () => {
+  it('FNV-1a matches its published 32-bit test vectors', () => {
+    expect([fnv1a(''), fnv1a('a'), fnv1a('foobar')]).toEqual(['811c9dc5', 'e40c292c', 'bf9cf968']);
+  });
+
+  it('the checksums do not depend on the order of the pieces in the file', () => {
+    for (const id of EXP1) {
+      const st = structuredClone(scenarioById(id).setup);
+      st.units.reverse();
+      st.leaders.reverse();
+      st.terrain.reverse();
+      const s = createGame(st, 1);
+      expect([id, checksums(s), terrainTally(s)]).toEqual([id, MANIFEST[id].checksum, MANIFEST[id].terrain]);
+    }
+  });
+
+  /** Build a copy of a battle's setup, change it, and return the tallies and checksums of the result. */
+  function after(id: string, change: (st: ScenarioSetup, base: GameState) => boolean) {
+    const base = game(id);
+    const st = structuredClone(scenarioById(id).setup);
+    if (!change(st, base)) return null;
+    const s = createGame(st, 1);
+    return { sums: checksums(s), tally: terrainTally(s), before: { sums: checksums(base), tally: terrainTally(base) } };
+  }
+
+  /** An empty plain hex, as [r, c]; `not` lists hexes to avoid. */
+  const freeHex = (s: GameState, not: number[] = []): [number, number] => {
+    const h = s.terrain.findIndex((t, i) => t === 'plain' && !not.includes(i) && !s.units.some((u) => u.hex === i) && !s.leaders.some((l) => l.hex === i));
+    expect(h).toBeGreaterThanOrEqual(0);
+    return [rowOf(h), h - rowOf(h) * COLS];
+  };
+
+  const done: Record<string, string[]> = {};
+  const tried = (kind: string, id: string) => (done[kind] ??= []).push(id);
+
+  it('moving a unit, a leader or an elite changes the piece checksum and nothing else', () => {
+    for (const id of EXP1) {
+      const unit = after(id, (st, base) => {
+        [st.units[0].r, st.units[0].c] = freeHex(base);
+        return true;
+      })!;
+      expect(unit.sums.pieces, `${id}: unit moved`).not.toBe(unit.before.sums.pieces);
+      expect([unit.sums.terrain, unit.tally], `${id}: unit moved`).toEqual([unit.before.sums.terrain, unit.before.tally]);
+      tried('unit', id);
+
+      const leader = after(id, (st, base) => {
+        if (!st.leaders.length) return false;
+        [st.leaders[0].r, st.leaders[0].c] = freeHex(base);
+        return true;
+      });
+      if (leader) {
+        expect(leader.sums.pieces, `${id}: leader moved`).not.toBe(leader.before.sums.pieces);
+        expect([leader.sums.terrain, leader.tally], `${id}: leader moved`).toEqual([leader.before.sums.terrain, leader.before.tally]);
+        tried('leader', id);
+      }
+
+      // the elite status moves to another unit of the same side that its preset allows (not possible in 111 and 123, where
+      // every unit of the type is elite already), or is dropped
+      const elite = after(id, (st) => {
+        const from = st.units.find((u) => u.elite);
+        const to = from && st.units.find((u) => u !== from && !u.elite && u.side === from.side && ELITES[from.elite!].types.includes(u.type));
+        if (!from || !to) return false;
+        to.elite = from.elite;
+        delete from.elite;
+        return true;
+      });
+      if (elite) {
+        expect(elite.sums.pieces, `${id}: elite moved`).not.toBe(elite.before.sums.pieces);
+        expect([elite.sums.terrain, elite.tally], `${id}: elite moved`).toEqual([elite.before.sums.terrain, elite.before.tally]);
+        tried('elite', id);
+      }
+      const dropped = after(id, (st) => {
+        const from = st.units.find((u) => u.elite);
+        if (!from) return false;
+        delete from.elite;
+        return true;
+      });
+      if (dropped) {
+        expect(dropped.sums.pieces, `${id}: elite dropped`).not.toBe(dropped.before.sums.pieces);
+        expect([dropped.sums.terrain, dropped.tally], `${id}: elite dropped`).toEqual([dropped.before.sums.terrain, dropped.before.tally]);
+        tried('dropped', id);
+      }
+    }
+    const withElites = EXP1.filter((id) => MANIFEST[id].elites.length);
+    expect(withElites).toEqual(['104', '107', '108', '109', '110', '111', '113', '114', '123']);
+    expect(done.unit).toHaveLength(24);
+    expect(done.leader).toEqual(EXP1.filter((id) => id !== '117')); // 117 places its leaders before the first turn
+    expect(done.dropped).toEqual(withElites);
+    expect(done.elite).toEqual(withElites.filter((id) => id !== '111' && id !== '123'));
+  });
+
+  it('flipping a ford changes the river tally and the terrain checksum', () => {
+    for (const id of EXP1) {
+      const r = after(id, (st) => {
+        const t = st.terrain.find((x) => x.t === 'river');
+        if (!t) return false;
+        t.ford = t.ford ? (t.ford === 'nocap' ? true : false) : true;
+        return true;
+      });
+      if (!r) continue;
+      expect(r.sums.terrain, `${id}: ford flipped`).not.toBe(r.before.sums.terrain);
+      expect(r.tally.rivers, `${id}: ford flipped`).not.toEqual(r.before.tally.rivers);
+      expect(r.tally.types, `${id}: ford flipped`).toEqual(r.before.tally.types);
+      expect(r.sums.pieces, `${id}: ford flipped`).toBe(r.before.sums.pieces);
+      tried('ford', id);
+    }
+    expect(done.ford).toEqual(EXP1.filter((id) => MANIFEST[id].terrain.types.river));
+    expect(done.ford!.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('moving a terrain hex keeps every count but changes the terrain checksum', () => {
+    for (const id of EXP1) {
+      const r = after(id, (st, base) => {
+        const t = st.terrain[0];
+        if (!t) return false;
+        const old: [number, number] = [t.r, t.c];
+        [t.r, t.c] = freeHex(base, st.terrain.map((x) => x.r * COLS + x.c));
+        for (const h of st.campCapture?.hexes ?? []) if (h[0] === old[0] && h[1] === old[1]) [h[0], h[1]] = [t.r, t.c]; // 114's camp objective follows its camp
+        return true;
+      });
+      if (!r) continue;
+      expect(r.sums.terrain, `${id}: terrain hex moved`).not.toBe(r.before.sums.terrain);
+      expect(r.tally, `${id}: terrain hex moved`).toEqual(r.before.tally);
+      tried('terrain', id);
+    }
+    // the battles on an all-plain map (design/exp1-scenario-notes.md) have no terrain hex to move
+    expect(EXP1.filter((id) => !done.terrain.includes(id))).toEqual(['104', '109', '112', '115', '117', '119', '122']);
+    expect(EXP1.filter((id) => !Object.keys(MANIFEST[id].terrain.types).length)).toEqual(EXP1.filter((id) => !done.terrain.includes(id)));
+    expect(done.terrain).toContain('114');
+  });
+
+  it('changing the type of a terrain hex changes the tally and the terrain checksum', () => {
+    for (const id of EXP1) {
+      const r = after(id, (st) => {
+        const t = st.terrain.find((x) => ['hill', 'forest', 'marsh', 'broken', 'steep'].includes(x.t));
+        if (!t) return false;
+        t.t = t.t === 'hill' ? 'forest' : 'hill';
+        return true;
+      });
+      if (!r) continue;
+      expect(r.sums.terrain, `${id}: terrain type changed`).not.toBe(r.before.sums.terrain);
+      expect(r.tally.types, `${id}: terrain type changed`).not.toEqual(r.before.tally.types);
+      tried('type', id);
+    }
+    expect(done.type!.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('turning a rampart to face the other way keeps the edge count but changes the terrain checksum', () => {
+    const MIRROR: Record<HexDir, HexDir> = { E: 'E', W: 'W', NE: 'SE', NW: 'SW', SE: 'NE', SW: 'NW' };
+    const FACES: Record<Side, HexDir[]> = { top: ['NW', 'NE'], bottom: ['SW', 'SE'] };
+    for (const id of EXP1) {
+      const r = after(id, (st) => {
+        const t = st.terrain.find((x) => x.t === 'rampart');
+        if (!t) return false;
+        const dirs = [...(t.faces ? FACES[t.faces] : []), ...(t.edges ?? [])];
+        delete t.faces;
+        t.edges = dirs.map((d) => MIRROR[d]);
+        return true;
+      });
+      if (!r) continue;
+      expect(r.sums.terrain, `${id}: rampart turned`).not.toBe(r.before.sums.terrain);
+      expect(r.tally, `${id}: rampart turned`).toEqual(r.before.tally);
+      tried('rampart', id);
+    }
+    expect(done.rampart).toEqual(EXP1.filter((id) => MANIFEST[id].terrain.ramparts.hexes > 0));
+    expect(done.rampart).toEqual(['102', '118']);
   });
 });

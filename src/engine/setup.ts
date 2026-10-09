@@ -172,7 +172,8 @@ export function createGame(setup: ScenarioSetup, seed: number, options?: GameOpt
   try {
     return buildGame(setup, seed, options);
   } catch (e) {
-    if (e instanceof Error && !e.message.endsWith(`(${setup.id})`)) e.message = `${e.message} (${setup.id})`;
+    // name the scenario without rewriting the original error (it stays as `cause`); a message that already ends with it is kept
+    if (e instanceof Error && !e.message.endsWith(`(${setup.id})`)) throw new Error(`${e.message} (${setup.id})`, { cause: e });
     throw e;
   }
 }
@@ -214,7 +215,10 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     }
     return unit;
   });
-  const leaders: Leader[] = setup.leaders.map((l) => withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: hexId(l.r, l.c) }, l.traits));
+  const leaders: Leader[] = setup.leaders.map((l) => {
+    if (!onBoard(l.r, l.c)) throw new Error(`leader ${l.name} off board ${l.r},${l.c}`);
+    return withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: hexId(l.r, l.c) }, l.traits);
+  });
   // Asculum: leaders still to be placed wait off the board (placement order = id order)
   const rules = effectiveRules(setup, options);
   checkPlacement(setup, rules);
