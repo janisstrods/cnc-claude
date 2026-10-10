@@ -8,6 +8,7 @@ export * from './cards';
 export * from './query';
 export * from './setup';
 export * from './movement';
+export * from './banners';
 export * from './objectives';
 export * from './orders';
 export * from './combat';

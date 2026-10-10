@@ -6,7 +6,8 @@ import {
 } from './combat';
 import { ALL_HEXES, areAdjacent, neighbours, rowOf } from './hex';
 import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './movement';
-import { bannerTotal, captureOnStop, exitUnit, gainBanner } from './objectives';
+import { bannerTotal, gainBanner } from './banners';
+import { captureOnStop, exitUnit } from './objectives';
 import {
   autoOrders, orderMode, rallyCandidates, spartacusDiceCount, validateOrders, validateRally, validateSpartacus,
 } from './orders';

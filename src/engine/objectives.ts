@@ -1,9 +1,10 @@
-// Battle objectives (rules-reference §18.4): scenario data resolved into `ObjectiveDef`s, banner totals, and scoring.
+// Battle objectives (rules-reference §18.4): scenario data resolved into `ObjectiveDef`s, and scoring (banner totals and
+// victory live in banners.ts).
 // Implemented: capture by stopping on a hex (011 Baecula, 114 Gabiene) and exits off the board (010 Castulo). The other
 // objective kinds and options of `ObjectiveDef` are typed but rejected by `resolveObjectives` until they are played.
-import { drawCard } from './cards';
+import { gainBanner } from './banners';
 import { hexId, onBoard } from './hex';
-import { attachedLeader, isRomanArmy, other } from './query';
+import { attachedLeader, other } from './query';
 import type { ObjectiveSetup, ScenarioSetup } from './setup';
 import { UNIT_STATS } from './units';
 import {
@@ -96,43 +97,6 @@ export function resolveObjectives(setup: ScenarioSetup, terrain: TerrainType[], 
 /** The state of an objective before play. */
 export function newObjectiveState(): ObjectiveState {
   return { taken: [], held: { top: 0, bottom: 0 }, sections: [] };
-}
-
-// ---------------------------------------------------------------------------
-// banners
-// ---------------------------------------------------------------------------
-
-/** A side's banner total: its permanent banners plus the banners its objectives give it right now (held banners). */
-export function bannerTotal(s: GameState, side: Side): number {
-  let n = s.players[side].banners;
-  for (const o of s.special.objState) n += o.held[side];
-  return n;
-}
-
-/**
- * `side` scores a permanent banner (`reason` goes in the `banner` event). A banner total reaching the battle's target
- * wins it. 2nd Beneventum: the Romans grow to 6 cards on their 3rd banner.
- */
-export function gainBanner(s: GameState, ctx: FlowCtx, side: Side, reason: string) {
-  if (s.winner) return;
-  const p = s.players[side];
-  p.banners++;
-  const total = bannerTotal(s, side);
-  ctx.emit({ t: 'banner', side, total, reason });
-  if (total >= s.bannersToWin) {
-    s.winner = side;
-    s.winReason = `${p.army} captured ${total} banners`;
-    ctx.emit({ t: 'victory', winner: side, reason: s.winReason });
-    return;
-  }
-  if (s.special.rules.includes('beneventumHand') && isRomanArmy(s, side) && p.banners === 3 && !s.special.beneventumBonusGiven) {
-    s.special.beneventumBonusGiven = true;
-    p.command = 6;
-    ctx.emit({ t: 'command', side, command: 6 });
-    ctx.emit({ t: 'log', text: `Gracchus rallies his volunteers: the ${p.army} player now holds 6 command cards.`, side });
-    drawCard(s, ctx, side);
-    drawCard(s, ctx, side);
-  }
 }
 
 // ---------------------------------------------------------------------------
