@@ -2,8 +2,11 @@ import { useId, type CSSProperties } from 'react';
 import type { Blocks } from '../../engine/types';
 import { bannerCloth } from './theme';
 
-/** A single swallow-tailed standard. `blockColor` (the block set of the army it belongs to) = colour of the cloth; omitted = empty slot. */
-export function BannerIcon(p: { blockColor?: Blocks; size?: number; className?: string; style?: CSSProperties }) {
+/**
+ * A single swallow-tailed standard. `blockColor` (the block set of the army it belongs to) = colour of the cloth; omitted =
+ * empty slot. `held`: a banner held through an objective (§18.4), which can still be lost: the cloth is hatched.
+ */
+export function BannerIcon(p: { blockColor?: Blocks; held?: boolean; size?: number; className?: string; style?: CSSProperties }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const w = p.size ?? 28;
   const h = (w * 66) / 40;
@@ -33,6 +36,12 @@ export function BannerIcon(p: { blockColor?: Blocks; size?: number; className?: 
               <stop offset=".85" stopColor="#000" stopOpacity=".18" />
               <stop offset="1" stopColor="#000" stopOpacity=".35" />
             </linearGradient>
+            {p.held && (
+              <pattern id={`${uid}h`} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="5" height="5" fill="#000" fillOpacity=".34" />
+                <rect width="2.2" height="5" fill="#f3dc9a" fillOpacity=".5" />
+              </pattern>
+            )}
           </>
         ) : null}
       </defs>
@@ -43,6 +52,7 @@ export function BannerIcon(p: { blockColor?: Blocks; size?: number; className?: 
           <path d="M7 10 H33 V55 L20 46 L7 55 Z" fill="rgba(0,0,0,.35)" transform="translate(1 1.6)" />
           <path d={cloth} fill={`url(#${uid}c)`} stroke={c.dark} strokeWidth=".8" strokeLinejoin="round" />
           <path d={cloth} fill={`url(#${uid}f)`} />
+          {p.held && <path d={cloth} fill={`url(#${uid}h)`} />}
           <path d="M9.6 12.6 H30.4 V50.2 L20 43 L9.6 50.2 Z" fill="none" stroke="#e8c45a" strokeWidth=".9" strokeLinejoin="round" opacity=".9" />
           {/* emblem: a small gilded wreath */}
           <circle cx="20" cy="26" r="6.2" fill="none" stroke="#f0cd6a" strokeWidth="1.4" strokeDasharray="2.2 1.1" />
@@ -64,12 +74,19 @@ export function BannerIcon(p: { blockColor?: Blocks; size?: number; className?: 
   );
 }
 
+/** Tooltip of a held banner's slot. */
+export const HELD_BANNER_TIP = 'Held while occupied — can be lost';
+
 /**
  * Victory banner track: `target` slots, the first `count` filled with captured banners.
  * `blockColor` is the block set of the army whose banners were captured (i.e. the opponent's), used for the cloth colour.
+ * `held` of the `count` banners are held through objectives (§18.4; `count` is the banner total): they fill the last of
+ * the filled slots, hatched, with a tooltip saying they can be lost.
  */
 export function BannerTrack(p: {
   count: number;
+  /** Banners of `count` held through objectives (hold, majority, section clear), not won for good. */
+  held?: number;
   target: number;
   blockColor: Blocks;
   label: string;
@@ -79,31 +96,36 @@ export function BannerTrack(p: {
 }) {
   const target = Math.max(0, p.target);
   const count = Math.max(0, Math.min(p.count, target));
+  const held = Math.max(0, Math.min(p.held ?? 0, count));
   const near = target > 0 && target - count === 1;
   return (
     <div
       className={`kit-banners ${near ? 'is-near' : ''} ${count >= target && target > 0 ? 'is-won' : ''} ${p.className ?? ''}`}
       style={p.style}
       role="group"
-      aria-label={`${p.label}: ${p.count} of ${p.target} banners`}
+      aria-label={`${p.label}: ${p.count} of ${p.target} banners${held ? ` (${held} held, can be lost)` : ''}`}
     >
       <div className="kit-banners__head">
         <span className="kit-banners__label">{p.label}</span>
+        {held > 0 && <span className="kit-banners__held" title={HELD_BANNER_TIP}>{held} held</span>}
         <span className="kit-banners__count">
           {p.count}
           <small> / {p.target}</small>
         </span>
       </div>
       <div className="kit-banners__row">
-        {Array.from({ length: target }, (_, i) => (
-          <div key={i} className={`kit-banners__slot ${i < count ? 'is-filled' : ''}`}>
+        {Array.from({ length: target }, (_, i) => {
+          const isHeld = i < count && i >= count - held;
+          return (
+          <div key={i} className={`kit-banners__slot ${i < count ? 'is-filled' : ''}${isHeld ? ' is-held' : ''}`} title={isHeld ? HELD_BANNER_TIP : undefined}>
             {i < count ? (
-              <BannerIcon blockColor={p.blockColor} size={p.bannerSize} className="kit-banner" />
+              <BannerIcon blockColor={p.blockColor} held={isHeld} size={p.bannerSize} className="kit-banner" />
             ) : (
               <BannerIcon size={p.bannerSize} className="kit-banner kit-banner--empty" />
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
