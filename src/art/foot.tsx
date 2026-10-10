@@ -123,6 +123,15 @@ export const ELITE_FOOT: Partial<Record<ArtEliteId, EliteLook>> = {
   },
   // Mauryan bow-armed auxilia: the longbow instead of javelins and shield.
   bowAuxilia: { foot: { weapon: 'longbow', shield: 'none', spare: undefined } },
+  // Caesar's Tenth Legion: the bull of Caesar's legions over the wings, on gold-rimmed crimson scuta; white plumes, greaves.
+  tenthLegion: {
+    palette: {
+      shield: '#7c1424', shieldShade: '#4e0c16', shieldLight: '#a83a44', shieldRim: '#f0c850', shieldEmblem: '#f6d460',
+      crest: '#f4eee0', crestShade: '#c4b99c', crestAlt: '#d42a2e',
+    },
+    emblems: ['bull'],
+    foot: { legs: 'greaves' },
+  },
 };
 
 const figPalettes = new WeakMap<Palette, Map<string, Palette>>();

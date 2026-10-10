@@ -6,7 +6,7 @@ import type { RiderKit } from './mounted';
 import type { Crest, Helmet } from './parts';
 
 /** Figure kit: the shapes (helmets, shields, torsos, mounts) an army's miniatures are built from. */
-export type Kit = 'roman' | 'punic' | 'greek' | 'macedonian' | 'persian' | 'scythian' | 'indian' | 'celtic' | 'germanic';
+export type Kit = 'roman' | 'punic' | 'greek' | 'macedonian' | 'persian' | 'scythian' | 'indian' | 'celtic' | 'germanic' | 'lateRoman';
 
 /**
  * The elite presets that have art: the engine's `EliteId`, plus the Tenth Legion until the engine's Expansion #2 types
@@ -636,6 +636,21 @@ const GERMANIC = look({
   fur: '#7a5c3c',
 });
 
+/** The legions of Marius and Caesar: red tunics and scuta with Jupiter's winged thunderbolt in gold, bronze helmets. */
+const MARIAN = look({
+  tunic: '#b0262c', trim: '#e8c050', trousers: '#5a4030', cloak: '#8c1c24',
+  shield: '#a8222a', shieldRim: '#c9a25a', shieldEmblem: '#f2c94f',
+  paint: '#a8222a', paintEmblem: '#f2c94f',
+  metal: ['#c7923d', '#85591f', '#f3d68e'], crest: '#1c1a1e', crestAlt: '#d42a2e',
+  skin: ['#e6b48a', '#d9a077', '#cc9168', '#e0aa80'], hair: ['#3a2416', '#24170f', '#5a3a20', '#2e1d12'],
+  horses: [
+    { coat: '#8a5530', shade: '#5c3519', mane: '#2a1a10' },
+    { coat: '#5e3a22', shade: '#3c2414', mane: '#1a110b' },
+    { coat: '#a77446', shade: '#714a28', mane: '#3a2414' },
+  ],
+  saddle: '#8c1c24',
+});
+
 /** Side colours of each block set (base edge and standard cloth). */
 export const BLOCK_COLORS: Record<Blocks, SideColors> = {
   rom: {
@@ -905,7 +920,11 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
     },
   },
   slave: CARTHAGINIAN_LOOK,
-  marian: ROMAN_LOOK,
+  marian: {
+    kit: 'lateRoman', palette: MARIAN,
+    // generals on a bay horse (Caesar rides his white one, LEADER_LOOKS)
+    style: { emblems: ['wingedBolt'], device: 'wingedBolt', finial: 'eagle', standard: 'aquila', general: { horse: { coat: '#7a4a2a', shade: '#4e2e18', mane: '#22160e' } } },
+  },
 };
 
 /**

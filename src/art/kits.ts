@@ -725,6 +725,67 @@ const GERMANIC: KitDef = {
 };
 
 /**
+ * The legions of the late Republic (Marius to Augustus): mail with shoulder doubling, Montefortino and Coolus helmets,
+ * the curved oval scutum, the pilum; light troops and auxilia from the allies, Germanic warriors in Roman service.
+ */
+function lateRomanFoot(type: UnitType, i: number): FootKit {
+  switch (type) {
+    case 'LI':
+      return {
+        torso: 'tunic', skirt: true, legs: 'bare', helmet: 'none', crest: 'none', hair: 'short', shield: 'round',
+        weapon: 'javelin', spare: 'javelins', sleeve: true,
+      };
+    case 'LB':
+      // Cretan archers
+      return { torso: 'tunic', skirt: true, legs: 'bare', helmet: 'none', crest: 'none', hair: 'short', shield: 'none', weapon: 'bow', sleeve: true, beard: i % 2 === 1 };
+    case 'LS':
+      // Balearic slingers
+      return { torso: 'tunic', skirt: true, legs: 'bare', helmet: 'none', crest: 'none', hair: i % 2 ? 'long' : 'short', shield: 'none', weapon: 'sling', sleeve: true };
+    case 'AX':
+      return {
+        torso: 'leather', skirt: true, legs: 'bare', helmet: 'coolus', crest: 'knob', hair: 'short', shield: 'oval', shieldScale: 0.84,
+        painted: true, weapon: 'javelin', spare: 'spear', sleeve: true,
+      };
+    case 'WA':
+      // Germanic warriors in Roman service (Germanicus' auxiliaries), fair-haired among the legions
+      return { ...germanicFoot('WA', i), tribal: true };
+    case 'MI':
+      return {
+        torso: 'mail', skirt: true, legs: 'bare', helmet: i % 2 ? 'coolus' : 'montefortino', crest: i % 2 ? 'knob' : 'horsehair',
+        hair: 'short', shield: 'legionOval', weapon: 'pilum', doubling: true,
+      };
+    case 'HI':
+    default:
+      // veterans with the tall feather plumes
+      return {
+        torso: 'mail', skirt: true, legs: 'bare', helmet: i % 2 ? 'coolus' : 'montefortino', crest: 'plumes', hair: 'short',
+        shield: 'legionOval', weapon: 'pilum', doubling: true,
+      };
+  }
+}
+
+/** Allied light horse with javelins; Gallic, German and Roman horsemen in mail with oval shields and spears. */
+function lateRomanMount(type: UnitType, i: number): MountKit {
+  if (type === 'LC') return { rider: { torso: 'tunic', helmet: 'none', crest: 'none', shield: 'round', weapon: 'javelin', legs: 'bare', spare: true, hair: i % 2 ? 'long' : 'short' }, cloth: 'plain' };
+  if (type === 'HC') return { rider: { torso: 'mail', helmet: 'montefortino', crest: 'horsehair', shield: 'none', weapon: 'lance', legs: 'bare' }, cloth: 'plain' };
+  return { rider: { torso: 'mail', helmet: i % 2 ? 'montefortino' : 'coolus', crest: 'knob', shield: 'oval', weapon: 'spear', legs: 'bare' }, cloth: 'plain' };
+}
+
+const LATE_ROMAN: KitDef = {
+  foot: lateRomanFoot,
+  cavalry: { drawing: 'kit', mount: lateRomanMount },
+  crew: (i) => ({ torso: 'mail', helmet: i % 2 ? 'coolus' : 'montefortino', crest: 'knob' }),
+  warMachine: 'scorpio',
+  ovalShieldBoss: true,
+  general: { rider: CLASSIC_GENERAL, horse: WHITE_HORSE },
+  bust: { helmet: 'atticOpen', crest: 'horsehair', beard: false },
+  iconBox: {
+    MI: [-42.5, 1.8, -6.1, 10.6], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31], HWM: [-33.1, 0.4, -28.1, 21.9],
+    BCH: [-39.6, 0.9, -27.8, 31],
+  },
+};
+
+/**
  * Fills the choices a kit leaves out: crews dressed as its medium infantry, the base game's chariot and elephant manned
  * by such crews, horse archers built from its light horseman, the self bow, the oxybeles, plain shields, no icon boxes.
  */
@@ -766,6 +827,7 @@ export const KIT_DEFS: Record<Kit, KitDef> = {
   indian: INDIAN,
   celtic: CELTIC,
   germanic: GERMANIC,
+  lateRoman: LATE_ROMAN,
 };
 
 /** Every figure kit, completed (see `completeKit`): the table the drawing code reads. */

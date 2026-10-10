@@ -217,7 +217,7 @@ export function Badge({ type, blocks, maxBlocks, elite }: { type: UnitType; bloc
 const STANDARD_FIG = new WeakMap<Palette, Fig>();
 
 /** Elites whose gold marker differs: the Tenth Legion's carries an eagle instead of the wreath, and its numeral. */
-const ELITE_MARKERS: Partial<Record<ArtEliteId, { top: 'eagle'; plaque: 'X' }>> = {};
+const ELITE_MARKERS: Partial<Record<ArtEliteId, { top: 'eagle'; plaque: 'X' }>> = { tenthLegion: { top: 'eagle', plaque: 'X' } };
 
 /** A small gold eagle with raised wings, at the top of an elite marker. */
 const MARKER_WING = 'M-0.3 -1.6 C-1.6 -2.6 -3 -4.6 -3.1 -6.8 C-2.3 -6 -1.5 -5.6 -0.6 -5.4 C-0.9 -4.7 -0.8 -3.9 -0.4 -3.3 Z';
