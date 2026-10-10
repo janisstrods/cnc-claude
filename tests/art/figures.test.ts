@@ -5,7 +5,7 @@ import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ArmyLook, Blocks, EliteId, UnitType } from '../../src/engine/types';
 import { LOOKS, paletteFor } from '../../src/art/palettes';
-import { UnitIcon, UnitToken } from '../../src/art';
+import { LeaderToken, UnitIcon, UnitToken } from '../../src/art';
 import { EliteStandard, Miniature, figureKind } from '../../src/art/token';
 import { FootFigure, figurePalette, footKit } from '../../src/art/foot';
 import type { Kit } from '../../src/art/palettes';
@@ -184,5 +184,24 @@ describe('Expansion #1 foot figures', () => {
   it("a look's per-type overrides reach its figures: Epirote skirmishers are not Macedonian ones", () => {
     expect(paletteFor('epirote', 'grk').kit).toBe(paletteFor('macedonian', 'grk').kit);
     expect(unit((i) => fig('LI', 'epirote', i))).not.toBe(unit((i) => fig('LI', 'macedonian', i)));
+  });
+});
+
+describe('the attached-leader medallion', () => {
+  const medallion = (look: ArmyLook, facing: 'left' | 'right' = 'right') =>
+    shape(svg(h(LeaderToken, { look, blockColor: 'grk', facing, attached: true })));
+
+  it("wears the look's general helmet and crest, like the mounted general (Theban, Spartan, Pyrrhus' horns)", () => {
+    for (const facing of ['left', 'right'] as const) {
+      // looks of one kit without a general's helmet share the kit's portrait
+      expect(medallion('athenian', facing)).toBe(medallion('syracusan', facing));
+      expect(medallion('antigonid', facing)).toBe(medallion('macedonian', facing));
+      // Boeotian helmet, Corinthian with a tall crest, the Epirote king's horns
+      expect(medallion('theban', facing)).not.toBe(medallion('syracusan', facing));
+      expect(medallion('spartan', facing)).not.toBe(medallion('syracusan', facing));
+      expect(medallion('spartan', facing)).not.toBe(medallion('theban', facing));
+      expect(medallion('epirote', facing)).not.toBe(medallion('macedonian', facing));
+    }
+    for (const look of ['theban', 'spartan', 'epirote'] as ArmyLook[]) expect(medallion(look), look).not.toMatch(/NaN|undefined/);
   });
 });

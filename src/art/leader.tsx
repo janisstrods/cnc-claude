@@ -249,17 +249,21 @@ export function generalPalette(p: Palette): Palette {
 
 const CAMEO = '#f1e5c6';
 
-/** Head-and-shoulders portrait used in the attached-leader medallion (facing right, centred on 0,0, cameo field r = 8). */
+/**
+ * Head-and-shoulders portrait used in the attached-leader medallion (facing right, centred on 0,0, cameo field r = 8).
+ * The look's general helmet and crest (Theban, Spartan, Pyrrhus' horns) replace the kit's, as on the mounted general.
+ */
 function Bust({ f }: { f: Fig }) {
   const { p } = f;
   const b = BUSTS[p.kit];
+  const g = p.style.general;
+  const helmet = g?.helmet ?? b?.helmet ?? 'atticOpen';
+  const crest = g?.crest ?? b?.crest ?? 'horsehair';
   const eastern = p.kit === 'persian' || p.kit === 'scythian' || p.kit === 'indian';
   return (
     <>
       <g transform="translate(-0.75 24.4) scale(1.05)">
-        {b
-          ? <Head f={f} helmet={b.helmet} crest={b.crest} beard={b.beard} />
-          : <Head f={f} helmet="atticOpen" crest="horsehair" beard={p.kit !== 'roman'} />}
+        <Head f={f} helmet={helmet} crest={crest} beard={b ? b.beard : p.kit !== 'roman'} />
       </g>
       {/* cloak across the shoulders */}
       <Shape d="M-7.63 2.4 C-5.8 1.4 -3.4 1.2 0 1.5 C3.4 1.7 5.8 2 7.63 2.4 A 8 8 0 0 1 -7.63 2.4 Z" f={p.cloak} sw={0.6} />
