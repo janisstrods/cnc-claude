@@ -75,6 +75,8 @@ function resolveCapture(o: ObjectiveSetupOf<'capture'>, terrain: TerrainType[], 
     if (!atLeast(together, 1) || together > hexes.length) {
       throw new Error(`capture objective: together must be a whole number from 1 to the number of hexes (${hexes.length})`);
     }
+    // one capture takes every hex at once, so only the first value could ever score
+    if (banners.length > 1) throw new Error('capture objective: together makes a single capture, so banners takes one value');
   }
   const remove = o.remove ?? false;
   if (typeof remove !== 'boolean') throw new Error('capture objective: remove must be true or false');
@@ -132,16 +134,23 @@ export function resolveObjectives(setup: ScenarioSetup, terrain: TerrainType[], 
   const list: unknown = setup.objectives ?? [];
   if (!Array.isArray(list)) throw new Error('objectives must be a list');
   return (list as ObjectiveSetup[]).map((o): ObjectiveDef => {
-    switch (o.kind) {
-      case 'capture': return resolveCapture(o, terrain, players);
-      case 'hold': return resolveHold(o, players);
-      case 'majority': return resolveMajority(o);
-      case 'sectionClear': return resolveSectionClear(o, players);
-      case 'exit': return resolveExit(o, players);
-      default:
-        throw new Error(`unknown objective kind ${String((o as { kind?: unknown }).kind)}`);
-    }
+    const def = resolveOne(o, terrain, players);
+    const text: unknown = o.text;
+    if (text !== undefined && typeof text !== 'string') throw new Error(`${def.kind} objective: text must be a string`);
+    return def;
   });
+}
+
+function resolveOne(o: ObjectiveSetup, terrain: TerrainType[], players: GameState['players']): ObjectiveDef {
+  switch (o.kind) {
+    case 'capture': return resolveCapture(o, terrain, players);
+    case 'hold': return resolveHold(o, players);
+    case 'majority': return resolveMajority(o);
+    case 'sectionClear': return resolveSectionClear(o, players);
+    case 'exit': return resolveExit(o, players);
+    default:
+      throw new Error(`unknown objective kind ${String((o as { kind?: unknown }).kind)}`);
+  }
 }
 
 /** The state of an objective before play. */

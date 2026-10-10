@@ -120,6 +120,11 @@ describe('ambush reserve', () => {
       expect(bad({ afterOwnTurns: 1.5 })).toThrow(/afterOwnTurns/);
       expect(bad({ text: 7 })).toThrow(/^ambush text must be a string \(qa\)$/);
     });
+    it('rejects an ambush without reserve units (with or without ambush data)', () => {
+      const p = posFor('top');
+      expect(() => build({ ...p, reserves: [], reserveLeaders: [] })).toThrow(/^the ambush \(rule magoAmbush\) needs reserve units \(qa\)$/);
+      expect(() => build({ ...p, ambush: AQUAE, reserves: [] })).toThrow(/^the ambush \(rule magoAmbush\) needs reserve units \(qa\)$/);
+    });
   });
 
   describe('Trebbia defaults (rule magoAmbush alone)', () => {
@@ -426,6 +431,16 @@ describe('separate commands', () => {
         .toThrow(/^leader Gaius: command zzz is not a command of the battle \(qa\)$/);
       expect(bad({ commands: [{ ...LEN, side: 'top' }], leaders: [{ side: 'bottom', name: 'Gaius', at: [6, 4], command: 'len' }] }))
         .toThrow(/^leader Gaius: command len belongs to the top army, not bottom \(qa\)$/);
+    });
+    it('rejects a command on a piece off the board (reserves, reserve leaders, leaders to place) instead of dropping it', () => {
+      const bad = (p: Partial<Pos>) => () => createGame(setupOf({ units: [{ side: 'bottom', type: 'MI', at: [6, 4] }], commands: CMDS, ...p }), 1);
+      const withCommand = <T extends object>(x: T) => ({ ...x, command: 'len' }) as T;
+      expect(bad({ rules: ['magoAmbush'], reserves: [withCommand({ side: 'bottom' as const, type: 'MC' as const })] }))
+        .toThrow(/^reserve unit MC: command len is only for pieces on the board \(qa\)$/);
+      expect(bad({ rules: ['magoAmbush'], reserves: [{ side: 'bottom', type: 'MC' }], reserveLeaders: [withCommand({ side: 'bottom' as const, name: 'Marius' })] }))
+        .toThrow(/^reserve leader Marius: command len is only for pieces on the board \(qa\)$/);
+      expect(bad({ rules: ['leaderPlacement'], placeLeaders: [withCommand({ side: 'bottom' as const, name: 'Gaius' })] }))
+        .toThrow(/^leader to place Gaius: command len is only for pieces on the board \(qa\)$/);
     });
     it('a scenario file carries commands, unit command and leader command into the setup (copied)', () => {
       const base: ScenarioJson = {

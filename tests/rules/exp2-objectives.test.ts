@@ -687,6 +687,15 @@ describe('Expansion #2 objectives', () => {
     expect(game({ objectives: [{ kind: 'majority', sides: ['top'], hexes: [[2, 6]], banners: 0, when: 'turnEnd' }] })).toThrow(/banners/);
     expect(game({ objectives: [{ kind: 'majority', sides: ['top'], hexes: [[2, 6]], banners: 1, when: 'never' as 'always' }] })).toThrow(/when/);
     expect(game({ objectives: [{ kind: 'sectionClear', side: 'middle' as 'top' }] })).toThrow(/unknown side middle/);
+    // the text is a string; a 'together' capture is one capture, so it takes a single banner value
+    expect(game({ objectives: [{ kind: 'hold', side: 'bottom', hexes: [[2, 6]], text: 7 as unknown as string }] }))
+      .toThrow(/^hold objective: text must be a string \(qa\)$/);
+    expect(game({ objectives: [{ kind: 'exit', side: 'bottom', hexes: [[0, 6]], text: null as unknown as string }] }))
+      .toThrow(/^exit objective: text must be a string \(qa\)$/);
+    expect(game({ objectives: [{ kind: 'capture', side: 'bottom', when: 'turnStart', together: 2, banners: [0, 1] }] }))
+      .toThrow(/^capture objective: together makes a single capture, so banners takes one value \(qa\)$/);
+    expect(ok({ objectives: [{ kind: 'capture', side: 'bottom', when: 'turnStart', together: 2, banners: [2] }] })[0])
+      .toMatchObject({ together: 2, banners: [2] });
     // defaults
     expect(ok({ objectives: [{ kind: 'hold', side: 'bottom', hexes: [[2, 7], [2, 6]] }] })).toEqual([
       { kind: 'hold', side: 'bottom', hexes: [H(2, 6), H(2, 7)], max: 2, text: 'The Roman army holds an objective.' },

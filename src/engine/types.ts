@@ -174,11 +174,12 @@ export interface TurnState {
 }
 
 /**
- * Scenario special rules (§14, §17). `castulo` (010): losing the sacred leader (`ScenarioSetup.sacredLeader`) loses the
- * battle; Castulo's exit is a battle objective. Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112
- * Hellespont), `frightAtFirstSight` (116 Heraclea), `leaderPlacement` (117 Asculum: leaders are placed before the first
- * turn) and `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3). Camp capture (011 Baecula, 114
- * Gabiene) is a battle objective (`ObjectiveDef`), not a rule. Expansion #2: `magoAmbush` also serves 206 (§18.5) and
+ * Scenario special rules (§14, §17). `castulo` (010) has no effect of its own and is kept so that saved and scenario data
+ * stay valid: the sacred leader whose loss loses the battle is `ScenarioSetup.sacredLeader`, and Castulo's exit is a
+ * battle objective. Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112 Hellespont),
+ * `frightAtFirstSight` (116 Heraclea), `leaderPlacement` (117 Asculum: leaders are placed before the first turn) and
+ * `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3). Camp capture (011 Baecula, 114 Gabiene) is a
+ * battle objective (`ObjectiveDef`), not a rule. Expansion #2: `magoAmbush` also serves 206 (§18.5) and
  * `veryHills` (223, §18.6) makes every hill very steep: a unit climbing onto one stops and may not battle, and the
  * close-combat caps change. Scenario data is validated against this list.
  */

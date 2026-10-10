@@ -134,6 +134,26 @@ describe('F4 elephant retreat losses on both sides at once cannot produce a draw
     expect({ winner: d.state.winner, topBlocker: !!u(d, 'u3'), bottomBlocker: !!u(d, 'u4') })
       .toEqual({ winner: 'draw', topBlocker: false, bottomBlocker: false });
   });
+  it("a win earlier in the same retreat stands: the blockers' losses never turn it into a draw", () => {
+    // the elephant retreats 2 hexes: into the marsh (3,6), where its leader dies (the bottom side's winning banner), then
+    // its way on is blocked by a unit of each side, both of which would reach the target
+    const s = build({
+      banners: 1,
+      terrain: [{ at: [3, 6], t: 'marsh' }],
+      units: [
+        { side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'EL', at: [4, 6] }, { side: 'top', type: 'MI', at: [3, 5] },
+        { side: 'top', type: 'MI', at: [2, 6], blocks: 1 }, { side: 'bottom', type: 'MI', at: [2, 7], blocks: 1 },
+      ],
+      leaders: [{ side: 'top', name: 'Pyrrhus', at: [4, 6] }],
+    });
+    const d = toBattle(s, 'order4C', ['u1']);
+    // attack (2 flags), rampage (2 dice on each of 2 neighbours: misses), marsh check (1 block), leader check (killed)
+    forceDice(['flag', 'flag', ...n('light', 3), ...n('light', 4), 'heavy', 'leader', 'leader']);
+    must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+    expect(d.state.leaders).toEqual([]);
+    expect(d.state.winner).toBe('bottom');
+    expect(d.state.winReason).toBe('Roman captured 1 banners');
+  });
 });
 
 describe('F5 elephant retreat onto a lone friendly leader while it already has an attached leader', () => {

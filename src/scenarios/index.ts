@@ -159,7 +159,7 @@ const EXTRA: Record<string, Extra> = {
       'If Publius Scipio is killed, Carthage wins immediately.',
       "A Roman unit that exits the battlefield over the Carthaginian baseline from a centre or Roman-right hex scores a banner and is removed.",
     ],
-    rules: ['castulo'],
+    rules: ['castulo'], // a marker only: the sacred leader (patch below) and the exit objective carry the rules
     objectives: [{ kind: 'exit', side: 'bottom', hexes: CASTULO_EXITS }],
     hint: 'Break out or die; protect Scipio.',
     patch: (s) => {

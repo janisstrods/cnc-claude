@@ -4,7 +4,7 @@ import {
   canFireAt, closeCombatDice, helmetsCount, ignorableFlags, rangedDice, retreatPerFlag, scoreClassOnly, scoreClose,
   swordIgnores, vsMountedIgnores, type StrikeRole,
 } from './combat';
-import { ALL_HEXES, areAdjacent, neighbours, rearHexes, rowOf } from './hex';
+import { ALL_HEXES, areAdjacent, neighbours, onBaseline, rearHexes } from './hex';
 import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './movement';
 import { bannerTotal, gainBanner, updateHeld } from './banners';
 import { captureOnStop, exitUnit, turnEndObjectives, turnStartObjectives } from './objectives';
@@ -98,10 +98,9 @@ function leaderLost(s: GameState, ctx: FlowCtx, l: Leader, reason: string, text:
  * banners one by one, then the Hellespont rules for each leader lost in the batch (banners resolve first, §17.4).
  */
 function settleBanners(s: GameState, ctx: FlowCtx, b: BannerBatch, reason: string, drawReason: string) {
-  // held banners are brought up to date first; only a win produced by that update ends the step here
-  const decided = s.winner !== null;
-  updateHeld(s, ctx);
-  if (!decided && s.winner) return;
+  if (s.winner) return; // the battle is already over: the draw below must never overwrite a win
+  updateHeld(s, ctx); // held banners are brought up to date first; a win produced by that update ends the step here
+  if (s.winner) return;
   const before = { top: bannerTotal(s, 'top'), bottom: bannerTotal(s, 'bottom') };
   const add = { top: b.gains.filter((x) => x === 'top').length, bottom: b.gains.filter((x) => x === 'bottom').length };
   const winTop = before.top + add.top >= s.bannersToWin && add.top > 0;
@@ -1319,9 +1318,9 @@ export function* gameFlow(s: GameState, ctx: FlowCtx): Gen {
   }
 }
 
-/** Is this unit at its baseline row (used by AI/UI hints)? */
+/** Is this unit on its own baseline row? Decides the last-row retreat elimination (214, §18.5). */
 export function atOwnBaseline(u: Unit): boolean {
-  return rowOf(u.hex) === (u.side === 'top' ? 0 : 8);
+  return onBaseline(u.hex, u.side);
 }
 
 export { areAdjacent };

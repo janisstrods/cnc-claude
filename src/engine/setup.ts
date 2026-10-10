@@ -254,6 +254,15 @@ function checkIds(setup: ScenarioSetup) {
   }
   for (const u of setup.units) if (!has(UNIT_STATS, u.type)) throw new Error(`unknown unit type ${String(u.type)} at ${u.r},${u.c}`);
   for (const u of setup.reserves) if (!has(UNIT_STATS, u.type)) throw new Error(`unknown unit type ${String(u.type)} in reserve`);
+  // separate commands (§18.5) are for the pieces on the board only: a command anywhere else would be lost silently
+  const offBoard: [string, { type?: string; name?: string; command?: unknown }[]][] = [
+    ['reserve unit', setup.reserves], ['reserve leader', setup.reserveLeaders], ['leader to place', setup.placeLeaders ?? []],
+  ];
+  for (const [what, list] of offBoard) {
+    for (const p of list) {
+      if (p.command !== undefined) throw new Error(`${what} ${p.type ?? p.name}: command ${String(p.command)} is only for pieces on the board`);
+    }
+  }
 }
 
 /**
@@ -306,7 +315,10 @@ const DEFAULT_AMBUSH: AmbushDef = {
   text: "Ambush! Mago's hidden force strikes from the {section}.",
 };
 
-/** The ambush data of a battle: null without the rule `magoAmbush`, else the scenario's data over the Trebbia defaults. */
+/**
+ * The ambush data of a battle: null without the rule `magoAmbush`, else the scenario's data over the Trebbia defaults.
+ * The rule needs a reserve force (at least one reserve unit).
+ */
 function resolveAmbush(setup: ScenarioSetup, rules: SpecialRuleId[]): AmbushDef | null {
   const a: unknown = setup.ambush;
   if (!rules.includes('magoAmbush')) {
@@ -324,6 +336,7 @@ function resolveAmbush(setup: ScenarioSetup, rules: SpecialRuleId[]): AmbushDef 
     throw new Error('ambush afterOwnTurns must be a whole number, 0 or more');
   }
   if (d.text !== undefined && typeof d.text !== 'string') throw new Error('ambush text must be a string');
+  if (!setup.reserves.length) throw new Error('the ambush (rule magoAmbush) needs reserve units');
   return {
     trigger: [...(d.trigger ?? DEFAULT_AMBUSH.trigger)],
     afterOwnTurns: d.afterOwnTurns ?? DEFAULT_AMBUSH.afterOwnTurns,
