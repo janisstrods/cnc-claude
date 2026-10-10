@@ -30,6 +30,8 @@ export function terrainName(t: TerrainType, ford: boolean, noCap = false): strin
       return 'Sea';
     case 'rampart':
       return 'Rampart';
+    case 'ditch':
+      return 'Ditch';
     case 'void':
       return 'Off Board';
   }

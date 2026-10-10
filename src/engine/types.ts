@@ -20,11 +20,12 @@ export type Legion = (typeof LEGIONS)[number];
 
 /**
  * Terrain of a hex. A fordable river is `river` with `fords[hex] === true` (and `noCap[hex]` when it has no dice caps).
- * `sea` follows the lake rules; `rampart` is open ground whose protected hexsides are `GameState.rampart[hex]` (§16).
- * `void` = not on the board.
+ * `sea` follows the lake rules (a coast played as a ford is a fordable `river`, 217); `rampart` is open ground whose
+ * protected hexsides are `GameState.rampart[hex]` (§16); `ditch` (212) stops every unit and lone leader on entering and
+ * does nothing else (§18.6). `void` = not on the board.
  */
 export type TerrainType =
-  | 'plain' | 'hill' | 'forest' | 'marsh' | 'broken' | 'river' | 'lake' | 'camp' | 'steep' | 'sea' | 'rampart' | 'void';
+  | 'plain' | 'hill' | 'forest' | 'marsh' | 'broken' | 'river' | 'lake' | 'camp' | 'steep' | 'sea' | 'rampart' | 'ditch' | 'void';
 
 /** Hexside / neighbour directions, in the board's neighbour order (row 0 at the top, so NE and NW point up the board). */
 export type HexDir = 'E' | 'NE' | 'NW' | 'W' | 'SW' | 'SE';
@@ -177,7 +178,9 @@ export interface TurnState {
  * battle; Castulo's exit is a battle objective. Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112
  * Hellespont), `frightAtFirstSight` (116 Heraclea), `leaderPlacement` (117 Asculum: leaders are placed before the first
  * turn) and `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3). Camp capture (011 Baecula, 114
- * Gabiene) is a battle objective (`ObjectiveDef`), not a rule. Scenario data is validated against this list.
+ * Gabiene) is a battle objective (`ObjectiveDef`), not a rule. Expansion #2: `magoAmbush` also serves 206 (§18.5) and
+ * `veryHills` (223, §18.6) makes every hill very steep: a unit climbing onto one stops and may not battle, and the
+ * close-combat caps change. Scenario data is validated against this list.
  */
 export const SPECIAL_RULE_IDS = [
   'sacredBand',
@@ -190,6 +193,7 @@ export const SPECIAL_RULE_IDS = [
   'frightAtFirstSight',
   'leaderPlacement',
   'tacticalFlexibility',
+  'veryHills',
 ] as const;
 /** A scenario special rule (see SPECIAL_RULE_IDS). */
 export type SpecialRuleId = (typeof SPECIAL_RULE_IDS)[number];
@@ -263,6 +267,16 @@ export interface ScenarioSpecial {
   commands: CommandDef[];
   /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs; null in most battles. */
   rollingFire: Side | null;
+  /**
+   * Rampart breakers (223 Medway, §18.6): the side whose units remove (`setTerrain` to plain) every rampart hex they enter
+   * or pass through by moving, advancing, retreating or evading; null in most battles. Never changed during play.
+   */
+  rampartBreakers: Side | null;
+  /**
+   * Last-row retreat (214 Silarus, §18.5): the side whose unit is eliminated, not damaged, by a retreat that ends on its own
+   * baseline row with retreat hexes it could not take; null in most battles. Never changed during play.
+   */
+  lastRowRetreat: Side | null;
   /** Ambush trigger data: set exactly when the rule `magoAmbush` is on, else null. Never changed during play. */
   ambush: AmbushDef | null;
   /** Off-board reserve force (Trebbia: Mago's ambush). */

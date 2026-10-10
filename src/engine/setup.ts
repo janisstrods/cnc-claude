@@ -62,6 +62,16 @@ export interface ScenarioSetup {
    * the enemy edge instead of their normal battle. Left out: no Rolling Fire.
    */
   rollingFire?: Side;
+  /**
+   * Rampart breakers (223 Medway, §18.6): units of this side remove (make open ground) every rampart hex they enter or pass
+   * through, by moving, advancing, retreating or evading. Left out: no breakers.
+   */
+  rampartBreakers?: Side;
+  /**
+   * Last-row retreat (214 Silarus, §18.5): a unit of this side whose retreat ends on its own baseline row with retreat hexes
+   * it could not take is eliminated instead of losing blocks. Left out: the ordinary retreat rule.
+   */
+  lastRowRetreat?: Side;
   /** Castulo: name of the leader whose loss ends the game. */
   sacredLeader?: { side: Side; name: string };
   /** Starting Command for a side when different from `cards` (Trasimenus Romans start with 2). */
@@ -99,8 +109,10 @@ export interface GameOptions {
 
 /**
  * One terrain hex of a scenario. `ford`: a fordable river hex (`'nocap'` = fordable without the ford dice caps, 108
- * Pinarus). A `rampart` hex lists its protected hexsides (§16): `faces: 'top'` = NW + NE, `faces: 'bottom'` = SW + SE,
- * and/or `edges` by direction (a corner piece lists 3).
+ * Pinarus). `{ t: 'sea', ford: true }` is a coast played as a fordable river (217, §18.6): it is built as a `river` with a
+ * ford, and only the art is sea. A `rampart` hex lists its protected hexsides (§16): `faces: 'top'` = NW + NE, `faces:
+ * 'bottom'` = SW + SE, and/or `edges` by direction (a corner piece lists 3). `art`: a hint for the drawing of the hex (the
+ * sea of a coast ford); the engine checks it is text and otherwise ignores it.
  */
 export interface TerrainSetup {
   r: number;
@@ -109,6 +121,7 @@ export interface TerrainSetup {
   ford?: boolean | 'nocap';
   faces?: Side;
   edges?: HexDir[];
+  art?: string;
 }
 
 const FACES: Record<Side, HexDir[]> = { top: ['NW', 'NE'], bottom: ['SW', 'SE'] };
@@ -225,14 +238,19 @@ function checkIds(setup: ScenarioSetup) {
   }
   for (const r of setup.rules) if (!known(SPECIAL_RULE_IDS, r)) throw new Error(`unknown special rule ${String(r)}`);
   checkLegions(setup.legions);
-  const rf: unknown = setup.rollingFire;
-  if (rf !== undefined && rf !== 'top' && rf !== 'bottom') throw new Error(`rollingFire: unknown side ${String(rf)}`);
+  for (const [name, side] of [
+    ['rollingFire', setup.rollingFire], ['rampartBreakers', setup.rampartBreakers], ['lastRowRetreat', setup.lastRowRetreat],
+  ] as [string, unknown][]) {
+    if (side !== undefined && side !== 'top' && side !== 'bottom') throw new Error(`${name}: unknown side ${String(side)}`);
+  }
   for (const t of setup.terrain) {
     // 'void' marks the hexes off the board: it is not scenario terrain
     if (!has(TERRAIN_NAMES, t.t) || t.t === 'void') throw new Error(`unknown terrain ${String(t.t)} at ${t.r},${t.c}`);
     if (t.ford !== undefined && t.ford !== true && t.ford !== false && t.ford !== 'nocap') {
       throw new Error(`ford at ${t.r},${t.c} must be true, false or 'nocap' (not ${String(t.ford)})`);
     }
+    if (t.t === 'sea' && t.ford === 'nocap') throw new Error(`a sea ford at ${t.r},${t.c} cannot be 'nocap' (it is an ordinary ford)`);
+    if (t.art !== undefined && typeof t.art !== 'string') throw new Error(`terrain art at ${t.r},${t.c} must be text (not ${String(t.art)})`);
   }
   for (const u of setup.units) if (!has(UNIT_STATS, u.type)) throw new Error(`unknown unit type ${String(u.type)} at ${u.r},${u.c}`);
   for (const u of setup.reserves) if (!has(UNIT_STATS, u.type)) throw new Error(`unknown unit type ${String(u.type)} in reserve`);
@@ -343,9 +361,11 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   }
   for (const t of setup.terrain) {
     if (!onBoard(t.r, t.c)) throw new Error(`terrain off board ${t.r},${t.c}`);
-    if (t.ford && t.t !== 'river') throw new Error(`a ford must be a river hex (${t.t} at ${t.r},${t.c}, ford ${String(t.ford)})`);
+    // a coast played as a ford (217, §18.6) is a fordable river in every respect: only the art is sea
+    const coastFord = t.t === 'sea' && t.ford === true;
+    if (t.ford && t.t !== 'river' && !coastFord) throw new Error(`a ford must be a river hex (${t.t} at ${t.r},${t.c}, ford ${String(t.ford)})`);
     const h = hexId(t.r, t.c);
-    terrain[h] = t.t;
+    terrain[h] = coastFord ? 'river' : t.t;
     fords[h] = !!t.ford;
     noCap[h] = t.ford === 'nocap';
     rampart[h] = rampartMask(t);
@@ -429,6 +449,8 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
       rules,
       commands,
       rollingFire: setup.rollingFire ?? null,
+      rampartBreakers: setup.rampartBreakers ?? null,
+      lastRowRetreat: setup.lastRowRetreat ?? null,
       ambush,
       reserveUnits,
       reserveLeaders,

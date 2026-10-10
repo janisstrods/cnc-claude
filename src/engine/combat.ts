@@ -3,6 +3,7 @@ import { distance, hasLineOfSight, neighbours } from './hex';
 import { attachedLeader, enemyUnitAdjacent, isRomanArmy, leaderAt, leaderHas, leaderNear, supportCount, unitAt } from './query';
 import {
   ccCapOfHex, hillGroups, isCamp, isHill, rampartProtects, rangedFromCap, rangedTargetCap, terrainAt, terrainBlocksLOS,
+  veryHills,
 } from './terrain';
 import { eliteHas, rangeOf, rangedBaseDice } from './elites';
 import { UNIT_STATS, elephantDiceVs, frightens } from './units';
@@ -18,9 +19,14 @@ export interface CloseDiceOpts {
   ordered: boolean;
 }
 
+/**
+ * Close-combat dice cap from the hills (§4). Very steep hills (rule `veryHills`, 223, §18.6) replace it for every unit:
+ * striker not on a hill and target on one 1, striker on a hill and target not 2, hill to hill 3.
+ */
 function capForHills(s: GameState, from: HexId, to: HexId, striker: Unit): number {
   const fromHill = isHill(s, from);
   const toHill = isHill(s, to);
+  if (veryHills(s)) return fromHill ? (toHill ? 3 : 2) : toHill ? 1 : 99;
   if (toHill && !fromHill) return 2;
   if (fromHill) return UNIT_STATS[striker.type].mounted ? 2 : 3;
   return 99;

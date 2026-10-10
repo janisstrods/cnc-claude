@@ -3,7 +3,7 @@ import { canMarch } from './elites';
 import { inSection, neighbours } from './hex';
 import { exitHexes } from './objectives';
 import { attachedLeader, enemyPieceAdjacent, leaderAt, leaderById, leaderHas, unitAt, unitById } from './query';
-import { isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
+import { isImpassable, steepClimb, stopsAll, stopsMounted, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain, forestFighter, isLightFoot } from './units';
 import { OFF_BOARD, type GameState, type HexId, type Leader, type OrderMods, type SectionName, type Side, type Unit } from './types';
 
@@ -87,7 +87,11 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   const queue: Node[] = [];
   const best = new Map<HexId, number>();
 
-  const canEnter = (h: HexId): 'no' | 'pass' | 'stop' | 'yes' | 'attach' => {
+  /** Is entering `h` from `from` (OFF_BOARD for a reserve) the end of the move? Stopping terrain, or a climb onto a very steep hill. */
+  const stopsThere = (from: HexId, h: HexId) =>
+    stopsAll(s, h) || (st.mounted && stopsMounted(s, h)) || steepClimb(s, from, h);
+
+  const canEnter = (h: HexId, from: HexId): 'no' | 'pass' | 'stop' | 'yes' | 'attach' => {
     if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h))) return 'no';
     const v = unitAt(s, h);
     if (v) {
@@ -100,19 +104,21 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
       if (l.side !== u.side) return 'no';
       return hasLeader ? 'no' : 'attach';
     }
-    if (stopsAll(s, h) || (st.mounted && stopsMounted(s, h))) return 'stop';
+    if (stopsThere(from, h)) return 'stop';
     return 'yes';
   };
 
+  const climbs = (h: HexId, path: HexId[]) => steepClimb(s, path[path.length - 2] ?? OFF_BOARD, h);
   const record = (h: HexId, dist: number, path: HexId[], attaches?: string) => {
     const prev = results.get(h);
-    if (prev && prev.dist <= dist) return;
+    // the shortest path wins; of two equally short ones, one that does not climb a very steep hill (it may battle)
+    if (prev && (prev.dist < dist || (prev.dist === dist && !(climbs(h, prev.path) && !climbs(h, path))))) return;
     results.set(h, { hex: h, dist, path, canBattle: true, mustBattle: false, attachesTo: attaches });
   };
 
   if (fromReserve) {
     for (const e of opts.entryHexes!) {
-      const k = canEnter(e);
+      const k = canEnter(e, OFF_BOARD);
       if (k === 'no' || k === 'pass') continue;
       record(e, 1, [e], k === 'attach' ? leaderAt(s, e)!.id : undefined);
       if (k === 'yes') {
@@ -129,7 +135,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     const n = queue.shift()!;
     if (n.stopped || n.dist >= lim.max) continue;
     for (const h of neighbours(n.hex)) {
-      const k = canEnter(h);
+      const k = canEnter(h, n.hex);
       if (k === 'no') continue;
       const d = n.dist + 1;
       const path = [...n.path, h];
@@ -157,7 +163,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     if (exits.includes(startHex)) candidates.push({ hex: startHex, dist: opts.alreadyMoved ?? 0, path: [startHex] });
     for (const t of results.values()) if (exits.includes(t.hex) && !t.attachesTo) candidates.push(t);
     for (const t of candidates) {
-      if (t.hex !== startHex && (stopsAll(s, t.hex) || (st.mounted && stopsMounted(s, t.hex)))) continue;
+      if (t.hex !== startHex && stopsThere(t.path[t.path.length - 2] ?? OFF_BOARD, t.hex)) continue;
       if (t.dist + 1 > lim.max) continue;
       if (!bestExit || t.dist + 1 < bestExit.dist) {
         bestExit = { hex: OFF_BOARD, dist: t.dist + 1, path: [...t.path, OFF_BOARD], canBattle: false, mustBattle: false };
@@ -166,12 +172,13 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     if (bestExit) results.set(OFF_BOARD, bestExit);
   }
 
-  // Battle eligibility.
+  // Battle eligibility. A unit that climbed onto a very steep hill (§18.6) may not battle, so it cannot charge either.
   for (const t of results.values()) {
     if (t.hex === OFF_BOARD) continue;
-    let can = t.dist <= lim.battleMax;
+    const climbed = climbs(t.hex, t.path);
+    let can = t.dist <= lim.battleMax && !climbed;
     if (lim.chargeFrom !== null && t.dist >= lim.chargeFrom) {
-      if (enemyPieceAdjacent(s, t.hex, u.side)) t.mustBattle = true;
+      if (!climbed && enemyPieceAdjacent(s, t.hex, u.side)) t.mustBattle = true;
       else {
         // warriors may only make the long move when charging into close combat
         t.canBattle = false;

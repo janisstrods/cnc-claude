@@ -650,6 +650,12 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
 * **Last-row retreat** (214, the Slaves): a unit of that side whose retreat ends on its own baseline row with retreat
   hexes it could not take is eliminated instead of losing blocks (enemy banner). Evades and a retreat that ends by
   joining a leader are not affected (X2 Q10).
+  * Engine: `lastRowRetreat` in the scenario data names the side. The retreat is walked first (marsh checks included),
+    then a unit standing on its baseline row with `losses > 0` loses all its blocks (`damage`, `eliminated`, the enemy's
+    `banner`; its leader takes the 1-die check and evades, off the board if he must). It applies to any retreat (ranged,
+    close, battle back, bonus combat, Rolling Fire, an elephant's blocked retreat), never to an evade. As in the normal
+    rule only the options with the fewest unfulfilled hexes are offered; the elimination does not change which those are
+    **[Interp]**. Battles without it are unchanged.
 
 ### 18.6 Terrain
 
@@ -663,6 +669,21 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
 * **Removable tiles:** captured camps (§18.4) and, in 223, ramparts a Roman unit enters or passes through (move, advance,
   retreat or evade) become open ground at once.
 * Rampart (§16), fortified camp, marsh, impassable hills (`steep`), sea, lake and rivers keep their rules.
+* Engine (X2 Q12, Q13):
+  * `ditch` is a terrain type that stops every unit and lone leader on entering (`stopsAll`) and nothing else. An advance
+    into it ends the cavalry extra hex; an advance out of it is as on open ground.
+  * `veryHills` (rule id) makes `steepClimb(from, to)` true for a unit going from a non-hill hex (or the off-board
+    reserve) onto a hill: that hex ends its move (`canEnter` stop) and `canBattle` is false, which also rules out a
+    warriors' charge that would end there **[Interp]**. Of two equally short routes onto a hill the one over hills (not a
+    climb) is offered. A lone leader is never stopped **[Interp]**. A momentum advance that climbs ends there: no extra
+    cavalry hex and no bonus combat **[Interp]**. The caps replace `capForHills` for every unit (a mounted unit has no
+    special case here); the other caps (ford, forest, marsh, camp) still apply as a minimum and bonuses add after.
+  * `{ t: 'sea', ford: true }` in the scenario data is built as a `river` with a ford (the same arrays as a fordable river);
+    only the art differs. The terrain field `art` is a drawing hint the engine ignores. A sea ford cannot be `'nocap'`.
+  * `rampartBreakers` in the scenario data names the side. After a move (and an ambush entry or exit), a momentum advance,
+    the cavalry extra hex, a retreat or an evade of a unit of that side, every rampart hex it entered becomes plain
+    (`setTerrain`; the start hex is not entered). Units only: lone leaders and the other side never remove them. The
+    `terrainChanged` event follows the `move`, `advance`, `retreat` or `evade` event.
 
 ## 19. Expansion #2 battles (201–223)
 

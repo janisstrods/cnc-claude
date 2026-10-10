@@ -38,7 +38,14 @@ export interface ScenarioJson {
   commands?: ScenarioSetup['commands'];
   /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs. */
   rollingFire?: ScenarioSetup['rollingFire'];
-  /** `ford: 'nocap'` = fordable without dice caps; a rampart lists `faces` and/or `edges`. */
+  /** Rampart breakers (223 Medway, §18.6): the side whose units remove the ramparts they enter or pass through. */
+  rampartBreakers?: ScenarioSetup['rampartBreakers'];
+  /** Last-row retreat (214 Silarus, §18.5): the side whose unit is eliminated by a retreat that ends on its baseline row. */
+  lastRowRetreat?: ScenarioSetup['lastRowRetreat'];
+  /**
+   * `ford: 'nocap'` = fordable without dice caps; `{ t: 'sea', ford: true }` = a coast played as a fordable river (217);
+   * `art` = a drawing hint the engine ignores; a rampart lists `faces` and/or `edges`.
+   */
   terrain: TerrainSetup[];
   units: ScenarioSetup['units'];
   leaders: ScenarioSetup['leaders'];
@@ -194,6 +201,7 @@ function copyTerrain(t: TerrainSetup): TerrainSetup {
   if (t.ford !== undefined) o.ford = t.ford;
   if (t.faces !== undefined) o.faces = t.faces;
   if (t.edges !== undefined) o.edges = [...t.edges];
+  if (t.art !== undefined) o.art = t.art;
   return o;
 }
 
@@ -238,6 +246,8 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   if (j.legions && Object.keys(j.legions).length) setup.legions = { ...j.legions };
   if (j.commands !== undefined) setup.commands = Array.isArray(j.commands) ? j.commands.map((c) => ({ ...c })) : j.commands; // the engine rejects a non-list
   if (j.rollingFire !== undefined) setup.rollingFire = j.rollingFire; // the engine rejects an unknown side
+  if (j.rampartBreakers !== undefined) setup.rampartBreakers = j.rampartBreakers; // likewise
+  if (j.lastRowRetreat !== undefined) setup.lastRowRetreat = j.lastRowRetreat; // likewise
   if (j.placeLeaders?.length) setup.placeLeaders = j.placeLeaders.map(copyLeader);
   // Trasimenus: the Roman column starts with 4 cards eventually; War Council lists 2 initially.
   if (j.id === '006') setup.bottom.cards = 4;

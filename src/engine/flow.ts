@@ -17,7 +17,7 @@ import {
 import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption } from './retreat';
 import { randInt, rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
-import { isFord, isHill, isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
+import { breakRamparts, isFord, isHill, isImpassable, steepClimb, stopsAll, stopsMounted, terrainAt } from './terrain';
 import { canShoot, fireMoveLimit } from './elites';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forbidsTerrain, forestFighter } from './units';
 import {
@@ -338,11 +338,13 @@ function* walkPath(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, kind
     if (terrainAt(s, h) === 'marsh') {
       if (yield* marshCheckUnit(s, ctx, u, leaderChecked)) {
         ctx.emit({ t: kind, id: u.id, path: walked });
+        breakRamparts(s, ctx, u.side, walked.slice(1)); // the hexes it entered before it sank
         return true;
       }
     }
   }
   ctx.emit({ t: kind, id: u.id, path: walked });
+  breakRamparts(s, ctx, u.side, walked.slice(1)); // 223: ramparts the retreat or evade crossed, its end hex included
   if (opt.attachLeader) {
     ctx.emit({ t: 'attach', leader: opt.attachLeader, unit: u.id });
   }
@@ -386,6 +388,18 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
   for (const l of orphans) yield* leaderOrphaned(s, ctx, l);
 }
 
+/**
+ * Blocks a unit loses for the retreat hexes it could not take (`opt.losses`, more than 0). Last-row retreat (214, §18.5,
+ * X2 Q10): when the battle's `lastRowRetreat` side's unit has just walked its retreat to the end and stands on its own
+ * baseline row, with hexes still unfulfilled and no leader joined, it loses every block, which eliminates it (the enemy
+ * scores). An evade never gets here, and a retreat that was completed has no losses.
+ */
+function lostByRetreat(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption): number {
+  if (s.special.lastRowRetreat !== u.side || opt.attachLeader || !atOwnBaseline(u)) return opt.losses;
+  log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} has no ground left to retreat and is cut down!`, u.side);
+  return u.blocks;
+}
+
 function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leaderChecked: { done: boolean }): Gen<HitOutcome> {
   const start = u.hex;
   if (UNIT_STATS[u.type].elephantTable) {
@@ -397,7 +411,7 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
     if (opt.blockers.length) yield* elephantBlockerLosses(s, ctx, opt.blockers);
     if (opt.losses > 0 && unitById(s, u.id)) {
       const l = attachedLeader(s, u);
-      if (loseBlocks(s, ctx, u, opt.losses, 'could not retreat')) {
+      if (loseBlocks(s, ctx, u, lostByRetreat(s, ctx, u, opt), 'could not retreat')) {
         if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
         return { eliminated: true, vacated: true };
       }
@@ -409,7 +423,7 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
   if (yield* walkPath(s, ctx, u, opt, 'retreat', leaderChecked)) return { eliminated: true, vacated: true };
   if (opt.losses > 0) {
     const l = attachedLeader(s, u);
-    if (loseBlocks(s, ctx, u, opt.losses, 'retreat blocked')) {
+    if (loseBlocks(s, ctx, u, lostByRetreat(s, ctx, u, opt), 'retreat blocked')) {
       if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
       return { eliminated: true, vacated: true };
     }
@@ -705,11 +719,13 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   relocate(s, u, hex);
   if (op) op.enteredHexThisTurn = true;
   ctx.emit({ t: 'advance', id: u.id, path: [from, hex] });
+  breakRamparts(s, ctx, u.side, [hex]);
   updateHeld(s, ctx);
   if (s.winner) return;
   const checked = { done: false };
   if (terrainAt(s, hex) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
-  if (s.winner || role === 'bonus') return;
+  // a very steep hill (§18.6) climbed from lower ground ends the advance: no extra hex and no bonus combat
+  if (s.winner || role === 'bonus' || steepClimb(s, from, hex)) return;
   const st = UNIT_STATS[u.type];
   const stopped = stopsAll(s, hex) || (st.mounted && stopsMounted(s, hex));
   if (st.momentumExtraHex && !stopped && fromT !== 'marsh') {
@@ -731,6 +747,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
         if (joining && joining.side === u.side) joining.hex = to;
         ctx.emit({ t: 'advance', id: u.id, path: [f2, to] });
         if (joining && joining.side === u.side) ctx.emit({ t: 'attach', leader: joining.id, unit: u.id });
+        breakRamparts(s, ctx, u.side, [to]);
         updateHeld(s, ctx);
         if (s.winner) return;
         if (terrainAt(s, to) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
@@ -1008,12 +1025,14 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
     // an exit objective: the unit walks to its exit hex (the path's second-to-last hex) and steps off the board for a banner
     ctx.emit({ t: 'move', id, path: target.path });
     relocate(s, u, target.path[target.path.length - 2]);
+    breakRamparts(s, ctx, u.side, target.path.filter((h) => h !== from));
     exitUnit(s, ctx, u);
     return;
   }
   relocate(s, u, to);
   ctx.emit({ t: 'move', id, path: from === OFF_BOARD ? [to] : target.path });
   if (from === OFF_BOARD) ctx.emit({ t: 'reserveEnter', id, hex: to });
+  breakRamparts(s, ctx, u.side, target.path.filter((h) => h !== from)); // 223: every rampart on the path, the destination too
   if (target.attachesTo) {
     const l = leaderById(s, target.attachesTo);
     if (l) {

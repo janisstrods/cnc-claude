@@ -1,6 +1,6 @@
 // Terrain effects (rules-reference §4, §7, §8; Expansion #1 terrain §16).
 import { sidesCrossed } from './hex';
-import type { FlowCtx, GameState, HexId, TerrainType } from './types';
+import type { FlowCtx, GameState, HexId, Side, TerrainType } from './types';
 
 export function terrainAt(s: GameState, h: HexId): TerrainType {
   return s.terrain[h] ?? 'void';
@@ -38,10 +38,10 @@ export function isImpassable(s: GameState, h: HexId): boolean {
   return t === 'lake' || t === 'sea' || t === 'steep' || t === 'void' || t === undefined;
 }
 
-/** Entering this hex ends movement for every unit and lone leader. */
+/** Entering this hex ends movement for every unit and lone leader (forest, marsh, ford, ditch). */
 export function stopsAll(s: GameState, h: HexId): boolean {
   const t = s.terrain[h];
-  return t === 'forest' || t === 'marsh' || (t === 'river' && !!s.fords[h]);
+  return t === 'forest' || t === 'marsh' || t === 'ditch' || (t === 'river' && !!s.fords[h]);
 }
 
 /** Entering this hex ends movement for mounted units and lone leaders. */
@@ -72,6 +72,31 @@ export function rangedTargetCap(s: GameState, h: HexId): number {
 
 export function isHill(s: GameState, h: HexId): boolean {
   return s.terrain[h] === 'hill';
+}
+
+/** Are the hills of this battle very steep (rule `veryHills`, 223, §18.6)? */
+export function veryHills(s: GameState): boolean {
+  return s.special.rules.includes('veryHills');
+}
+
+/**
+ * Does a unit going from `from` into `to` climb a very steep hill (§18.6, X2 Q12): the rule is on, `to` is a hill and
+ * `from` is not (`OFF_BOARD`, a reserve entering, counts as lower ground)? A move that climbs ends there and the unit may
+ * not battle this turn; a momentum advance that climbs gives no bonus combat. Hill to hill is not a climb. Retreats and
+ * evades are not moves, so they never climb.
+ */
+export function steepClimb(s: GameState, from: HexId, to: HexId): boolean {
+  return veryHills(s) && isHill(s, to) && !isHill(s, from);
+}
+
+/**
+ * Rampart breakers (223, §18.6, X2 Q12): a unit of `side` has just entered `hexes` (its path after the start hex, the
+ * destination included). If `side` is the battle's rampart breaker every rampart hex among them becomes open ground
+ * (`setTerrain`: event `terrainChanged`, hexsides gone). Lone leaders never call this; off-board entries are ignored.
+ */
+export function breakRamparts(s: GameState, ctx: FlowCtx, side: Side, hexes: readonly HexId[]): void {
+  if (s.special.rampartBreakers !== side) return;
+  for (const h of hexes) if (h >= 0 && s.terrain[h] === 'rampart') setTerrain(s, ctx, h, 'plain');
 }
 
 export function isCamp(s: GameState, h: HexId): boolean {
@@ -130,5 +155,6 @@ export const TERRAIN_NAMES: Record<TerrainType, string> = {
   steep: 'Steep Hills',
   sea: 'Sea',
   rampart: 'Rampart',
+  ditch: 'Ditch',
   void: '',
 };

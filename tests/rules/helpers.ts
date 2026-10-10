@@ -36,6 +36,10 @@ export interface Pos {
   commands?: ScenarioSetup['commands'];
   /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs. */
   rollingFire?: ScenarioSetup['rollingFire'];
+  /** The side whose units remove the ramparts they enter or pass through (223 Medway, §18.6). */
+  rampartBreakers?: ScenarioSetup['rampartBreakers'];
+  /** The side whose units are eliminated by a retreat that ends on their baseline row (214 Silarus, §18.5). */
+  lastRowRetreat?: ScenarioSetup['lastRowRetreat'];
 }
 
 export const H = (r: number, c: number) => hexId(r, c);
@@ -67,6 +71,8 @@ export function setupOf(p: Pos): ScenarioSetup {
     legions: p.legions,
     commands: p.commands,
     ...(p.rollingFire !== undefined ? { rollingFire: p.rollingFire } : {}),
+    ...(p.rampartBreakers !== undefined ? { rampartBreakers: p.rampartBreakers } : {}),
+    ...(p.lastRowRetreat !== undefined ? { lastRowRetreat: p.lastRowRetreat } : {}),
   };
 }
 
