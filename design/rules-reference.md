@@ -608,6 +608,9 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
 * **Section clear** (`sectionClear`; 219): at the end of that side's turn, each section with no enemy unit scores 1 held
   banner; it is lost the moment an enemy unit stands in that section. A unit on a boundary hex is in both sections
   (X2 Q9c).
+* Held banners are counted again after every change of position or removal, and first at the start of turn 1. A
+  capture hex may be a rampart standing in for a camp (215). If both sides reach the target in the same update, the
+  active side wins **[Interp]**.
 * **Exit** (`exit`; 010 Castulo, 210, 212, 221): a unit of that side on a listed edge hex may move off the board as one
   hex of movement (not from or through terrain that stops it, unless it starts there); it scores 1 permanent banner and
   is removed (not eliminated: no banner for the enemy). An attached leader leaves with it and scores nothing more
