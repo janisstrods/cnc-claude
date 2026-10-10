@@ -26,6 +26,8 @@ export interface ScenarioJson {
   first: Side;
   banners: number;
   rules?: SpecialRuleId[];
+  /** Ambush reserve triggers and text (rule `magoAmbush`; 206 Aquae Sextiae). Left out: the Trebbia defaults. */
+  ambush?: ScenarioSetup['ambush'];
   /** Optional rules the battle offers, with their default (Tactical Flexibility, §17.3). */
   options?: GameOptions;
   /** Battle objectives (camp capture, exits, §18.4). */
@@ -225,6 +227,7 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   if ((j as { campCapture?: unknown }).campCapture !== undefined) throw new Error(`campCapture is now a capture objective in objectives (${j.id})`);
   const objectives = oneSource(j.id, 'objectives', j.objectives, ex?.objectives);
   if (objectives?.length) setup.objectives = objectives.map(copyObjective);
+  if (j.ambush) setup.ambush = { ...j.ambush, ...(j.ambush.trigger ? { trigger: [...j.ambush.trigger] } : {}) };
   if (j.options && Object.keys(j.options).length) setup.options = { ...j.options };
   if (j.placeLeaders?.length) setup.placeLeaders = j.placeLeaders.map(copyLeader);
   // Trasimenus: the Roman column starts with 4 cards eventually; War Council lists 2 initially.

@@ -710,11 +710,14 @@ function addOrdered(s: GameState, id: string, extra: Partial<OrderedPiece> = {})
   };
 }
 
-const LEADERSHIP: CardKind[] = ['inspiredL', 'inspiredC', 'inspiredR', 'leadershipAny'];
-
+/**
+ * Whether `side` may spring its ambush reserve with a card of `kind` (the effective kind: a Counter Attack counts as the
+ * card it copies): the battle's `special.ambush` data names the trigger cards and the own turns that must be finished.
+ */
 export function ambushAvailable(s: GameState, side: Side, kind: CardKind | null): boolean {
-  return !!kind && LEADERSHIP.includes(kind) && s.special.rules.includes('magoAmbush') && s.special.reserveSide === side &&
-    !s.special.reserveReleased && s.special.turnsDone[side] >= 1 && s.special.reserveUnits.length > 0;
+  const a = s.special.ambush;
+  return !!kind && !!a && a.trigger.includes(kind) && s.special.reserveSide === side &&
+    !s.special.reserveReleased && s.special.turnsDone[side] >= a.afterOwnTurns && s.special.reserveUnits.length > 0;
 }
 
 export function ambushSections(kind: CardKind): SectionName[] {
@@ -733,7 +736,7 @@ function releaseAmbush(s: GameState, ctx: FlowCtx, side: Side, section: SectionN
   s.special.reserveUnits = [];
   s.special.reserveLeaders = [];
   for (const id of ids) addOrdered(s, id, { fromReserve: true });
-  log(s, ctx, `Ambush! Mago's hidden force strikes from the ${section}.`, side);
+  log(s, ctx, s.special.ambush!.text.replace(/\{section\}/g, section), side);
   ctx.emit({ t: 'ordered', side, ids });
 }
 
@@ -791,7 +794,7 @@ function* ordersStep(s: GameState, ctx: FlowCtx, kind: CardKind | null, mirrored
     const ambush = ambushAvailable(s, side, kind);
     const a = (yield* ask(ctx, { kind: 'orders', side, card: kind, mirrored }, (a) => {
       if (a.kind !== 'orders') return 'Choose the units to order.';
-      if (a.ambushSection) return ambush && ambushSections(kind).includes(a.ambushSection) ? null : "Mago's ambush is not available.";
+      if (a.ambushSection) return ambush && ambushSections(kind).includes(a.ambushSection) ? null : 'The ambush is not available.';
       return validateOrders(s, side, kind, a.pieces);
     })) as Extract<Answer, { kind: 'orders' }>;
     if (a.ambushSection) {

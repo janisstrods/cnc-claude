@@ -154,7 +154,7 @@ export interface TurnState {
   mods: OrderMods;
   firstStrikeBy: Side | null; // defender who played First Strike this turn (draws first)
   reshuffleAfter: boolean; // I Am Spartacus
-  ambushSection: SectionName | null; // Trebbia: section where Mago's force enters this turn
+  ambushSection: SectionName | null; // ambush reserve (Trebbia, 206): section where the force enters this turn
 }
 
 /**
@@ -216,8 +216,23 @@ export interface ObjectiveState {
   sections: SectionName[];
 }
 
+/**
+ * The ambush reserve (rule `magoAmbush`, §14 and §18.5) with every default filled in: the Trebbia defaults are the four
+ * Leadership cards, one finished own turn and the Mago text; 206 Aquae Sextiae adds Order Light Troops, from the first turn.
+ */
+export interface AmbushDef {
+  /** Cards that spring the ambush (the card played, or the one a Counter Attack copies). */
+  trigger: CardKind[];
+  /** Own turns the reserve's side must have finished first (Trebbia 1, 206 0). */
+  afterOwnTurns: number;
+  /** The log line; `{section}` is replaced by the section the force enters from. */
+  text: string;
+}
+
 export interface ScenarioSpecial {
   rules: SpecialRuleId[];
+  /** Ambush trigger data: set exactly when the rule `magoAmbush` is on, else null. Never changed during play. */
+  ambush: AmbushDef | null;
   /** Off-board reserve force (Trebbia: Mago's ambush). */
   reserveUnits: Unit[];
   reserveLeaders: Leader[];
@@ -307,7 +322,7 @@ export type Decision =
 
 export type Answer =
   | { kind: 'playCard'; card: number }
-  /** pieces: unit and/or leader ids. ambushSection: Trebbia - release Mago's force in that section instead. */
+  /** pieces: unit and/or leader ids. ambushSection: release the off-board ambush force in that section instead (Trebbia, 206). */
   | { kind: 'orders'; pieces: string[]; ambushSection?: SectionName }
   | { kind: 'move'; piece: string; to: HexId } // to = OFF_BOARD only for exit objectives (010 Castulo)
   | { kind: 'endMove' }

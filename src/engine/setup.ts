@@ -1,5 +1,5 @@
 // Build a GameState from a scenario definition.
-import { CARD_LIST, defaultMods } from './cards';
+import { CARD_DEFS, CARD_LIST, defaultMods } from './cards';
 import { HEX_DIRS, hexId, onBoard } from './hex';
 import { shuffle } from './rng';
 import { ELITES, type EliteDef } from './elites';
@@ -9,7 +9,7 @@ import { TERRAIN_NAMES, isImpassable, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain } from './units';
 import {
   ARMY_LOOKS, BLOCKS, COLS, OFF_BOARD, ROWS, SPECIAL_RULE_IDS,
-  type ArmyLook, type Blocks, type EliteId, type GameState, type HexDir, type HexId, type Leader, type LeaderTrait,
+  type AmbushDef, type ArmyLook, type Blocks, type EliteId, type GameState, type HexDir, type HexId, type Leader, type LeaderTrait,
   type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
@@ -40,6 +40,11 @@ export interface ScenarioSetup {
    */
   placeLeaders?: { side: Side; name: string; traits?: LeaderTrait[] }[];
   rules: SpecialRuleId[];
+  /**
+   * Ambush trigger data (needs the rule `magoAmbush`; fields left out take the Trebbia defaults, see `AmbushDef`). 206
+   * Aquae Sextiae: the Leadership cards and Order Light Troops, `afterOwnTurns: 0`, its own text.
+   */
+  ambush?: Partial<AmbushDef>;
   /** Castulo: name of the leader whose loss ends the game. */
   sacredLeader?: { side: Side; name: string };
   /** Starting Command for a side when different from `cards` (Trasimenus Romans start with 2). */
@@ -205,6 +210,38 @@ function checkPlacement(setup: ScenarioSetup, rules: SpecialRuleId[]) {
   }
 }
 
+/** Trebbia's ambush: a Leadership card after the side's first turn (§14). */
+const DEFAULT_AMBUSH: AmbushDef = {
+  trigger: ['inspiredL', 'inspiredC', 'inspiredR', 'leadershipAny'],
+  afterOwnTurns: 1,
+  text: "Ambush! Mago's hidden force strikes from the {section}.",
+};
+
+/** The ambush data of a battle: null without the rule `magoAmbush`, else the scenario's data over the Trebbia defaults. */
+function resolveAmbush(setup: ScenarioSetup, rules: SpecialRuleId[]): AmbushDef | null {
+  const a: unknown = setup.ambush;
+  if (!rules.includes('magoAmbush')) {
+    if (a !== undefined) throw new Error('ambush data needs the magoAmbush rule');
+    return null;
+  }
+  if (a !== undefined && (typeof a !== 'object' || a === null || Array.isArray(a))) throw new Error('ambush must be an object');
+  const d: Partial<AmbushDef> = (a ?? {}) as Partial<AmbushDef>;
+  if (d.trigger !== undefined) {
+    if (!Array.isArray(d.trigger)) throw new Error('ambush trigger must be a list of cards');
+    if (!d.trigger.length) throw new Error('ambush trigger: needs at least one card');
+    for (const k of d.trigger) if (!has(CARD_DEFS, k)) throw new Error(`ambush trigger: unknown card ${String(k)}`);
+  }
+  if (d.afterOwnTurns !== undefined && !(Number.isInteger(d.afterOwnTurns) && d.afterOwnTurns >= 0)) {
+    throw new Error('ambush afterOwnTurns must be a whole number, 0 or more');
+  }
+  if (d.text !== undefined && typeof d.text !== 'string') throw new Error('ambush text must be a string');
+  return {
+    trigger: [...(d.trigger ?? DEFAULT_AMBUSH.trigger)],
+    afterOwnTurns: d.afterOwnTurns ?? DEFAULT_AMBUSH.afterOwnTurns,
+    text: d.text ?? DEFAULT_AMBUSH.text,
+  };
+}
+
 /**
  * Build the initial state. `options`: the player's choice of the optional rules the scenario offers (§17.3). Invalid
  * scenario data throws, and the error names the scenario (`(<id>)` at the end of the message).
@@ -264,6 +301,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   // Asculum: leaders still to be placed wait off the board (placement order = id order)
   const rules = effectiveRules(setup, options);
   checkPlacement(setup, rules);
+  const ambush = resolveAmbush(setup, rules);
   const unplaced: string[] = [];
   for (const l of setup.placeLeaders ?? []) {
     const leader = withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: OFF_BOARD }, l.traits);
@@ -314,6 +352,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     winReason: '',
     special: {
       rules,
+      ambush,
       reserveUnits,
       reserveLeaders,
       reserveSide: reserveUnits[0]?.side ?? reserveLeaders[0]?.side ?? null,
@@ -363,6 +402,7 @@ export function cloneState(s: GameState): GameState {
     special: {
       ...s.special,
       rules: s.special.rules,
+      ambush: s.special.ambush,
       reserveUnits: s.special.reserveUnits.map((u) => ({ ...u })),
       reserveLeaders: s.special.reserveLeaders.map((l) => ({ ...l })),
       turnsDone: { ...s.special.turnsDone },
