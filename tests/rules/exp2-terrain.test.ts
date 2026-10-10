@@ -4,7 +4,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   SPECIAL_RULE_IDS, TERRAIN_NAMES, battleTargets, ccCapOfHex, cloneState, closeCombatDice, createGame, evadeOptions, isFord,
-  isImpassable, lineOfSight, pieceMoves, rangedDice, rangedFromCap, retreatOptions,
+  isImpassable, lineOfSight, pieceMoves, rangedDice, rangedFromCap, retreatOptions, rowOf,
   type CardKind, type GameEvent, type HexId, type MoveTarget, type UnitType,
 } from '../../src/engine';
 import { scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
@@ -239,6 +239,31 @@ describe('very steep hills (223)', () => {
       expect(moves.some((m) => m.hex === H(4, 6))).toBe(true); // over the hills and on
     });
 
+    it('light troops passing through friends (Order Light Troops) cannot skip the climb; hill to hill they pass', () => {
+      // LI (6,6), a friend on the hill (5,6), more hills either side: through the friend to (4,6) would be a free climb
+      const climb = (rules: Pos['rules']) =>
+        build({
+          units: [{ side: 'bottom', type: 'LI', at: [6, 6] }, { side: 'bottom', type: 'MI', at: [5, 6] }, { side: 'top', type: 'MI', at: [0, 0] }],
+          terrain: [hill([5, 5]), hill([5, 6]), hill([5, 7])], rules,
+        });
+      const reachOf = (s: ReturnType<typeof climb>) => pieceMoves(play(s, 'orderLight', ['u1']).state, 'u1');
+      expect(reachOf(climb([])).find((m) => m.hex === H(4, 6))?.path).toEqual([H(6, 6), H(5, 6), H(4, 6)]); // control
+      const blocked = reachOf(climb(VH));
+      expect(blocked.some((m) => m.hex === H(4, 6))).toBe(false);
+      expect(blocked.some((m) => m.path.includes(H(5, 6)) && m.hex !== H(5, 6))).toBe(false);
+
+      // from a hill, through a friend on the next hill, onto a third: no climb anywhere, the unit may battle
+      const along = build({
+        units: [
+          { side: 'bottom', type: 'LI', at: [5, 6] }, { side: 'bottom', type: 'MI', at: [4, 6] }, { side: 'top', type: 'MI', at: [2, 6] },
+        ],
+        terrain: [hill([5, 6]), hill([4, 6]), hill([3, 6])], rules: VH,
+      });
+      const step = reachOf(along).find((m) => m.hex === H(3, 6))!;
+      expect(step.path).toEqual([H(5, 6), H(4, 6), H(3, 6)]);
+      expect(step.canBattle).toBe(true);
+    });
+
     it('a warrior charge needs a battle, so it may not end on a hill it climbs', () => {
       const wa = (rules: Pos['rules']) => {
         const s = build({
@@ -337,6 +362,29 @@ describe('very steep hills (223)', () => {
 
     it('hill to hill still gives the bonus combat', () => {
       expect(advance({ from: 'hill', rules: VH }).pending).toMatchObject({ kind: 'bonusCombat', targets: [H(3, 6)] });
+    });
+
+    it('a cavalry extra hex that climbs also ends the advance: no bonus combat', () => {
+      // MC beats a 1-block MI on open ground (4,6), advances, then takes the extra hex onto the hill (3,6) next to an enemy
+      const run = (rules: Pos['rules']) => {
+        const s = build({
+          units: [
+            { side: 'bottom', type: 'MC', at: [5, 6] }, { side: 'top', type: 'MI', at: [4, 6], blocks: 1 }, { side: 'top', type: 'MI', at: [2, 6] },
+          ],
+          terrain: [hill([3, 6])], rules,
+        });
+        const d = toBattle(s, 'order4C', ['u1']);
+        ev(d);
+        forceDice(['medium', ...n('light', 5)]);
+        must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+        must(d, { kind: 'yesno', yes: true });
+        expect(d.pending).toMatchObject({ kind: 'cavalryExtra' });
+        must(d, { kind: 'hex', hex: H(3, 6) });
+        expect(u(d, 'u1')!.hex).toBe(H(3, 6));
+        return d;
+      };
+      expect(run([]).pending).toMatchObject({ kind: 'bonusCombat', targets: [H(2, 6)] }); // control: the ordinary hill
+      expect(run(VH).pending).toMatchObject({ kind: 'playCard', side: 'top' });
     });
   });
 });
@@ -537,7 +585,8 @@ describe('rampart breakers (223)', () => {
     must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
     expect(d.pending).toMatchObject({ kind: 'defend', canEvade: true });
     must(d, { kind: 'defend', choice: 'evade' });
-    if (d.pending?.kind === 'retreat') must(d, { kind: 'choose', index: 0 });
+    expect(d.pending).toMatchObject({ kind: 'retreat', reason: 'evade' }); // two ways on beyond the rampart
+    must(d, { kind: 'choose', index: 0 });
     expect(u(d, 'u2')!.hex).not.toBe(H(4, 6));
     expect(d.state.terrain[H(5, 5)]).toBe('plain');
     expect(d.state.rampart[H(5, 5)]).toBe(0);
@@ -667,6 +716,18 @@ describe('last-row retreat (214)', () => {
     expect(d.state.players.top.banners).toBe(1);
   });
 
+  it('an elephant, whose retreat is its own code path, is eliminated too', () => {
+    // the elephant rampages first (2 dice for the neighbouring HI: all misses), then cannot retreat from row 0
+    const d = flagged({ rule: 'top', at: [0, 6], type: 'EL', from: [1, 6] });
+    expect(u(d, 'u2')).toBeUndefined();
+    expect(d.state.players.bottom.banners).toBe(1);
+    const es = ev(d);
+    expect(events(es, 'rampage')).toHaveLength(1);
+    expect(es.find((e) => e.t === 'damage')).toMatchObject({ id: 'u2', amount: 2, left: 0, reason: 'could not retreat' });
+    const free = flagged({ rule: undefined, at: [0, 6], type: 'EL', from: [1, 6] });
+    expect(u(free, 'u2')!.blocks).toBe(1);
+  });
+
   it('a retreat of 2 from row 1 (1 hex fulfilled, row 0 reached, 1 lost) is eliminated', () => {
     // WA at 3 of 4 blocks is not at full strength, so it ignores no flag; retreat 2 per flag; the lake leaves (0,6)
     const d = flagged({ rule: 'top', at: [1, 6], type: 'WA', blocks: 3, from: [2, 6], extra: { terrain: [lake([0, 7])] } });
@@ -680,9 +741,10 @@ describe('last-row retreat (214)', () => {
 
   it('a retreat that fulfils every hex is fine, even when it ends on the baseline row', () => {
     const d = flagged({ rule: 'top', at: [2, 6], type: 'WA', blocks: 3, from: [3, 6] });
-    if (d.pending?.kind === 'retreat') must(d, { kind: 'choose', index: 0 });
+    expect(d.pending).toMatchObject({ kind: 'retreat', reason: 'retreat' }); // several full retreats, all ending on row 0
+    must(d, { kind: 'choose', index: 0 });
     const w = u(d, 'u2')!;
-    expect([Math.floor(w.hex / 13), w.blocks]).toEqual([0, 3]);
+    expect([rowOf(w.hex), w.blocks]).toEqual([0, 3]);
     expect(d.state.players.bottom.banners).toBe(0);
   });
 

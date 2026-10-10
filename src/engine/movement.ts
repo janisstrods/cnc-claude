@@ -95,8 +95,9 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h))) return 'no';
     const v = unitAt(s, h);
     if (v) {
-      // passing through means not stopping: impossible through a friend standing in stopping terrain
-      if (passThrough && v.side === u.side && !stopsAll(s, h)) return 'pass';
+      // passing through means not stopping: impossible through a friend standing where the unit would have to stop (stopping
+      // terrain, or a very steep hill climbed from lower ground)
+      if (passThrough && v.side === u.side && !stopsThere(from, h)) return 'pass';
       return 'no';
     }
     const l = leaderAt(s, h);
@@ -111,7 +112,9 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   const climbs = (h: HexId, path: HexId[]) => steepClimb(s, path[path.length - 2] ?? OFF_BOARD, h);
   const record = (h: HexId, dist: number, path: HexId[], attaches?: string) => {
     const prev = results.get(h);
-    // the shortest path wins; of two equally short ones, one that does not climb a very steep hill (it may battle)
+    // the shortest path wins; of two equally short ones, one that does not climb a very steep hill (it may battle). Only
+    // equal lengths are compared: a longer route that avoids the climb is never preferred to a shorter one (no foot unit
+    // moves far enough, with a battle, for that to matter in 223).
     if (prev && (prev.dist < dist || (prev.dist === dist && !(climbs(h, prev.path) && !climbs(h, path))))) return;
     results.set(h, { hex: h, dist, path, canBattle: true, mustBattle: false, attachesTo: attaches });
   };

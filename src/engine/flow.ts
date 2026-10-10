@@ -389,15 +389,15 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
 }
 
 /**
- * Blocks a unit loses for the retreat hexes it could not take (`opt.losses`, more than 0). Last-row retreat (214, §18.5,
- * X2 Q10): when the battle's `lastRowRetreat` side's unit has just walked its retreat to the end and stands on its own
- * baseline row, with hexes still unfulfilled and no leader joined, it loses every block, which eliminates it (the enemy
- * scores). An evade never gets here, and a retreat that was completed has no losses.
+ * The unit has walked its retreat and could not take `opt.losses` hexes: it loses a block for each (`reason` names the loss),
+ * or, under last-row retreat (214, §18.5, X2 Q10), every block when it stands on its own baseline row of the battle's
+ * `lastRowRetreat` side and joined no leader (a log line says so). Returns true if the unit was eliminated (the enemy
+ * scores; the caller deals with the leader). An evade never gets here.
  */
-function lostByRetreat(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption): number {
-  if (s.special.lastRowRetreat !== u.side || opt.attachLeader || !atOwnBaseline(u)) return opt.losses;
+function loseBlocksShortOfRetreat(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, reason: string): boolean {
+  if (s.special.lastRowRetreat !== u.side || opt.attachLeader || !atOwnBaseline(u)) return loseBlocks(s, ctx, u, opt.losses, reason);
   log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} has no ground left to retreat and is cut down!`, u.side);
-  return u.blocks;
+  return loseBlocks(s, ctx, u, u.blocks, reason);
 }
 
 function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leaderChecked: { done: boolean }): Gen<HitOutcome> {
@@ -411,7 +411,7 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
     if (opt.blockers.length) yield* elephantBlockerLosses(s, ctx, opt.blockers);
     if (opt.losses > 0 && unitById(s, u.id)) {
       const l = attachedLeader(s, u);
-      if (loseBlocks(s, ctx, u, lostByRetreat(s, ctx, u, opt), 'could not retreat')) {
+      if (loseBlocksShortOfRetreat(s, ctx, u, opt, 'could not retreat')) {
         if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
         return { eliminated: true, vacated: true };
       }
@@ -423,7 +423,7 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
   if (yield* walkPath(s, ctx, u, opt, 'retreat', leaderChecked)) return { eliminated: true, vacated: true };
   if (opt.losses > 0) {
     const l = attachedLeader(s, u);
-    if (loseBlocks(s, ctx, u, lostByRetreat(s, ctx, u, opt), 'retreat blocked')) {
+    if (loseBlocksShortOfRetreat(s, ctx, u, opt, 'retreat blocked')) {
       if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
       return { eliminated: true, vacated: true };
     }
@@ -728,6 +728,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   if (s.winner || role === 'bonus' || steepClimb(s, from, hex)) return;
   const st = UNIT_STATS[u.type];
   const stopped = stopsAll(s, hex) || (st.mounted && stopsMounted(s, hex));
+  let climbedExtra = false; // the extra hex climbed a very steep hill: it ends the advance, no bonus combat (§18.6)
   if (st.momentumExtraHex && !stopped && fromT !== 'marsh') {
     const hasLeader = !!attachedLeader(s, u);
     const opts = neighbours(u.hex).filter((h) => {
@@ -742,6 +743,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
       const to = (b as { hex: HexId | null }).hex;
       if (to !== null) {
         const f2 = u.hex;
+        climbedExtra = steepClimb(s, f2, to);
         const joining = leaderAt(s, to);
         relocate(s, u, to);
         if (joining && joining.side === u.side) joining.hex = to;
@@ -756,6 +758,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
     }
   }
   // bonus close combat
+  if (climbedExtra) return;
   const terr = terrainAt(s, u.hex);
   let eligible = bonusCombatEligible(st, !!attachedLeader(s, u));
   if (terr === 'forest' && !forestFighter(u.type)) eligible = false;
@@ -1012,6 +1015,7 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
   }
   const u = unitById(s, id)!;
   const from = u.hex;
+  const entered = target.path.filter((h) => h !== from); // the hexes it enters (223 rampart breakers)
   const ldr = from >= 0 ? attachedLeader(s, u) : undefined;
   if (stage === 1) {
     op.moveDone = true;
@@ -1025,14 +1029,14 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
     // an exit objective: the unit walks to its exit hex (the path's second-to-last hex) and steps off the board for a banner
     ctx.emit({ t: 'move', id, path: target.path });
     relocate(s, u, target.path[target.path.length - 2]);
-    breakRamparts(s, ctx, u.side, target.path.filter((h) => h !== from));
+    breakRamparts(s, ctx, u.side, entered);
     exitUnit(s, ctx, u);
     return;
   }
   relocate(s, u, to);
   ctx.emit({ t: 'move', id, path: from === OFF_BOARD ? [to] : target.path });
   if (from === OFF_BOARD) ctx.emit({ t: 'reserveEnter', id, hex: to });
-  breakRamparts(s, ctx, u.side, target.path.filter((h) => h !== from)); // 223: every rampart on the path, the destination too
+  breakRamparts(s, ctx, u.side, entered); // 223: every rampart on the path, the destination too
   if (target.attachesTo) {
     const l = leaderById(s, target.attachesTo);
     if (l) {
