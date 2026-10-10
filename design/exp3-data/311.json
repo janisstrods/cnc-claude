@@ -1,0 +1,364 @@
+{
+  "id": "311",
+  "name": "Utica P2 The Valley",
+  "year": "49 BC",
+  "expansion": "exp3",
+  "top": {
+    "army": "Pompeian",
+    "blocks": "gry",
+    "look": "pompeian",
+    "commander": "Varus",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Caesarian",
+    "blocks": "rom",
+    "look": "caesarian",
+    "commander": "Curio",
+    "cards": 5
+  },
+  "first": "top",
+  "banners": 5,
+  "rules": [],
+  "legions": {
+    "top": "julian",
+    "bottom": "julian"
+  },
+  "objectives": [
+    {
+      "kind": "exit",
+      "side": "top",
+      "hexes": [
+        [
+          4,
+          0
+        ],
+        [
+          5,
+          0
+        ]
+      ],
+      "units": "cavalry",
+      "text": "Pompeian horsemen ride out of the valley."
+    },
+    {
+      "kind": "hold",
+      "side": "bottom",
+      "hexes": [
+        [
+          0,
+          5
+        ]
+      ],
+      "max": 1,
+      "text": "A Caesarian unit stands in the Pompeian camp."
+    }
+  ],
+  "terrain": [
+    {
+      "r": 1,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 11,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 7,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 11,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 2,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 10,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 2,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 7,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 10,
+      "t": "hill"
+    },
+    {
+      "r": 0,
+      "c": 5,
+      "t": "camp"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 3,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 3,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 3,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 3,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 3,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 3,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 3,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 3,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LS",
+      "r": 6,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LS",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 8,
+      "c": 8
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Varus",
+      "r": 3,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "name": "Quintilius",
+      "r": 3,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "name": "Curio",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "name": "Rebilus",
+      "r": 7,
+      "c": 7
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

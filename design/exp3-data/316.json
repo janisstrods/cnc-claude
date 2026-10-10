@@ -1,0 +1,328 @@
+{
+  "id": "316",
+  "name": "Zela",
+  "year": "47 BC",
+  "expansion": "exp3",
+  "top": {
+    "army": "Pontic",
+    "blocks": "eas",
+    "look": "pontic",
+    "commander": "Pharnaces",
+    "cards": 4
+  },
+  "bottom": {
+    "army": "Caesarian",
+    "blocks": "rom",
+    "look": "caesarian",
+    "commander": "Julius Caesar",
+    "cards": 6
+  },
+  "first": "top",
+  "banners": 7,
+  "rules": [],
+  "legions": {
+    "bottom": "julian"
+  },
+  "objectives": [
+    {
+      "kind": "capture",
+      "side": "bottom",
+      "hexes": [
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          8
+        ]
+      ],
+      "when": "turnStart",
+      "remove": true,
+      "text": "The Caesarians overrun a Pontic camp!"
+    },
+    {
+      "kind": "capture",
+      "side": "top",
+      "hexes": [
+        [
+          8,
+          5
+        ]
+      ],
+      "when": "turnStart",
+      "remove": true,
+      "text": "The Pontic army overruns the Caesarian camp!"
+    }
+  ],
+  "terrain": [
+    {
+      "r": 0,
+      "c": 5,
+      "t": "camp"
+    },
+    {
+      "r": 0,
+      "c": 6,
+      "t": "camp"
+    },
+    {
+      "r": 0,
+      "c": 8,
+      "t": "camp"
+    },
+    {
+      "r": 8,
+      "c": 5,
+      "t": "camp"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "HC",
+      "r": 0,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "HC",
+      "r": 0,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "HCH",
+      "r": 3,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "HCH",
+      "r": 3,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 8,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 9
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Dromichaetes",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "name": "Pharnaces",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "name": "Aristion",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "name": "Calvinus",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "name": "Vinicianus",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "name": "Julius Caesar",
+      "r": 8,
+      "c": 7,
+      "traits": [
+        "ccBonus",
+        "forcedMarch"
+      ]
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

@@ -1,0 +1,713 @@
+{
+  "id": "308",
+  "name": "Gergovia",
+  "year": "52 BC",
+  "expansion": "exp3",
+  "top": {
+    "army": "Gallic",
+    "blocks": "bar",
+    "look": "gallic",
+    "commander": "Vercingetorix",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "caesarian",
+    "commander": "Julius Caesar",
+    "cards": 5
+  },
+  "first": "bottom",
+  "banners": 8,
+  "rules": [
+    "magoAmbush",
+    "steepSlopes"
+  ],
+  "legions": {
+    "bottom": "julian"
+  },
+  "objectives": [
+    {
+      "kind": "capture",
+      "side": "bottom",
+      "hexes": [
+        [
+          2,
+          5
+        ],
+        [
+          2,
+          7
+        ],
+        [
+          2,
+          9
+        ]
+      ],
+      "when": "turnStart",
+      "banners": [
+        0,
+        1,
+        1
+      ],
+      "remove": true,
+      "text": "The Romans pull down a Gallic camp on the heights."
+    },
+    {
+      "kind": "capture",
+      "side": "top",
+      "hexes": [
+        [
+          7,
+          5
+        ]
+      ],
+      "when": "turnStart",
+      "banners": [
+        1
+      ],
+      "remove": true,
+      "text": "The Gauls overrun the small Roman camp!"
+    },
+    {
+      "kind": "hold",
+      "side": "bottom",
+      "hexes": [
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          7
+        ],
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          9
+        ]
+      ],
+      "max": 5,
+      "text": "Romans stand on the walls of Gergovia."
+    },
+    {
+      "kind": "hold",
+      "side": "top",
+      "hexes": [
+        [
+          6,
+          12
+        ],
+        [
+          7,
+          11
+        ],
+        [
+          8,
+          11
+        ]
+      ],
+      "max": 3,
+      "text": "Gauls stand on the rampart of the great Roman camp."
+    }
+  ],
+  "ambush": {
+    "trigger": [
+      "inspiredL",
+      "inspiredC",
+      "inspiredR",
+      "leadershipAny"
+    ],
+    "afterOwnTurns": 0,
+    "entryHexes": [
+      [
+        3,
+        0
+      ],
+      [
+        4,
+        0
+      ],
+      [
+        5,
+        0
+      ],
+      [
+        6,
+        0
+      ],
+      [
+        7,
+        0
+      ]
+    ],
+    "noMove": true,
+    "attachLeader": true,
+    "text": "Vercingetorix hurries back with fresh warriors onto the western slopes!"
+  },
+  "terrain": [
+    {
+      "r": 0,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 0,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 0,
+      "c": 5,
+      "t": "wall",
+      "hill": true
+    },
+    {
+      "r": 0,
+      "c": 6,
+      "t": "wall",
+      "hill": true
+    },
+    {
+      "r": 0,
+      "c": 7,
+      "t": "wall",
+      "hill": true
+    },
+    {
+      "r": 0,
+      "c": 8,
+      "t": "wall",
+      "hill": true
+    },
+    {
+      "r": 0,
+      "c": 9,
+      "t": "wall",
+      "hill": true
+    },
+    {
+      "r": 0,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 7,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 0,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 5,
+      "t": "camp",
+      "hill": true
+    },
+    {
+      "r": 2,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 7,
+      "t": "camp",
+      "hill": true
+    },
+    {
+      "r": 2,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 9,
+      "t": "camp",
+      "hill": true
+    },
+    {
+      "r": 2,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 12,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 7,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 3,
+      "t": "broken"
+    },
+    {
+      "r": 5,
+      "c": 4,
+      "t": "broken"
+    },
+    {
+      "r": 5,
+      "c": 5,
+      "t": "broken"
+    },
+    {
+      "r": 5,
+      "c": 6,
+      "t": "broken"
+    },
+    {
+      "r": 5,
+      "c": 7,
+      "t": "broken"
+    },
+    {
+      "r": 6,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 12,
+      "t": "rampart",
+      "edges": [
+        "W",
+        "NW"
+      ]
+    },
+    {
+      "r": 7,
+      "c": 5,
+      "t": "camp"
+    },
+    {
+      "r": 7,
+      "c": 11,
+      "t": "rampart",
+      "edges": [
+        "W",
+        "NW"
+      ]
+    },
+    {
+      "r": 8,
+      "c": 11,
+      "t": "rampart",
+      "edges": [
+        "W",
+        "NW"
+      ]
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 0,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 0,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 12
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 3,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "HWM",
+      "r": 6,
+      "c": 12
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "WA",
+      "r": 8,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "WA",
+      "r": 8,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "HWM",
+      "r": 8,
+      "c": 11
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Critognatus",
+      "r": 0,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "name": "Vercassivellaunus",
+      "r": 0,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "name": "Sextius",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "name": "Julius Caesar",
+      "r": 8,
+      "c": 6,
+      "traits": [
+        "ccBonus",
+        "forcedMarch"
+      ]
+    },
+    {
+      "side": "bottom",
+      "name": "Manucius",
+      "r": 8,
+      "c": 9
+    }
+  ],
+  "placeUnits": [
+    {
+      "side": "bottom",
+      "type": "MI",
+      "hexes": [
+        [
+          8,
+          0
+        ],
+        [
+          8,
+          1
+        ],
+        [
+          8,
+          2
+        ],
+        [
+          8,
+          3
+        ],
+        [
+          8,
+          4
+        ]
+      ],
+      "after": "ambush"
+    }
+  ],
+  "reserves": [
+    {
+      "side": "top",
+      "type": "AX"
+    },
+    {
+      "side": "top",
+      "type": "AX"
+    },
+    {
+      "side": "top",
+      "type": "WA"
+    },
+    {
+      "side": "top",
+      "type": "WA"
+    }
+  ],
+  "reserveLeaders": [
+    {
+      "side": "top",
+      "name": "Vercingetorix"
+    }
+  ]
+}

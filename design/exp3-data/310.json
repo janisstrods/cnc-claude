@@ -1,0 +1,222 @@
+{
+  "id": "310",
+  "name": "Utica P1 Delaying Action",
+  "year": "49 BC",
+  "expansion": "exp3",
+  "top": {
+    "army": "Numidian",
+    "blocks": "gry",
+    "look": "numidian",
+    "commander": "Saburra",
+    "cards": 0,
+    "orders": "dice",
+    "orderDice": 2
+  },
+  "bottom": {
+    "army": "Caesarian",
+    "blocks": "rom",
+    "look": "caesarian",
+    "commander": "Marcius Rufus",
+    "cards": 6
+  },
+  "first": "bottom",
+  "banners": 4,
+  "rules": [],
+  "terrain": [
+    {
+      "r": 0,
+      "c": 9,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 1,
+      "c": 9,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 2,
+      "c": 2,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 10,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 2,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 3,
+      "c": 2,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 4,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 5,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 6,
+      "c": 12,
+      "t": "river",
+      "ford": false
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "HI",
+      "r": 0,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 0,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 3,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 4,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 5,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 5,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 9
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Saburra",
+      "r": 0,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "name": "Marcius Rufus",
+      "r": 8,
+      "c": 8
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}
