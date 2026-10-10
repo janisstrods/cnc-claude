@@ -77,6 +77,7 @@
   white-space: nowrap;
 }
 .select-tabs button:hover { border-color: rgba(226, 189, 114, .55); }
+.select-tabs button:focus-visible { outline: 2px solid var(--kit-gold); outline-offset: 2px; }
 .select-tabs button.active { color: #fbe7a6; border-color: var(--kit-gold); background: linear-gradient(180deg, rgba(142, 27, 27, .6), rgba(60, 30, 14, .7)); }
 .select-tabs small { font-family: var(--kit-font-body); font-size: 12px; opacity: .65; margin-left: 2px; }
 .select-scroll {

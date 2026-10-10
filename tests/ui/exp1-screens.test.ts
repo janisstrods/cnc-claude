@@ -1,8 +1,11 @@
 // Expansion #1 screens: battle picker tabs, optional rules plumbing (start and restore), rampart tooltips, leader
-// placement and the satrap Leadership prompt.
+// placement, the satrap Leadership prompt and the controller's notices (abandoned war machines, lost command cards).
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  GameDriver, createGame, hexId, orderCommander, orderLimit, randomAnswer, type GameState, type LeaderTrait,
+  CARD_DEFS, GameDriver, cardKind, cloneState, createGame, hexId, orderCommander, orderLimit, randomAnswer, type GameEvent,
+  type GameState, type LeaderTrait, type QueuedEvent, type Side,
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
 import {
@@ -14,8 +17,9 @@ import {
 } from '../../src/ui/game/uiModel';
 import {
   OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue,
-  saveOptionChoice, savePickerTab,
+  saveOptionChoice, savePickerTab, tabForKey,
 } from '../../src/ui/screens/picker';
+import { ScenarioSelect } from '../../src/ui/screens/Menus';
 import { build, leaderId, type Pos } from '../rules/helpers';
 
 /** A Map-backed localStorage for the node test environment. */
@@ -57,6 +61,33 @@ describe('battle picker tabs', () => {
     expect(loadPickerTab()).toBe('exp1');
     m.set('cca-battle-tab', 'nonsense');
     expect(loadPickerTab()).toBe('base');
+  });
+
+  it('arrow keys step through the tabs (wrapping), Home and End jump; other keys do nothing', () => {
+    expect(tabForKey('base', 'ArrowRight')).toBe('exp1');
+    expect(tabForKey('exp1', 'ArrowRight')).toBe('base');
+    expect(tabForKey('base', 'ArrowLeft')).toBe('exp1');
+    expect(tabForKey('exp1', 'ArrowLeft')).toBe('base');
+    expect(tabForKey('exp1', 'Home')).toBe('base');
+    expect(tabForKey('base', 'End')).toBe('exp1');
+    for (const k of ['Enter', ' ', 'ArrowDown', 'a']) expect(tabForKey('base', k), k).toBeUndefined();
+  });
+
+  it('the tabs are ARIA tabs: the selected one is in the tab order and labels the battle list it controls', () => {
+    const m = stubStorage();
+    m.set('cca-battle-tab', 'exp1');
+    const html = renderToStaticMarkup(createElement(ScenarioSelect, { onBack: () => {}, onStart: () => {} }));
+    const tabs = [...html.matchAll(/<button[^>]*role="tab"[^>]*>/g)].map((x) => x[0]);
+    expect(tabs).toHaveLength(2);
+    const attr = (el: string, a: string) => new RegExp(`${a}="([^"]*)"`).exec(el)?.[1];
+    expect(tabs.map((t) => attr(t, 'aria-selected'))).toEqual(['false', 'true']);
+    expect(tabs.map((t) => attr(t, 'tabindex'))).toEqual(['-1', '0']);
+    expect(tabs.map((t) => attr(t, 'aria-controls'))).toEqual(['battle-list', 'battle-list']);
+    expect(html).toMatch(/role="tablist" aria-label="Battles"/);
+    const panel = /<div[^>]*role="tabpanel"[^>]*>/.exec(html)![0];
+    expect(attr(panel, 'id')).toBe('battle-list');
+    expect(attr(panel, 'aria-labelledby')).toBe(attr(tabs[1], 'id'));
+    expect(html).toContain('Marathon'); // the Expansion #1 list is the one shown
   });
 });
 
@@ -131,6 +162,63 @@ describe('optional rules reach the engine on start and on restore', () => {
   });
 });
 
+describe('controller notices', () => {
+  /** A controller waiting for the human's first decision, animations skipped, with its event animation exposed. */
+  async function settled(id: string, human: Side) {
+    const c = new GameController({ ...newSessionConfig(id, human, 'recruit'), seed: 9 }, new RandomOpponent());
+    for (let i = 0; i < 400 && !c.view.pending; i++) {
+      c.hurry();
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    expect(c.view.pending, id).not.toBeNull();
+    c.hurry();
+    const animate = (e: GameEvent, state: GameState) =>
+      (c as unknown as { animate(q: QueuedEvent): Promise<void> }).animate({ e, state });
+    return { c, animate };
+  }
+  const lastLog = (c: GameController) => c.view.log[c.view.log.length - 1].text;
+
+  it('a war machine abandoned after evading replaces the "Evaded" flash on its hex with "Abandoned"', async () => {
+    const { c, animate } = await settled('118', 'bottom');
+    try {
+      const s0 = c.driver.state;
+      const hwm = s0.units.find((u) => u.type === 'HWM' && u.side === 'bottom')!;
+      expect(hwm).toBeDefined();
+      const to = hexId(7, 3);
+      const moved = cloneState(s0);
+      moved.units.find((u) => u.id === hwm.id)!.hex = to;
+      await animate({ t: 'evade', id: hwm.id, path: [hwm.hex, to] }, moved);
+      expect(c.view.flashes.filter((f) => f.hex === to).map((f) => f.text)).toEqual(['Evaded']);
+      const gone = cloneState(moved);
+      gone.units = gone.units.filter((u) => u.id !== hwm.id);
+      await animate({ t: 'removed', id: hwm.id, reason: 'war machine abandoned' }, gone);
+      expect(c.view.flashes.filter((f) => f.hex === to).map((f) => f.text)).toEqual(['Abandoned']);
+      expect(lastLog(c)).toBe('Roman Heavy War Machines abandoned (no banner).');
+    } finally {
+      c.dispose();
+    }
+  });
+
+  it('a lost command card is named to the human, and kept hidden for the computer', async () => {
+    const { c, animate } = await settled('112', 'bottom');
+    try {
+      const s0 = c.driver.state;
+      const mine = s0.players.bottom.hand[0];
+      const title = CARD_DEFS[cardKind(mine)].title;
+      await animate({ t: 'cardLost', side: 'bottom', card: mine }, s0);
+      expect(c.view.toast).toMatchObject({ kind: 'notice', text: `You lose a command card: ${title}` });
+      expect(lastLog(c)).toBe(`The ${s0.players.bottom.army} army loses a command card (${title}).`);
+      const theirs = s0.players.top.hand[0];
+      await animate({ t: 'cardLost', side: 'top', card: theirs }, s0);
+      expect(c.view.toast).toMatchObject({ kind: 'notice', text: `${s0.players.top.army} loses a command card` });
+      expect(c.view.toast!.text).not.toContain(CARD_DEFS[cardKind(theirs)].title);
+      expect(lastLog(c)).toBe(`The ${s0.players.top.army} army loses a command card.`);
+    } finally {
+      c.dispose();
+    }
+  });
+});
+
 describe('dev route', () => {
   it('starts every battle, base game and Expansion #1', () => {
     for (const sc of SCENARIOS) {
@@ -180,6 +268,11 @@ describe('rampart tooltip', () => {
     expect(terrainTipLines(issus, ford, false, 'Ford (no dice limit)')).toEqual(['Terrain: Ford (no dice limit)', 'Stops movement; no dice limits in or out']);
     const hill = marathon.terrain.indexOf('hill');
     expect(terrainTipLines(marathon, hill, false, 'Hill')).toEqual(['Terrain: Hill']);
+    // impassable hills say so, like the sea (Marathon's right edge; Lake Trasimenus in the base game)
+    for (const id of ['101', '006']) {
+      const g = createGame(scenarioById(id).setup, 1);
+      expect(terrainTipLines(g, g.terrain.indexOf('steep'), false, 'Steep Hill'), id).toEqual(['Terrain: Steep Hill', 'Impassable; blocks line of sight']);
+    }
     const plain = marathon.terrain.indexOf('plain');
     expect(terrainTipLines(marathon, plain, false, 'Open Ground')).toEqual([]);
   });
@@ -225,8 +318,15 @@ describe('satrap Leadership prompt', () => {
 
   it('an army of satraps is told that a satrap commands only his own unit', () => {
     const s = build(pos([{ side: 'bottom', at: [6, 6], traits: SATRAP }]));
-    expect(leadershipHint(s, 'bottom', 'leadershipAny', [])).toMatch(/^A satrap commands only his own unit/);
+    expect(leadershipHint(s, 'bottom', 'leadershipAny', [])).toBe('A satrap commands only his own unit: click him to order him with it — or order just 1 unit.');
     expect(leadershipHint(s, 'bottom', 'inspiredC', [leaderId(s, 0), 'u1'])).toMatch(/^A satrap commands only his own unit: he is ordered with it/);
+  });
+
+  it('satraps who all stand alone are not told to order one with his unit', () => {
+    const s = build(pos([{ side: 'bottom', at: [7, 6], traits: SATRAP }, { side: 'bottom', at: [7, 4], traits: SATRAP }]));
+    const hint = leadershipHint(s, 'bottom', 'leadershipAny', []);
+    expect(hint).toBe('A satrap commands only his own unit: standing alone, he orders only himself — or order just 1 unit.');
+    expect(hint).not.toMatch(/with it/);
   });
 
   it('an ordinary leader keeps the base-game prompt', () => {

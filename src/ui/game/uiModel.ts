@@ -407,7 +407,11 @@ export function leadershipHint(s: GameState, side: Side, card: CardKind, sel: st
       ? 'A satrap commands only his own unit: he is ordered with it, and no other unit.'
       : 'A satrap commands only his own unit: standing alone, he orders only himself.';
   }
-  if (satrap) return 'A satrap commands only his own unit: click him to order him with it — or order just 1 unit.';
+  if (satrap) {
+    return candidates.some((l) => leaderUnit(s, l))
+      ? 'A satrap commands only his own unit: click him to order him with it — or order just 1 unit.'
+      : 'A satrap commands only his own unit: standing alone, he orders only himself — or order just 1 unit.';
+  }
   return `Click a leader to command through him, then up to ${m.chain} linked units — or order just 1 unit.`;
 }
 
@@ -444,9 +448,9 @@ export function rampartSidesText(mask: number, flipped: boolean): string {
 }
 
 /**
- * Terrain lines of the hover tooltip for hex `h` (none on open ground). `name` is the terrain's display name. Base-game
- * terrain shows just "Terrain: <name>"; Expansion #1 terrain adds what it does, and a rampart names its protected
- * sides relative to the viewer.
+ * Terrain lines of the hover tooltip for hex `h` (none on open ground). `name` is the terrain's display name. Most
+ * terrain shows just "Terrain: <name>"; impassable hills and Expansion #1 terrain add what they do, and a rampart names
+ * its protected sides relative to the viewer.
  */
 export function terrainTipLines(s: GameState, h: HexId, flipped: boolean, name: string): string[] {
   const t = terrainAt(s, h);
@@ -459,6 +463,7 @@ export function terrainTipLines(s: GameState, h: HexId, flipped: boolean, name: 
   }
   const lines = [`Terrain: ${name}`];
   if (t === 'sea') lines.push('Impassable; does not block line of sight');
+  if (t === 'steep') lines.push('Impassable; blocks line of sight');
   if (t === 'river' && isFord(s, h) && s.noCap[h]) lines.push('Stops movement; no dice limits in or out');
   return lines;
 }

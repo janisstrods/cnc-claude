@@ -19,6 +19,14 @@ export function battlesOf(all: readonly ScenarioInfo[], tab: Expansion): Scenari
   return all.filter((s) => s.expansion === tab);
 }
 
+/** The tab a key press on the tab list selects: Left/Right step (wrapping around), Home/End the first/last; else none. */
+export function tabForKey(current: Expansion, key: string): Expansion | undefined {
+  const n = PICKER_TABS.length;
+  const i = PICKER_TABS.findIndex((t) => t.id === current);
+  const j = key === 'ArrowRight' ? (i + 1) % n : key === 'ArrowLeft' ? (i + n - 1) % n : key === 'Home' ? 0 : key === 'End' ? n - 1 : -1;
+  return j < 0 ? undefined : PICKER_TABS[j].id;
+}
+
 const TAB_KEY = 'cca-battle-tab';
 
 /** The tab shown last time (the base game when none is stored or the value is unknown). */

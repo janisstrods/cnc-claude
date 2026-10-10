@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { UNIT_STATS, createGame, leaderUnit, type GameOptions, type GameState, type Side, type UnitType } from '../../engine';
 import { SCENARIOS, type Expansion, type ScenarioInfo } from '../../scenarios';
 import { LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
@@ -10,7 +10,7 @@ import { PERSONALITIES, personalityFor } from '../../ai';
 import { RulesReference } from './RulesReference';
 import {
   OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue, saveOptionChoice,
-  savePickerTab,
+  savePickerTab, tabForKey,
 } from './picker';
 import './screens.css';
 
@@ -124,6 +124,15 @@ export function ScenarioSelect(p: {
     const first = battlesOf(SCENARIOS, t)[0];
     if (first) setSel(first);
   };
+  // ARIA tabs: arrow keys (and Home/End) move between the tabs and select them; only the selected tab is in the tab order
+  const tabRefs = useRef<Partial<Record<Expansion, HTMLButtonElement | null>>>({});
+  const onTabKey = (e: KeyboardEvent) => {
+    const t = tabForKey(tab, e.key);
+    if (!t) return;
+    e.preventDefault();
+    switchTab(t);
+    tabRefs.current[t]?.focus();
+  };
   const [side, setSide] = useState<Side>('bottom');
   const [diff, setDiff] = useState<Difficulty>(() => {
     try {
@@ -152,14 +161,27 @@ export function ScenarioSelect(p: {
           <Button variant="ghost" onClick={p.onBack}>← Back</Button>
           <h2>Choose a Battle</h2>
         </div>
-        <div className="select-tabs" role="tablist">
+        <div className="select-tabs" role="tablist" aria-label="Battles">
           {PICKER_TABS.map((t) => (
-            <button key={t.id} role="tab" aria-selected={t.id === tab} className={t.id === tab ? 'active' : ''} onClick={() => switchTab(t.id)}>
+            <button
+              key={t.id}
+              ref={(el) => {
+                tabRefs.current[t.id] = el;
+              }}
+              id={`battle-tab-${t.id}`}
+              role="tab"
+              aria-selected={t.id === tab}
+              aria-controls="battle-list"
+              tabIndex={t.id === tab ? 0 : -1}
+              className={t.id === tab ? 'active' : ''}
+              onClick={() => switchTab(t.id)}
+              onKeyDown={onTabKey}
+            >
               {t.label} <small>{battlesOf(SCENARIOS, t.id).length}</small>
             </button>
           ))}
         </div>
-        <div className="select-scroll" key={tab}>
+        <div className="select-scroll" key={tab} id="battle-list" role="tabpanel" aria-labelledby={`battle-tab-${tab}`}>
           {battles.map((s) => (
             <button key={s.id} className={`scen-item ${s.id === sel.id ? 'active' : ''}`} onClick={() => setSel(s)}>
               <span className="scen-num">{Number(s.id)}</span>

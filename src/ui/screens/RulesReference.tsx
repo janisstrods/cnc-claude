@@ -122,7 +122,7 @@ function Combat() {
       <h3>Ranged combat</h3>
       <p>Missile troops fire at enemies within range (2–3 hexes; heavy war machines 6) with 2 dice, or 1 if they moved; a heavy war machine cannot fire at all after moving. Only the target's own unit symbol hits; flags still cause retreats. Units, forests, hills and camps block line of sight. A unit next to an enemy cannot fire.</p>
       <h3>Retreats</h3>
-      <p>Each flag pushes a unit back toward its own baseline by its retreat distance. Flags can be ignored with an attached leader, two supporting neighbours, a camp or a rampart, full-strength warriors, or an elite unit's ability. Every hex a unit cannot retreat costs a block.</p>
+      <p>Each flag pushes a unit back toward its own baseline by its retreat distance. Flags can be ignored with an attached leader, two supporting neighbours, a camp, a rampart (only against attacks across a walled side), full-strength warriors, or an elite unit's ability. Every hex a unit cannot retreat costs a block.</p>
     </div>
   );
 }
@@ -209,7 +209,7 @@ export function Expansion() {
       <h3>Battle rules</h3>
       <p>Each battle's special rules are listed in its briefing when you choose it. The ones that change how a battle is played:</p>
       <ul>
-        <li><b>112 Hellespont:</b> every leader killed costs his side a command card for the rest of the battle (lost on the enemy's turn, a random card is discarded at once). A side whose leaders have all been killed loses at once.</li>
+        <li><b>112 Hellespont:</b> every leader killed costs his side a command card for the rest of the battle: killed on your own turn, you skip your next draw; killed on the enemy's turn, a random card from your hand is discarded at once. A side whose leaders have all been killed loses at once.</li>
         <li><b>114 Gabiene:</b> Antigonus' army gains a banner the first time one of its units ends a move on Eumenes' camp.</li>
         <li><b>116 Heraclea:</b> Roman infantry may not ignore flags rolled by elephants.</li>
         <li><b>117 Asculum:</b> before the first turn both sides place their leaders, the Romans first: on a unit of their own, or alone on an empty hex.</li>
