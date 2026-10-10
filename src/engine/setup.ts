@@ -4,9 +4,10 @@ import { HEX_DIRS, hexId, onBoard } from './hex';
 import { shuffle } from './rng';
 import { ELITES, type EliteDef } from './elites';
 import { LEADER_TRAITS } from './query';
-import { UNIT_STATS } from './units';
+import { TERRAIN_NAMES, isImpassable, terrainAt } from './terrain';
+import { UNIT_STATS, forbidsTerrain } from './units';
 import {
-  COLS, OFF_BOARD, ROWS,
+  ARMY_LOOKS, BLOCKS, COLS, OFF_BOARD, ROWS, SPECIAL_RULE_IDS,
   type ArmyLook, type Blocks, type CampCapture, type EliteId, type GameState, type HexDir, type HexId, type Leader, type LeaderTrait,
   type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
@@ -146,6 +147,56 @@ function campCaptureOf(setup: ScenarioSetup, rules: SpecialRuleId[], terrain: Te
   return { side: cc.side, hexes, text };
 }
 
+const known = (list: readonly string[], v: unknown): boolean => typeof v === 'string' && list.includes(v);
+const has = (table: object, k: unknown): boolean => typeof k === 'string' && Object.prototype.hasOwnProperty.call(table, k);
+
+/**
+ * Ids and values of the scenario data that the types promise but JSON cannot (spec "Error handling"): block sets, looks,
+ * special rules, terrain types, ford values and unit types (on the board and in reserve).
+ */
+function checkIds(setup: ScenarioSetup) {
+  for (const side of ['top', 'bottom'] as const) {
+    const ss = setup[side];
+    if (!known(BLOCKS, ss.blocks)) throw new Error(`${side} army: unknown blocks ${String(ss.blocks)}`);
+    if (!known(ARMY_LOOKS, ss.look)) throw new Error(`${side} army: unknown look ${String(ss.look)}`);
+  }
+  for (const r of setup.rules) if (!known(SPECIAL_RULE_IDS, r)) throw new Error(`unknown special rule ${String(r)}`);
+  for (const t of setup.terrain) {
+    // 'void' marks the hexes off the board: it is not scenario terrain
+    if (!has(TERRAIN_NAMES, t.t) || t.t === 'void') throw new Error(`unknown terrain ${String(t.t)} at ${t.r},${t.c}`);
+    if (t.ford !== undefined && t.ford !== true && t.ford !== false && t.ford !== 'nocap') {
+      throw new Error(`ford at ${t.r},${t.c} must be true, false or 'nocap' (not ${String(t.ford)})`);
+    }
+  }
+  for (const u of setup.units) if (!has(UNIT_STATS, u.type)) throw new Error(`unknown unit type ${String(u.type)} at ${u.r},${u.c}`);
+  for (const u of setup.reserves) if (!has(UNIT_STATS, u.type)) throw new Error(`unknown unit type ${String(u.type)} in reserve`);
+}
+
+/**
+ * Where the pieces stand (on the built board): one unit and one leader per hex at most, no leader on an enemy unit, and
+ * no unit or leader on impassable terrain or a unit on terrain its type may not enter.
+ */
+function checkPositions(setup: ScenarioSetup, s: GameState) {
+  const unitSide = new Map<HexId, Side>();
+  for (const u of setup.units) {
+    const h = hexId(u.r, u.c);
+    if (unitSide.has(h)) throw new Error(`two units on ${u.r},${u.c}`);
+    unitSide.set(h, u.side);
+    const t = terrainAt(s, h);
+    if (isImpassable(s, h)) throw new Error(`${u.type} unit on impassable ${t} at ${u.r},${u.c}`);
+    if (forbidsTerrain(u.type, t)) throw new Error(`${u.type} unit on ${t} at ${u.r},${u.c}, which it may not enter`);
+  }
+  const leaderAt = new Set<HexId>();
+  for (const l of setup.leaders) {
+    const h = hexId(l.r, l.c);
+    if (leaderAt.has(h)) throw new Error(`two leaders on ${l.r},${l.c} (${l.name})`);
+    leaderAt.add(h);
+    const under = unitSide.get(h);
+    if (under !== undefined && under !== l.side) throw new Error(`leader ${l.name} on an enemy unit at ${l.r},${l.c}`);
+    if (isImpassable(s, h)) throw new Error(`leader ${l.name} on impassable ${terrainAt(s, h)} at ${l.r},${l.c}`);
+  }
+}
+
 /** Leaders each side starts with: on the board, in reserve and still to be placed. */
 function leaderCount(setup: ScenarioSetup): Record<Side, number> {
   const n = { top: 0, bottom: 0 };
@@ -179,6 +230,7 @@ export function createGame(setup: ScenarioSetup, seed: number, options?: GameOpt
 }
 
 function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | undefined): GameState {
+  checkIds(setup);
   const terrain: TerrainType[] = [];
   const fords: boolean[] = [];
   const noCap: boolean[] = [];
@@ -288,6 +340,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     },
     nextId,
   };
+  checkPositions(setup, s);
   s.special.campCapture = campCaptureOf(setup, rules, terrain, s.players);
   for (const side of [setup.first, setup.first === 'top' ? 'bottom' : 'top'] as Side[]) {
     const p = s.players[side];

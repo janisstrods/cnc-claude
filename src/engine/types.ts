@@ -1,5 +1,6 @@
 // Shared engine types. This file is the contract between engine, AI and UI.
-// Everything here is plain serialisable data (no functions, no classes).
+// Everything here is plain serialisable data (no functions, no classes). The id lists (BLOCKS, ARMY_LOOKS,
+// SPECIAL_RULE_IDS) are the source of their types and let setup validate scenario data.
 
 export type Side = 'top' | 'bottom';
 
@@ -20,14 +21,19 @@ export type TerrainType =
 /** Hexside / neighbour directions, in the board's neighbour order (row 0 at the top, so NE and NW point up the board). */
 export type HexDir = 'E' | 'NE' | 'NW' | 'W' | 'SW' | 'SE';
 
+/** Every block set (scenario data is validated against it). */
+export const BLOCKS = ['rom', 'car', 'grk', 'eas'] as const;
 /** Which block set a side plays: decides base-edge and banner colour (i.e. which side a piece belongs to). */
-export type Blocks = 'rom' | 'car' | 'grk' | 'eas';
+export type Blocks = (typeof BLOCKS)[number];
 
+/** Every army look (scenario data is validated against it). */
+export const ARMY_LOOKS = [
+  'roman', 'carthaginian', 'syracusan',
+  'athenian', 'theban', 'spartan', 'phocian', 'macedonian', 'antigonid', 'epirote',
+  'craterus', 'eumenes', 'antigonus', 'seleucid', 'ptolemaic', 'persian', 'scythian', 'indian', 'mauryan',
+] as const;
 /** Army look: the figure kit and palette an army is drawn with (see src/art/palettes.ts). */
-export type ArmyLook =
-  | 'roman' | 'carthaginian' | 'syracusan'
-  | 'athenian' | 'theban' | 'spartan' | 'phocian' | 'macedonian' | 'antigonid' | 'epirote'
-  | 'craterus' | 'eumenes' | 'antigonus' | 'seleucid' | 'ptolemaic' | 'persian' | 'scythian' | 'indian' | 'mauryan';
+export type ArmyLook = (typeof ARMY_LOOKS)[number];
 
 export type SectionName = 'left' | 'center' | 'right';
 
@@ -154,20 +160,23 @@ export interface TurnState {
  * Scenario special rules (§14, §17). Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112 Hellespont),
  * `frightAtFirstSight` (116 Heraclea), `leaderPlacement` (117 Asculum: leaders are placed before the first turn),
  * `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3) and `campCapture` (a side gains a banner for
- * stopping on listed camp hexes: 011 Baecula, 114 Gabiene).
+ * stopping on listed camp hexes: 011 Baecula, 114 Gabiene). Scenario data is validated against this list.
  */
-export type SpecialRuleId =
-  | 'sacredBand'
-  | 'magoAmbush'
-  | 'trasimenusHand'
-  | 'beneventumHand'
-  | 'castulo'
-  | 'campCapture'
-  | 'leaderLossCostsCard'
-  | 'allLeadersSuddenDeath'
-  | 'frightAtFirstSight'
-  | 'leaderPlacement'
-  | 'tacticalFlexibility';
+export const SPECIAL_RULE_IDS = [
+  'sacredBand',
+  'magoAmbush',
+  'trasimenusHand',
+  'beneventumHand',
+  'castulo',
+  'campCapture',
+  'leaderLossCostsCard',
+  'allLeadersSuddenDeath',
+  'frightAtFirstSight',
+  'leaderPlacement',
+  'tacticalFlexibility',
+] as const;
+/** A scenario special rule (see SPECIAL_RULE_IDS). */
+export type SpecialRuleId = (typeof SPECIAL_RULE_IDS)[number];
 
 /** Camp-capture objective (rule `campCapture`): units of `side` stopping on one of `hexes` gain a banner, once per camp. */
 export interface CampCapture {
