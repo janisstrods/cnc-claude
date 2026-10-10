@@ -10,6 +10,7 @@ import { paintRamparts } from './rampart';
 import { P } from './palette';
 import { paintCoastFords, paintSea } from './sea';
 import { paintForests, paintMarsh } from './vegetation';
+import { paintCityWalls, paintRomeWalls, paintTowns } from './walls';
 import { paintLakes, paintRivers } from './water';
 
 const cache = new Map<string, JSX.Element | null>();
@@ -22,15 +23,17 @@ const iconSeaCell = (r: number, c: number) => !(c === -1 && (r === 0 || r === 1)
 /** On the coast-ford swatch the stones wade in from that beach (towards the W and SW sides). */
 const ICON_TO_LAND = { x: -Math.sqrt(3) / 2, y: 0.5 };
 
-function iconArt(t: TerrainType, ford: boolean, hexArt?: string): JSX.Element | null {
+function iconArt(t: TerrainType, ford: boolean, hexArt?: string, hill = false): JSX.Element | null {
   // a coast played as a ford (217): a fordable river in the rules, drawn as sea shallows
   if (hexArt === 'coast' && t === 'river') t = 'sea';
-  // a city wall (Expansion #3) shows the steep-rock swatch until the art track gives it its own
-  if (t === 'wall') t = 'steep';
-  const key = `${t}:${ford ? 1 : 0}`;
+  // Expansion #3: an impassable city wall or town (`steep` with art 'wall' or 'town'); a hill under a camp or wall
+  const city = t === 'steep' && (hexArt === 'wall' || hexArt === 'town') ? hexArt : undefined;
+  const under = hill && (t === 'camp' || t === 'wall');
+  const key = `${t}:${ford ? 1 : 0}${city ? `:${city}` : ''}${under ? ':hill' : ''}`;
   if (cache.has(key)) return cache.get(key)!;
-  const ctx = iconCtx(t, ford);
+  const ctx = iconCtx(t, ford, under, city);
   let el: JSX.Element | null = null;
+  const hillUnder = under ? <g transform="scale(0.82)">{paintHills(ctx, undefined, 1.9)}</g> : null;
   switch (t) {
     case 'hill':
       el = <g transform="scale(0.82)">{paintHills(ctx, undefined, 1.9)}</g>;
@@ -63,10 +66,15 @@ function iconArt(t: TerrainType, ford: boolean, hexArt?: string): JSX.Element | 
       el = <g transform="scale(0.86)">{paintRamparts(ctx, [ICON_RAMPART], { openEdges: false })}</g>;
       break;
     case 'steep':
-      el = paintSteep(ctx);
+      if (city === 'town') el = <g transform="scale(0.92)">{paintTowns(ctx)}</g>;
+      else if (city === 'wall') el = <g transform="scale(0.86)">{paintRomeWalls(ctx, false)}</g>;
+      else el = paintSteep(ctx);
       break;
     case 'camp':
-      el = paintCamps(ctx);
+      el = <>{hillUnder}{paintCamps(ctx)}</>;
+      break;
+    case 'wall':
+      el = <>{hillUnder}<g transform="scale(0.9)">{paintCityWalls(ctx, false)}</g></>;
       break;
     case 'broken':
       el = paintBroken(ctx);
@@ -99,11 +107,13 @@ const HEX_PTS = Array.from({ length: 6 }, (_, i) => corner({ x: 0, y: 0 }, i, HE
 
 /**
  * A painted hex swatch of terrain `t`, `size` pixels square. `art`: the hex's art where it differs from its terrain
- * (`terrainArtOf`): `'coast'` on a fordable river draws a coast played as a ford (217).
+ * (`terrainArtOf`): `'coast'` on a fordable river draws a coast played as a ford (217); `'wall'` or `'town'` on a `steep`
+ * hex an impassable city wall (301) or a walled town (303, 304). `hill`: a hill under a camp or a wall (308,
+ * `GameState.hillUnder`).
  */
-export function TerrainIcon({ t, ford = false, art: hexArt, size }: { t: TerrainType; ford?: boolean; art?: string; size: number }): JSX.Element {
+export function TerrainIcon({ t, ford = false, art: hexArt, hill = false, size }: { t: TerrainType; ford?: boolean; art?: string; hill?: boolean; size: number }): JSX.Element {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
-  const art = useMemo(() => iconArt(t, ford, hexArt), [t, ford, hexArt]);
+  const art = useMemo(() => iconArt(t, ford, hexArt, hill), [t, ford, hexArt, hill]);
   const clip = `ti${uid}`;
   return (
     <svg width={size} height={size} viewBox="-52 -52 104 104" style={{ display: 'inline-block', verticalAlign: 'middle' }} aria-hidden>

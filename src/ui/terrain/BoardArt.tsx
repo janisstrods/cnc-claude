@@ -10,6 +10,7 @@ import { paintHills, paintSteep } from './hills';
 import { paintRamparts } from './rampart';
 import { paintCoastFords, paintSea } from './sea';
 import { paintForests, paintMarsh } from './vegetation';
+import { paintCityWalls, paintRomeWalls, paintSteepSlopes, paintTowns } from './walls';
 import { paintLakes, paintRivers } from './water';
 
 export interface BoardArtProps {
@@ -29,6 +30,16 @@ export interface BoardArtProps {
   art?: readonly (string | undefined)[];
   /** The battle's hills are very steep (rule `veryHills`, 223): rockier, darker hills. */
   steepHills?: boolean;
+  /**
+   * Expansion #3: a hill under the hex's camp or scalable wall (`GameState.hillUnder`, 308), painted as a hill with the camp
+   * or the wall standing on it. Absent = none.
+   */
+  hillUnder?: readonly boolean[];
+  /**
+   * Expansion #3, rule `steepSlopes` (308): a rock scarp along every hexside where a hill (or a hill under a camp or wall)
+   * meets a forest.
+   */
+  steepSlopes?: boolean;
   /** Board rotated 180 degrees. */
   flipped: boolean;
   /** Army name written on the frame at the top edge (already resolved for `flipped`). */
@@ -39,14 +50,19 @@ export interface BoardArtProps {
 
 const NO_RAMPARTS: readonly number[] = [];
 const NO_ART: readonly (string | undefined)[] = [];
+const NO_HILLS: readonly boolean[] = [];
+
+/** Art that stands for an impassable `steep` hex: the wall of a city (301) or a walled town (303, 304). */
+const isCityArt = (a: string | undefined) => a === 'wall' || a === 'town';
 
 /**
- * The terrain as painted: a fordable river hex with `'coast'` art is drawn as (fordable) sea. A city wall (Expansion #3) is
- * drawn as steep rock until the art track gives it its own painter.
+ * The terrain as painted: a fordable river hex with `'coast'` art is drawn as (fordable) sea; an impassable city wall or
+ * town (`steep` with art 'wall' or 'town') is not a rocky plateau but ground for its own painter (`paintRomeWalls`,
+ * `paintTowns`).
  */
 function paintedTerrain(terrain: readonly TerrainType[], art: readonly (string | undefined)[]): readonly TerrainType[] {
-  if (!art.some((a) => a === 'coast') && !terrain.includes('wall')) return terrain;
-  return terrain.map((t, i) => (art[i] === 'coast' && t === 'river' ? 'sea' : t === 'wall' ? 'steep' : t));
+  if (!art.some((a) => a === 'coast' || isCityArt(a))) return terrain;
+  return terrain.map((t, i) => (art[i] === 'coast' && t === 'river' ? 'sea' : t === 'steep' && isCityArt(art[i]) ? 'plain' : t));
 }
 
 function BoardArtImpl({
@@ -55,6 +71,8 @@ function BoardArtImpl({
   rampart = NO_RAMPARTS,
   art: hexArt = NO_ART,
   steepHills = false,
+  hillUnder = NO_HILLS,
+  steepSlopes = false,
   flipped,
   topLabel,
   bottomLabel,
@@ -65,9 +83,10 @@ function BoardArtImpl({
   const fKey = fords.map((f) => (f ? 1 : 0)).join('');
   const rKey = rampart.join(',');
   const aKey = hexArt.map((a) => a ?? '').join(',');
+  const hKey = hillUnder.map((b) => (b ? 1 : 0)).join('');
 
   const art = useMemo(() => {
-    const ctx = boardCtx(paintedTerrain(terrain, hexArt), fords, flipped);
+    const ctx = boardCtx(paintedTerrain(terrain, hexArt), fords, flipped, { hillUnder, art: hexArt });
     return {
       outline: fieldOutline(ctx),
       grid: <HexGrid ctx={ctx} />,
@@ -83,14 +102,18 @@ function BoardArtImpl({
           {paintRivers(ctx, id)}
           {paintLakes(ctx)}
           {paintSteep(ctx)}
+          {paintTowns(ctx)}
+          {paintRomeWalls(ctx)}
           {paintCamps(ctx)}
+          {paintCityWalls(ctx)}
           {paintRamparts(ctx, rampart)}
           {paintForests(ctx)}
+          {steepSlopes && paintSteepSlopes(ctx)}
         </>
       ),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tKey, fKey, rKey, aKey, steepHills, flipped, uid]);
+  }, [tKey, fKey, rKey, aKey, hKey, steepHills, steepSlopes, flipped, uid]);
 
   const x1 = hexCenter(0, 4, flipped).x;
   const x2 = hexCenter(0, 8, flipped).x;
@@ -132,6 +155,8 @@ export function boardArtPropsEqual(a: BoardArtProps, b: BoardArtProps): boolean 
     a.topLabel === b.topLabel &&
     a.bottomLabel === b.bottomLabel &&
     !!a.steepHills === !!b.steepHills &&
+    !!a.steepSlopes === !!b.steepSlopes &&
+    sameArr(a.hillUnder ?? NO_HILLS, b.hillUnder ?? NO_HILLS) &&
     sameArr(a.terrain, b.terrain) &&
     sameArr(a.fords, b.fords) &&
     sameArr(a.rampart ?? NO_RAMPARTS, b.rampart ?? NO_RAMPARTS) &&
@@ -139,5 +164,8 @@ export function boardArtPropsEqual(a: BoardArtProps, b: BoardArtProps): boolean 
   );
 }
 
-/** Static board art; re-renders only when the terrain, fords, ramparts, hex art, hill style, orientation or labels change. */
+/**
+ * Static board art; re-renders only when the terrain, fords, ramparts, hex art, hills under camps and walls, hill style,
+ * steep slopes, orientation or labels change.
+ */
 export const BoardArt = memo(BoardArtImpl, boardArtPropsEqual);

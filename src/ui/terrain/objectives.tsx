@@ -3,7 +3,9 @@
 // banner-coloured outline and a small standard (raised while a unit of the side stands there), exit hexes arrows on their
 // outer board edge, majority areas a dashed outline around the hex set (in the holder's colour while held) and section
 // clear a tint over every section the side scores right now. Everything is placed in screen space from the hexes, so the
-// markers turn with a flipped board; the pennants and arrows themselves stay upright.
+// markers turn with a flipped board; the pennants and arrows themselves stay upright. Expansion #3: a capture objective with
+// `marker: 'ship'` (313) shows a ship on each hex instead of a pennant: the enemy's vessel, its sail in the colours of the
+// side it belongs to, with a pennant of the capturing side at the masthead; once taken its sail is struck.
 import { useId } from 'react';
 import { BLOCK_COLORS, type SideColors } from '../../art';
 import { colOf, hexId, rowOf } from '../../engine/hex';
@@ -110,6 +112,47 @@ function Pennant({ base, c, taken }: { base: Pt; c: SideColors; taken: boolean }
         </>
       )}
       <circle cx={fmt(x)} cy={fmt(top - 1)} r={2} fill={GOLD} stroke={INK} strokeWidth={0.8} />
+    </g>
+  );
+}
+
+/**
+ * A ship lying off the beach at `base` (screen space): an oared hull with a curled stern-post and a ram, a mast with a
+ * square sail in `owner`'s colours, the capturing side's pennant at the masthead; once taken the sail is furled on its yard
+ * and a gold check shows.
+ */
+function Ship({ base, owner, capturer, taken }: { base: Pt; owner: SideColors; capturer: SideColors; taken: boolean }) {
+  const { x, y } = base;
+  const hull = `M${fmt(x - 21)},${fmt(y - 7)}c3,0.8 6,1 10,1h18c3,0 6,-0.4 9,-1.2l5.5,-0.4l-4.6,2.4c-1.6,3.4 -4.6,5.2 -9,5.2h-18c-5,0 -9,-1.6 -11,-4.8c-0.7,-1 -0.7,-1.8 0.1,-2.2z`;
+  const stern = `M${fmt(x - 20.5)},${fmt(y - 6.6)}c-2.6,-1.6 -3.8,-4.6 -2.4,-7.6c1,-2 3.4,-2.4 4.2,-0.8c0.6,1.2 -0.4,2.4 -1.6,2`;
+  const oars = Array.from({ length: 7 }, (_, k) => `M${fmt(x - 13 + k * 4.2)},${fmt(y - 3.4)}l-2.6,6`).join('');
+  const mastTop = y - 33;
+  const sail = taken
+    ? `M${fmt(x - 11)},${fmt(mastTop + 5)}c7,2.4 15,2.4 22,0l-0.4,2.4c-7,2 -14.4,2 -21.2,0z`
+    : `M${fmt(x - 11)},${fmt(mastTop + 4.5)}h22c1,6 0.6,12 -1,17.5c-6.4,1.4 -13.6,1.4 -20,0c-1.6,-5.5 -2,-11.5 -1,-17.5z`;
+  return (
+    <g className={taken ? 'ship taken' : 'ship'}>
+      <ellipse cx={fmt(x + 2)} cy={fmt(y + 1)} rx={24} ry={3.2} fill="rgba(16,36,48,0.35)" />
+      <path d={`M${fmt(x - 24)},${fmt(y + 0.5)}q6,-2 12,0t12,0t12,0t12,0`} fill="none" stroke="#f4f3e6" strokeWidth={1.1} strokeLinecap="round" opacity={0.75} />
+      <path d={oars} stroke={INK} strokeWidth={1.6} strokeLinecap="round" />
+      <path d={oars} stroke="#c49d63" strokeWidth={0.8} strokeLinecap="round" />
+      <path d={`M${fmt(x)},${fmt(y - 6)}V${fmt(mastTop)}`} stroke={INK} strokeWidth={2.6} strokeLinecap="round" />
+      <path d={`M${fmt(x)},${fmt(y - 6)}V${fmt(mastTop)}`} stroke="#a77d45" strokeWidth={1.3} strokeLinecap="round" />
+      <path d={`M${fmt(x - 12)},${fmt(mastTop + 4.5)}H${fmt(x + 12)}`} stroke={INK} strokeWidth={2.2} strokeLinecap="round" />
+      <path d={`M${fmt(x - 12)},${fmt(mastTop + 4.5)}H${fmt(x + 12)}`} stroke="#a77d45" strokeWidth={1} strokeLinecap="round" />
+      <path d={sail} fill={owner.banner} stroke={INK} strokeWidth={1.1} strokeLinejoin="round" />
+      {!taken && <path d={`M${fmt(x - 10.4)},${fmt(mastTop + 11)}h20.8M${fmt(x - 10.2)},${fmt(mastTop + 16)}h20.4`} stroke={owner.edgeLight} strokeWidth={1.6} opacity={0.85} />}
+      <path d={stern} fill="none" stroke={INK} strokeWidth={2.4} strokeLinecap="round" />
+      <path d={stern} fill="none" stroke="#a77d45" strokeWidth={1.1} strokeLinecap="round" />
+      <path d={hull} fill="#6a4526" stroke={INK} strokeWidth={1.1} strokeLinejoin="round" />
+      <path d={`M${fmt(x - 19)},${fmt(y - 5.4)}c3,0.7 6,0.9 9.6,0.9h18c2.6,0 5,-0.3 7.6,-0.9`} fill="none" stroke={owner.edge} strokeWidth={1.6} />
+      <path d={`M${fmt(x)},${fmt(mastTop)}l7,1.6l-7,2.2z`} fill={capturer.banner} stroke={INK} strokeWidth={0.8} strokeLinejoin="round" />
+      {taken && (
+        <>
+          <circle cx={fmt(x + 13)} cy={fmt(y - 14)} r={5.2} fill={GOLD} stroke={INK} strokeWidth={1} />
+          <path d={`M${fmt(x + 10.4)},${fmt(y - 14)}l1.9,2.1l3.5,-4.2`} fill="none" stroke={INK} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
     </g>
   );
 }
@@ -290,9 +333,17 @@ export function ObjectiveMarkers({ objectives, objState, flipped, blocks, units 
       case 'capture': {
         const c = colors(blocks, o.side);
         const taken = new Set(st?.taken ?? []);
+        // (`marker` is the Expansion #3 field of a capture objective; read loosely until ObjectiveDef has it)
+        const ship = (o as { marker?: string }).marker === 'ship';
+        const owner = colors(blocks, o.side === 'top' ? 'bottom' : 'top');
         for (const h of o.hexes) {
           const p = centre(h, flipped);
-          posts.push({ y: p.y, el: <Pennant key={`c${i}-${h}`} base={{ x: p.x - 25, y: p.y - 7 }} c={c} taken={taken.has(h)} /> });
+          posts.push({
+            y: p.y,
+            el: ship
+              ? <Ship key={`c${i}-${h}`} base={{ x: p.x - 8, y: p.y - 12 }} owner={owner} capturer={c} taken={taken.has(h)} />
+              : <Pennant key={`c${i}-${h}`} base={{ x: p.x - 25, y: p.y - 7 }} c={c} taken={taken.has(h)} />,
+          });
         }
         break;
       }
