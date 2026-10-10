@@ -127,6 +127,8 @@ export interface LookStyle {
  * Every figure is painted from these swatches (plus small per-figure variation). Resolve with `paletteFor`.
  */
 export interface Palette extends LookPalette {
+  /** The look this palette was resolved from (per-look figure variants key on it). */
+  look: ArmyLook;
   kit: Kit;
   style: LookStyle;
   /** Painted miniature base: strong side-coloured edge. */
@@ -742,6 +744,7 @@ export function paletteFor(look: ArmyLook, blocks: Blocks): Palette {
     const sc = blockColors(blocks);
     p = {
       ...d.palette,
+      look,
       kit: d.kit,
       style: d.style,
       baseEdge: sc.edge,

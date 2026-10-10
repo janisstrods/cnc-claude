@@ -1,10 +1,10 @@
 // Horses and riders (LC, MC, HC, LBC, leaders), and the half-figures that crew elephants, chariots and camels.
 // Facing right, hooves at y = 0.
 import { useContext } from 'react';
-import type { ArmyLook, EliteId, UnitType } from '../engine/types';
+import type { EliteId, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
-import { figurePalette } from './foot';
-import { LOOKS, type Kit, type LookPalette, type LookStyle, type Palette } from './palettes';
+import { figurePalette, type CrewDress } from './foot';
+import type { Kit, LookPalette, Palette } from './palettes';
 import {
   Arm, Body, FacingRightCtx, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, dots, makeFig,
   type Crest, type Fig, type Hair, type Helmet, type ShieldKind, type Torso,
@@ -363,14 +363,6 @@ export function riderKit(type: UnitType, kit: Kit, i: number): RiderKit {
 // ---------------------------------------------------------------------------------------------
 // Expansion #1 cavalry: per-kit riders and horse furniture, per-look variants, the Companions
 
-/** The look a palette was resolved from (its style object is the look's own). */
-const STYLE_LOOK = new Map<LookStyle, ArmyLook>(
-  (Object.keys(LOOKS) as ArmyLook[]).map((look) => [LOOKS[look].style, look]),
-);
-export function lookOf(p: Palette): ArmyLook | undefined {
-  return STYLE_LOOK.get(p.style);
-}
-
 /** How one mounted figure is equipped: rider kit, saddle cloth, horse armour, size. */
 interface Mount {
   rider: RiderKit;
@@ -384,7 +376,11 @@ interface Mount {
   coat: number;
 }
 
-const classicKit = (kit: Kit) => kit === 'roman' || kit === 'punic' || kit === 'greek';
+/**
+ * Is this mounted type drawn as the base game's cavalry (LC, MC, HC of the Roman, Punic and Greek kits)? Those keep their
+ * base drawing whatever the elite; horse archers and the Expansion #1 kits' cavalry are drawn by `KitMounted`.
+ */
+export const baseCavalry = (type: UnitType, kit: Kit) => type !== 'LBC' && (kit === 'roman' || kit === 'punic' || kit === 'greek');
 
 /** Horse archers (LBC) of every kit: drawn bow, gorytos at the hip. */
 function horseArcher(kit: Kit, i: number): RiderKit {
@@ -411,8 +407,8 @@ function horseArcher(kit: Kit, i: number): RiderKit {
   }
 }
 
+/** The mount of a horse archer (any kit) or of an Expansion #1 kit's cavalry; base kits draw their LC/MC/HC in `MountedFigure`. */
 function kitMount(type: UnitType, p: Palette, i: number, elite: EliteId | undefined): Mount {
-  const look = lookOf(p);
   const light = type === 'LC' || type === 'LBC';
   const pose = light ? 1 + (i % 2) : type === 'HC' ? 2 * (i % 2) : i % 3;
   const coat = type === 'HC' ? 1 : light ? 2 : 0;
@@ -420,10 +416,6 @@ function kitMount(type: UnitType, p: Palette, i: number, elite: EliteId | undefi
     rider, cloth, scale: light ? 0.92 : type === 'HC' ? 1.06 : 1, pose, coat, ...extra,
   });
   if (type === 'LBC') return m(horseArcher(p.kit, i), p.kit === 'scythian' || p.kit === 'macedonian' ? 'plain' : 'rich');
-  if (classicKit(p.kit)) {
-    // only reached for types the base kits never had (all base types keep MountedFigure's base drawing)
-    return m(riderKit(type, p.kit, i), 'plain', { barding: type === 'HC' });
-  }
   if (elite === 'companions') {
     // Alexander's Companions: Boeotian helmet with white plumes, gilded cuirass, purple cloak, leopard skin, xyston
     return m({ torso: 'muscle', helmet: 'boeotian', crest: 'plume2', shield: 'none', weapon: 'lance', legs: 'bare', cloak: true }, 'leopard', { scale: 1.04 });
@@ -432,13 +424,13 @@ function kitMount(type: UnitType, p: Palette, i: number, elite: EliteId | undefi
     case 'macedonian': {
       if (type === 'LC') {
         // Thessalian / Thracian light horse: petasos or Thracian helmet, javelins, painted shield; Seleucid eastern light horse
-        if (look === 'seleucid' && i % 2 === 0) {
+        if (p.look === 'seleucid' && i % 2 === 0) {
           return m({ torso: 'tunic', helmet: 'tiara', crest: 'none', shield: 'none', weapon: 'javelin', legs: 'trousers', longSleeve: true, spare: true, beard: true }, 'rich');
         }
         return m({ torso: 'tunic', helmet: i % 2 ? 'thracian' : 'petasos', crest: 'none', shield: 'round', weapon: 'javelin', legs: 'bare', spare: true, cloak: i % 2 === 0 }, 'plain');
       }
       if (type === 'HC') {
-        if (look === 'seleucid') {
+        if (p.look === 'seleucid') {
           // the cataphracts of Magnesia: scale-armoured riders on scale-armoured horses
           return m({ torso: 'scale', helmet: 'phrygian', crest: 'horsehair', shield: 'none', weapon: 'lance', legs: 'trousers', longSleeve: true }, 'none', { cataphract: true, barding: true });
         }
@@ -523,7 +515,7 @@ function KitMounted({ type, p: armyP, i, elite }: { type: UnitType; p: Palette; 
 
 /** One mounted miniature (LC, MC, HC, LBC). `elite` gives the Companions their own figures. */
 export function MountedFigure({ type, p, i, elite }: { type: UnitType; p: Palette; i: number; elite?: EliteId }) {
-  if (type === 'LBC' || !classicKit(p.kit)) return <KitMounted type={type} p={p} i={i} elite={elite} />;
+  if (!baseCavalry(type, p.kit)) return <KitMounted type={type} p={p} i={i} elite={elite} />;
   const f = makeFig(p, i);
   const kit = riderKit(type, p.kit, i);
   const coats = p.horses;
@@ -559,42 +551,15 @@ export const HORSE_GEOM = { scale: HORSE_SCALE, seatX: SEAT_X, seatY: SEAT_Y };
 // ---------------------------------------------------------------------------------------------
 // Half-figures: the crews of elephants, chariots and camels (upper body, arms and weapon)
 
-/** Dress of a crewman (elephant towers, chariots, camel riders). */
-export interface CrewDress {
-  torso: Torso;
-  helmet: Helmet;
-  crest: Crest;
-  hair?: Hair;
-  beard?: boolean;
-  moustache?: boolean;
-  longSleeve?: boolean;
-  legs?: 'bare' | 'trousers' | 'greaves';
-}
-
 /** What a crewman does with his hands. `pike`: a long pike levelled forward; `reins`: driving; `goad`: a mahout's hook. */
-export type CrewAction = 'javelin' | 'spear' | 'pike' | 'bow' | 'reins' | 'goad' | 'whip';
-
-/** Dress of a crewman of a kit (`i` varies helmets). */
-export function crewDress(kit: Kit, i: number): CrewDress {
-  switch (kit) {
-    case 'roman': return { torso: 'mail', helmet: 'montefortino', crest: i % 2 ? 'plumes' : 'knob' };
-    case 'punic': return { torso: 'linen', helmet: i % 2 ? 'attic' : 'conical', crest: i % 2 ? 'horsehair' : 'knob', beard: i % 2 === 0 };
-    case 'greek': return { torso: 'linen', helmet: i % 2 ? 'corinthian' : 'pilos', crest: i % 2 ? 'tall' : 'knob' };
-    case 'macedonian': return { torso: 'linen', helmet: i % 2 ? 'thracian' : 'phrygian', crest: i % 2 ? 'knob' : 'horsehair' };
-    case 'persian': return { torso: 'tunic', helmet: 'tiara', crest: 'none', longSleeve: true, beard: true, legs: 'trousers' };
-    case 'scythian': return { torso: 'kaftan', helmet: 'scythianCap', crest: 'none', longSleeve: true, hair: 'long', beard: true, legs: 'trousers' };
-    case 'indian':
-    default:
-      return { torso: 'cotton', helmet: 'turban', crest: 'none', beard: i % 2 === 0 };
-  }
-}
+export type CrewAction = 'javelin' | 'pike' | 'bow' | 'reins' | 'goad' | 'whip';
 
 /**
  * The upper body of a crewman in the rider frame (seat at 0,0, facing right; the waist is at y ≈ -1.4 and the head top
  * at about -17): body, head, both arms and his weapon. `turned`: facing back (mirrored about the spine).
  */
-export function HalfFigure({ dress, action, f, bow = 'self', turned = false, shield, aim = 0 }: {
-  dress: CrewDress; action: CrewAction; f: Fig; bow?: 'self' | 'scythian'; turned?: boolean; shield?: ShieldKind;
+export function HalfFigure({ dress, action, f, bow = 'self', turned = false, aim = 0 }: {
+  dress: CrewDress; action: CrewAction; f: Fig; bow?: 'self' | 'scythian'; turned?: boolean;
   /** Bow only: aim up (negative degrees) or down, turning the arms and the bow about the shoulders. */
   aim?: number;
 }) {
@@ -611,10 +576,6 @@ export function HalfFigure({ dress, action, f, bow = 'self', turned = false, shi
   if (action === 'javelin') {
     behind = <Spear x1={-12.4} y1={-12.4} x2={10.6} y2={-20.4} f={f} w={0.75} blade={2.6} bladeW={1.2} />;
     farArm = <Arm s={fs} e={[-5.6, -10.6]} h={[-4, -15.6]} f={f} sleeve={sleeve} long={long} />;
-    nearArm = <Arm s={ns} e={[4.4, -3.8]} h={[6.6, -4.6]} f={f} near sleeve={sleeve} long={long} />;
-  } else if (action === 'spear') {
-    behind = <Spear x1={-5.8} y1={6} x2={5.4 + f.i * 0.5} y2={-31} f={f} w={0.9} blade={3.6} bladeW={1.5} />;
-    farArm = <Arm s={fs} e={[-4.4, -3.4]} h={[-1.6, -4.4]} f={f} sleeve={sleeve} long={long} />;
     nearArm = <Arm s={ns} e={[4.4, -3.8]} h={[6.6, -4.6]} f={f} near sleeve={sleeve} long={long} />;
   } else if (action === 'pike') {
     const x1 = -13;
@@ -655,7 +616,6 @@ export function HalfFigure({ dress, action, f, bow = 'self', turned = false, shi
         <Head f={f} helmet={dress.helmet} crest={dress.crest} hair={dress.hair ?? 'short'} beard={dress.beard} moustache={dress.moustache} />
       </g>
       {nearArm}
-      {shield && shield !== 'none' && <Shield kind={shield} f={f} dx={0.4} dy={13} s={0.8} />}
       {front}
     </>
   );
@@ -663,12 +623,11 @@ export function HalfFigure({ dress, action, f, bow = 'self', turned = false, shi
 }
 
 /** Thigh and shin of a seated crewman (rider frame), hanging down the mount's flank. */
-export function SeatedLeg({ f, legs = 'bare' }: { f: Fig; legs?: 'bare' | 'trousers' | 'greaves' }) {
+export function SeatedLeg({ f }: { f: Fig }) {
   const { p } = f;
-  const c = legs === 'trousers' ? p.trousers : f.skin;
   return (
     <>
-      <Line2 d="M-1.2 -0.6 L3.6 2.4 L2.6 8" w={2.6} c={c} />
+      <Line2 d="M-1.2 -0.6 L3.6 2.4 L2.6 8" w={2.6} c={f.skin} />
       <Line2 d="M2.4 8.4 L4.4 8.8" w={1.3} c={p.leatherShade} />
       <Shape d="M-4.4 -1.6 L2 -1.6 C2.8 -0.4 3.6 1.2 4.2 2.6 C2.4 3.4 0.2 3.2 -1.4 2.4 L-4.6 1.2 Z" f={p.tunic} sw={0.6} />
       <Hi d="M4 2.4 C2.4 3 0.4 3 -1.3 2.2" c={p.trim} w={0.7} o={1} />

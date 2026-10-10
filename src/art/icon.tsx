@@ -3,6 +3,7 @@ import { memo } from 'react';
 import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
 import { paletteFor, type Kit } from './palettes';
 import { FacingRightCtx } from './parts';
+import { baseCavalry } from './mounted';
 import { Miniature, figureKind } from './token';
 
 type Box = [top: number, bottom: number, left: number, right: number];
@@ -24,33 +25,43 @@ const BOX: Record<UnitType, Box> = {
   HCH: [-43.3, 0.8, -27.8, 31],
   LBC: [-33.7, 0.4, -18.2, 19.3],
   CAM: [-45.9, 0.3, -20, 24.3],
-  HWM: [-33.6, 0.4, -28.1, 21.9],
+  HWM: [-36.6, 0.4, -28.1, 21.9],
 };
 
 // The Expansion #1 kits where a figure's extent differs from the base box by more than 1.5 units (union over the kit's looks).
 const KIT_BOX: Partial<Record<Kit, Partial<Record<UnitType, Box>>>> = {
   macedonian: {
     HI: [-35.5, 0.4, -14.2, 18.6], LC: [-35.9, 0.4, -18.2, 19.3], MC: [-38.8, 0.7, -19.7, 21.4], EL: [-48.3, 1, -17.5, 24.1],
-    HCH: [-40.3, 0.9, -24.6, 31.9], LBC: [-37.9, 0.4, -18.2, 19.3], HWM: [-31.6, 0.4, -28.1, 21.9],
+    HCH: [-40.3, 0.9, -24.6, 31.9], LBC: [-37.9, 0.4, -18.2, 19.3],
   },
   persian: {
     WA: [-40, 0.4, -6.1, 11.4], HI: [-40, 2.6, -7.8, 10.4], LC: [-35.9, 0.4, -18.2, 19.3], HC: [-41, 0.6, -20.8, 22.7],
-    EL: [-48.1, 1, -18.5, 25.6], HCH: [-37.6, 0.9, -24.6, 31.9],
+    EL: [-48.1, 1, -18.5, 25.6], HCH: [-37.6, 0.9, -24.6, 31.9], HWM: [-32.6, 0.4, -28.1, 21.9],
   },
   scythian: {
     LI: [-37.1, 0.4, -11.7, 12.4], LB: [-37.1, 0.4, -7.4, 14.6], AX: [-40, 0.4, -6.1, 11.4], WA: [-40, 0.4, -7, 10.8],
     HI: [-40, 1.9, -7.4, 10.4], LC: [-37.9, 0.4, -18.2, 19.3], HC: [-41, 0.6, -20.8, 22.7], EL: [-49.9, 1, -18.5, 25.6],
-    HCH: [-41.5, 0.9, -21.8, 31], LBC: [-37.9, 0.4, -18.2, 19.3], HWM: [-37.1, 0.4, -28.1, 21.9],
+    HCH: [-41.5, 0.9, -21.8, 31], LBC: [-37.9, 0.4, -18.2, 19.3],
   },
   indian: {
     LB: [-41.6, 0.4, -9.6, 17.4], MI: [-40, 1.9, -6.4, 8.7], LC: [-35.9, 0.4, -18.2, 19.3], HC: [-41, 0.6, -20.8, 22.7],
-    EL: [-49.3, 1, -18.5, 25.6], HCH: [-40, 0.9, -32.5, 31.9],
+    EL: [-49.3, 1, -18.5, 25.6], HCH: [-40, 0.9, -32.5, 31.9], HWM: [-32.9, 0.4, -28.4, 21.9],
   },
+};
+
+// Elites whose own figure (in its army's kit) reaches more than 1 unit beyond the type's box: the Companions (plumes, drawn
+// 1.04 times larger), the Immortals (guard spear) and the Mauryan bow auxilia (longbow).
+const ELITE_BOX: Partial<Record<EliteId, Partial<Record<UnitType, Box>>>> = {
+  companions: { MC: [-45.3, 0.5, -20.4, 22.2] },
+  immortals: { MI: [-42, 1.8, -9.6, 11] },
+  bowAuxilia: { AX: [-41.6, 0.4, -9.6, 17.4] },
 };
 
 function UnitIconImpl({ type, look, blockColor, size, elite }: { type: UnitType; look: ArmyLook; blockColor: Blocks; size: number; elite?: EliteId }) {
   const p = paletteFor(look, blockColor);
-  const [top, bottom, left, right] = KIT_BOX[p.kit]?.[type] ?? BOX[type];
+  // an elite's own figure (base cavalry stays the base figure whatever its elite)
+  const eliteBox = elite && !(figureKind(type) === 'horse' && baseCavalry(type, p.kit)) ? ELITE_BOX[elite]?.[type] : undefined;
+  const [top, bottom, left, right] = eliteBox ?? KIT_BOX[p.kit]?.[type] ?? BOX[type];
   const s = size / Math.max(bottom - top, right - left);
   const cx = (left + right) / 2;
   const cy = (top + bottom) / 2;

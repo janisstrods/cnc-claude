@@ -5,8 +5,8 @@
 import { darken, lighten } from './color';
 import type { Kit, LookPalette, Palette } from './palettes';
 import { Arm, Body, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, dots, makeFig, type Fig } from './parts';
-import { HalfFigure, crewDress, lookOf, type CrewAction, type CrewDress } from './mounted';
-import { figurePalette } from './foot';
+import { HalfFigure, type CrewAction } from './mounted';
+import { crewDress, figurePalette, type CrewDress } from './foot';
 
 const BODY =
   'M-16.4 -13.6 C-17 -20.4 -12.8 -26.4 -5 -27.4 C1 -28.2 6 -27.4 9.2 -25.6 C11.2 -29.2 15.8 -30 18.6 -27.4 ' +
@@ -109,9 +109,9 @@ const IND_EAR =
 const IND_TRUNK =
   'M20.6 -20.2 C22 -15.2 22 -9.4 21.4 -4.8 C21.2 -3.2 22.6 -2.4 24 -3.4 L24.6 -2.1 C22.4 -0.5 18.9 -1 19.1 -4.3 C19.3 -8.7 18.8 -12.8 17 -16.2 Z';
 const IND_TUSK = 'M17.2 -16.4 C19.2 -15.4 21.4 -15 23.4 -16.2 C21.6 -13.6 18.6 -13.4 16.4 -14.8 Z';
-/** Depigmented (pinkish) mottling of an Indian elephant's ear and trunk. */
 const RICH_FRINGE = 'M-10.6 -16.8 L-10.8 -15 M-8.4 -16.4 L-8.5 -14.6 M-4 -16.4 L-4 -14.6 M0.4 -16.4 L0.5 -14.6 M4.8 -16.6 L5 -14.8';
 const RICH_DOTS = dots([[-7.4, -23.6], [-3.6, -24.4], [0.2, -24.2], [3.6, -23.2], [-5.6, -20.6], [-1.6, -20.8], [2.2, -20.6]], 0.55);
+/** Depigmented (pinkish) mottling of an Indian elephant's ear and trunk. */
 const IND_MOTTLE = dots([[12.6, -20.4], [13.2, -22.4], [11.8, -19], [20.8, -12], [21, -9.6], [20.6, -7.4], [19.6, -18.4]], 0.45);
 
 /** How an Expansion #1 elephant is drawn. */
@@ -133,21 +133,20 @@ interface ElephantKit {
 const INDIAN_SKIN = ['#a8714a', '#946038', '#b57e52', '#8a5634'];
 
 function elephantKit(p: Palette): ElephantKit {
-  const look = lookOf(p);
   const kit: Kit = p.kit;
-  if (look === 'seleucid') {
+  if (p.look === 'seleucid') {
     // Indian elephants with towers and an armoured headpiece; eastern crews with javelins and bows
     return {
       body: 'indian', load: 'tower', frontlet: true, crew: ['bow', 'javelin'], dress: (i) => crewDress('persian', i), scale: 0.94,
       crewPaint: (q) => ({ cap: q.cloak, capShade: q.cloakShade }),
     };
   }
-  if (look === 'ptolemaic') {
+  if (p.look === 'ptolemaic') {
     // the smaller African forest elephant with a tower and a Macedonian crew
     return { body: 'forest', load: 'tower', crew: ['pike', 'javelin'], scale: 0.86 };
   }
-  if (kit === 'indian') return { body: 'indian', load: 'howdah', rich: true, crew: ['javelin', 'bow'], scale: 1 };
-  if (kit === 'persian' || kit === 'scythian') return { body: 'indian', load: 'howdah', rich: true, crew: ['javelin', 'bow'], scale: 1 };
+  // India, Persia (and the Scythian kit): a richly caparisoned elephant with a howdah, javelin-man and archer
+  if (kit === 'indian' || kit === 'persian' || kit === 'scythian') return { body: 'indian', load: 'howdah', rich: true, crew: ['javelin', 'bow'], scale: 1 };
   // Macedon and the Successors (Pyrrhus, Antigonus, Eumenes): Indian elephants with a tower and a Macedonian crew
   return { body: 'indian', load: 'tower', crew: ['pike', 'javelin'], scale: 0.94 };
 }

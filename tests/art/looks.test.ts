@@ -14,7 +14,7 @@ import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { BLOCK_COLORS, LOOKS, blockColors, lookDef, paletteFor, type Kit } from '../../src/art/palettes';
 import { LeaderToken, UnitIcon, UnitToken } from '../../src/art';
-import { ELITE_FOOT, EliteCtx, FootFigure, crewFigure, figurePalette, footKit } from '../../src/art/foot';
+import { ELITE_FOOT, FootFigure, crewFigure, figurePalette, footKit } from '../../src/art/foot';
 import { bannerCloth } from '../../src/ui/kit/theme';
 import { SCENARIOS } from '../../src/scenarios';
 
@@ -37,7 +37,8 @@ describe('base armies are painted exactly as before', () => {
     it(`${a.look} on ${a.blocks} blocks equals the old '${a.old}' palette, swatch for swatch`, () => {
       const { faction, ...old } = baseline.FACTION_PALETTES[a.old];
       expect(faction).toBe(a.old);
-      const { kit, style, ...now } = paletteFor(a.look, a.blocks);
+      const { look, kit, style, ...now } = paletteFor(a.look, a.blocks);
+      expect(look).toBe(a.look);
       expect(kit).toBe(a.kit);
       expect(style).toBe(LOOKS[a.look].style);
       expect(now).toEqual(old);
@@ -106,7 +107,7 @@ describe('every base scenario seats its armies in the old colours', () => {
         expect(setup.blocks).toBe(setup.army === 'Carthaginian' ? 'car' : setup.army === 'Syracusan' ? 'grk' : 'rom');
         const old = oldFaction(setup.army);
         const { faction: _f, ...expected } = baseline.FACTION_PALETTES[old];
-        const { kit: _k, style: _s, ...drawn } = paletteFor(player.look, player.blocks);
+        const { look: _l, kit: _k, style: _s, ...drawn } = paletteFor(player.look, player.blocks);
         expect(drawn, `${side} ${setup.army}`).toEqual(expected);
         expect(bannerCloth(player.blocks)).toEqual(baseline.FACTION_COLORS[old]);
       }
@@ -353,14 +354,11 @@ describe('elite foot figures', () => {
   ];
 
   for (const { elite, look, type } of ELITES) {
-    it(`${elite} (${look} ${type}) has its own figures, by prop or by context`, () => {
+    it(`${elite} (${look} ${type}) has its own figures`, () => {
       const p = paletteFor(look, 'grk');
       const kit = footKit(type, p.kit, 2);
       const plain = svg(h(FootFigure, { kit, p, i: 2 }));
-      const byProp = svg(h(FootFigure, { kit, p, i: 2, elite }));
-      const byCtx = svg(h(EliteCtx.Provider, { value: elite }, h(FootFigure, { kit, p, i: 2 })));
-      expect(byProp).not.toBe(plain);
-      expect(byCtx).toBe(byProp);
+      expect(svg(h(FootFigure, { kit, p, i: 2, elite }))).not.toBe(plain);
       expect(ELITE_FOOT[elite]).toBeDefined();
     });
   }

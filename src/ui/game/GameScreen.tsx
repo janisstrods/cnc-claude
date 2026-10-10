@@ -569,7 +569,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         {hoverInfo?.u && (
           <>
             <div className="tip-head">
-              <svg width={46} height={46} viewBox="-25 -27 50 50"><UnitIcon type={hoverInfo.u.type} look={s.players[hoverInfo.u.side].look} blockColor={s.players[hoverInfo.u.side].blocks} size={42} /></svg>
+              <svg width={46} height={46} viewBox="-25 -27 50 50"><UnitIcon type={hoverInfo.u.type} look={s.players[hoverInfo.u.side].look} blockColor={s.players[hoverInfo.u.side].blocks} size={42} elite={hoverInfo.u.elite} /></svg>
               <div>
                 <div className="tip-title">{s.players[hoverInfo.u.side].army} {unitTypeName(hoverInfo.u.type)}</div>
                 <div className="tip-sub">{hoverInfo.u.blocks}/{hoverInfo.u.maxBlocks} blocks · {UNIT_STATS[hoverInfo.u.type].cls}{UNIT_STATS[hoverInfo.u.type].mounted ? ' mounted' : ' foot'}</div>

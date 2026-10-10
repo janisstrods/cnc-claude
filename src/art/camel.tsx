@@ -3,7 +3,8 @@
 import { darken, lighten } from './color';
 import type { Palette } from './palettes';
 import { Hi, Line2, OL, Paint, Shape, dots, makeFig } from './parts';
-import { HalfFigure, SeatedLeg, type CrewDress } from './mounted';
+import type { CrewDress } from './foot';
+import { HalfFigure, SeatedLeg } from './mounted';
 
 const BODY =
   'M-13.6 -22.4 C-12.6 -26.6 -9 -31.6 -4 -32.4 C0.4 -33.2 3.8 -30.4 5.6 -26.6 C7.4 -24.2 10 -22.6 12.4 -22.8 ' +

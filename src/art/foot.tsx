@@ -1,5 +1,4 @@
 // Foot soldier miniatures (LI, LB, LS, AX, WA, MI, HI) and war-machine crews. Drawn facing right, feet at (0,0), ~30 units tall.
-import { createContext, useContext } from 'react';
 import type { EliteId, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
 import { TRIBAL_HAIR, TRIBAL_SKIN, type Kit, type LookPalette, type Palette } from './palettes';
@@ -292,13 +291,6 @@ export const ELITE_FOOT: Partial<Record<EliteId, EliteLook>> = {
   bowAuxilia: { foot: { weapon: 'longbow', shield: 'none', spare: undefined } },
 };
 
-/**
- * The elite of the unit being drawn, for callers that cannot hand it to `FootFigure` as a prop (the art gallery wraps
- * whole tokens in a provider). The production route is the `elite` prop: `UnitToken` passes the unit's elite down through
- * `Miniature`. When both are given, the prop wins.
- */
-export const EliteCtx = createContext<EliteId | undefined>(undefined);
-
 const figPalettes = new WeakMap<Palette, Map<string, Palette>>();
 
 /** The palette one figure is painted with: the army's, the elite's changes, then the per-figure variant. */
@@ -385,12 +377,9 @@ function Pomegranate({ x, y, p }: { x: number; y: number; p: Palette }) {
 
 /**
  * One foot miniature. `kit` comes from `footKit`; the look's per-type overrides and paint variants are applied here, and
- * so is the unit's `elite`: pass it as the `elite` prop (what `UnitToken` does); `EliteCtx` is the alternative for callers
- * that cannot, and the prop wins over it.
+ * so is the unit's `elite` (`UnitToken` passes it down through `Miniature`).
  */
-export function FootFigure({ kit: baseKit, p: armyP, i, elite: eliteProp }: { kit: FootKit; p: Palette; i: number; elite?: EliteId }) {
-  const ctxElite = useContext(EliteCtx);
-  const elite = eliteProp ?? ctxElite;
+export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit; p: Palette; i: number; elite?: EliteId }) {
   const p = figurePalette(armyP, i, elite);
   const kit = lookKit(baseKit, armyP, i, elite);
   const f: Fig = kit.tribal ? makeFig(p, i, TRIBAL_SKIN, TRIBAL_HAIR) : makeFig(p, i);
@@ -628,7 +617,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite: eliteProp }: { ki
 }
 
 // ---------------------------------------------------------------------------------------------
-// War-machine crew
+// Crews: war machines here; elephants, chariots and camels seat theirs as half-figures (mounted.tsx)
 
 /** Hand positions of a crewman (figure frame: feet at 0,0, facing right): named poses or explicit near/far hands. */
 export type CrewPose = 'crank' | 'load' | 'aim' | { near: [number, number]; far: [number, number] };
@@ -639,16 +628,28 @@ const CREW_HANDS: Record<'crank' | 'load' | 'aim', { near: [number, number]; far
   aim: { near: [8.6, -24], far: [-3.6, -13.2] },
 };
 
-/** Dress of a crewman per kit. */
-function crewDress(kit: Kit, i: number): Pick<FootKit, 'torso' | 'legs' | 'helmet' | 'crest' | 'hair' | 'beard' | 'longSleeve'> {
+/** Dress of a crewman: war-machine crews stand (`legs`), the crews of elephants, chariots and camels show their upper body. */
+export interface CrewDress {
+  torso: Torso;
+  helmet: Helmet;
+  crest: Crest;
+  hair?: Hair;
+  beard?: boolean;
+  moustache?: boolean;
+  longSleeve?: boolean;
+  legs?: 'bare' | 'trousers';
+}
+
+/** Dress of a crewman of a kit (`i` varies helmets), the same on a war machine as in a tower or a chariot. */
+export function crewDress(kit: Kit, i: number): CrewDress {
   switch (kit) {
-    case 'roman': return { torso: 'tunic', legs: 'bare', helmet: i % 2 ? 'montefortino' : 'none', crest: 'knob', hair: 'short' };
-    case 'punic': return { torso: 'tunic', legs: 'bare', helmet: 'conical', crest: 'knob', hair: 'short', beard: i % 2 === 0 };
-    case 'greek': return { torso: 'tunic', legs: 'bare', helmet: 'pilos', crest: 'knob', hair: 'short', beard: i % 2 === 0 };
-    case 'macedonian': return { torso: 'tunic', legs: 'bare', helmet: i % 2 ? 'kausia' : 'none', crest: 'none', hair: 'short', beard: i % 2 === 0 };
-    case 'persian': return { torso: 'tunic', legs: 'trousers', helmet: 'tiara', crest: 'none', hair: 'short', beard: true, longSleeve: true };
-    case 'scythian': return { torso: 'kaftan', legs: 'trousers', helmet: 'scythianCap', crest: 'none', hair: 'long', beard: true, longSleeve: true };
-    case 'indian': return { torso: 'cotton', legs: 'bare', helmet: 'turban', crest: 'none', hair: 'short', beard: i % 2 === 0 };
+    case 'roman': return { torso: 'mail', helmet: 'montefortino', crest: i % 2 ? 'plumes' : 'knob' };
+    case 'punic': return { torso: 'linen', helmet: i % 2 ? 'attic' : 'conical', crest: i % 2 ? 'horsehair' : 'knob', beard: i % 2 === 0 };
+    case 'greek': return { torso: 'linen', helmet: i % 2 ? 'corinthian' : 'pilos', crest: i % 2 ? 'tall' : 'knob' };
+    case 'macedonian': return { torso: 'linen', helmet: i % 2 ? 'thracian' : 'phrygian', crest: i % 2 ? 'knob' : 'horsehair' };
+    case 'persian': return { torso: 'tunic', helmet: 'tiara', crest: 'none', longSleeve: true, beard: true, legs: 'trousers' };
+    case 'scythian': return { torso: 'kaftan', helmet: 'scythianCap', crest: 'none', longSleeve: true, hair: 'long', beard: true, legs: 'trousers' };
+    case 'indian': return { torso: 'cotton', helmet: 'turban', crest: 'none', beard: i % 2 === 0 };
   }
 }
 
@@ -657,6 +658,7 @@ function CrewFigure({ p: armyP, i, pose }: { p: Palette; i: number; pose: CrewPo
   const f = makeFig(p, i);
   const d = crewDress(p.kit, i);
   const hands = typeof pose === 'string' ? CREW_HANDS[pose] : pose;
+  const sleeve = d.torso === 'mail' ? p.iron : p.tunic;
   const long = !!d.longSleeve;
   const elbow = (s: [number, number], h: [number, number], drop: number): [number, number] => [
     Number(((s[0] + h[0]) / 2 - 0.6).toFixed(2)), Number(((s[1] + h[1]) / 2 + drop).toFixed(2)),
@@ -665,11 +667,11 @@ function CrewFigure({ p: armyP, i, pose }: { p: Palette; i: number; pose: CrewPo
   const ns: [number, number] = [2.2, -20.6];
   return (
     <>
-      <Arm s={fs} e={elbow(fs, hands.far, 2.2)} h={hands.far} f={f} sleeve={p.tunic} long={long} />
-      <LegsEl f={f} legs={d.legs} />
+      <Arm s={fs} e={elbow(fs, hands.far, 2.2)} h={hands.far} f={f} sleeve={sleeve} long={long} />
+      <LegsEl f={f} legs={d.legs ?? 'bare'} />
       <Body f={f} torso={d.torso} skirt />
-      <Head f={f} helmet={d.helmet} crest={d.crest} hair={d.hair} beard={d.beard} />
-      <Arm s={ns} e={elbow(ns, hands.near, 2.4)} h={hands.near} f={f} near sleeve={p.tunic} long={long} />
+      <Head f={f} helmet={d.helmet} crest={d.crest} hair={d.hair} beard={d.beard} moustache={d.moustache} />
+      <Arm s={ns} e={elbow(ns, hands.near, 2.4)} h={hands.near} f={f} near sleeve={sleeve} long={long} />
     </>
   );
 }

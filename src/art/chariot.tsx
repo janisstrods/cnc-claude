@@ -3,10 +3,10 @@
 // Expansion #1: the four-horse scythed chariots of Persia and the Successors, the large Indian chariot with archers,
 // and a light two-horse chariot for the steppe kit.
 import { darken, lighten } from './color';
-import { figurePalette } from './foot';
+import { crewDress, figurePalette, type CrewDress } from './foot';
 import type { Palette } from './palettes';
 import { Arm, Body, Emblem, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, dots, makeFig } from './parts';
-import { HalfFigure, Horse, crewDress, lookOf, type CrewAction, type CrewDress } from './mounted';
+import { HalfFigure, Horse, type CrewAction } from './mounted';
 
 function BaseChariot({ p, i }: { p: Palette; i: number }) {
   const h1 = p.horses[(i + 1) % p.horses.length];
@@ -102,7 +102,6 @@ interface ChariotKit {
 }
 
 function chariotKit(p: Palette, i: number): ChariotKit {
-  const look = lookOf(p);
   if (p.kit === 'indian') {
     // Porus' heavy chariots: four horses, six men; drawn with two archers and the driver
     const d = (k: number) => crewDress('indian', k);
@@ -128,7 +127,7 @@ function chariotKit(p: Palette, i: number): ChariotKit {
   // the scythed chariot: one armoured driver behind high sides (a Persian in his hood, a Successor's in a crested helmet)
   const driver: CrewDress = p.kit === 'persian'
     ? { torso: 'scale', helmet: 'tiara', crest: 'none', longSleeve: true, beard: true }
-    : { torso: 'scale', helmet: 'phrygian', crest: 'horsehair', longSleeve: look === 'seleucid' };
+    : { torso: 'scale', helmet: 'phrygian', crest: 'horsehair', longSleeve: p.look === 'seleucid' };
   return {
     horses: 4, scythed: true, barded: true, box: { x0: -19.6, x1: -4.4, top: -20.4 }, wheel: 6.8, bow: 'scythian',
     crew: [{ action: 'whip', dress: driver, x: -9.4, y: -18.2, s: 1, i: i + 1 }],

@@ -8,7 +8,7 @@ import { ElephantFigure } from './elephant';
 import { ChariotFigure } from './chariot';
 import { CamelFigure } from './camel';
 import { MachineFigure } from './machine';
-import { Emblem, FacingRightCtx, OL, makeFig } from './parts';
+import { Emblem, FacingRightCtx, OL, makeFig, type Fig } from './parts';
 
 export type Facing = 'left' | 'right';
 
@@ -214,7 +214,7 @@ export function Badge({ type, blocks, maxBlocks, elite }: { type: UnitType; bloc
 // Elite marker: golden standard with a laurel wreath, planted at the back left of the base. Its plaque carries the
 // army's device (the Carthaginian disc and crescent for the Sacred Band of Carthage).
 
-const STANDARD_FIG = new WeakMap<Palette, ReturnType<typeof makeFig>>();
+const STANDARD_FIG = new WeakMap<Palette, Fig>();
 
 export function EliteStandard({ p }: { p: Palette }) {
   // Laurel leaves along two arcs around (0, -42).

@@ -7,7 +7,7 @@ import type { ArmyLook, Blocks, EliteId, UnitType } from '../../src/engine/types
 import { LOOKS, paletteFor } from '../../src/art/palettes';
 import { UnitIcon, UnitToken } from '../../src/art';
 import { EliteStandard, Miniature, figureKind } from '../../src/art/token';
-import { lookOf } from '../../src/art/mounted';
+import { figurePalette } from '../../src/art/foot';
 import { SCENARIOS } from '../../src/scenarios';
 
 const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
@@ -16,6 +16,8 @@ const ALL_TYPES = Object.keys(MAX) as UnitType[];
 const ALL_LOOKS = Object.keys(LOOKS) as ArmyLook[];
 const KIT_LOOKS: ArmyLook[] = ['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian'];
 
+/** A render with its colours stripped: what differs is the drawing (equipment, poses), not the paint. */
+const shape = (s: string) => s.replace(/#[0-9a-f]{6}/gi, '');
 const fig = (type: UnitType, look: ArmyLook, i = 2, elite?: EliteId, blocks: Blocks = 'grk') =>
   svg(h(Miniature, { type, p: paletteFor(look, blocks), i, elite }));
 const token = (type: UnitType, look: ArmyLook, elite?: EliteId, blocks: Blocks = 'grk') =>
@@ -58,13 +60,15 @@ describe('Expansion #1 figures', () => {
     }
   });
 
-  it('cavalry, elephants and chariots differ between the kits', () => {
+  it('cavalry, elephants and chariots differ between the kits in their shapes, not only their colours', () => {
+    // all four figures of a unit (some kits mix riders, e.g. Dahae and Thracian horse archers), colours stripped
+    const unit = (type: UnitType, look: ArmyLook) => shape([0, 1, 2, 3].map((i) => fig(type, look, i)).join(''));
     for (const type of ['LC', 'MC', 'HC', 'LBC', 'EL', 'HCH'] as UnitType[]) {
-      const kits = ['macedonian', 'persian', 'scythian', 'indian'].map((look) => fig(type, look as ArmyLook));
+      const kits = ['macedonian', 'persian', 'scythian', 'indian'].map((look) => unit(type, look as ArmyLook));
       expect(new Set(kits).size, type).toBe(4);
     }
     // the war machine and its crew per kit: Macedonian oxybeles, Roman scorpio with its front shield
-    expect(fig('HWM', 'roman')).not.toBe(fig('HWM', 'macedonian'));
+    expect(shape(fig('HWM', 'roman'))).not.toBe(shape(fig('HWM', 'macedonian')));
   });
 
   it('looks of one kit have their own elephants, chariots and cavalry where their armies differed', () => {
@@ -74,7 +78,6 @@ describe('Expansion #1 figures', () => {
     expect(fig('EL', 'seleucid').length).toBeGreaterThan(fig('EL', 'epirote').length);
     // shapes only (colours stripped): the Seleucid cataphracts are not the Antigonid heavy cavalry, but the two armies'
     // medium cavalry are the same Macedonian-kit riders in their own colours
-    const shape = (s: string) => s.replace(/#[0-9a-f]{6}/g, '');
     expect(shape(fig('HC', 'seleucid'))).not.toBe(shape(fig('HC', 'antigonid')));
     expect(shape(fig('MC', 'seleucid'))).toBe(shape(fig('MC', 'antigonid')));
     expect(shape(fig('HCH', 'seleucid'))).not.toBe(shape(fig('HCH', 'persian')));
@@ -89,9 +92,15 @@ describe('Expansion #1 figures', () => {
     expect(plain).not.toContain('#6a2a8a');
     const icon = (elite?: EliteId) => svg(h(UnitIcon, { type: 'MC', look: 'macedonian', blockColor: 'grk', size: 64, elite }));
     expect(icon('companions')).not.toBe(icon());
+    // the plumes and the larger figure get their own, taller icon box (a smaller scale), so the icon is not clipped
+    const scale = (out: string) => Number(/scale\(([\d.]+)\) translate/.exec(out)?.[1]);
+    expect(scale(icon('companions'))).toBeLessThan(scale(icon()));
+    // base cavalry keeps its base figure (and box) whatever the elite
+    const roman = (elite?: EliteId) => svg(h(UnitIcon, { type: 'MC', look: 'roman', blockColor: 'rom', size: 64, elite }));
+    expect(roman('companions')).toBe(roman());
   });
 
-  it('UnitToken hands every elite to its figures (no provider needed)', () => {
+  it('Miniature draws every elite fielded in a scenario with its own figures', () => {
     const elites: { elite: EliteId; look: ArmyLook; type: UnitType }[] = [];
     for (const sc of SCENARIOS) {
       for (const u of sc.setup.units) {
@@ -113,8 +122,12 @@ describe('Expansion #1 figures', () => {
     expect(new Set(['theban', 'antigonid', 'persian', 'macedonian', 'mauryan'].map((l) => std(l as ArmyLook))).size).toBe(5);
   });
 
-  it('lookOf finds the look a palette was resolved from', () => {
-    for (const look of ALL_LOOKS) expect(lookOf(paletteFor(look, 'eas'))).toBe(look);
+  it('a palette carries the look it was resolved from, and so do the figure palettes made from it', () => {
+    for (const look of ALL_LOOKS) {
+      const p = paletteFor(look, 'eas');
+      expect(p.look).toBe(look);
+      for (let i = 0; i < 4; i++) expect(figurePalette(p, i).look, `${look} ${i}`).toBe(look);
+    }
   });
 
   it('icons of the new types fit their box (no NaN, scaled to the requested size)', () => {
