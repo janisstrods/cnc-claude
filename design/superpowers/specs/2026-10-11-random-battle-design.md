@@ -15,8 +15,10 @@
 
 - Never picks the battle already selected (when there is more than one), so every press visibly changes the battle.
   Every other battle is equally likely; each side has a one in two chance.
-- The button sits in the picker head, next to "Choose a Battle": a small ivory die and the word "Random", with the
-  accessible name "Random battle" and a tooltip saying it picks a battle and side at random.
+- The button sits under the battle list, full width, level with "To Battle!" across the screen: a small ivory die
+  (it tumbles onto a new face at every pick) and the words "Random battle". The picker head was the first idea, but
+  "← Back" and "Choose a Battle" already fill the 330px list column.
+- The picked battle is scrolled to the middle of the list, clear of the list's faded bottom edge.
 
 ## Units
 
@@ -28,9 +30,9 @@
 ## Tests
 
 - `tests/ui/random-battle.test.ts`: the pick never repeats the current battle; it reaches battles of every box; the
-  side follows `rand`; a one-battle list returns that battle; the picker renders the button with its accessible name.
+  side follows `rand`; a one-battle list returns that battle; the picker renders the button under the battle list.
 - Browser check on the dev server: pressing the button moves between tabs, selects and scrolls to the battle, and sets
-  the side; the head still fits the 330px list column.
+  the side; the page itself does not scroll.
 
 ## Release
 

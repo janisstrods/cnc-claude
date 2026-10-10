@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { UNIT_STATS, createGame, leaderUnit, veryHills, type GameOptions, type GameState, type Side, type UnitType } from '../../engine';
 import { SCENARIOS, type Expansion, type ScenarioInfo } from '../../scenarios';
 import { LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
 import { BoardArt, ObjectiveMarkers, scenarioArt } from '../terrain';
-import { Button, Icon, Modal, Panel } from '../kit';
+import { ALL_DIE_FACES, Button, DieSymbol, Icon, Modal, Panel } from '../kit';
 import { BOARD_H, BOARD_W, hexCenterId } from '../geometry';
 import type { Difficulty, SavedGame } from '../game/controller';
 import { edgeBlocksOf } from '../game/uiModel';
@@ -11,8 +11,8 @@ import { PERSONALITIES, personalityFor } from '../../ai';
 import { RulesReference } from './RulesReference';
 import { HistoryButton } from '../history/HistoryDialog';
 import {
-  OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue, saveOptionChoice,
-  savePickerTab, tabForKey, type OptionId,
+  OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue, randomPick,
+  saveOptionChoice, savePickerTab, tabForKey, type OptionId,
 } from './picker';
 import { BUILD_TIME, RELEASE, buildLabel } from '../../version';
 import './screens.css';
@@ -172,6 +172,26 @@ export function ScenarioSelect(p: {
       return 'tribune';
     }
   });
+  // Random battle: a battle from any box and a side; the list then scrolls to it (only after a random pick)
+  const listRef = useRef<HTMLDivElement>(null);
+  const reveal = useRef(false);
+  const [rolls, setRolls] = useState(0);
+  const pickRandom = () => {
+    const pick = randomPick(SCENARIOS, sel.id);
+    if (pick.battle.expansion !== tab) {
+      setTab(pick.battle.expansion);
+      savePickerTab(pick.battle.expansion);
+    }
+    setSel(pick.battle);
+    setSide(pick.side);
+    setRolls((n) => n + 1);
+    reveal.current = true;
+  };
+  useEffect(() => {
+    if (!reveal.current) return;
+    reveal.current = false;
+    listRef.current?.querySelector('.scen-item.active')?.scrollIntoView({ block: 'center' });
+  }, [sel]);
   const preview = useMemo(() => createGame(sel.setup, 1), [sel]);
   const [persona, setPersona] = useState<string>('');
   const enemy = sel.setup[side === 'top' ? 'bottom' : 'top'];
@@ -212,7 +232,7 @@ export function ScenarioSelect(p: {
             </button>
           ))}
         </div>
-        <div className="select-scroll" key={tab} id="battle-list" role="tabpanel" aria-labelledby={`battle-tab-${tab}`}>
+        <div className="select-scroll" key={tab} ref={listRef} id="battle-list" role="tabpanel" aria-labelledby={`battle-tab-${tab}`}>
           {battles.map((s) => (
             <button key={s.id} className={`scen-item ${s.id === sel.id ? 'active' : ''}`} onClick={() => setSel(s)}>
               <span className="scen-num">{Number(s.id)}</span>
@@ -222,6 +242,12 @@ export function ScenarioSelect(p: {
             </button>
           ))}
         </div>
+        <Button variant="ghost" className="random-btn" onClick={pickRandom} title="Pick a battle from any box, and a side, at random">
+          <span key={rolls} className={`random-die ${rolls ? 'is-rolled' : ''}`} aria-hidden>
+            <DieSymbol face={ALL_DIE_FACES[(rolls + 5) % ALL_DIE_FACES.length]} />
+          </span>
+          Random battle
+        </Button>
       </div>
       <div className="select-detail">
         <Panel variant="parchment" className="brief">
