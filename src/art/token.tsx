@@ -271,6 +271,11 @@ export interface UnitTokenProps {
   look: ArmyLook;
   /** The side's block set: base-edge colour (`blocks` below is the unit's remaining strength). */
   blockColor: Blocks;
+  /**
+   * The block set of the unit's own command when it differs from its side's (210: Lentulus' legions in grey within the
+   * red Roman army): only the base edge is drawn in its colour.
+   */
+  edgeBlocks?: Blocks;
   blocks: number;
   maxBlocks: number;
   facing: Facing;
@@ -279,8 +284,9 @@ export interface UnitTokenProps {
   dimmed?: boolean;
 }
 
-function UnitTokenImpl({ type, look, blockColor, blocks, maxBlocks, facing, elite, dimmed }: UnitTokenProps) {
+function UnitTokenImpl({ type, look, blockColor, edgeBlocks, blocks, maxBlocks, facing, elite, dimmed }: UnitTokenProps) {
   const p = paletteFor(look, blockColor);
+  const edge = edgeBlocks ? paletteFor(look, edgeBlocks) : p;
   const n = Math.max(0, Math.min(blocks, maxBlocks));
   const slots = n > 0 ? slotsFor(type, n) : [];
   const flip = facing === 'left' ? -1 : 1;
@@ -289,7 +295,7 @@ function UnitTokenImpl({ type, look, blockColor, blocks, maxBlocks, facing, elit
   return (
     <g>
       <g opacity={dimmed ? 0.6 : undefined} style={dimmed ? { filter: 'saturate(0.3) brightness(0.95)' } : undefined}>
-      <BasePlate p={p} />
+      <BasePlate p={edge} />
       <FacingRightCtx.Provider value={facing === 'right'}>
       {elite && <EliteStandard p={p} />}
       {slots.map((sl, k) => {

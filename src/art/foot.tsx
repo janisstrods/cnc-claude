@@ -1,7 +1,7 @@
 // Foot soldier miniatures (LI, LB, LS, AX, WA, MI, HI) and war-machine crews. Drawn facing right, feet at (0,0), ~30 units tall.
 import type { EliteId, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
-import { KITS, crewDress } from './kits';
+import { KITS } from './kits';
 import { TRIBAL_HAIR, TRIBAL_SKIN, type Kit, type LookPalette, type Palette } from './palettes';
 import {
   Arm, Body, Head, Hi, Line2, LegsEl, OL, Paint, Shape, Shield, Spear, makeFig,
@@ -462,7 +462,7 @@ export interface CrewDress {
 function CrewFigure({ p: armyP, i, pose }: { p: Palette; i: number; pose: CrewPose }) {
   const p = figurePalette(armyP, i);
   const f = makeFig(p, i);
-  const d = crewDress(p.kit, i);
+  const d = KITS[p.kit].crew(i);
   const hands = typeof pose === 'string' ? CREW_HANDS[pose] : pose;
   const sleeve = d.torso === 'mail' ? p.iron : p.tunic;
   const long = !!d.longSleeve;

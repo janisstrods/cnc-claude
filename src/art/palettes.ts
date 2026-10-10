@@ -576,15 +576,16 @@ export const BLOCK_COLORS: Record<Blocks, SideColors> = {
     edge: '#c88a22', edgeShade: '#7c5212', edgeLight: '#ecbc5e', banner: '#b8801e', bannerShade: '#74500f',
     cloth: { main: '#a8741e', light: '#d4a24a', dark: '#5e3e0c' },
   },
-  // Expansion #2 (temporary colours until the art track): barbarian blocks in a mid green, the grey Roman blocks (210 Lentulus'
-  // command) in a mid grey. Shades follow the other sets: edge shade/light -0.17/+0.18 lightness, banner -0.04, cloth main -0.07.
+  // Expansion #2: the Barbarian blocks in emerald green (bluer and stronger than the board's grass and woods), and the grey
+  // Roman blocks of a command drawn apart from its red army (210 Lentulus) in a cool mid grey. Both are checked for contrast
+  // against the other sets, each other and the board (tests/art/blocks.test.ts).
   bar: {
-    edge: '#2f7d3a', edgeShade: '#173e1d', edgeLight: '#52b660', banner: '#296e33', bannerShade: '#173e1d',
-    cloth: { main: '#25632e', light: '#3b9e4a', dark: '#0f2812' },
+    edge: '#17985a', edgeShade: '#0b4a2c', edgeLight: '#62c792', banner: '#14864f', bannerShade: '#0a4429',
+    cloth: { main: '#137a48', light: '#45ab78', dark: '#082e1b' },
   },
   gry: {
-    edge: '#7d8288', edgeShade: '#53575b', edgeLight: '#adb0b4', banner: '#73787e', bannerShade: '#53575b',
-    cloth: { main: '#6c7076', light: '#95999e', dark: '#45484b' },
+    edge: '#9aa0a8', edgeShade: '#5f656d', edgeLight: '#cdd1d6', banner: '#8a9098', bannerShade: '#5c6168',
+    cloth: { main: '#80868e', light: '#aeb3b9', dark: '#4f545a' },
   },
 };
 

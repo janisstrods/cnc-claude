@@ -241,6 +241,8 @@ function Bust({ f }: { f: Fig }) {
 export interface LeaderTokenProps {
   look: ArmyLook;
   blockColor: Blocks;
+  /** The block set of the leader's own command when it differs from his side's: the base edge of a leader alone. */
+  edgeBlocks?: Blocks;
   facing: 'left' | 'right';
   attached: boolean;
   name?: string;
@@ -259,7 +261,7 @@ function NameRibbon({ name, y, p }: { name: string; y: number; p: Palette }) {
   );
 }
 
-function LeaderTokenImpl({ look, blockColor, facing, attached, name, showName }: LeaderTokenProps) {
+function LeaderTokenImpl({ look, blockColor, edgeBlocks, facing, attached, name, showName }: LeaderTokenProps) {
   const p = paletteFor(look, blockColor);
   const flip = facing === 'left' ? -1 : 1;
   if (attached) {
@@ -284,7 +286,7 @@ function LeaderTokenImpl({ look, blockColor, facing, attached, name, showName }:
   }
   return (
     <g>
-      <BasePlate p={p} rx={31} ry={10} cy={14} />
+      <BasePlate p={edgeBlocks ? paletteFor(look, edgeBlocks) : p} rx={31} ry={10} cy={14} />
       <ellipse cx={2} cy={20.6} rx={19} ry={2.8} fill="#1a1208" opacity={0.42} />
       <g transform={`translate(${2 * flip} 20.4) scale(${1.08 * flip} 1.08)`}>
         <FacingRightCtx.Provider value={facing === 'right'}>

@@ -255,6 +255,8 @@ function BlockSwatches() {
     { blocks: 'car', look: 'carthaginian', name: 'car (Carthaginian purple)' },
     { blocks: 'grk', look: 'syracusan', name: 'grk (Greek blue)' },
     { blocks: 'eas', look: 'persian', name: 'eas (Eastern ochre-tan)' },
+    { blocks: 'bar', look: 'gallic', name: 'bar (Barbarian green)' },
+    { blocks: 'gry', look: 'marian', name: 'gry (grey Roman command)' },
   ];
   return (
     <>
@@ -278,7 +280,7 @@ function BlockSwatches() {
           </figure>
         );
       })}
-      <svg width={4 * HEX_W + 20} height={2 * HEX_R + 20} viewBox={`0 0 ${4 * HEX_W + 20} ${2 * HEX_R + 20}`} style={{ background: '#7d9052', borderRadius: 6 }}>
+      <svg width={(sets.length + 1) * HEX_W + 20} height={2 * HEX_R + 20} viewBox={`0 0 ${(sets.length + 1) * HEX_W + 20} ${2 * HEX_R + 20}`} style={{ background: '#7d9052', borderRadius: 6 }}>
         {sets.map(({ blocks, look }, k) => {
           const x = 10 + HEX_W / 2 + k * HEX_W;
           const y = 10 + HEX_R;
@@ -291,6 +293,13 @@ function BlockSwatches() {
             </g>
           );
         })}
+        {/* 210: one of Lentulus' legions (grey command) in the red Roman army */}
+        <g>
+          <polygon points={hexPoints(10 + HEX_W / 2 + sets.length * HEX_W, 10 + HEX_R)} fill={GRASS} stroke={GRASS_EDGE} strokeWidth={1} />
+          <g transform={`translate(${10 + HEX_W / 2 + sets.length * HEX_W} ${10 + HEX_R})`}>
+            <UnitToken type="MI" look="marian" blockColor="rom" edgeBlocks="gry" blocks={4} maxBlocks={4} facing="left" />
+          </g>
+        </g>
       </svg>
     </>
   );
@@ -373,7 +382,7 @@ export default function ArtGallery() {
         <BoardSample units={BIG_BOARD} lone={{ r: 1, c: 6, look: 'macedonian', name: 'Alexander', facing: 'left' }} />
       </Row>
 
-      <Row title="Block colours" note="Base edge, standard and captured-banner cloth of each block set, and on the board.">
+      <Row title="Block colours" note="Base edge, standard and captured-banner cloth of each block set, and on the board; last: a unit of a grey command in a red army (edgeBlocks, 210 Lentulus).">
         <BlockSwatches />
       </Row>
 

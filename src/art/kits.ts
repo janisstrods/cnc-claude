@@ -1,14 +1,14 @@
-// What the miniatures of each figure kit wear and carry: one `KitDef` per kit in `KITS`. The drawing code (foot.tsx,
-// mounted.tsx, chariot.tsx, elephant.tsx, leader.tsx, machine.tsx, parts.tsx) reads these choices instead of testing kit
-// names, so a new kit is one entry here plus any new shapes it needs. A look's exceptions to its kit (the Seleucid
-// cataphracts and elephants, say) live in the look's `LookStyle` (palettes.ts).
+// What the miniatures of each figure kit wear and carry: one `KitDef` per kit, completed into `KITS`. The drawing code
+// (foot.tsx, mounted.tsx, chariot.tsx, elephant.tsx, leader.tsx, machine.tsx, parts.tsx, icon.tsx) reads these choices
+// instead of testing kit names, so a new kit is one entry here plus any new shapes it needs. A look's exceptions to its
+// kit (the Seleucid cataphracts and elephants, say) live in the look's `LookStyle` (palettes.ts).
 //
 // This module has no runtime imports, so every drawing module can import it.
 import type { UnitType } from '../engine/types';
 import type { CrewDress, FootKit } from './foot';
 import type { CrewAction, HorseCloth, RiderKit } from './mounted';
 import type { Kit, LookPalette, Palette } from './palettes';
-import type { Crest, Helmet, Legs, ShieldKind, Torso } from './parts';
+import type { Crest, Hair, Helmet, Legs, ShieldKind, Torso } from './parts';
 
 /** Coat, shade and mane colours of a horse. */
 export type HorseCoat = LookPalette['horses'][number];
@@ -96,30 +96,54 @@ export interface BustDef {
   beard: boolean;
   /** An embroidered robe instead of the gilded cuirass (eastern lords). */
   robe?: boolean;
+  /** What shows on the chest instead of the gilded cuirass (or the robe): a mail shirt or a plain tunic. */
+  chest?: 'mail' | 'tunic';
+  moustache?: boolean;
+  /** Hair under (or without) the helmet (default short). */
+  hair?: Hair;
+  /** A gold torc at the neck (Celtic chiefs). */
+  torc?: boolean;
 }
 
-/** Everything that differs between figure kits. */
+/** Measured extent of one figure in its local frame (feet at 0,0): the icon is centred and scaled on it (icon.tsx). */
+export type IconBox = [top: number, bottom: number, left: number, right: number];
+
+/**
+ * Everything that differs between figure kits. Only the foot, the cavalry, the general and his portrait are required:
+ * `KITS` gives a kit that leaves out the rest (it fields no elephants, chariots or war machines, say) a fallback built
+ * from its own foot figures and light cavalry (see `completeKit`).
+ */
 export interface KitDef {
   /** Foot figures (LI, LB, LS, AX, WA, MI, HI; any other type gets the HI figure); `i` (0..3) varies the figures. */
   foot: (type: UnitType, i: number) => FootKit;
   cavalry: CavalryDef;
-  horseArcher: HorseArcherDef;
-  chariot: ChariotDef;
-  /** A look's `LookStyle.elephant` replaces it. */
-  elephant: ElephantDef;
-  /** Crewmen of war machines, chariots and elephant towers or howdahs; `i` varies the headgear. */
-  crew: (i: number) => CrewDress;
-  /** Bow of the crewmen of elephants and chariots: the plain self bow or the short double-curved bow of the steppe. */
-  crewBow: 'self' | 'scythian';
-  /** The bolt-thrower: a Roman scorpio (frame in the shield colour, curved front shield with a sighting window) or an oxybeles. */
-  warMachine: 'scorpio' | 'oxybeles';
-  /** Oval shields have a bronze boss. */
-  ovalShieldBoss: boolean;
-  /** Crescent shields are woven wicker without a painted device (the Persian taka). */
-  wickerPelta: boolean;
+  /** Default: the kit's light horseman with a bow instead of javelins and shield, on a plain cloth. */
+  horseArcher?: HorseArcherDef;
+  /** Default: the base game's chariot with a warrior and driver dressed as the kit's crews. */
+  chariot?: ChariotDef;
+  /** A look's `LookStyle.elephant` replaces it. Default: the base game's elephant with a rider dressed as the kit's crews. */
+  elephant?: ElephantDef;
+  /**
+   * Crewmen of war machines, chariots and elephant towers or howdahs; `i` varies the headgear. Default: dressed as the
+   * kit's medium infantry.
+   */
+  crew?: (i: number) => CrewDress;
+  /** Bow of the crewmen of elephants and chariots: the plain self bow (default) or the short double-curved bow of the steppe. */
+  crewBow?: 'self' | 'scythian';
+  /** The bolt-thrower: a Roman scorpio (frame in the shield colour, curved front shield with a sighting window) or an oxybeles (default). */
+  warMachine?: 'scorpio' | 'oxybeles';
+  /** Oval shields have a bronze boss (default no). */
+  ovalShieldBoss?: boolean;
+  /** Crescent shields are woven wicker without a painted device (the Persian taka; default no). */
+  wickerPelta?: boolean;
   general: GeneralDef;
   bust: BustDef;
+  /** Icon extents of the types whose figure differs from the base box by more than 1.5 units (default: none). */
+  iconBox?: Partial<Record<UnitType, IconBox>>;
 }
+
+/** A kit with every choice made (what the drawing code reads). */
+export type FullKit = Required<KitDef>;
 
 // ---------------------------------------------------------------------------------------------
 // Shared pieces
@@ -389,6 +413,10 @@ const MACEDONIAN: KitDef = {
   // the Macedonian king: Phrygian helmet with tall plumes, gilded cuirass, cloak
   general: { rider: { torso: 'muscle', helmet: 'phrygian', crest: 'plume2', shield: 'none', weapon: 'standard', legs: 'greaves', cloak: true } },
   bust: { helmet: 'phrygian', crest: 'horsehair', beard: false },
+  iconBox: {
+    HI: [-35.5, 0.4, -14.2, 18.6], LC: [-35.9, 0.4, -18.2, 19.3], MC: [-38.8, 0.7, -19.7, 21.4], EL: [-48.3, 1, -17.5, 24.1],
+    HCH: [-40.3, 0.9, -24.6, 31.9], LBC: [-37.9, 0.4, -18.2, 19.3],
+  },
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -451,6 +479,10 @@ const PERSIAN: KitDef = {
     torque: true,
   },
   bust: { helmet: 'kidaris', crest: 'none', beard: true, robe: true },
+  iconBox: {
+    WA: [-40, 0.4, -6.1, 11.4], HI: [-40, 2.6, -7.8, 10.4], LC: [-35.9, 0.4, -18.2, 19.3], HC: [-41, 0.6, -20.8, 22.7],
+    EL: [-48.1, 1, -18.5, 25.6], HCH: [-37.6, 0.9, -24.6, 31.9], HWM: [-32.6, 0.4, -28.1, 21.9],
+  },
 };
 
 /** Scythians: pointed caps, kaftans and trousers, gorytos at the hip. */
@@ -504,6 +536,11 @@ const SCYTHIAN: KitDef = {
     gorytos: true,
   },
   bust: { helmet: 'scythianCap', crest: 'none', beard: true, robe: true },
+  iconBox: {
+    LI: [-37.1, 0.4, -11.7, 12.4], LB: [-37.1, 0.4, -7.4, 14.6], AX: [-40, 0.4, -6.1, 11.4], WA: [-40, 0.4, -7, 10.8],
+    HI: [-40, 1.9, -7.4, 10.4], LC: [-37.9, 0.4, -18.2, 19.3], HC: [-41, 0.6, -20.8, 22.7], EL: [-49.9, 1, -18.5, 25.6],
+    HCH: [-41.5, 0.9, -21.8, 31], LBC: [-37.9, 0.4, -18.2, 19.3],
+  },
 };
 
 /** India: turbans, white cotton, longbows, long bamboo shields, broadswords. */
@@ -554,10 +591,45 @@ const INDIAN: KitDef = {
     jewel: true,
   },
   bust: { helmet: 'turban', crest: 'none', beard: true, robe: true },
+  iconBox: {
+    LB: [-41.6, 0.4, -9.6, 17.4], MI: [-40, 1.9, -6.4, 8.7], LC: [-35.9, 0.4, -18.2, 19.3], HC: [-41, 0.6, -20.8, 22.7],
+    EL: [-49.3, 1, -18.5, 25.6], HCH: [-40, 0.9, -32.5, 31.9], HWM: [-32.9, 0.4, -28.4, 21.9],
+  },
 };
 
-/** Every figure kit. */
-export const KITS: Record<Kit, KitDef> = {
+/**
+ * Fills the choices a kit leaves out: crews dressed as its medium infantry, the base game's chariot and elephant manned
+ * by such crews, horse archers built from its light horseman, the self bow, the oxybeles, plain shields, no icon boxes.
+ */
+function completeKit(k: KitDef): FullKit {
+  const crew = k.crew ?? ((i: number): CrewDress => {
+    const f = k.foot('MI', i);
+    return {
+      torso: f.torso, helmet: f.helmet, crest: f.crest, hair: f.hair, beard: f.beard, moustache: f.moustache,
+      longSleeve: f.longSleeve, legs: f.legs === 'trousers' ? 'trousers' : 'bare',
+    };
+  });
+  const light = (i: number): RiderKit => (k.cavalry.drawing === 'kit' ? k.cavalry.mount('LC', i).rider : k.cavalry.rider('LC', i));
+  const c0 = crew(0);
+  return {
+    foot: k.foot,
+    cavalry: k.cavalry,
+    horseArcher: k.horseArcher ?? { rider: (i) => ({ ...light(i), ...ARCHER, spare: undefined }), cloth: 'plain' },
+    chariot: k.chariot ?? { drawing: 'base', warrior: { torso: c0.torso, helmet: c0.helmet, crest: c0.crest }, driverHelmet: crew(1).helmet },
+    elephant: k.elephant ?? { drawing: 'base', rider: { torso: c0.torso, helmet: c0.helmet } },
+    crew,
+    crewBow: k.crewBow ?? 'self',
+    warMachine: k.warMachine ?? 'oxybeles',
+    ovalShieldBoss: k.ovalShieldBoss ?? false,
+    wickerPelta: k.wickerPelta ?? false,
+    general: k.general,
+    bust: k.bust,
+    iconBox: k.iconBox ?? {},
+  };
+}
+
+/** The kits as defined (only what each kit chooses). */
+export const KIT_DEFS: Record<Kit, KitDef> = {
   roman: ROMAN,
   punic: PUNIC,
   greek: GREEK,
@@ -567,7 +639,5 @@ export const KITS: Record<Kit, KitDef> = {
   indian: INDIAN,
 };
 
-/** Dress of a crewman of a kit (`i` varies helmets), the same on a war machine as in a tower or a chariot. */
-export function crewDress(kit: Kit, i: number): CrewDress {
-  return KITS[kit].crew(i);
-}
+/** Every figure kit, completed (see `completeKit`): the table the drawing code reads. */
+export const KITS = Object.fromEntries(Object.entries(KIT_DEFS).map(([kit, def]) => [kit, completeKit(def)])) as Record<Kit, FullKit>;
