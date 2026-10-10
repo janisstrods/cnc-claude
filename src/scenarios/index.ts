@@ -199,12 +199,16 @@ const EXPANSIONS: Expansion[] = ['base', 'exp1', 'exp2'];
 
 const copyLeader = <T extends { traits?: LeaderTrait[] }>(l: T): T => (l.traits ? { ...l, traits: [...l.traits] } : { ...l });
 
-/** A terrain entry with only the fields it has (so `ford: 'nocap'`, `faces` and `edges` survive unchanged). */
+/**
+ * A terrain entry with only the fields it has (so `ford: 'nocap'`, `faces`, `edges`, the hill under a camp or wall and the
+ * art hint survive unchanged).
+ */
 function copyTerrain(t: TerrainSetup): TerrainSetup {
   const o: TerrainSetup = { r: t.r, c: t.c, t: t.t };
   if (t.ford !== undefined) o.ford = t.ford;
   if (t.faces !== undefined) o.faces = t.faces;
   if (t.edges !== undefined) o.edges = [...t.edges];
+  if (t.hill !== undefined) o.hill = t.hill;
   if (t.art !== undefined) o.art = t.art;
   return o;
 }

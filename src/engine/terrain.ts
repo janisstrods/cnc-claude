@@ -96,11 +96,14 @@ export function rangedTargetCap(s: GameState, h: HexId): number {
   return s.terrain[h] === 'forest' ? 1 : 99;
 }
 
+/** The board arrays that hills and line-of-sight groups depend on (a `GameState` is one; the AI caches by them). */
+export type BoardTerrain = Pick<GameState, 'terrain' | 'hillUnder'>;
+
 /**
  * Does hex h count as a hill: hill terrain, or a camp or wall with a hill under it (`hillUnder`, 308, §18.7)? Used for the
  * close-combat hill caps, the same-hill line of sight, very steep hills and steep slopes.
  */
-export function isHill(s: GameState, h: HexId): boolean {
+export function isHill(s: BoardTerrain, h: HexId): boolean {
   return s.terrain[h] === 'hill' || s.hillUnder[h] === true;
 }
 
@@ -181,7 +184,7 @@ export function terrainBlocksLOS(s: GameState, h: HexId): boolean {
 }
 
 /** Connected group id for every hex where `member` holds (neighbours by `neighbours`), in hex order. */
-function connectedGroups(s: GameState, neighbours: (h: HexId) => HexId[], member: (h: HexId) => boolean): Map<HexId, number> {
+function connectedGroups(s: BoardTerrain, neighbours: (h: HexId) => HexId[], member: (h: HexId) => boolean): Map<HexId, number> {
   const groups = new Map<HexId, number>();
   let g = 0;
   for (let h = 0; h < s.terrain.length; h++) {
@@ -206,12 +209,12 @@ function connectedGroups(s: GameState, neighbours: (h: HexId) => HexId[], member
  * Connected hill group id for every hex that counts as a hill (`isHill`: a camp or wall with a hill under it too), used for
  * the "same hill / plateau" LOS rule.
  */
-export function hillGroups(s: GameState, neighbours: (h: HexId) => HexId[]): Map<HexId, number> {
+export function hillGroups(s: BoardTerrain, neighbours: (h: HexId) => HexId[]): Map<HexId, number> {
   return connectedGroups(s, neighbours, (h) => isHill(s, h));
 }
 
 /** Connected group id for every city wall hex (§18.7: units on one wall see along it). */
-export function wallGroups(s: GameState, neighbours: (h: HexId) => HexId[]): Map<HexId, number> {
+export function wallGroups(s: BoardTerrain, neighbours: (h: HexId) => HexId[]): Map<HexId, number> {
   return connectedGroups(s, neighbours, (h) => s.terrain[h] === 'wall');
 }
 

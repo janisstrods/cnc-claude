@@ -94,6 +94,16 @@ describe('city wall: movement (§18.7)', () => {
     }
   });
 
+  it('a unit that climbed onto a wall gets no second Move-Fire-Move move off it', () => {
+    for (const onWall of [true, false]) {
+      const s = build({ units: [{ side: 'bottom', type: 'LI', at: [5, 6] }], terrain: onWall ? [wall(W)] : [] });
+      const d = play(s, 'moveFireMove', ['u1']);
+      must(d, { kind: 'move', piece: 'u1', to: H(4, 6) });
+      if (onWall) expect(d.pending).toMatchObject({ kind: 'playCard', side: 'top' });
+      else expect(d.pending).toMatchObject({ kind: 'move', stage: 2 });
+    }
+  });
+
   it('walking along the wall is no easier: each wall-to-wall step is a whole move', () => {
     const ms = movesOf({ units: [{ side: 'bottom', type: 'LI', at: W }], terrain: [wall(W), wall([4, 7]), wall([4, 8])] });
     expect(ms.find((m) => m.hex === H(4, 7))).toMatchObject({ dist: 1 });

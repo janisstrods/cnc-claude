@@ -1040,8 +1040,9 @@ export function pieceMoves(s: GameState, id: string, stage: 1 | 2 = s.turn.phase
   const u = unitById(s, id);
   if (!u) return [];
   if (op.attachedThisTurn) return [];
-  // a unit that began the turn on a city wall moves 1 hex in all that turn (§18.7): no second Move-Fire-Move move after one
-  if (stage === 2 && op.moved > 0 && isWall(s, op.startHex)) return [];
+  // a unit that moves onto or off a city wall moves 1 hex in all that turn (§18.7): no second Move-Fire-Move move after a
+  // first move that began on a wall or climbed onto one
+  if (stage === 2 && op.moved > 0 && (isWall(s, op.startHex) || isWall(s, u.hex))) return [];
   if (op.fromReserve && u.hex === OFF_BOARD) {
     const sec = s.turn.ambushSection;
     if (!sec) return [];

@@ -1,8 +1,9 @@
 // The scenario loader (src/scenarios/index.ts): every field of the scenario JSON reaches ScenarioSetup unchanged, and
 // setup errors name the scenario they come from.
 import { describe, expect, it } from 'vitest';
-import { OFF_BOARD, createGame, hexId, type ObjectiveSetup } from '../../src/engine';
+import { ALL_HEXES, OFF_BOARD, createGame, hexId, isHill, neighbours, steepSlope, type ObjectiveSetup } from '../../src/engine';
 import { scenarioById, scenarioFromJson, scenariosFromFiles, type ScenarioJson } from '../../src/scenarios';
+import gergovia from '../../design/exp3-data/308.json';
 
 const H = (r: number, c: number) => hexId(r, c);
 
@@ -308,5 +309,29 @@ describe('malformed scenario files', () => {
     const list = scenariosFromFiles({ './b.json': { ...RAW, id: '199' }, './a.json': { ...RAW, id: '198' } });
     expect(list.map((x) => x.id)).toEqual(['198', '199']);
     expect(scenarioById('108').name).toBe('Issus');
+  });
+});
+
+describe('Expansion #3 terrain through the loader (design/exp3-data/308.json, §18.7)', () => {
+  // 308 is staged for import: the loader does not know expansion 'exp3' yet, so it is read as an Expansion #2 file
+  const sc = scenarioFromJson({ ...(gergovia as unknown as ScenarioJson), expansion: 'exp2' });
+
+  it('keeps the hills under the Gergovia walls and the Gallic camps', () => {
+    const hills = sc.setup.terrain.filter((t) => t.hill).map((t) => [t.r, t.c, t.t]);
+    expect(hills).toEqual([
+      [0, 5, 'wall'], [0, 6, 'wall'], [0, 7, 'wall'], [0, 8, 'wall'], [0, 9, 'wall'], [2, 5, 'camp'], [2, 7, 'camp'], [2, 9, 'camp'],
+    ]);
+    const s = createGame(sc.setup, 1);
+    expect(ALL_HEXES.filter((h) => s.hillUnder[h])).toEqual([H(0, 5), H(0, 6), H(0, 7), H(0, 8), H(0, 9), H(2, 5), H(2, 7), H(2, 9)]);
+    expect([isHill(s, H(0, 9)), isHill(s, H(2, 9)), s.terrain[H(0, 9)], s.terrain[H(2, 9)]]).toEqual([true, true, 'wall', 'camp']);
+  });
+
+  it('so its steep slopes include the wall corner and the camp next to the forests (12 in all)', () => {
+    const s = createGame(sc.setup, 1);
+    expect(steepSlope(s, H(0, 9), H(0, 10))).toBe(true); // wall corner (0,9) and forest (0,10)
+    expect(steepSlope(s, H(2, 10), H(2, 9))).toBe(true); // forest (2,10) and Gallic camp (2,9)
+    expect(steepSlope(s, H(1, 4), H(1, 3))).toBe(true); // an ordinary hill and forest
+    const sides = ALL_HEXES.flatMap((a) => neighbours(a).filter((b) => a < b && steepSlope(s, a, b)));
+    expect(sides).toHaveLength(12);
   });
 });

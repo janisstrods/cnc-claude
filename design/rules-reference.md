@@ -768,8 +768,8 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
     the move ends there. A piece that begins its move on a wall hex moves at most 1 hex that turn. Walking along a wall is
     no easier: every wall-to-wall step is a full move. A retreating or evading foot unit or leader passes through or onto
     wall hexes without stopping (no special rule beyond the usual occupied-hex limits).
-    **[Interp]** "That turn": a unit that began the turn on a wall and moved off it gets no second Move-Fire-Move move. A
-    reserve entering from off the board (§18.5) never begins next to a wall, so it cannot be placed on one.
+    **[Interp]** "That turn": a unit whose first move began on a wall or climbed onto one gets no second Move-Fire-Move
+    move. A reserve entering from off the board (§18.5) never begins next to a wall, so it cannot be placed on one.
   * **Barred.** Mounted units (cavalry, chariots, elephants, camels) and war machines treat a wall hex as impassable: no
     move, retreat, evade or momentum advance onto it (the advance is later wording). A foot unit's momentum advance onto a
     wall hex its own attack vacated is not forbidden, so it is allowed **[Interp]**; it ends there like any entry.

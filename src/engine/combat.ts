@@ -145,12 +145,13 @@ export function rampartShields(s: GameState, target: Unit, striker: Unit | null,
 }
 
 /**
- * City wall (§18.7): does `target`, a foot unit standing on a wall hex, defend there against this roll? In close combat
- * only against an attack or bonus combat (`role`; never the battle back or First Strike against a wall unit that attacked
- * out **[Interp]**), and against any ranged fire. It then ignores 1 sword (close combat) and may ignore 1 more flag.
+ * City wall (§18.7): does `target`, an infantry unit (the only units that may stand on a wall) on a wall hex, defend there
+ * against this roll? In close combat only against an attack or bonus combat (`role`; never the battle back or First Strike
+ * against a wall unit that attacked out **[Interp]**), and against any ranged fire. It then ignores 1 sword (close
+ * combat) and may ignore 1 more flag.
  */
 export function wallShields(s: GameState, target: Unit, kind: 'close' | 'ranged', role?: StrikeRole | null): boolean {
-  if (!isWall(s, target.hex) || !UNIT_STATS[target.type].foot) return false;
+  if (!isWall(s, target.hex) || !UNIT_STATS[target.type].infantry) return false;
   return kind === 'ranged' || role === 'attack' || role === 'bonus';
 }
 
