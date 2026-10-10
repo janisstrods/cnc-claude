@@ -189,6 +189,51 @@ describe('leaderLossCostsCard (112 Hellespont)', () => {
     expect(d.state.special.cardDebt.top).toBe(0);
   });
 
+  it('Command never drops below 1, and at 1 no card is owed: no discard on the opponent\'s turn, no skipped draw on the own', () => {
+    // opponent's turn: the top leader dies on his HI attacked by the bottom HI
+    const s = build({
+      ...HELL,
+      cards: 1,
+      units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'HI', at: [4, 6] }],
+      leaders: [
+        { side: 'top', at: [4, 6] }, { side: 'top', at: [0, 0] }, { side: 'top', at: [0, 12] },
+        { side: 'bottom', at: [5, 6] }, { side: 'bottom', at: [8, 0] },
+      ],
+    });
+    const d = toBattle(s, 'order4C', ['u1']);
+    ev(d);
+    const topHand = [...d.state.players.top.hand];
+    expect(topHand).toHaveLength(1);
+    forceDice([...hitAndKill, ...miss(5)]);
+    must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+    const e = ev(d);
+    expect(ofKind(e, 'leaderKilled')).toHaveLength(1);
+    expect(ofKind(e, 'command')).toHaveLength(0);
+    expect(ofKind(e, 'cardLost')).toHaveLength(0);
+    expect(d.state.players.top.command).toBe(1);
+    expect(d.state.players.top.hand).toEqual(topHand);
+    expect(d.state.special.cardDebt.top).toBe(0);
+    expect(ofKind(e, 'draw').map((x) => x.side)).toEqual(['bottom']); // the bottom turn ended with its draw
+
+    // own turn: the top leader on the top HI attacks, the bottom HI battles back and kills him
+    noFirstStrike(d.state);
+    giveCard(d.state, 'top', 'order4C');
+    must(d, { kind: 'playCard', card: d.state.players.top.hand[0] });
+    must(d, { kind: 'orders', pieces: ['u2'] });
+    must(d, { kind: 'endMove' });
+    ev(d);
+    d.state.leaders.find((l) => l.side === 'top' && l.hex === H(0, 0))!.hex = H(4, 6); // constructed: the second leader joins
+    forceDice([...miss(5), ...hitAndKill]);
+    must(d, { kind: 'attack', unit: 'u2', target: H(5, 6) });
+    const e2 = ev(d);
+    expect(ofKind(e2, 'leaderKilled')).toHaveLength(1);
+    expect(ofKind(e2, 'command')).toHaveLength(0);
+    expect(ofKind(e2, 'draw').map((x) => x.side)).toEqual(['top']); // nothing owed: the end-of-turn draw is not skipped
+    expect(d.state.players.top.command).toBe(1);
+    expect(d.state.players.top.hand).toHaveLength(1);
+    expect(d.state.special.cardDebt.top).toBe(0);
+  });
+
   it('a leader evading off his own baseline is not eliminated: no Command loss, no discard, no banner', () => {
     const s = build({
       ...HELL,

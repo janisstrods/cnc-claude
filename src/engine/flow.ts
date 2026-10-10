@@ -10,7 +10,7 @@ import {
   autoOrders, orderMode, rallyCandidates, validateOrders, validateRally, validateSpartacus,
 } from './orders';
 import {
-  attachedLeader, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, unitAt, unitById,
+  attachedLeader, isEmptyHex, isLeaderId, isRomanArmy, leaderAt, leaderById, leaderUnit, other, unitAt, unitById,
 } from './query';
 import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption } from './retreat';
 import { randInt, rollDice, rollDie, shuffle } from './rng';
@@ -50,12 +50,12 @@ function emitRoll(ctx: FlowCtx, purpose: RollPurpose, faces: DieFace[], scoring:
   ctx.emit({ t: 'roll', purpose, faces, scoring, by, against });
 }
 
-function romanSide(s: GameState): Side {
-  return s.players.top.army === 'Roman' ? 'top' : 'bottom';
-}
-
+/**
+ * `side` draws one card (reshuffling the discards into an empty deck). Hellespont (§17.4): while the side owes cards for
+ * lost leaders (`cardDebt`), any draw pays off one owed card instead of drawing (the end-of-turn draw, the First Strike
+ * draw, Trasimenus' and Beneventum's extra draws alike).
+ */
 function drawCard(s: GameState, ctx: FlowCtx, side: Side) {
-  // Hellespont: a card still owed for a lost leader is paid by not drawing (§17.4)
   if (s.special.cardDebt[side] > 0) {
     s.special.cardDebt[side]--;
     log(s, ctx, `The ${s.players[side].army} army draws no card: it lost a leader.`, side);
@@ -84,7 +84,7 @@ export function gainBanner(s: GameState, ctx: FlowCtx, side: Side, reason: strin
     return;
   }
   // 2nd Beneventum: the Romans grow to 6 cards on their 3rd banner.
-  if (s.special.rules.includes('beneventumHand') && side === romanSide(s) && p.banners === 3 && !s.special.beneventumBonusGiven) {
+  if (s.special.rules.includes('beneventumHand') && isRomanArmy(s, side) && p.banners === 3 && !s.special.beneventumBonusGiven) {
     s.special.beneventumBonusGiven = true;
     p.command = 6;
     ctx.emit({ t: 'command', side, command: 6 });
@@ -1049,7 +1049,7 @@ function endOfTurn(s: GameState, ctx: FlowCtx) {
   }
   if (t.firstStrikeBy && t.firstStrikeBy !== side) drawCard(s, ctx, t.firstStrikeBy);
   let draws = 1;
-  if (s.special.rules.includes('trasimenusHand') && side === romanSide(s) && s.special.turnsDone[side] < 2) {
+  if (s.special.rules.includes('trasimenusHand') && isRomanArmy(s, side) && s.special.turnsDone[side] < 2) {
     draws = 2;
     s.players[side].command += 1;
     ctx.emit({ t: 'command', side, command: s.players[side].command });
