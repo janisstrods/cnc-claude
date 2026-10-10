@@ -51,10 +51,10 @@ const cols = (r: number, a: number, b: number) => Array.from({ length: b - a + 1
 const sorted = (xs: string[]) => [...xs].sort();
 
 describe('Expansion #2 battle list', () => {
-  it('the 23 battles 201-223 follow the 15 base and 24 Expansion #1 battles', () => {
+  it('the 23 battles 201-223 follow the 15 base and 24 Expansion #1 battles (Expansion #3 comes after them)', () => {
     expect(EXP2).toEqual(range(201, 223));
     const BASE = range(1, 15).map((id) => id.padStart(3, '0'));
-    expect(SCENARIOS.map((s) => s.id)).toEqual([...BASE, ...EXP1, ...EXP2]);
+    expect(SCENARIOS.map((s) => s.id).slice(0, BASE.length + EXP1.length + EXP2.length)).toEqual([...BASE, ...EXP1, ...EXP2]);
     expect(SCENARIOS.filter((s) => s.expansion === 'exp2').map((s) => s.id)).toEqual(EXP2);
     expect(Object.keys(MANIFEST).filter((id) => EXP2.includes(id))).toEqual([]);
   });

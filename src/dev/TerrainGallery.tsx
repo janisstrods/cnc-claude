@@ -24,8 +24,6 @@ interface ScenarioJson {
 }
 
 const modules = import.meta.glob('../scenarios/data/*.json', { eager: true }) as Record<string, { default: ScenarioJson }>;
-/** The Expansion #3 battles from their verified transcriptions, until they are imported as scenarios. */
-const exp3Modules = import.meta.glob('../../design/exp3-data/3*.json', { eager: true }) as Record<string, { default: ScenarioJson }>;
 /** Synthetic board exercising every terrain type and the tricky joins (river junction, river
  * into a lake, dead-end stream, merged marsh/broken/steep clusters, sea, rampart edges). */
 const SAMPLER: ScenarioJson = {
@@ -315,14 +313,14 @@ const SHIP_STATE: ObjectiveState[] = [
 ];
 const SHIP_BLOCKS: Record<Side, Blocks> = { top: 'gry', bottom: 'rom' };
 
-const EXP3_BATTLES: ScenarioJson[] = Object.values(exp3Modules).map((m) => m.default).sort((a, b) => a.id.localeCompare(b.id));
-const exp3 = (id: string) => EXP3_BATTLES.find((s) => s.id === id) ?? WALLS;
+/** The scenario files, in id order (base, Expansion #1, #2, #3). */
+const FILES: ScenarioJson[] = Object.values(modules)
+  .map((m) => m.default)
+  .sort((a, b) => a.id.localeCompare(b.id));
+const exp3 = (id: string) => FILES.find((s) => s.id === id) ?? WALLS;
 
 const SCENARIOS: ScenarioJson[] = [
-  ...Object.values(modules)
-    .map((m) => m.default)
-    .sort((a, b) => a.id.localeCompare(b.id)),
-  ...EXP3_BATTLES.filter((s) => !Object.values(modules).some((m) => m.default.id === s.id)),
+  ...FILES,
   SAMPLER,
   COASTS,
   RAMPARTS,

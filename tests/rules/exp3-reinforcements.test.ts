@@ -8,7 +8,7 @@ import {
 } from '../../src/engine';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory } from '../../src/ai';
 import { scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
-import gergoviaJson from '../../design/exp3-data/308.json';
+import gergoviaJson from '../../src/scenarios/data/308.json';
 import { H, build, combatDice, ev, forceDice, giveCard, must, n, noFirstStrike, passTurn, setupOf, u, type Pos } from './helpers';
 
 beforeEach(() => forceDice([]));
@@ -463,9 +463,8 @@ describe('reinforcements: forced placement (§18.9)', () => {
   });
 });
 
-describe('308 Gergovia itself (design/exp3-data/308.json)', () => {
-  // 308 is staged for import: the loader does not know expansion 'exp3' yet, so it is read as an Expansion #2 file
-  const setup = () => scenarioFromJson({ ...(gergoviaJson as unknown as ScenarioJson), expansion: 'exp2' }).setup;
+describe('308 Gergovia itself (src/scenarios/data/308.json)', () => {
+  const setup = () => scenarioFromJson(gergoviaJson as unknown as ScenarioJson).setup;
 
   it('the Gauls bring their reinforcements onto the western slopes; the Roman MI follows on his left baseline', () => {
     const s = createGame(setup(), 7);

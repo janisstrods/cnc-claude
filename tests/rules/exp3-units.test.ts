@@ -6,9 +6,7 @@ import {
   GameDriver, OFF_BOARD, battleTargets, canFireAt, canMarch, cloneState, createGame, evadeOptions, hasPilum, movablePieces, pieceMoves, unitMoves,
   validateOrders, type LeaderTrait, type UnitType,
 } from '../../src/engine';
-import { scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
-import valentiaJson from '../../design/exp3-data/304.json';
-import bibracteJson from '../../design/exp3-data/306.json';
+import { scenarioById } from '../../src/scenarios';
 import { H, build, combatDice, ev, forceDice, giveCard, must, n, noFirstStrike, passTurn, play, setupOf, toBattle, u, type Pos } from './helpers';
 
 beforeEach(() => forceDice([]));
@@ -322,8 +320,7 @@ describe('immobile units (306 Bibracte, §18.11, X3 Q15)', () => {
   });
 
   it('306 itself: the two recruits in the Roman camps are immobile, no other unit is', () => {
-    const json = { ...(bibracteJson as unknown as ScenarioJson), expansion: 'exp2' as const };
-    const s = createGame(scenarioFromJson(json).setup, 1);
+    const s = createGame(scenarioById('306').setup, 1);
     expect(s.units.filter((x) => x.immobile).map((x) => [x.side, x.type, x.hex])).toEqual([
       ['bottom', 'AX', H(8, 4)], ['bottom', 'AX', H(8, 5)],
     ]);
@@ -383,8 +380,7 @@ describe('304 Valentia: both Sertorian leaders carry a command (§18.5, X3 Q16)'
   });
 
   it('304 itself: each leader commands his own wing, and the Romans are free', () => {
-    const json = { ...(valentiaJson as unknown as ScenarioJson), expansion: 'exp2' as const };
-    const s = createGame(scenarioFromJson(json).setup, 1);
+    const s = createGame(scenarioById('304').setup, 1);
     const at = (r: number, c: number) => s.units.find((x) => x.hex === H(r, c))!.id;
     const leader = (name: string) => s.leaders.find((l) => l.name === name)!;
     const [herennius, perpenna] = [leader('Herennius'), leader('Perpenna')];

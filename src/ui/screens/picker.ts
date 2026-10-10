@@ -1,4 +1,4 @@
-// Battle picker logic: the two boxes as tabs, and the optional rules a battle offers (with the player's remembered
+// Battle picker logic: the boxes as tabs, and the optional rules a battle offers (with the player's remembered
 // choices). Pure apart from the try/catch-wrapped localStorage helpers.
 import type { GameOptions, Side } from '../../engine';
 import type { Expansion, ScenarioInfo } from '../../scenarios';
@@ -8,11 +8,15 @@ export interface PickerTab {
   label: string;
 }
 
-/** Picker tabs in display order: the base game (001–015), Expansion #1 (101–124), then Expansion #2 (201–223). */
+/**
+ * Picker tabs in display order: the base game (001–015), Expansion #1 (101–124), Expansion #2 (201–223), then Expansion #3
+ * (301–319).
+ */
 export const PICKER_TABS: readonly PickerTab[] = [
   { id: 'base', label: 'Punic Wars' },
   { id: 'exp1', label: 'Greece & the East' },
   { id: 'exp2', label: 'Rome & the Barbarians' },
+  { id: 'exp3', label: 'Roman Civil Wars' },
 ];
 
 /** The battles of one tab, in the order given (the scenario list is sorted by id). */

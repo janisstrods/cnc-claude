@@ -26,9 +26,9 @@ const changed = (f: (st: ScenarioSetup) => void, p: Pos = OK): ScenarioSetup => 
 };
 
 describe('scenario data validation', () => {
-  it('the reference position and all 62 shipped scenarios build', () => {
+  it('the reference position and all 81 shipped scenarios build', () => {
     expect(build(setupOf(OK))).not.toThrow();
-    expect(SCENARIOS).toHaveLength(62);
+    expect(SCENARIOS).toHaveLength(81);
     for (const sc of SCENARIOS) expect(() => createGame(sc.setup, 1), sc.id).not.toThrow();
   });
 

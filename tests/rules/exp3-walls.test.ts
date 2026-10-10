@@ -1,8 +1,8 @@
 // Expansion #3 terrain (rules-reference §18.7; design/exp3-rulings.md Q3–Q6): scalable city walls (308 Gergovia, 309
 // Ilerda), impassable walls and towns (301, 303, 304: `steep` with an art hint), a hill under a camp or wall (308) and the
-// steep hill–forest slopes of 308 (rule `steepSlopes`). The data shapes follow design/exp3-data/308.json and 309.json.
+// steep hill–forest slopes of 308 (rule `steepSlopes`). The data shapes follow src/scenarios/data/308.json and 309.json.
 import { beforeEach, describe, expect, it } from 'vitest';
-import gergovia from '../../design/exp3-data/308.json';
+import gergovia from '../../src/scenarios/data/308.json';
 import {
   ALL_HEXES, CARD_LIST, SPECIAL_RULE_IDS, TERRAIN_NAMES, battleTargets, canFireAt, ccCapOfHex, cloneState, closeCombatDice, createGame,
   elephantRetreatOptions, evadeOptions, ignorableFlags, isHill, isImpassable, leaderEvadeOptions, lineOfSight, neighbours, pieceMoves,

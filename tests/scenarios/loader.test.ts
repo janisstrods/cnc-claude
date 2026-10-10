@@ -3,9 +3,9 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_HEXES, OFF_BOARD, createGame, hexId, isHill, neighbours, steepSlope, type ObjectiveSetup } from '../../src/engine';
 import { scenarioById, scenarioFromJson, scenariosFromFiles, type ScenarioJson } from '../../src/scenarios';
-import gergovia from '../../design/exp3-data/308.json';
-import bibracte from '../../design/exp3-data/306.json';
-import valentia from '../../design/exp3-data/304.json';
+import gergovia from '../../src/scenarios/data/308.json';
+import bibracte from '../../src/scenarios/data/306.json';
+import valentia from '../../src/scenarios/data/304.json';
 
 const H = (r: number, c: number) => hexId(r, c);
 
@@ -314,9 +314,8 @@ describe('malformed scenario files', () => {
   });
 });
 
-describe('Expansion #3 terrain through the loader (design/exp3-data/308.json, §18.7)', () => {
-  // 308 is staged for import: the loader does not know expansion 'exp3' yet, so it is read as an Expansion #2 file
-  const sc = scenarioFromJson({ ...(gergovia as unknown as ScenarioJson), expansion: 'exp2' });
+describe('Expansion #3 terrain through the loader (src/scenarios/data/308.json, §18.7)', () => {
+  const sc = scenarioFromJson(gergovia as unknown as ScenarioJson);
 
   it('keeps the hills under the Gergovia walls and the Gallic camps', () => {
     const hills = sc.setup.terrain.filter((t) => t.hill).map((t) => [t.r, t.c, t.t]);
@@ -338,8 +337,8 @@ describe('Expansion #3 terrain through the loader (design/exp3-data/308.json, §
   });
 });
 
-describe('Expansion #3 reinforcements through the loader (design/exp3-data/308.json, §18.9)', () => {
-  const raw = (): ScenarioJson => ({ ...(JSON.parse(JSON.stringify(gergovia)) as ScenarioJson), expansion: 'exp2' });
+describe('Expansion #3 reinforcements through the loader (src/scenarios/data/308.json, §18.9)', () => {
+  const raw = (): ScenarioJson => JSON.parse(JSON.stringify(gergovia)) as ScenarioJson;
   const G = [[3, 0], [4, 0], [5, 0], [6, 0], [7, 0]] as [number, number][];
   const R = [[8, 0], [8, 1], [8, 2], [8, 3], [8, 4]] as [number, number][];
 
@@ -376,9 +375,8 @@ describe('Expansion #3 reinforcements through the loader (design/exp3-data/308.j
   });
 });
 
-describe('Expansion #3 units and commands through the loader (design/exp3-data/306.json, 304.json)', () => {
-  // staged for import, read as Expansion #2 files (see above)
-  const read = (j: unknown): ScenarioJson => ({ ...(JSON.parse(JSON.stringify(j)) as ScenarioJson), expansion: 'exp2' });
+describe('Expansion #3 units and commands through the loader (src/scenarios/data/306.json, 304.json)', () => {
+  const read = (j: unknown): ScenarioJson => JSON.parse(JSON.stringify(j)) as ScenarioJson;
 
   it('306: the two recruits keep `immobile` in the setup and the state (§18.11)', () => {
     const sc = scenarioFromJson(read(bibracte));
@@ -409,5 +407,100 @@ describe('Expansion #3 units and commands through the loader (design/exp3-data/3
     setup.units.find((u) => u.immobile)!.immobile = false;
     setup.leaders[0].command = 'x';
     expect(j).toEqual(keep);
+  });
+});
+
+describe('the Expansion #3 files (301-319) through the loader: every key reaches the setup, as a copy', () => {
+  const FILES = Object.values(import.meta.glob<ScenarioJson>('../../src/scenarios/data/3*.json', { eager: true, import: 'default' }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  type Path = (string | number)[];
+  const isNode = (v: unknown): v is object => typeof v === 'object' && v !== null;
+  /** The value at `path` of the built scenario: the battle's year and box are in the info, everything else in its setup. */
+  const target = (info: ReturnType<typeof scenarioFromJson>, key: string): unknown =>
+    key === 'year' || key === 'expansion' ? info[key] : (info.setup as unknown as Record<string, unknown>)[key];
+
+  /**
+   * Walk a file value and the loaded value side by side: every key and list entry of the file must be in the setup with the
+   * same value, and no object or list of the setup may be the file's own. Returns the problems found.
+   */
+  function compare(file: unknown, loaded: unknown, path: Path, problems: string[]) {
+    const at = path.join('.');
+    if (!isNode(file)) {
+      if (loaded !== file) problems.push(`${at}: ${JSON.stringify(file)} became ${JSON.stringify(loaded)}`);
+      return;
+    }
+    if (!isNode(loaded)) return void problems.push(`${at}: dropped (${JSON.stringify(loaded)})`);
+    if (loaded === file) problems.push(`${at}: shared with the file, not copied`);
+    if (Array.isArray(file)) {
+      if (!Array.isArray(loaded) || loaded.length !== file.length) return void problems.push(`${at}: list changed`);
+      file.forEach((v, i) => compare(v, loaded[i], [...path, i], problems));
+      return;
+    }
+    for (const [k, v] of Object.entries(file)) {
+      if (!Object.prototype.hasOwnProperty.call(loaded, k)) problems.push(`${at}.${k}: dropped`);
+      else compare(v, (loaded as Record<string, unknown>)[k], [...path, k], problems);
+    }
+  }
+
+  it('are the 19 battles 301-319 of the Roman Civil Wars box, and SCENARIOS holds them as built', () => {
+    expect(FILES.map((j) => [j.id, j.expansion])).toEqual(Array.from({ length: 19 }, (_, k) => [String(301 + k), 'exp3']));
+    for (const j of FILES) expect(scenarioById(j.id), j.id).toEqual(scenarioFromJson(j));
+  });
+
+  it('every key present anywhere in the files reaches the loaded setup unchanged and as a copy', () => {
+    for (const j of FILES) {
+      const info = scenarioFromJson(j);
+      const problems: string[] = [];
+      for (const [k, v] of Object.entries(j)) {
+        if (k === 'id' || k === 'name') expect([k, info[k]]).toEqual([k, v]);
+        compare(v, target(info, k), [j.id, k], problems);
+      }
+      expect(problems, j.id).toEqual([]);
+    }
+  });
+
+  it('the keys the files use, by kind, so a new one is noticed (and the walk above checks it reaches the setup)', () => {
+    const seen: Record<string, Set<string>> = {};
+    const add = (kind: string, keys: string[]) => keys.forEach((k) => (seen[kind] ??= new Set()).add(k));
+    const LISTS: Record<string, string> = {
+      units: 'unit', leaders: 'leader', terrain: 'terrain', objectives: 'objective', placeUnits: 'placeUnit', commands: 'command',
+      reserves: 'reserve', reserveLeaders: 'reserveLeader',
+    };
+    const OBJECTS: Record<string, string> = { top: 'side', bottom: 'side', ambush: 'ambush', handGrowth: 'handGrowth', legions: 'legions' };
+    for (const j of FILES) {
+      add('file', Object.keys(j));
+      for (const [k, v] of Object.entries(j)) {
+        if (LISTS[k]) for (const x of v as object[]) add(LISTS[k], Object.keys(x));
+        if (OBJECTS[k]) add(OBJECTS[k], Object.keys(v as object));
+      }
+    }
+    const sorted = Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, [...v].sort()]));
+    expect(sorted).toEqual({
+      file: ['ambush', 'banners', 'bottom', 'commands', 'expansion', 'first', 'handGrowth', 'id', 'leaders', 'legions', 'name', 'objectives',
+        'placeUnits', 'reserveLeaders', 'reserves', 'rules', 'terrain', 'top', 'units', 'year'],
+      side: ['army', 'blocks', 'cards', 'commander', 'look', 'orderDice', 'orders'],
+      unit: ['c', 'command', 'immobile', 'r', 'side', 'type'],
+      leader: ['c', 'command', 'name', 'r', 'side', 'traits'],
+      terrain: ['art', 'c', 'edges', 'faces', 'ford', 'hill', 'r', 't'],
+      objective: ['banners', 'hexes', 'kind', 'leadersScore', 'marker', 'max', 'remove', 'side', 'sides', 'text', 'units', 'when'],
+      ambush: ['afterOwnTurns', 'attachLeader', 'entryHexes', 'noMove', 'text', 'trigger'],
+      placeUnit: ['after', 'hexes', 'side', 'type'],
+      command: ['blocks', 'id', 'name', 'side'],
+      reserve: ['side', 'type'],
+      reserveLeader: ['name', 'side'],
+      handGrowth: ['side', 'to'],
+      legions: ['bottom', 'top'],
+    });
+  });
+
+  it('the walk notices a dropped or shared field', () => {
+    const j = JSON.parse(JSON.stringify(FILES.find((x) => x.id === '308'))) as ScenarioJson;
+    const info = scenarioFromJson(j);
+    delete info.setup.ambush!.noMove;
+    delete (info.setup.units[0] as { r?: number }).r;
+    info.setup.placeUnits![0].hexes[2] = j.placeUnits![0].hexes[2];
+    const problems: string[] = [];
+    for (const [k, v] of Object.entries(j)) compare(v, target(info, k), [j.id, k], problems);
+    expect(problems).toEqual(['308.ambush.noMove: dropped', '308.units.0.r: dropped', '308.placeUnits.0.hexes.2: shared with the file, not copied']);
   });
 });

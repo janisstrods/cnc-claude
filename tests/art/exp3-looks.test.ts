@@ -1,7 +1,6 @@
 // The Expansion #3 armies (the Roman Civil Wars): the Italic and Iberian kits, the Sullan, Pompeian and Caesarian legions,
 // the Samnites, Sertorius' army, the Helvetii, the Numidians and the Pontic army, their warriors, war machines and
-// elephants, and Pompey as a named leader. The battles are read from their verified transcriptions (design/exp3-data)
-// until they are imported as scenarios.
+// elephants, and Pompey as a named leader. The battles are read from their scenario files (src/scenarios/data/3xx.json).
 import { describe, expect, it } from 'vitest';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -32,7 +31,7 @@ interface Battle {
   leaders: { side: 'top' | 'bottom'; name: string }[];
   commands?: { id: string; side: 'top' | 'bottom'; blocks?: Blocks }[];
 }
-const BATTLES = Object.values(import.meta.glob('../../design/exp3-data/3*.json', { eager: true, import: 'default' }) as Record<string, Battle>)
+const BATTLES = Object.values(import.meta.glob('../../src/scenarios/data/3*.json', { eager: true, import: 'default' }) as Record<string, Battle>)
   .sort((a, b) => a.id.localeCompare(b.id));
 
 /** The block set each Expansion #3 look stands on most (grey for the Pompeians, red for the other Romans). */

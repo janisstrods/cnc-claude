@@ -1,20 +1,22 @@
-// The 15 base-game battles (001-015), the 24 battles of Expansion #1, Greece & Eastern Kingdoms (101-124), and the 23
-// battles of Expansion #2, Rome & the Barbarians (201-223). Setups are transcribed data (src/scenarios/data); texts are
-// original summaries (base game below, Expansion #1 in exp1-texts.ts, Expansion #2 in exp2-texts.ts).
+// The 15 base-game battles (001-015), the 24 battles of Expansion #1, Greece & Eastern Kingdoms (101-124), the 23
+// battles of Expansion #2, Rome & the Barbarians (201-223), and the 19 battles of Expansion #3, The Roman Civil Wars
+// (301-319). Setups are transcribed data (src/scenarios/data); texts are original summaries (base game below, Expansion #1
+// in exp1-texts.ts, Expansion #2 in exp2-texts.ts, Expansion #3 in exp3-texts.ts).
 import { ELITES } from '../engine/elites';
 import { hexId, inSection, onBoard } from '../engine/hex';
 import type { GameOptions, ObjectiveSetup, ScenarioSetup, SideSetup, TerrainSetup } from '../engine/setup';
 import { COLS, type LeaderTrait, type Side, type SpecialRuleId } from '../engine/types';
 import { EXTRA_EXP1, type ScenarioTexts } from './exp1-texts';
 import { EXTRA_EXP2 } from './exp2-texts';
+import { EXTRA_EXP3 } from './exp3-texts';
 
 /** Which box a battle comes from. */
-export type Expansion = 'base' | 'exp1' | 'exp2';
+export type Expansion = 'base' | 'exp1' | 'exp2' | 'exp3';
 
 /**
  * A scenario file in src/scenarios/data. Base-game files omit `expansion` (and keep their special rules and objectives in
- * `EXTRA` below); Expansion #1 and #2 files carry their rules, options, objectives, legions, commands and leaders to place
- * themselves. Other fields of a file (the base files' copied rule text, roster checks) are ignored, except the retired
+ * `EXTRA` below); Expansion #1, #2 and #3 files carry their rules, options, objectives, legions, commands and leaders to
+ * place themselves (Expansion #3 also its sides' dice orders, forced placements, immobile units and terrain hints). Other fields of a file (the base files' copied rule text, roster checks) are ignored, except the retired
  * `campCapture` (now an objective), which is an error.
  */
 export interface ScenarioJson {
@@ -38,7 +40,7 @@ export interface ScenarioJson {
   options?: GameOptions;
   /** Battle objectives (camp capture, exits, §18.4). */
   objectives?: ObjectiveSetup[];
-  /** Legion rule per side (Marius: the Romans of 206-223, §18.2). */
+  /** Legion rule per side (§18.2): Marius for the Romans of 206-223 and both armies of 301-305, Julian in 306-319 but 310. */
   legions?: ScenarioSetup['legions'];
   /** Hand growth of one side (313 Brindisi Raid, §18.8): it draws 2 and grows by 1 while its Command is below `to`. */
   handGrowth?: ScenarioSetup['handGrowth'];
@@ -78,7 +80,7 @@ export interface ScenarioInfo {
 
 const files = import.meta.glob<ScenarioJson>('./data/*.json', { eager: true, import: 'default' });
 
-/** Texts and base-game rule data of a base battle (Expansion #1 and #2 battles keep their rules in the JSON). */
+/** Texts and base-game rule data of a base battle (expansion battles keep their rules in the JSON). */
 interface Extra extends ScenarioTexts {
   rules?: SpecialRuleId[];
   objectives?: ObjectiveSetup[];
@@ -200,7 +202,7 @@ const EXTRA: Record<string, Extra> = {
   },
 };
 
-const EXPANSIONS: Expansion[] = ['base', 'exp1', 'exp2'];
+const EXPANSIONS: Expansion[] = ['base', 'exp1', 'exp2', 'exp3'];
 
 const copyLeader = <T extends { traits?: LeaderTrait[] }>(l: T): T => (l.traits ? { ...l, traits: [...l.traits] } : { ...l });
 
@@ -247,7 +249,7 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   const expansion = j.expansion ?? 'base';
   if (!EXPANSIONS.includes(expansion)) throw new Error(`unknown expansion ${String(j.expansion)} (${j.id})`);
   const ex: Extra | undefined = EXTRA[j.id];
-  const texts: ScenarioTexts | undefined = ex ?? EXTRA_EXP1[j.id] ?? EXTRA_EXP2[j.id];
+  const texts: ScenarioTexts | undefined = ex ?? EXTRA_EXP1[j.id] ?? EXTRA_EXP2[j.id] ?? EXTRA_EXP3[j.id];
   const setup: ScenarioSetup = {
     id: j.id,
     name: j.name,

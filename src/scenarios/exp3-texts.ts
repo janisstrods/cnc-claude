@@ -35,7 +35,7 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     blurb: 'In 75 BC Pompey marches against the Sertorian lieutenants Herennius and Perpenna, who have drawn up their army near Valentia on the eastern coast while Sertorius is busy elsewhere. In a hard day\'s fighting Pompey\'s legions win a crushing victory: Herennius is killed, thousands of his men fall, and the city of Valentia is razed. The defeat is a heavy blow to the Sertorian cause. It brings Sertorius hurrying east for a reckoning with Pompey at the Sucro.',
     specialText: [
       'Marian legions (both armies): medium and heavy infantry on both sides may throw the pilum: range 2, always 1 die, not after moving 2 hexes.',
-      'Valentia, the four hexes of the town on the right of the field, is impassable and blocks line of sight.',
+      'Valentia, the four hexes of the town just right of centre, is impassable and blocks line of sight.',
       "Two Sertorian commands: Herennius' (grey blocks) and Perpenna's (light-blue blocks). Every card orders units of one command only, tactic cards such as Clash of Shields, Darken the Sky and Rally included; the player names the command when a card could order either. Each Sertorian leader belongs to his own command, so a Leadership card must use a leader of the command named. The Romans have no commands.",
       'The Romans move first.',
     ],

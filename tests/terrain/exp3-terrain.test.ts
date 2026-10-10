@@ -1,7 +1,7 @@
 // Board art for Expansion #3 (rules-reference §18.4, §18.7): scalable city walls, the impassable wall of Rome and walled
 // towns (`steep` hexes with art 'wall' or 'town'), hills under camps and walls, the steep slopes of 308 and the ship
 // markers of 313. The new BoardArt props are optional: left out (or at their defaults) the boards draw exactly as before.
-// The battles are read from their verified transcriptions (design/exp3-data) until they are imported as scenarios.
+// The battles are read from their scenario files (src/scenarios/data/3xx.json).
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -19,7 +19,7 @@ const count = (html: string, re: RegExp) => html.match(re)?.length ?? 0;
 
 type Entry = { r: number; c: number; t: string; ford?: boolean; art?: string; hill?: boolean; faces?: 'top' | 'bottom'; edges?: string[] };
 interface Battle { id: string; rules?: string[]; terrain: Entry[]; objectives?: Record<string, unknown>[] }
-const BATTLES = Object.values(import.meta.glob('../../design/exp3-data/3*.json', { eager: true, import: 'default' }) as Record<string, Battle>);
+const BATTLES = Object.values(import.meta.glob('../../src/scenarios/data/3*.json', { eager: true, import: 'default' }) as Record<string, Battle>);
 const battle = (id: string) => BATTLES.find((b) => b.id === id)!;
 
 /** A board from a terrain list (the scenario format, with the Expansion #3 `hill` and `art`). */

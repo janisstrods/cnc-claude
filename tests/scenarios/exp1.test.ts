@@ -27,10 +27,10 @@ function unitCounts(s: GameState, side: Side): Partial<Record<UnitType, number>>
 const edgesOf = (s: GameState, h: number): HexDir[] => HEX_DIRS.filter((_, i) => s.rampart[h] & (1 << i));
 
 describe('Expansion #1 battle list', () => {
-  it('the 24 battles 101-124 follow the 15 base battles, then the 23 battles 201-223', () => {
+  it('the 24 battles 101-124 follow the 15 base battles, then the 23 battles 201-223 (and Expansion #3)', () => {
     expect(EXP1).toEqual(Array.from({ length: 24 }, (_, i) => String(101 + i)));
     expect(EXP2).toEqual(Array.from({ length: 23 }, (_, i) => String(201 + i)));
-    expect(SCENARIOS.map((s) => s.id)).toEqual([...BASE, ...EXP1, ...EXP2]);
+    expect(SCENARIOS.map((s) => s.id).slice(0, BASE.length + EXP1.length + EXP2.length)).toEqual([...BASE, ...EXP1, ...EXP2]);
     expect(SCENARIOS.filter((s) => s.expansion === 'base').map((s) => s.id)).toEqual(BASE);
     expect(SCENARIOS.filter((s) => s.expansion === 'exp1').map((s) => s.id)).toEqual(EXP1);
     expect(SCENARIOS.filter((s) => s.expansion === 'exp2').map((s) => s.id)).toEqual(EXP2);
@@ -44,7 +44,9 @@ describe('Expansion #1 battle list', () => {
   });
 
   it('every Roman army is named exactly "Roman" (the rules key on it)', () => {
-    for (const s of SCENARIOS) {
+    // Expansion #3's civil-war armies are named by party ("Caesarian" on red blocks); none of its battles has a rule keyed
+    // on the name "Roman" (tests/scenarios/exp3.test.ts)
+    for (const s of SCENARIOS.filter((x) => x.expansion !== 'exp3')) {
       for (const side of SIDES) {
         const a = s.setup[side];
         if (a.blocks === 'rom' || a.look === 'roman') expect([s.id, a.army]).toEqual([s.id, 'Roman']);
@@ -228,8 +230,9 @@ describe('battle-specific setup', () => {
       text: "Antigonus' troops seize Eumenes' baggage camp!",
     }]);
     expect(s.terrain.flatMap((t, h) => (t === 'camp' ? [h] : []))).toEqual([H(8, 12)]);
-    // (Expansion #2 has capture objectives of its own, checked in exp2.test.ts)
-    expect(SCENARIOS.filter((sc) => sc.expansion !== 'exp2' && sc.setup.objectives?.some((o) => o.kind === 'capture')).map((sc) => sc.id)).toEqual(['011', '114']);
+    // (Expansions #2 and #3 have capture objectives of their own, checked in exp2.test.ts and exp3.test.ts)
+    const later = (sc: (typeof SCENARIOS)[number]) => sc.expansion === 'exp2' || sc.expansion === 'exp3';
+    expect(SCENARIOS.filter((sc) => !later(sc) && sc.setup.objectives?.some((o) => o.kind === 'capture')).map((sc) => sc.id)).toEqual(['011', '114']);
   });
 
   it('117 Asculum: no leader on the board; the 2 Roman leaders are placed first, then the 2 Epirote', () => {

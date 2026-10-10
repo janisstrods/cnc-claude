@@ -35,6 +35,8 @@ const NO_HWM = 'move: Heavy war machines may not enter';
 describe('terrain tooltips: every battle', () => {
   it('every terrain hex has a name, a Move and a Sight line, in kind order; open ground and off-board have no tip', () => {
     const seen = new Set<TerrainType>();
+    /** Terrain drawn as something else (`art`), with the name its tip gives it. */
+    const variants = new Set<string>();
     const rank = ['move', 'combat', 'sight', 'battle'];
     for (const sc of SCENARIOS) {
       const s = createGame(sc.setup, 1);
@@ -47,6 +49,7 @@ describe('terrain tooltips: every battle', () => {
           return;
         }
         seen.add(t);
+        if (art[h]) variants.add(`${t}:${art[h]}: ${tip!.name}`);
         expect(tip!.name, where).not.toBe('');
         const kinds = tip!.lines.map((x) => rank.indexOf(x.kind));
         expect(kinds, where).toContain(0);
@@ -54,7 +57,9 @@ describe('terrain tooltips: every battle', () => {
         expect(kinds, where).toEqual([...kinds].sort((a, b) => a - b));
       });
     }
-    expect([...seen].sort()).toEqual(['broken', 'camp', 'ditch', 'forest', 'hill', 'lake', 'marsh', 'rampart', 'river', 'sea', 'steep']);
+    expect([...seen].sort()).toEqual(['broken', 'camp', 'ditch', 'forest', 'hill', 'lake', 'marsh', 'rampart', 'river', 'sea', 'steep', 'wall']);
+    // the coast played as a ford (217, 313) and Expansion #3's impassable walls (301) and towns (303, 304)
+    expect([...variants].sort()).toEqual(['river:coast: Coastal Ford', 'steep:town: Town (impassable)', 'steep:wall: City Wall (impassable)']);
   });
 });
 

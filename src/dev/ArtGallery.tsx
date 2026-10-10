@@ -65,21 +65,12 @@ interface BattleArmies {
   units: { side: 'top' | 'bottom'; type: UnitType; elite?: EliteId }[];
 }
 
-/**
- * The Expansion #3 battles from their verified transcriptions (design/exp3-data) until they are imported as scenarios; a
- * battle that is a scenario already is read from SCENARIOS.
- */
-const EXP3_DATA = Object.values(import.meta.glob('../../design/exp3-data/3*.json', { eager: true, import: 'default' }) as Record<string, {
-  id: string; top: BattleArmies['top']; bottom: BattleArmies['bottom']; units: BattleArmies['units']; reserves?: BattleArmies['units'];
-}>);
-
 /** What each look fields across all scenarios: its block set, unit types, a commander's name and its elites. */
 function lookUses(): Record<string, LookUse> {
   const out: Record<string, LookUse> = {};
-  const battles: BattleArmies[] = SCENARIOS.map((sc) => ({ id: sc.id, top: sc.setup.top, bottom: sc.setup.bottom, units: sc.setup.units }));
-  for (const d of EXP3_DATA) {
-    if (!battles.some((b) => b.id === d.id)) battles.push({ id: d.id, top: d.top, bottom: d.bottom, units: [...d.units, ...(d.reserves ?? [])] });
-  }
+  const battles: BattleArmies[] = SCENARIOS.map((sc) => ({
+    id: sc.id, top: sc.setup.top, bottom: sc.setup.bottom, units: [...sc.setup.units, ...sc.setup.reserves],
+  }));
   for (const sc of battles) {
     for (const side of ['top', 'bottom'] as const) {
       const s = sc[side];

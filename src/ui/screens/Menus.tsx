@@ -35,7 +35,7 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
         </div>
         <h1 className="menu-title">Commands &amp; Colors</h1>
         <div className="menu-sub">ANCIENTS</div>
-        <p className="menu-tag">From Marathon to the Severn, 490 BC – AD 51 · {SCENARIOS.length} historical battles: the base game and Expansions #1 and #2</p>
+        <p className="menu-tag">From Marathon to the Severn, 490 BC – AD 51 · {SCENARIOS.length} historical battles: the base game and Expansions #1, #2 and #3</p>
         <div className="menu-armies" aria-hidden>
           <svg viewBox="-52 -48 524 96" width="620" height="114">
             {MENU_ARMY_L.map((t, i) => (

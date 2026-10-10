@@ -12,7 +12,7 @@ import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityFor, type A
 import { Rng } from '../../src/ai/rand';
 import { resumeTurn } from '../../src/ai/sim';
 import { scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
-import uticaJson from '../../design/exp3-data/310.json';
+import uticaJson from '../../src/scenarios/data/310.json';
 import { failOnAiErrors } from '../ai/no-ai-errors';
 import { boardUi } from '../../src/ui/game/uiModel';
 import { H, build, ev, forceDice, giveCard, must, n, noFirstStrike, passTurn, setupOf, u, type Pos } from './helpers';
@@ -433,9 +433,8 @@ describe('the board marks the victims to choose (UI, minimal)', () => {
   });
 });
 
-describe('310 Utica P1 itself (design/exp3-data/310.json)', () => {
-  // 310 is staged for import: the loader does not know expansion 'exp3' yet, so it is read as an Expansion #2 file
-  const json = (): ScenarioJson => ({ ...(JSON.parse(JSON.stringify(uticaJson)) as ScenarioJson), expansion: 'exp2' });
+describe('310 Utica P1 itself (src/scenarios/data/310.json)', () => {
+  const json = (): ScenarioJson => JSON.parse(JSON.stringify(uticaJson)) as ScenarioJson;
 
   it('the loader keeps the dice orders: the Numidians roll 2 order dice and hold no card; the Caesarians hold 6 and move first', () => {
     const { setup } = scenarioFromJson(json());

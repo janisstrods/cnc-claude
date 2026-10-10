@@ -1,6 +1,6 @@
 // Expansion #3 scenario mechanics outside the units (rules-reference §18.4, §18.8, §20): hand growth (006 Trasimenus,
 // 313 Brindisi Raid) and the objective additions (ship markers, single-side majority, leader exits, the hill a removed camp
-// leaves). The data shapes follow the verified files design/exp3-data/309, 311, 313 and 317.
+// leaves). The data shapes follow the scenario files src/scenarios/data/309, 311, 313 and 317.
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   GameDriver, OFF_BOARD, ROWS, COLS, SPECIAL_RULE_IDS, bannerTotal, cloneState, createGame, exitAllows, exitHexes, forceDice, heldBanners,
