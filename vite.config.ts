@@ -8,6 +8,8 @@ export default defineConfig({
   // GitHub Pages serves main:/docs, so the build is committed there
   build: { outDir: 'docs', emptyOutDir: true },
   plugins: [react()],
+  // build stamp shown on the main menu next to the release (src/version.ts)
+  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
   worker: { format: 'es' },
   test: {
     include: ['tests/**/*.test.ts'],

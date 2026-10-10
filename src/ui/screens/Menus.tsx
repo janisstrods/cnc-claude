@@ -12,6 +12,7 @@ import {
   OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue, saveOptionChoice,
   savePickerTab, tabForKey, type OptionId,
 } from './picker';
+import { BUILD_TIME, RELEASE, buildLabel } from '../../version';
 import './screens.css';
 
 const MENU_ARMY_L: UnitType[] = ['HI', 'MI', 'LC'];
@@ -56,6 +57,10 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
           <Button variant="ghost" onClick={() => setRules(true)}>How to Play</Button>
           <Button variant="ghost" onClick={() => setCredits(true)}>Credits</Button>
         </div>
+      </div>
+      <div className="menu-version">
+        <div>v{RELEASE.number} “{RELEASE.name}”</div>
+        <div className="menu-build">{buildLabel(BUILD_TIME)}</div>
       </div>
       <Modal open={rules} title="How to Play" onClose={() => setRules(false)} width={880}>
         <RulesReference />

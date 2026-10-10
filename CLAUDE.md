@@ -21,6 +21,10 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
 - Repo: https://github.com/janisstrods/cnc-claude. Live site: https://strods.work/cnc-claude/.
 - Pages serves **`main` branch, `/docs` folder**. `docs/` is generated build output: never hand-edit it, and never put notes there (design notes live in `design/`).
 - To publish a change: `npm run build`, then commit the source changes **together with the regenerated `docs/`**, then `git push`. Pages updates about a minute later.
+- Every publish is a release. Before building, add it at the top of `RELEASES` in `src/version.ts` and set the same number
+  in `package.json` (and the root of `package-lock.json`). The main menu shows it in the lower-right corner, with the build time.
+  Each release takes the name of a battle in the game that fits what it brings, never reused. Pick it yourself (the user
+  likes a fitting, playful choice) and tell the user; there is no need to ask first.
 - `docs/.nojekyll` comes from `public/.nojekyll`; keep it.
 - `vite.config.ts` uses `base: './'` and routes are hash-based (`#/...`) so the site works under `/cnc-claude/`. Do not introduce absolute asset paths (`/assets/...`).
 - To check the built site under the sub-path locally: run `npm run build`, then start the `pages-preview` launch config (http://localhost:4173/cnc-claude/).
