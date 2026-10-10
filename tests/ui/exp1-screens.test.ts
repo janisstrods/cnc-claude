@@ -2,9 +2,9 @@
 // placement, the satrap Leadership prompt and the controller's notices (abandoned war machines, lost command cards).
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  CARD_DEFS, GameDriver, cardKind, cloneState, createGame, hexId, orderCommander, orderLimit, randomAnswer, type GameEvent,
+  CARD_DEFS, GameDriver, UNIT_STATS, cardKind, cloneState, createGame, hexId, orderCommander, orderLimit, randomAnswer, type GameEvent,
   type GameState, type LeaderTrait, type QueuedEvent, type Side,
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
@@ -19,7 +19,7 @@ import {
   OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue,
   saveOptionChoice, savePickerTab, tabForKey,
 } from '../../src/ui/screens/picker';
-import { ScenarioSelect } from '../../src/ui/screens/Menus';
+import { OptionToggle, ScenarioSelect } from '../../src/ui/screens/Menus';
 import { build, leaderId, type Pos } from '../rules/helpers';
 
 /** A Map-backed localStorage for the node test environment. */
@@ -105,6 +105,15 @@ describe('optional rules in the briefing', () => {
   it('the explanation names the army it weakens', () => {
     expect(OPTIONAL_RULES.tacticalFlexibility.text(scenarioById('120'))).toMatch(/^Macedonian heavy infantry .* only 3 dice\.$/);
     expect(OPTIONAL_RULES.tacticalFlexibility.text(scenarioById('121'))).toMatch(/^Seleucid heavy infantry/);
+  });
+
+  it('the switch: the checkbox carries the state, the visible on/off word is hidden from screen readers', () => {
+    const html = (on: boolean) => renderToStaticMarkup(createElement(OptionToggle, { sc: scenarioById('120'), id: 'tacticalFlexibility', on, onToggle: () => {} }));
+    expect(html(true)).toMatch(/<input type="checkbox" checked=""\/>/);
+    expect(html(true)).toContain('<i aria-hidden="true">on</i>');
+    expect(html(false)).not.toMatch(/checked/);
+    expect(html(false)).toContain('<i aria-hidden="true">off</i>');
+    expect(html(false)).toContain(OPTIONAL_RULES.tacticalFlexibility.name);
   });
 
   it('a remembered choice overrides the default and is kept per option in cca-options', () => {
@@ -199,20 +208,162 @@ describe('controller notices', () => {
     }
   });
 
+  it('a unit removed for any other reason gets the generic notice', async () => {
+    const { c, animate } = await settled('118', 'bottom');
+    try {
+      const s0 = c.driver.state;
+      const unit = s0.units.find((u) => u.side === 'bottom' && u.type !== 'HWM')!;
+      const gone = cloneState(s0);
+      gone.units = gone.units.filter((u) => u.id !== unit.id);
+      await animate({ t: 'removed', id: unit.id, reason: 'left the field' }, gone);
+      expect(c.view.flashes.filter((f) => f.hex === unit.hex).map((f) => f.text)).toEqual(['Removed']);
+      expect(lastLog(c)).toBe(`Roman ${UNIT_STATS[unit.type].name} removed from the field (no banner).`);
+    } finally {
+      c.dispose();
+    }
+  });
+
   it('a lost command card is named to the human, and kept hidden for the computer', async () => {
     const { c, animate } = await settled('112', 'bottom');
+    vi.useFakeTimers();
     try {
+      const play = async (e: GameEvent, st: GameState) => {
+        const done = animate(e, st);
+        await vi.advanceTimersByTimeAsync(0);
+        await done;
+      };
       const s0 = c.driver.state;
       const mine = s0.players.bottom.hand[0];
       const title = CARD_DEFS[cardKind(mine)].title;
-      await animate({ t: 'cardLost', side: 'bottom', card: mine }, s0);
+      await play({ t: 'cardLost', side: 'bottom', card: mine }, s0);
       expect(c.view.toast).toMatchObject({ kind: 'notice', text: `You lose a command card: ${title}` });
       expect(lastLog(c)).toBe(`The ${s0.players.bottom.army} army loses a command card (${title}).`);
       const theirs = s0.players.top.hand[0];
-      await animate({ t: 'cardLost', side: 'top', card: theirs }, s0);
+      await play({ t: 'cardLost', side: 'top', card: theirs }, s0);
+      expect(lastLog(c)).toBe(`The ${s0.players.top.army} army loses a command card.`);
+      await vi.advanceTimersByTimeAsync(2800); // the second notice waits for the first
       expect(c.view.toast).toMatchObject({ kind: 'notice', text: `${s0.players.top.army} loses a command card` });
       expect(c.view.toast!.text).not.toContain(CARD_DEFS[cardKind(theirs)].title);
-      expect(lastLog(c)).toBe(`The ${s0.players.top.army} army loses a command card.`);
+    } finally {
+      vi.useRealTimers();
+      c.dispose();
+    }
+  });
+});
+
+describe('controller toasts', () => {
+  type Toaster = { toast(text: string, kind: 'turn' | 'notice', ms: number): void };
+  /** A controller on 112 waiting for the human, with fake timers from here on. */
+  async function onHellespont() {
+    const c = new GameController({ ...newSessionConfig('112', 'bottom', 'recruit'), seed: 9 }, new RandomOpponent());
+    for (let i = 0; i < 400 && !c.view.pending; i++) {
+      c.hurry();
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    expect(c.view.pending).not.toBeNull();
+    c.hurry();
+    vi.useFakeTimers();
+    const s0 = c.driver.state;
+    const lose = async () => {
+      const done = (c as unknown as { animate(q: QueuedEvent): Promise<void> }).animate({ e: { t: 'cardLost', side: 'bottom', card: s0.players.bottom.hand[0] }, state: s0 });
+      await vi.advanceTimersByTimeAsync(0);
+      await done;
+    };
+    return { c, lose, toast: (c as unknown as Toaster).toast.bind(c) };
+  }
+  afterEach(() => vi.useRealTimers());
+
+  it('a card-loss notice stays up for its full time: "Your turn" waits for it, then shows for its own', async () => {
+    const { c, lose, toast } = await onHellespont();
+    try {
+      await lose();
+      const notice = c.view.toast;
+      expect(notice).toMatchObject({ kind: 'notice' });
+      await vi.advanceTimersByTimeAsync(300);
+      toast('Your turn', 'turn', 1400);
+      expect(c.view.toast).toBe(notice);
+      await vi.advanceTimersByTimeAsync(2400); // 2.7 s after the notice appeared
+      expect(c.view.toast).toBe(notice);
+      await vi.advanceTimersByTimeAsync(200); // 2.9 s: the notice is over (at 2.8 s)
+      expect(c.view.toast).toMatchObject({ kind: 'turn', text: 'Your turn' });
+      await vi.advanceTimersByTimeAsync(1200); // 4.1 s
+      expect(c.view.toast).toMatchObject({ kind: 'turn' });
+      await vi.advanceTimersByTimeAsync(200); // 4.3 s: its own 1.4 s are over
+      expect(c.view.toast).toBeNull();
+    } finally {
+      c.dispose();
+    }
+  });
+
+  it('two notices show one after the other; "Your turn" replaces nothing but another "Your turn"', async () => {
+    const { c, lose, toast } = await onHellespont();
+    try {
+      toast('Your turn', 'turn', 1400);
+      await lose(); // a notice may replace "Your turn" at once
+      const first = c.view.toast;
+      expect(first).toMatchObject({ kind: 'notice' });
+      await lose();
+      expect(c.view.toast).toBe(first);
+      await vi.advanceTimersByTimeAsync(2850);
+      expect(c.view.toast).toMatchObject({ kind: 'notice' });
+      expect(c.view.toast).not.toBe(first);
+      await vi.advanceTimersByTimeAsync(2850);
+      expect(c.view.toast).toBeNull();
+    } finally {
+      c.dispose();
+    }
+  });
+
+  it('a "Your turn" still waiting when the human has already answered is dropped', async () => {
+    const { c, lose, toast } = await onHellespont();
+    try {
+      await lose();
+      toast('Your turn', 'turn', 1400);
+      c.driver.answers.push({ kind: 'endMove' }); // constructed: the human has answered since
+      await vi.advanceTimersByTimeAsync(2850);
+      expect(c.view.toast).toBeNull();
+    } finally {
+      c.driver.answers.pop();
+      c.dispose();
+    }
+  });
+});
+
+describe('undo during deployment (117 Asculum)', () => {
+  /** Let the controller run until the human has a decision again. */
+  async function waitHuman(c: GameController) {
+    for (let i = 0; i < 400 && !c.view.pending; i++) {
+      c.hurry();
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    expect(c.view.pending).not.toBeNull();
+  }
+
+  it('the human may take back his own placement while he is still placing; not once the computer has placed', async () => {
+    const c = new GameController({ ...newSessionConfig('117', 'bottom', 'recruit'), seed: 9 }, new RandomOpponent());
+    try {
+      await waitHuman(c);
+      const first = c.view.pending!;
+      expect(first).toMatchObject({ kind: 'placeLeader', side: 'bottom' });
+      expect(c.view.canUndo).toBe(false);
+      c.answer({ kind: 'hex', hex: (first as { options: number[] }).options[0] });
+      await waitHuman(c);
+      expect(c.view.pending).toMatchObject({ kind: 'placeLeader', side: 'bottom' });
+      expect(c.view.pending).not.toEqual(first);
+      expect(c.view.canUndo).toBe(true);
+      c.undo();
+      expect(c.view.pending).toEqual(first);
+      expect(c.view.canUndo).toBe(false);
+      expect(c.driver.answers).toEqual([]);
+      // both Roman leaders placed: the Epirotes place theirs, then the first turn; nothing to take back
+      for (let k = 0; k < 2; k++) {
+        const p = c.view.pending as { kind: string; options: number[] };
+        expect(p.kind).toBe('placeLeader');
+        c.answer({ kind: 'hex', hex: p.options[0] });
+        await waitHuman(c);
+      }
+      expect(c.view.pending?.kind).toBe('playCard');
+      expect(c.view.canUndo).toBe(false);
     } finally {
       c.dispose();
     }

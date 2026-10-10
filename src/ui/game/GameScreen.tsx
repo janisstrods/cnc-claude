@@ -239,7 +239,9 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         {label}
       </Button>
     );
-    const undoBtn = view.canUndo ? btn('Undo move', () => controller.undo(), { variant: 'ghost', key: 'undo' }) : null;
+    const undoBtn = view.canUndo
+      ? btn(d.kind === 'placeLeader' ? 'Undo placement' : 'Undo move', () => controller.undo(), { variant: 'ghost', key: 'undo' })
+      : null;
     switch (d.kind) {
       case 'playCard': {
         const sel = ui.selCard;
@@ -405,7 +407,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         return {
           title: `Place ${l?.name || 'your leader'}`,
           text: `Before the battle: click one of your units (gold) to attach him, or any faintly marked empty hex where he stands alone.${more ? ` ${more} more to place after him.` : ''}`,
-          buttons: [],
+          buttons: undoBtn ? [undoBtn] : [],
         };
       }
       default:

@@ -10,7 +10,7 @@ import { PERSONALITIES, personalityFor } from '../../ai';
 import { RulesReference } from './RulesReference';
 import {
   OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue, saveOptionChoice,
-  savePickerTab, tabForKey,
+  savePickerTab, tabForKey, type OptionId,
 } from './picker';
 import './screens.css';
 
@@ -107,6 +107,22 @@ const DIFFS: { id: Difficulty; name: string; text: string }[] = [
   { id: 'tribune', name: 'Tribune', text: 'A capable general. Recommended.' },
   { id: 'consul', name: 'Consul', text: 'Thinks deeper and punishes errors.' },
 ];
+
+/**
+ * One optional rule of the briefing, as a switch. The checkbox carries the state for assistive technology; the visible
+ * on/off word is hidden from it so the state is not read twice.
+ */
+export function OptionToggle({ sc, id, on, onToggle }: { sc: ScenarioInfo; id: OptionId; on: boolean; onToggle: () => void }) {
+  return (
+    <label className={`opt-toggle ${on ? 'on' : ''}`}>
+      <input type="checkbox" checked={on} onChange={onToggle} />
+      <span className="opt-switch" aria-hidden />
+      <span className="opt-text">
+        <b>{OPTIONAL_RULES[id].name}</b> <i aria-hidden>{on ? 'on' : 'off'}</i> — {OPTIONAL_RULES[id].text(sc)}
+      </span>
+    </label>
+  );
+}
 
 export function ScenarioSelect(p: {
   onBack: () => void;
@@ -211,15 +227,7 @@ export function ScenarioSelect(p: {
               <div className="brief-options-label">Optional rules</div>
               {offered.map((id) => {
                 const on = optionValue(sel, id, choices);
-                return (
-                  <label key={id} className={`opt-toggle ${on ? 'on' : ''}`}>
-                    <input type="checkbox" checked={on} onChange={() => setChoices(saveOptionChoice(choices, id, !on))} />
-                    <span className="opt-switch" aria-hidden />
-                    <span className="opt-text">
-                      <b>{OPTIONAL_RULES[id].name}</b> <i>{on ? 'on' : 'off'}</i> — {OPTIONAL_RULES[id].text(sel)}
-                    </span>
-                  </label>
-                );
+                return <OptionToggle key={id} sc={sel} id={id} on={on} onToggle={() => setChoices(saveOptionChoice(choices, id, !on))} />;
               })}
             </div>
           )}

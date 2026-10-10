@@ -153,6 +153,8 @@ export class GameController {
   private busy = false;
   private disposed = false;
   private skipAnim = false;
+  /** Toasts waiting for the notice on the board to run its full time (see `toast`). */
+  private toastQueue: { text: string; kind: 'turn' | 'notice'; ms: number; stale?: () => boolean }[] = [];
 
   constructor(config: SessionConfig, opponent: Opponent, answers: Answer[] = [], check?: SavedGame['check']) {
     this.config = config;
@@ -282,7 +284,7 @@ export class GameController {
       console.error(e);
       // the generator is dead: rebuild it from the recorded answers
       this.driver = GameDriver.replay(this.driver.initial, this.driver.answers, { snapshots: true });
-      this.set({ error: 'That order could not be resolved — try another.', pending: this.driver.pending, display: cloneState(this.driver.state), canUndo: this.driver.canUndo() });
+      this.set({ error: 'That order could not be resolved — try another.', pending: this.driver.pending, display: cloneState(this.driver.state), canUndo: this.undoable(this.driver.pending) });
       return;
     }
     if (!ok) {
@@ -294,12 +296,17 @@ export class GameController {
     this.run();
   }
 
+  /** May the human take back the last answer now: a move while moving, a leader placement while deploying (Asculum)? */
+  private undoable(d: Decision | null): boolean {
+    return (d?.kind === 'move' || d?.kind === 'placeLeader') && this.driver.canUndo();
+  }
+
   undo() {
     if (!this.driver.canUndo() || this.busy) return;
     this.driver = this.driver.undo();
     this.driver.drainEvents();
     const p = this.driver.pending;
-    this.set({ display: cloneState(this.driver.state), pending: p && p.side === this.config.humanSide ? p : null, canUndo: p?.kind === 'move' && this.driver.canUndo(), error: null, walking: {} });
+    this.set({ display: cloneState(this.driver.state), pending: p && p.side === this.config.humanSide ? p : null, canUndo: this.undoable(p), error: null, walking: {} });
     this.save();
     if (p && p.side !== this.config.humanSide) this.run();
   }
@@ -331,7 +338,7 @@ export class GameController {
           const combat = d.kind === 'defend'
             ? { from: this.hexOf(d.attacker, st), to: this.hexOf(d.target, st) }
             : d.kind === 'battle' || d.kind === 'move' || d.kind === 'playCard' || d.kind === 'orders' ? null : this.view.combat;
-          this.set({ pending: d, display: cloneState(st), canUndo: d.kind === 'move' && this.driver.canUndo(), aiThinking: false, combat });
+          this.set({ pending: d, display: cloneState(st), canUndo: this.undoable(d), aiThinking: false, combat });
           return;
         }
         // AI decision
@@ -410,11 +417,31 @@ export class GameController {
     return (unitById(s, id) ?? this.view.display.units.find((x) => x.id === id))?.hex ?? OFF_BOARD;
   }
 
-  /** Show a centre-board toast for `ms` (real time: the CSS animation does not follow the game speed). */
+  /**
+   * Show a centre-board toast for `ms` (real time: the CSS animation does not follow the game speed). A notice (a lost
+   * command card) is never cut short: a toast that comes while one is up waits for it, in order. "Your turn" is dropped
+   * if the human has answered by the time it would show.
+   */
   private toast(text: string, kind: 'turn' | 'notice', ms: number) {
+    let stale: (() => boolean) | undefined;
+    if (kind === 'turn') {
+      const answers = this.driver.answers.length;
+      stale = () => this.driver.answers.length !== answers;
+    }
+    if (this.view.toast?.kind === 'notice') this.toastQueue.push({ text, kind, ms, stale });
+    else this.showToast(text, kind, ms);
+  }
+
+  private showToast(text: string, kind: 'turn' | 'notice', ms: number) {
     const toast = { id: seq++, text, kind };
     this.set({ toast });
-    setTimeout(() => { if (this.view.toast?.id === toast.id) this.set({ toast: null }); }, ms);
+    setTimeout(() => {
+      if (this.view.toast?.id !== toast.id) return;
+      let next = this.toastQueue.shift();
+      while (next?.stale?.()) next = this.toastQueue.shift();
+      if (next) this.showToast(next.text, next.kind, next.ms);
+      else this.set({ toast: null });
+    }, ms);
   }
 
   /** Remove the flashes still showing on a hex (so a new one does not overlap them). */
@@ -531,12 +558,20 @@ export class GameController {
         break;
       }
       case 'removed': {
-        // Leaves the board like an eliminated unit, but no banner is awarded (a war machine abandoned after evading).
-        // It follows the evade at once: replace that hex's "Evaded" rather than stacking on it.
+        // Leaves the board like an eliminated unit, but no banner is awarded.
         const hex = this.hexOf(e.id, before);
-        this.clearFlashes(hex);
-        this.flash(hex, 'Abandoned', 'info');
-        this.addLog({ text: `${this.name(e.id, before)} abandoned (no banner).`, side: this.sideOf(e.id, before), kind: 'result' });
+        const side = this.sideOf(e.id, before);
+        switch (e.reason) {
+          case 'war machine abandoned':
+            // it follows the evade at once: replace that hex's "Evaded" rather than stacking on it
+            this.clearFlashes(hex);
+            this.flash(hex, 'Abandoned', 'info');
+            this.addLog({ text: `${this.name(e.id, before)} abandoned (no banner).`, side, kind: 'result' });
+            break;
+          default:
+            this.flash(hex, 'Removed', 'info');
+            this.addLog({ text: `${this.name(e.id, before)} removed from the field (no banner).`, side, kind: 'result' });
+        }
         this.set({ display: after });
         await sleep(this.dur(450));
         break;
