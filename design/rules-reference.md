@@ -768,12 +768,16 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
     the move ends there. A piece that begins its move on a wall hex moves at most 1 hex that turn. Walking along a wall is
     no easier: every wall-to-wall step is a full move. A retreating or evading foot unit or leader passes through or onto
     wall hexes without stopping (no special rule beyond the usual occupied-hex limits).
+    **[Interp]** "That turn": a unit that began the turn on a wall and moved off it gets no second Move-Fire-Move move. A
+    reserve entering from off the board (§18.5) never begins next to a wall, so it cannot be placed on one.
   * **Barred.** Mounted units (cavalry, chariots, elephants, camels) and war machines treat a wall hex as impassable: no
     move, retreat, evade or momentum advance onto it (the advance is later wording). A foot unit's momentum advance onto a
     wall hex its own attack vacated is not forbidden, so it is allowed **[Interp]**; it ends there like any entry.
   * **Attacking a wall unit.** A mounted unit or war machine may close combat a unit standing on a wall hex only if it
     **began the turn next to that wall hex** (later wording: next to the enemy unit it attacks); moving up to it first does
-    not qualify. Foot units attack as usual.
+    not qualify. Foot units attack as usual. **[Interp]** The same holds for a lone leader standing on a wall (the limit is
+    the attacker's reach); it applies to every attack and bonus combat, but a battle back is no attack: a mounted unit
+    attacked from a wall battles back as usual.
   * **Dice.** In any close combat in which either combatant stands on a wall hex (attack, bonus combat, battle back, first
     strike) the roller has at most **2 dice**. Card and leader bonus dice (§4: Clash of Shields, Mounted Charge, I Am
     Spartacus, Alexander, Caesar) are added after the cap. Ranged combat has no wall cap, and there is no −1 die as on a
@@ -818,11 +822,27 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
     that cannot be taken (1 block lost).
   * From the hill down into the forest: allowed (move, retreat, evade).
   * **No close combat either way** (no attack, bonus combat, battle back or First Strike): a unit across such a hexside from
-    an enemy can neither attack it nor be attacked by it from there. Ranged combat and line of sight are not affected.
+    an enemy can neither attack it nor be attacked by it from there. Ranged combat and line of sight are not affected. A
+    momentum advance always goes into the hex of the unit just fought, so it can never cross a steep slope; the cavalry
+    extra hex can, and may not climb one. **[Interp]** A warrior's long move (§7: 2 hexes only to charge) must end next to
+    an enemy it could close combat, so not next to one only across a steep slope.
   * Leaders are treated like units **[Interp]** (the text says "units").
   * The hexsides come from the terrain (the 308 map has 12), not from data.
 * Engine (X3 Q3–Q6): `wall` is a terrain type; `hillUnder[hex]` is a per-hex flag beside the terrain array (copy-on-write
   like it; `setTerrain` keeps it); `hill: true` is accepted in data only on `camp` and `wall`; `steepSlopes` is a rule id.
+  * Walls: `stopsAll` includes `wall`; `forbidsTerrain` (and `barredTerrain`, the list the AI reads) bars it to every
+    type that is not infantry, which covers moves, momentum, the cavalry extra hex, retreats, evades and setup positions.
+    `unitMoves` lets a unit onto a wall only as the first step of its move (`from === startHex`, never from the reserve) and
+    caps a move that begins on one at 1 hex (like a marsh); `leaderMoves` likewise. `ccCapOfHex(wall)` = 2. `wallShields`
+    (the defender's sword and flag) goes with the rampart in `swordIgnores` and `ignorableFlags`. `closeTargets` drops a
+    wall hex for a mounted unit or war machine whose `turn.ordered[id].startHex` is not next to it. In `closeCombat`
+    `wallStrikesFirst` (defender on a wall, attacker not) replaces the First Strike card: the card is not offered or
+    discarded, `firstStrikeBy` stays null, and the existing First Strike sequence follows (role `firstStrike`).
+  * Line of sight: `terrainBlocksSight` (shared by the engine's `lineOfSight` and the AI's `losOcc`) checks a wall hex
+    first (blocks unless `from`, `to` and it are in one `wallGroups` group), then the other blocking terrain, then hills
+    (`hillGroups` over `isHill`, so a hill under a camp or wall joins the plateau).
+  * Slopes: `steepSlope(s, a, b)` (either way: close combat in `closeTargets`) and `steepSlopeUp(s, from, to)` (moves,
+    leader moves, momentum, the extra hex, retreat, evade, leader evade).
 
 ### 18.8 Hand growth (006 Trasimenus, 313 Brindisi Raid)
 
