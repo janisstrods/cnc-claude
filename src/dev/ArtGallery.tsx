@@ -1,7 +1,8 @@
 // Dev gallery for the miniature art: http://localhost:5173/#/gallery/art
 // Close-up routes: #/gallery/art/detail/<look|rome|carthage|syracuse>[/TYPE,TYPE..] (tokens),
-// #/gallery/art/figures/<look>[/TYPE,TYPE..[/<elite>]] (single figures, much enlarged)
-import type { ReactNode } from 'react';
+// #/gallery/art/figures/<look>[/TYPE,TYPE..[/<elite>]] (single figures, much enlarged),
+// #/gallery/art/boxes/<look,look..>/<TYPE,TYPE..> (measured icon boxes of figure i = 2, for KitDef.iconBox)
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ArmyLook, Blocks, UnitType } from '../engine/types';
 import { hexPoints, HEX_W, HEX_R } from '../ui/geometry';
 import { BLOCK_COLORS, LEADER_ATTACH_OFFSET, LOOKS, LeaderToken, UnitIcon, UnitToken, paletteFor, unitTypeName } from '../art';
@@ -68,7 +69,7 @@ function lookUses(): Record<string, LookUse> {
 }
 /**
  * The Expansion #2 armies until their battles are in the scenario list: blocks, the unit types they field (survey of
- * battles 201-223; BCH and HWM get their figures in plan Task 15), a commander, elites.
+ * battles 201-223), a commander, elites.
  */
 const EXP2: Partial<Record<ArmyLook, LookUse>> = {
   gallic: { blocks: 'bar', types: new Set(['LI', 'AX', 'WA', 'LC', 'MC', 'BCH']), commander: 'Aneroestes', elites: [] },
@@ -296,6 +297,30 @@ const EXP2_BOARD: BoardUnit[] = [
   { r: 2, c: 6, type: 'WA', look: 'marian', blocks: 4, facing: 'left' },
 ];
 
+/** Expansion #2 horse, chariots and engines: Celtic and British chariots, the Barbarian and Marian cavalry, the ballista. */
+const EXP2_MOUNTED_BOARD: BoardUnit[] = [
+  { r: 0, c: 0, type: 'BCH', look: 'gallic', blocks: 3, facing: 'right' },
+  { r: 0, c: 1, type: 'LC', look: 'gallic', blocks: 3, facing: 'right' },
+  { r: 0, c: 2, type: 'MC', look: 'gallic', blocks: 3, facing: 'right', leader: true },
+  { r: 0, c: 3, type: 'MC', look: 'belgic', blocks: 3, facing: 'right' },
+  { r: 0, c: 4, type: 'BCH', look: 'briton', blocks: 3, facing: 'right' },
+  { r: 0, c: 5, type: 'LC', look: 'briton', blocks: 3, facing: 'right' },
+  { r: 0, c: 6, type: 'BCH', look: 'briton', blocks: 2, facing: 'right' },
+  { r: 1, c: 0, type: 'LC', look: 'marian', blocks: 3, facing: 'left' },
+  { r: 1, c: 1, type: 'MC', look: 'marian', blocks: 3, facing: 'left', leader: true, name: 'Caesar' },
+  { r: 1, c: 2, type: 'HWM', look: 'marian', blocks: 2, facing: 'left' },
+  { r: 1, c: 3, type: 'MC', look: 'roman', blocks: 3, facing: 'left' },
+  { r: 1, c: 4, type: 'LC', look: 'roman', blocks: 3, facing: 'left' },
+  { r: 1, c: 5, type: 'HWM', look: 'roman', blocks: 2, facing: 'left' },
+  { r: 2, c: 0, type: 'LC', look: 'germanic', blocks: 3, facing: 'right' },
+  { r: 2, c: 1, type: 'MC', look: 'germanic', blocks: 3, facing: 'right' },
+  { r: 2, c: 2, type: 'LC', look: 'slave', blocks: 3, facing: 'right', leader: true, name: 'Spartacus' },
+  { r: 2, c: 3, type: 'MC', look: 'slave', blocks: 3, facing: 'right' },
+  { r: 2, c: 4, type: 'BCH', look: 'gallic', blocks: 1, facing: 'right' },
+  { r: 2, c: 5, type: 'MC', look: 'marian', blocks: 2, facing: 'left' },
+  { r: 2, c: 6, type: 'HWM', look: 'marian', blocks: 1, facing: 'left' },
+];
+
 /** Looks that field a type in their battles (gallery order). */
 const fielding = (t: UnitType) => LOOK_ORDER.filter((look) => USES[look]?.types.has(t));
 
@@ -387,6 +412,12 @@ function Detail() {
   );
 }
 
+/** Width and viewBox of a single figure by kind: foot, mounted, and the wider chariots and war machines. */
+const FIGURE_VIEW: Record<ReturnType<typeof figureKind>, [number, string]> = {
+  foot: [220, '-16 -46 34 47'], horse: [330, '-26 -50 52 52'], camel: [330, '-26 -50 52 52'], elephant: [330, '-26 -50 52 52'],
+  chariot: [370, '-30 -50 62 52'], machine: [370, '-34 -46 62 47'],
+};
+
 /** Single figures (i = 0..3) much enlarged: #/gallery/art/figures/<look>/<TYPE,TYPE..>[/<elite>]. */
 function Figures() {
   const parts = window.location.hash.split('/');
@@ -400,7 +431,7 @@ function Figures() {
         <div key={t} style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
           <span style={{ font: '700 18px Cinzel, serif', width: 50 }}>{t}</span>
           {[0, 1, 2, 3].map((i) => (
-            <svg key={i} width={figureKind(t) === 'foot' ? 220 : 330} height={300} viewBox={figureKind(t) === 'foot' ? '-16 -46 34 47' : '-26 -50 52 52'} style={{ background: GRASS, borderRadius: 4 }}>
+            <svg key={i} width={FIGURE_VIEW[figureKind(t)][0]} height={300} viewBox={FIGURE_VIEW[figureKind(t)][1]} style={{ background: GRASS, borderRadius: 4 }}>
               <FacingRightCtx.Provider value>
                 <Miniature type={t} p={p} i={i} elite={elite} />
               </FacingRightCtx.Provider>
@@ -408,6 +439,44 @@ function Figures() {
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Measured extents of figure i = 2 (as UnitIcon draws it) per type: the union over the looks named in the route and each
+ * look's own, as `[top, bottom, left, right]` (getBBox, so without stroke widths; icon boxes add about 1 unit of margin).
+ */
+function Boxes() {
+  const parts = window.location.hash.split('/');
+  const looks = (parts[4] ?? 'roman').split(',').filter((l) => l in LOOKS) as ArmyLook[];
+  const types = (parts[5] ?? 'HCH,BCH,HWM').split(',') as UnitType[];
+  const ref = useRef<HTMLDivElement>(null);
+  const [out, setOut] = useState('measuring');
+  useEffect(() => {
+    const r1 = (n: number) => Math.round(n * 10) / 10;
+    const res: Record<string, Record<string, number[]>> = {};
+    ref.current?.querySelectorAll<SVGGElement>('g[data-box]').forEach((g) => {
+      const [look, type] = (g.dataset.box ?? '').split('/');
+      const b = g.getBBox();
+      const box = [b.y, b.y + b.height, b.x, b.x + b.width];
+      const u = (res[type] ??= { union: box });
+      u[look] = box.map(r1);
+      u.union = [Math.min(u.union[0], box[0]), Math.max(u.union[1], box[1]), Math.min(u.union[2], box[2]), Math.max(u.union[3], box[3])];
+    });
+    for (const t of Object.keys(res)) res[t].union = res[t].union.map(r1);
+    setOut(JSON.stringify(res));
+  }, []);
+  return (
+    <div ref={ref}>
+      <pre id="boxes">{out}</pre>
+      {looks.flatMap((look) => types.map((t) => (
+        <svg key={`${look}${t}`} width={200} height={200} viewBox="-50 -60 100 70">
+          <FacingRightCtx.Provider value>
+            <g data-box={`${look}/${t}`}><Miniature type={t} p={paletteFor(look, blocksOf(look))} i={2} /></g>
+          </FacingRightCtx.Provider>
+        </svg>
+      )))}
     </div>
   );
 }
@@ -516,8 +585,9 @@ function Exp2Gallery() {
   return (
     <div style={{ minHeight: '100vh', padding: '22px 26px 60px', background: '#e3d3ad', fontFamily: '"EB Garamond", Georgia, serif', color: '#2b2014' }}>
       <h1 style={{ font: '700 30px Cinzel, Georgia, serif', margin: '0 0 12px', letterSpacing: 2 }}>Rome &amp; the Barbarians</h1>
-      <Row title="At board scale (1×)">
+      <Row title="At board scale (1×)" note="Second board: chariots, cavalry and war machines (the base-game Roman LC, MC and HWM in the middle row for comparison).">
         <BoardSample units={EXP2_BOARD} lone={{ r: 1, c: 6, look: 'marian', name: 'Caesar', facing: 'left' }} />
+        <BoardSample units={EXP2_MOUNTED_BOARD} lone={{ r: 1, c: 6, look: 'gallic', name: 'Vercingetorix', facing: 'left' }} />
       </Row>
       <Row title="Block colours" note="The Barbarian green and the grey Roman command (edgeBlocks) beside the other sets.">
         <BlockSwatches />
@@ -539,6 +609,7 @@ function Exp2Gallery() {
 export default function ArtGallery() {
   if (window.location.hash.startsWith('#/gallery/art/detail')) return <Detail />;
   if (window.location.hash.startsWith('#/gallery/art/figures')) return <Figures />;
+  if (window.location.hash.startsWith('#/gallery/art/boxes')) return <Boxes />;
   if (window.location.hash.startsWith('#/gallery/art/exp2')) return <Exp2Gallery />;
   return (
     <div
@@ -562,6 +633,7 @@ export default function ArtGallery() {
         <BoardSample units={GREEK_BOARD} lone={{ r: 1, c: 6, look: 'theban', name: 'Epaminondas', facing: 'left' }} />
         <BoardSample units={BIG_BOARD} lone={{ r: 1, c: 6, look: 'macedonian', name: 'Alexander', facing: 'left' }} />
         <BoardSample units={EXP2_BOARD} lone={{ r: 1, c: 6, look: 'marian', name: 'Caesar', facing: 'left' }} />
+        <BoardSample units={EXP2_MOUNTED_BOARD} lone={{ r: 1, c: 6, look: 'gallic', name: 'Vercingetorix', facing: 'left' }} />
       </Row>
 
       <Row title="Block colours" note="Base edge, standard and captured-banner cloth of each block set, and on the board; last: a unit of a grey command in a red army (edgeBlocks, 210 Lentulus).">
@@ -599,10 +671,15 @@ export default function ArtGallery() {
         ))}
       </Row>
 
-      <Row title="Chariots, camels, war machines" note="Scythed four-horse chariots (Persia, Seleucids), the big Indian chariot, the base-game chariot; Arab camel archers (Magnesia); bolt-throwers (Jaxartes, Beneventum).">
+      <Row title="Chariots, camels, war machines" note="Scythed four-horse chariots (Persia, Seleucids), the big Indian chariot, the base-game chariot; the Celtic and British light chariots (BCH); Arab camel archers (Magnesia); bolt-throwers (Jaxartes, Beneventum) and the Marian ballista.">
         {fielding('HCH').map((look) => (
           <Hex key={look} scale={1.5} label={`${LOOK_LABEL[look]} HCH`}><Token type="HCH" look={look} blockColor={blocksOf(look)} /></Hex>
         ))}
+        {fielding('BCH').map((look) => (
+          <Hex key={`b${look}`} scale={1.5} label={`${LOOK_LABEL[look]} BCH`}><Token type="BCH" look={look} blockColor={blocksOf(look)} /></Hex>
+        ))}
+        <Hex scale={1.5} label="BCH 2/3, left"><Token type="BCH" look="briton" blockColor="bar" blocks={2} facing="left" /></Hex>
+        <Hex scale={1.5} label="BCH 1/3"><Token type="BCH" look="gallic" blockColor="bar" blocks={1} /></Hex>
         {fielding('CAM').map((look) => (
           <Hex key={`c${look}`} scale={1.5} label={`${LOOK_LABEL[look]} CAM`}><Token type="CAM" look={look} blockColor={blocksOf(look)} /></Hex>
         ))}
@@ -613,7 +690,7 @@ export default function ArtGallery() {
         <Hex scale={1.5} label="HWM 1/2, left"><Token type="HWM" look="roman" blockColor="rom" blocks={1} facing="left" /></Hex>
       </Row>
 
-      <Row title="Every kit, every type" note="One look per kit with all sixteen unit types (also the types its armies never field; BCH draws the chariot until plan Task 15).">
+      <Row title="Every kit, every type" note="One look per kit with all sixteen unit types (also the types its armies never field: a kit without its own light chariot mans the BCH with its light infantryman and a crewman).">
         {(['syracusan', 'macedonian', 'persian', 'scythian', 'indian', 'gallic', 'germanic', 'marian'] as ArmyLook[]).map((look) => (
           <div key={look} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, width: '100%' }}>
             {TYPES.map((t) => (

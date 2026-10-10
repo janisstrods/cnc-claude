@@ -90,7 +90,7 @@ describe('the kit table', () => {
   });
 
   it('a kit that leaves choices out gets fallbacks from its own figures', () => {
-    const lean = Object.entries(KIT_DEFS).filter(([, d]) => !d.crew || !d.chariot || !d.elephant || !d.horseArcher) as [Kit, (typeof KIT_DEFS)[Kit]][];
+    const lean = Object.entries(KIT_DEFS).filter(([, d]) => !d.crew || !d.chariot || !d.elephant || !d.horseArcher || !d.lightChariot) as [Kit, (typeof KIT_DEFS)[Kit]][];
     for (const [kit, def] of lean) {
       const full = KITS[kit];
       if (!def.crew) {
@@ -99,6 +99,11 @@ describe('the kit table', () => {
         expect(full.crew(1), kit).toMatchObject({ torso: mi.torso, helmet: mi.helmet, crest: mi.crest });
       }
       if (!def.chariot) expect(full.chariot, kit).toMatchObject({ drawing: 'base', warrior: { helmet: full.crew(0).helmet } });
+      if (!def.lightChariot) {
+        // the light chariot (BCH) manned by the kit's light infantryman and a crewman
+        expect(full.lightChariot.warrior(1), kit).toEqual(def.foot('LI', 1));
+        expect(full.lightChariot.driver(0), kit).toEqual(full.crew(1));
+      }
       if (!def.elephant) expect(full.elephant, kit).toMatchObject({ drawing: 'base', rider: { torso: full.crew(0).torso } });
       if (!def.horseArcher) expect(full.horseArcher.rider(0), kit).toMatchObject({ weapon: 'bow', shield: 'none' });
       expect(full.crewBow, kit).toBe(def.crewBow ?? 'self');

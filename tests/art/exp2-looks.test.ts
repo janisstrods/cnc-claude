@@ -10,6 +10,7 @@ import { LeaderToken, UnitIcon, UnitToken } from '../../src/art';
 import { ELITE_FOOT, FootFigure, figurePalette, footKit, lookKit, type FootKit } from '../../src/art/foot';
 import { Shield, makeFig, type ShieldKind } from '../../src/art/parts';
 import { EliteStandard, Miniature } from '../../src/art/token';
+import { lightChariotCrew } from '../../src/art/chariot';
 import { deltaE } from './delta-e';
 
 const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
@@ -182,6 +183,53 @@ describe('Expansion #2 looks', () => {
         expect(out, `${kind} ${device}`).not.toMatch(/NaN|undefined/);
       }
     }
+  });
+});
+
+describe('Barbarian light chariots (BCH)', () => {
+  const figure = (look: ArmyLook, type: UnitType, i: number) => svg(h(Miniature, { type, p: paletteFor(look, blocksOf(look)), i }));
+  const inner = (markup: string) => markup.replace(/^<svg>|<\/svg>$/g, '');
+
+  it('are their own figure, not the heavy chariot: the warrior with his javelin raised stands in a light car', () => {
+    for (const look of [...EXP2, 'roman', 'carthaginian', 'macedonian', 'persian', 'scythian', 'indian'] as ArmyLook[]) {
+      const p = paletteFor(look, blocksOf(look));
+      for (let i = 0; i < 3; i++) {
+        const bch = figure(look, 'BCH', i);
+        expect(bch, `${look} ${i}`).not.toBe(figure(look, 'HCH', i));
+        expect(bch, `${look} ${i}`).not.toMatch(/NaN|undefined|Infinity/);
+        const { warrior } = lightChariotCrew(p, i);
+        expect(warrior.weapon, `${look} ${i}`).toBe('javelin');
+        // the warrior is drawn as that foot figure
+        expect(bch, `${look} ${i}`).toContain(inner(svg(h(FootFigure, { kit: warrior, p, i }))));
+      }
+    }
+  });
+
+  it('the Celts: long shields, a noble in mail and a helmet; the Britons: woad on both men and no helmets', () => {
+    const gaul = [0, 1, 2].map((i) => lightChariotCrew(paletteFor('gallic', 'bar'), i));
+    expect(gaul.every((c) => c.warrior.shield === 'celtOval' && !c.warrior.woad && !c.driver.woad)).toBe(true);
+    expect(gaul.map((c) => c.warrior.helmet)).toEqual(['none', 'montefortino', 'none']);
+    expect(gaul[1].warrior.torso).toBe('mail');
+    const brit = [0, 1, 2].map((i) => lightChariotCrew(paletteFor('briton', 'bar'), i));
+    expect(brit.every((c) => c.warrior.woad && c.driver.woad && c.warrior.helmet === 'none' && c.driver.helmet === 'none')).toBe(true);
+    expect(brit.filter((c) => c.warrior.torso === 'bare').length).toBeGreaterThan(gaul.filter((c) => c.warrior.torso === 'bare').length);
+    const woad = paletteFor('briton', 'bar').woad ?? '';
+    expect(figure('briton', 'BCH', 0)).toContain(woad);
+    expect(figure('gallic', 'BCH', 0)).not.toContain(woad);
+    // the Belgae, the Germans and the Slave army use the Celtic chariot (the Germanic kit mans it with its own men)
+    for (const look of ['belgic', 'slave'] as ArmyLook[]) expect(lightChariotCrew(paletteFor(look, 'bar'), 1)).toEqual(gaul[1]);
+    expect(lightChariotCrew(paletteFor('germanic', 'bar'), 1).warrior).toEqual(KITS.germanic.foot('LI', 1));
+  });
+
+  it('a unit shows one chariot per block (three at full strength), and its icon fits its box', () => {
+    // the yoke over the ponies' withers, once per chariot (an outlined stroke: two paths)
+    const yoke = 'd="M13.2 -14.8 Q15 -16.1 16.8 -15.1"';
+    for (let blocks = 1; blocks <= 3; blocks++) {
+      const out = svg(h(UnitToken, { type: 'BCH', look: 'gallic', blockColor: 'bar', blocks, maxBlocks: 3, facing: 'right' }));
+      expect(out.split(yoke).length - 1, `${blocks} blocks`).toBe(2 * blocks);
+    }
+    expect(KITS.celtic.iconBox.BCH).toBeDefined();
+    expect(svg(h(UnitIcon, { type: 'BCH', look: 'briton', blockColor: 'bar', size: 64 }))).not.toMatch(/NaN/);
   });
 });
 

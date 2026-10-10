@@ -555,15 +555,21 @@ export interface CrewDress {
   moustache?: boolean;
   longSleeve?: boolean;
   legs?: 'bare' | 'trousers';
+  // Expansion #2
+  /** A gold torc at the neck (Celtic crews). */
+  torc?: boolean;
+  /** Woad on the cheek, the arms and a bare chest (British crews). */
+  woad?: boolean;
 }
 
-function CrewFigure({ p: armyP, i, pose }: { p: Palette; i: number; pose: CrewPose }) {
+function CrewFigure({ p: armyP, i, pose, dress }: { p: Palette; i: number; pose: CrewPose; dress?: CrewDress }) {
   const p = figurePalette(armyP, i);
   const f = makeFig(p, i);
-  const d = KITS[p.kit].crew(i);
+  const d = dress ?? KITS[p.kit].crew(i);
   const hands = typeof pose === 'string' ? CREW_HANDS[pose] : pose;
   const sleeve = d.torso === 'mail' ? p.iron : p.tunic;
   const long = !!d.longSleeve;
+  const woad = d.woad ? p.woad ?? WOAD : undefined;
   const elbow = (s: [number, number], h: [number, number], drop: number): [number, number] => [
     Number(((s[0] + h[0]) / 2 - 0.6).toFixed(2)), Number(((s[1] + h[1]) / 2 + drop).toFixed(2)),
   ];
@@ -571,11 +577,13 @@ function CrewFigure({ p: armyP, i, pose }: { p: Palette; i: number; pose: CrewPo
   const ns: [number, number] = [2.2, -20.6];
   return (
     <>
-      <Arm s={fs} e={elbow(fs, hands.far, 2.2)} h={hands.far} f={f} sleeve={sleeve} long={long} />
+      <Arm s={fs} e={elbow(fs, hands.far, 2.2)} h={hands.far} f={f} sleeve={sleeve} long={long} woad={woad} />
       <LegsEl f={f} legs={d.legs ?? 'bare'} />
       <Body f={f} torso={d.torso} skirt />
-      <Head f={f} helmet={d.helmet} crest={d.crest} hair={d.hair} beard={d.beard} moustache={d.moustache} />
-      <Arm s={ns} e={elbow(ns, hands.near, 2.4)} h={hands.near} f={f} near sleeve={sleeve} long={long} />
+      {woad && d.torso === 'bare' && <WoadBody p={p} />}
+      <Head f={f} helmet={d.helmet} crest={d.crest} hair={d.hair} beard={d.beard} moustache={d.moustache} torc={d.torc} />
+      {woad && <WoadFace p={p} />}
+      <Arm s={ns} e={elbow(ns, hands.near, 2.4)} h={hands.near} f={f} near sleeve={sleeve} long={long} woad={woad} />
     </>
   );
 }
@@ -583,8 +591,9 @@ function CrewFigure({ p: armyP, i, pose }: { p: Palette; i: number; pose: CrewPo
 /**
  * A war-machine crewman in his army's dress (for the HWM figure): facing right, feet at (0,0), ~30 units tall, unarmed,
  * hands where `pose` puts them ('crank' at waist height, 'load' at chest height, 'aim' one hand forward at the head, or
- * explicit `{ near, far }` hand points in the figure frame). `i` (0..3) varies the face, headgear and paint.
+ * explicit `{ near, far }` hand points in the figure frame). `i` (0..3) varies the face, headgear and paint. `dress`
+ * replaces the kit's crew dress (a light chariot's driver).
  */
-export function crewFigure(p: Palette, i: number, pose: CrewPose = 'crank'): JSX.Element {
-  return <CrewFigure p={p} i={i} pose={pose} />;
+export function crewFigure(p: Palette, i: number, pose: CrewPose = 'crank', dress?: CrewDress): JSX.Element {
+  return <CrewFigure p={p} i={i} pose={pose} dress={dress} />;
 }

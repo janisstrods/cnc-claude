@@ -1,6 +1,6 @@
 import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
-import type { CrewDress, FootLook } from './foot';
+import type { CrewDress, FootKit, FootLook } from './foot';
 import type { BustDef, ElephantDef, HorseCoat, MountKit } from './kits';
 import type { RiderKit } from './mounted';
 import type { Crest, Helmet } from './parts';
@@ -151,6 +151,8 @@ export interface LookStyle {
   elephant?: ElephantDef;
   /** Changes to the dress of the kit's scythed-chariot driver. */
   chariotDriver?: Partial<CrewDress>;
+  /** Changes to the crew of the kit's light chariot (BCH): one, or one per figure index (cycled). */
+  lightChariot?: { warrior?: Partial<FootKit> | Partial<FootKit>[]; driver?: Partial<CrewDress> | Partial<CrewDress>[] };
   /** The general: colours (cloak, saddle cloth), horse, and helmet / crest instead of the kit's. */
   general?: Partial<LookPalette> & { horse?: { coat: string; shade: string; mane: string }; helmet?: Helmet; crest?: Crest };
 }
@@ -934,6 +936,15 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
         AX: [{ woad: true, helmet: 'none' }, { woad: true, helmet: 'none', torso: 'bare', skirt: false, sleeve: false }],
         WA: [{ woad: true }, { woad: true, torso: 'bare', skirt: false, sleeve: false, helmet: 'none', crest: 'none', hair: 'wild' }],
         MI: { woad: true },
+      },
+      // the chariots of Cassivellaunus: woad on both men, no helmets, the warriors bare-chested but one
+      lightChariot: {
+        warrior: [
+          { woad: true },
+          { woad: true, torso: 'bare', skirt: false, sleeve: false, helmet: 'none', crest: 'none', hair: 'wild' },
+          { woad: true, hair: 'long' },
+        ],
+        driver: { woad: true },
       },
     },
   },

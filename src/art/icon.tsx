@@ -10,8 +10,8 @@ import { Miniature, figureKind } from './token';
 type Box = IconBox;
 
 // Measured extents of one figure (i = 2) in its local frame (feet at 0,0, incl. weapons, about 1 unit of margin), used to
-// centre and scale icons. The base kits' boxes; LBC, CAM and HWM measured over the Roman, Punic and Greek kits. A kit whose
-// figure differs by more than 1.5 units has its own box (`KITS[kit].iconBox`).
+// centre and scale icons. The base kits' boxes; LBC, CAM, HWM and BCH measured over the Roman, Punic and Greek kits. A kit
+// whose figure differs by more than 1.5 units has its own box (`KITS[kit].iconBox`). Measure with #/gallery/art/boxes.
 const BOX: Record<UnitType, Box> = {
   LI: [-35, 0.4, -11.7, 12.4],
   LB: [-33.4, 0.4, -9.6, 14.6],
@@ -28,7 +28,7 @@ const BOX: Record<UnitType, Box> = {
   LBC: [-33.7, 0.4, -18.2, 19.3],
   CAM: [-45.9, 0.3, -20, 24.3],
   HWM: [-36.6, 0.4, -28.1, 21.9],
-  BCH: [-43.3, 0.8, -27.8, 31], // the Heavy Chariots figure until the art track
+  BCH: [-41.5, 1.4, -27.8, 29.3],
 };
 
 // Elites whose own figure (in its army's kit) reaches more than 1 unit beyond the type's box: the Companions (plumes, drawn

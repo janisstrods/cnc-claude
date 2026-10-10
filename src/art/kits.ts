@@ -52,6 +52,16 @@ export type ChariotDef =
   /** A light two-horse chariot of the steppe: driver and archer in the kit's crew dress. */
   | { drawing: 'light' };
 
+/**
+ * The Barbarian light chariot (BCH): two ponies, a light car with double-arched wicker sides, a driver at the front with
+ * the reins and a warrior behind him with a javelin raised and his shield (a look's `LookStyle.lightChariot` changes them).
+ */
+export interface LightChariotDef {
+  /** The warrior, drawn as a foot figure with this kit (`weapon: 'javelin'` raises the javelin to throw). */
+  warrior: (i: number) => FootKit;
+  driver: (i: number) => CrewDress;
+}
+
 /** An elephant carrying a tower or a howdah with two crewmen, and an Indian mahout on the neck. */
 export interface LoadedElephant {
   drawing: 'loaded';
@@ -121,6 +131,8 @@ export interface KitDef {
   horseArcher?: HorseArcherDef;
   /** Default: the base game's chariot with a warrior and driver dressed as the kit's crews. */
   chariot?: ChariotDef;
+  /** Barbarian chariots (BCH). Default: the kit's light infantryman as the warrior, a crewman as the driver. */
+  lightChariot?: LightChariotDef;
   /** A look's `LookStyle.elephant` replaces it. Default: the base game's elephant with a rider dressed as the kit's crews. */
   elephant?: ElephantDef;
   /**
@@ -415,7 +427,7 @@ const MACEDONIAN: KitDef = {
   bust: { helmet: 'phrygian', crest: 'horsehair', beard: false },
   iconBox: {
     HI: [-35.5, 0.4, -14.2, 18.6], LC: [-35.9, 0.4, -18.2, 19.3], MC: [-38.8, 0.7, -19.7, 21.4], EL: [-48.3, 1, -17.5, 24.1],
-    HCH: [-40.3, 0.9, -24.6, 31.9], LBC: [-37.9, 0.4, -18.2, 19.3],
+    HCH: [-40.3, 0.9, -24.6, 31.9], LBC: [-37.9, 0.4, -18.2, 19.3], BCH: [-38, 1.4, -27.8, 29.3],
   },
 };
 
@@ -481,7 +493,7 @@ const PERSIAN: KitDef = {
   bust: { helmet: 'kidaris', crest: 'none', beard: true, robe: true },
   iconBox: {
     WA: [-40, 0.4, -6.1, 11.4], HI: [-40, 2.6, -7.8, 10.4], LC: [-35.9, 0.4, -18.2, 19.3], HC: [-41, 0.6, -20.8, 22.7],
-    EL: [-48.1, 1, -18.5, 25.6], HCH: [-37.6, 0.9, -24.6, 31.9], HWM: [-32.6, 0.4, -28.1, 21.9],
+    EL: [-48.1, 1, -18.5, 25.6], HCH: [-37.6, 0.9, -24.6, 31.9], HWM: [-32.6, 0.4, -28.1, 21.9], BCH: [-38, 1.4, -27.8, 29.3],
   },
 };
 
@@ -539,7 +551,7 @@ const SCYTHIAN: KitDef = {
   iconBox: {
     LI: [-37.1, 0.4, -11.7, 12.4], LB: [-37.1, 0.4, -7.4, 14.6], AX: [-40, 0.4, -6.1, 11.4], WA: [-40, 0.4, -7, 10.8],
     HI: [-40, 1.9, -7.4, 10.4], LC: [-37.9, 0.4, -18.2, 19.3], HC: [-41, 0.6, -20.8, 22.7], EL: [-49.9, 1, -18.5, 25.6],
-    HCH: [-41.5, 0.9, -21.8, 31], LBC: [-37.9, 0.4, -18.2, 19.3],
+    HCH: [-41.5, 0.9, -21.8, 31], LBC: [-37.9, 0.4, -18.2, 19.3], BCH: [-39.9, 1.4, -27.8, 29.3],
   },
 };
 
@@ -593,7 +605,7 @@ const INDIAN: KitDef = {
   bust: { helmet: 'turban', crest: 'none', beard: true, robe: true },
   iconBox: {
     LB: [-41.6, 0.4, -9.6, 17.4], MI: [-40, 1.9, -6.4, 8.7], LC: [-35.9, 0.4, -18.2, 19.3], HC: [-41, 0.6, -20.8, 22.7],
-    EL: [-49.3, 1, -18.5, 25.6], HCH: [-40, 0.9, -32.5, 31.9], HWM: [-32.9, 0.4, -28.4, 21.9],
+    EL: [-49.3, 1, -18.5, 25.6], HCH: [-40, 0.9, -32.5, 31.9], HWM: [-32.9, 0.4, -28.4, 21.9], BCH: [-38, 1.4, -27.8, 29.3],
   },
 };
 
@@ -651,19 +663,37 @@ function celticMount(type: UnitType, i: number): MountKit {
   return { rider: { ...dress, torso: 'mail', helmet: i % 2 ? 'montefortino' : 'coolus', crest: i % 2 ? 'horsehair' : 'knob', shield: 'oval', weapon: 'spear' }, cloth: 'plain' };
 }
 
+/**
+ * The Celtic chariot (essedum): a warrior with javelins and a long shield (a noble in mail and a helmet, a bare-chested
+ * champion, one in his tunic) behind a bare-headed driver.
+ */
+const CELTIC_CHARIOT: LightChariotDef = {
+  warrior: (i) => {
+    const kit: FootKit = {
+      torso: 'tunic', skirt: true, sleeve: true, legs: 'trousers', helmet: 'none', crest: 'none', hair: 'long', moustache: true, torc: true,
+      shield: 'celtOval', shieldScale: 0.8, shieldDy: -1.2, weapon: 'javelin',
+    };
+    if (i % 3 === 1) return { ...kit, torso: 'mail', sleeve: false, helmet: 'montefortino', crest: 'horsehair' };
+    if (i % 3 === 2) return { ...kit, torso: 'bare', skirt: false, sleeve: false, hair: 'wild' };
+    return kit;
+  },
+  driver: (i) => ({ torso: 'tunic', helmet: 'none', crest: 'none', hair: i % 2 ? 'long' : 'short', moustache: true, legs: 'trousers' }),
+};
+
 const CELTIC: KitDef = {
   foot: celticFoot,
   cavalry: { drawing: 'kit', mount: celticMount },
+  lightChariot: CELTIC_CHARIOT,
   // a chieftain in mail and a horned helmet, with his torc and cloak
   general: {
     rider: { torso: 'mail', helmet: 'horned', crest: 'none', shield: 'none', weapon: 'standard', legs: 'trousers', cloak: true, moustache: true, hair: 'long' },
     torque: true,
   },
   bust: { helmet: 'horned', crest: 'none', beard: false, moustache: true, hair: 'long', torc: true, chest: 'mail' },
-  // (union over the Gallic, Belgic, British and Slave looks; HCH and BCH are the fallback chariot until its own figure)
+  // (union over the Gallic, Belgic, British and Slave looks; HCH is the base chariot with Celtic crews)
   iconBox: {
     MI: [-40, 1.8, -8.2, 10.2], HI: [-40, 1.8, -6.1, 9.7], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31],
-    HWM: [-32, 0.4, -28.1, 21.9], BCH: [-39.6, 0.9, -27.8, 31],
+    HWM: [-32, 0.4, -28.1, 21.9], BCH: [-38, 1.4, -27.8, 29.3],
   },
 };
 
@@ -720,7 +750,7 @@ const GERMANIC: KitDef = {
   bust: { helmet: 'none', crest: 'none', beard: true, hair: 'knot', chest: 'mail' },
   iconBox: {
     MI: [-40, 1.8, -8.2, 10.2], HI: [-40, 1.8, -6.1, 10.2], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31],
-    HWM: [-33.2, 0.4, -28.1, 21.9], BCH: [-39.6, 0.9, -27.8, 31],
+    HWM: [-33.2, 0.4, -28.1, 21.9], BCH: [-38, 1.4, -27.8, 29.3],
   },
 };
 
@@ -781,13 +811,14 @@ const LATE_ROMAN: KitDef = {
   bust: { helmet: 'atticOpen', crest: 'horsehair', beard: false },
   iconBox: {
     MI: [-42.5, 1.8, -6.1, 10.6], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31], HWM: [-33.1, 0.4, -28.1, 21.9],
-    BCH: [-39.6, 0.9, -27.8, 31],
+    BCH: [-38, 1.4, -27.8, 29.3],
   },
 };
 
 /**
  * Fills the choices a kit leaves out: crews dressed as its medium infantry, the base game's chariot and elephant manned
- * by such crews, horse archers built from its light horseman, the self bow, the oxybeles, plain shields, no icon boxes.
+ * by such crews, a light chariot with its light infantryman and a crewman, horse archers built from its light horseman,
+ * the self bow, the oxybeles, plain shields, no icon boxes.
  */
 function completeKit(k: KitDef): FullKit {
   const crew = k.crew ?? ((i: number): CrewDress => {
@@ -804,6 +835,7 @@ function completeKit(k: KitDef): FullKit {
     cavalry: k.cavalry,
     horseArcher: k.horseArcher ?? { rider: (i) => ({ ...light(i), ...ARCHER, spare: undefined }), cloth: 'plain' },
     chariot: k.chariot ?? { drawing: 'base', warrior: { torso: c0.torso, helmet: c0.helmet, crest: c0.crest }, driverHelmet: crew(1).helmet },
+    lightChariot: k.lightChariot ?? { warrior: (i) => k.foot('LI', i), driver: (i) => crew(i + 1) },
     elephant: k.elephant ?? { drawing: 'base', rider: { torso: c0.torso, helmet: c0.helmet } },
     crew,
     crewBow: k.crewBow ?? 'self',

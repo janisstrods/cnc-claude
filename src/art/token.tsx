@@ -69,6 +69,13 @@ const BIG_SLOTS: Record<number, Slot[]> = {
   2: [{ x: -9, y: 6.5, s: 0.94 }, { x: 6, y: 19, s: 1.06 }],
   1: [{ x: 1, y: 18.5, s: 1.1 }],
 };
+// Barbarian chariots (three blocks) are lighter and smaller than the heavy chariots: one behind, two in front, each
+// wheel in sight.
+const LIGHT_CHARIOT_SLOTS: Record<number, Slot[]> = {
+  3: [{ x: 3, y: 4.5, s: 0.8 }, { x: -15, y: 19, s: 0.84 }, { x: 16, y: 18, s: 0.84 }],
+  2: [{ x: -14, y: 19, s: 0.86 }, { x: 15, y: 18, s: 0.86 }],
+  1: [{ x: 1, y: 18.5, s: 0.94 }],
+};
 // War machines are long and low: the rear engine stands further back so its frame and bolt clear the front crew.
 const MACHINE_SLOTS: Record<number, Slot[]> = {
   2: [{ x: -11, y: 4.5, s: 0.92 }, { x: 8, y: 19, s: 1.02 }],
@@ -79,6 +86,7 @@ function slotsFor(type: UnitType, n: number): Slot[] {
   const k = figureKind(type);
   if (k === 'horse' || k === 'camel') return HORSE_SLOTS[Math.max(1, Math.min(3, n))];
   if (k === 'machine') return MACHINE_SLOTS[Math.max(1, Math.min(2, n))];
+  if (type === 'BCH') return LIGHT_CHARIOT_SLOTS[Math.max(1, Math.min(3, n))];
   if (k === 'elephant' || k === 'chariot') return BIG_SLOTS[Math.max(1, Math.min(2, n))];
   const light = type === 'LI' || type === 'LB' || type === 'LS';
   return (light ? LIGHT_SLOTS : FOOT_SLOTS)[Math.max(1, Math.min(4, n))];
@@ -90,7 +98,7 @@ export function Miniature({ type, p, i, elite }: { type: UnitType; p: Palette; i
   if (k === 'horse') return <MountedFigure type={type} p={p} i={i} elite={elite} />;
   if (k === 'camel') return <CamelFigure p={p} i={i} />;
   if (k === 'elephant') return <ElephantFigure p={p} i={i} />;
-  if (k === 'chariot') return <ChariotFigure p={p} i={i} />;
+  if (k === 'chariot') return <ChariotFigure type={type} p={p} i={i} />;
   if (k === 'machine') return <MachineFigure p={p} i={i} />;
   return <FootFigure kit={footKit(type, p.kit, i)} p={p} i={i} elite={elite} />;
 }

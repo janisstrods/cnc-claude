@@ -1,9 +1,11 @@
-// Heavy chariots. Facing right, ground at y = 0.
-// Base kits (Punic, Greek, Roman): two-horse team, spoked wheel, driver and warrior.
+// Chariots. Facing right, ground at y = 0.
+// Heavy chariots of the base kits (Punic, Greek, Roman): two-horse team, spoked wheel, driver and warrior.
 // Expansion #1: the four-horse scythed chariots of Persia and the Successors, the large Indian chariot with archers,
 // and a light two-horse chariot for the steppe kit.
+// Expansion #2: the Barbarian light chariot (BCH): two ponies, a wicker-sided car, a driver and a javelin-man.
+import type { UnitType } from '../engine/types';
 import { darken, lighten } from './color';
-import { figurePalette, type CrewDress } from './foot';
+import { FootFigure, crewFigure, figurePalette, type CrewDress, type FootKit } from './foot';
 import { KITS, type ChariotDef } from './kits';
 import type { Palette } from './palettes';
 import { Arm, Body, Emblem, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, dots, makeFig } from './parts';
@@ -240,8 +242,123 @@ function KitChariot({ p, i, def }: { p: Palette; i: number; def: KitChariotDef }
   );
 }
 
-/** One chariot miniature, drawn as its kit's chariot (`KITS[kit].chariot`): the base game's, scythed, great or light. */
-export function ChariotFigure({ p, i }: { p: Palette; i: number }) {
+// ---------------------------------------------------------------------------------------------
+// Expansion #2: the Barbarian light chariot
+
+/** One of a look's overrides, or the one for figure `i` (cycled). */
+function cycled<T extends object>(o: T | T[] | undefined, i: number): T | undefined {
+  return Array.isArray(o) ? o[i % o.length] : o;
+}
+
+/** Scale of the two men standing in the light car. */
+const CREW_S = 0.86;
+/** Top of the car's floor, and the car from back to front. */
+const DECK = -7.6;
+const CAR_X0 = -21.8;
+const CAR_X1 = -5.4;
+/** Height of the wicker side screens above the floor. */
+const SCREEN = 8.4;
+
+/** Two semicircular wicker screens side by side (the side of a Celtic car), from x0 to x1 on the floor. */
+function WickerSides({ p, x0, x1 }: { p: Palette; x0: number; x1: number }) {
+  const xm = (x0 + x1) / 2;
+  const h = SCREEN / 0.75;
+  const arch = (a: number, b: number, k = 1) => {
+    const inset = (1 - k) * (b - a) / 2;
+    return `M${r2(a + inset)} ${DECK} C${r2(a + inset)} ${r2(DECK - h * k)} ${r2(b - inset)} ${r2(DECK - h * k)} ${r2(b - inset)} ${DECK}`;
+  };
+  const wicker = lighten(p.wood, 0.5);
+  const weave = darken(wicker, 0.3);
+  // upright stakes of the weave
+  const stakes = [x0 + 1.6, x0 + 3.7, xm - 1.6, xm + 1.6, x1 - 3.7, x1 - 1.6]
+    .map((x) => {
+      const a = x < xm ? x0 : xm;
+      const t = (x - a) / (xm - x0);
+      const top = DECK - SCREEN * Math.sqrt(Math.max(0, 1 - (2 * t - 1) ** 2)) + 0.6;
+      return `M${r2(x)} ${DECK} L${r2(x)} ${r2(top)}`;
+    })
+    .join(' ');
+  return (
+    <g>
+      <path d={`${arch(x0, xm)} Z ${arch(xm, x1)} Z`} fill={wicker} />
+      <path d={`${arch(x0, xm, 0.62)} ${arch(xm, x1, 0.62)} ${arch(x0, xm, 0.3)} ${arch(xm, x1, 0.3)}`} fill="none" stroke={weave} strokeWidth={0.45} />
+      <path d={stakes} stroke={weave} strokeWidth={0.4} opacity={0.8} />
+      {/* the bent-wood hoops */}
+      <Line2 d={`${arch(x0, xm)} ${arch(xm, x1)}`} w={0.9} c={p.wood} ow={0.5} />
+      <Hi d={arch(x0 + 0.5, xm - 0.5, 0.92)} c={lighten(p.wood, 0.45)} w={0.35} o={0.8} />
+    </g>
+  );
+}
+
+/** The crew of a look's light chariot `i`: the kit's warrior and driver with the look's changes (`LookStyle.lightChariot`). */
+export function lightChariotCrew(p: Palette, i: number): { warrior: FootKit; driver: CrewDress } {
+  const def = KITS[p.kit].lightChariot;
+  const o = p.style.lightChariot;
+  return { warrior: { ...def.warrior(i), ...cycled(o?.warrior, i) }, driver: { ...def.driver(i), ...cycled(o?.driver, i) } };
+}
+
+/** The Barbarian chariot: two ponies, the light car, the driver and the warrior (`lightChariotCrew`). */
+function LightChariot({ p, i }: { p: Palette; i: number }) {
+  const { warrior, driver } = lightChariotCrew(p, i);
+  const coats = p.horses;
+  const h1 = coats[(i + 1) % coats.length];
+  const h2 = coats[(i + 2) % coats.length];
+  const wr = 6.3;
+  const wx = (CAR_X0 + CAR_X1) / 2 + 0.2;
+  const wy = -wr - 0.2;
+  const spokes = Array.from({ length: 5 }, (_, k) => {
+    const a = (k * Math.PI) / 5 + 0.3;
+    const dx = Math.cos(a) * (wr - 0.4);
+    const dy = Math.sin(a) * (wr - 0.4);
+    return `M${r2(wx - dx)} ${r2(wy - dy)} L${r2(wx + dx)} ${r2(wy + dy)}`;
+  });
+  // the driver's hands on the reins (figure frame), and where they are in the chariot's
+  const hands = { near: [7.6, -17.2] as [number, number], far: [6.6, -16.4] as [number, number] };
+  const dx = -9.4;
+  const handX = dx + hands.near[0] * CREW_S;
+  const handY = DECK + hands.near[1] * CREW_S;
+  return (
+    <>
+      {/* far pony */}
+      <g transform="translate(14.4 -2.4) scale(0.78)">
+        <Horse coat={darken(h2.coat, 0.18)} shade={darken(h2.shade, 0.18)} mane={h2.mane} pose={1} />
+      </g>
+      {/* far wheel */}
+      <ellipse cx={wx + 3} cy={wy - 1.4} rx={1.9} ry={wr * 0.95} fill="none" stroke={p.woodShade} strokeWidth={1.1} opacity={0.8} />
+      {/* the driver, leaning into the reins, and the warrior behind him */}
+      <g transform={`translate(${dx} ${DECK}) scale(${CREW_S}) rotate(6)`}>{crewFigure(p, i + 1, hands, driver)}</g>
+      <g transform={`translate(-17.6 ${DECK}) scale(${CREW_S})`}>
+        <FootFigure kit={warrior} p={p} i={i} />
+      </g>
+      {/* near pony */}
+      <g transform="translate(10.4 0) scale(0.82)">
+        <Horse coat={h1.coat} shade={h1.shade} mane={h1.mane} pose={2} light={lighten(h1.coat, 0.35)} />
+      </g>
+      {/* pole, yoke over the withers, reins */}
+      <Line2 d={`M${CAR_X1 + 0.2} -8.4 L15.2 -13.8`} w={1.0} c={p.woodShade} ow={0.5} />
+      <Line2 d="M13.2 -14.8 Q15 -16.1 16.8 -15.1" w={0.9} c={p.wood} ow={0.45} />
+      <path d={`M${r2(handX)} ${r2(handY)} Q9 ${r2(handY - 0.4)} 23.8 -15.8`} fill="none" stroke="#3a2416" strokeWidth={0.5} />
+      {/* the car: floor and wicker sides over the men's legs */}
+      <WickerSides p={p} x0={CAR_X0} x1={CAR_X1} />
+      <Shape d={`M${CAR_X0 - 0.8} ${DECK} L${CAR_X1 + 0.8} ${DECK} L${CAR_X1 + 0.4} ${DECK + 1.3} L${CAR_X0 - 0.4} ${DECK + 1.3} Z`} f={p.woodShade} sw={0.6} />
+      {/* the near wheel: iron tyre, ten spokes, the nave and its linchpin */}
+      <circle cx={wx} cy={wy} r={wr} fill="none" stroke={OL} strokeWidth={2.3} />
+      <circle cx={wx} cy={wy} r={wr} fill="none" stroke={p.wood} strokeWidth={1.1} />
+      <circle cx={wx} cy={wy} r={wr + 0.55} fill="none" stroke={p.iron} strokeWidth={0.45} />
+      <path d={spokes.join(' ')} stroke={p.woodShade} strokeWidth={0.55} />
+      <circle cx={wx} cy={wy} r={1.4} fill={p.wood} stroke={OL} strokeWidth={0.5} />
+      <circle cx={wx} cy={wy} r={0.5} fill={p.iron} />
+      <Hi d={`M${r2(wx - 4)} ${r2(wy - 4.2)} A ${wr - 0.2} ${wr - 0.2} 0 0 1 ${r2(wx + 2.8)} ${r2(wy - 5.4)}`} c={lighten(p.wood, 0.4)} w={0.45} />
+    </>
+  );
+}
+
+/**
+ * One chariot miniature: a BCH is the kit's light chariot (`KITS[kit].lightChariot`); an HCH is drawn as its kit's
+ * chariot (`KITS[kit].chariot`): the base game's, scythed, great or light.
+ */
+export function ChariotFigure({ type, p, i }: { type: UnitType; p: Palette; i: number }) {
+  if (type === 'BCH') return <LightChariot p={p} i={i} />;
   const def = KITS[p.kit].chariot;
   if (def.drawing === 'base') return <BaseChariot p={p} i={i} def={def} />;
   return <KitChariot p={p} i={i} def={def} />;
