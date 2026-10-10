@@ -1,6 +1,8 @@
 // Legal-answer helpers: enumerate simple answers and produce random legal answers (used by tests and AI).
 import { ambushAvailable, ambushSections, battleTargets, movablePieces, pieceMoves, rollingFirePaths } from './flow';
-import { eligiblePieces, orderMode, rallyCandidates, validateOrders, validateRally, validateSpartacus } from './orders';
+import {
+  diceOrderPieces, eligiblePieces, orderMode, rallyCandidates, validateDiceOrders, validateOrders, validateRally, validateSpartacus,
+} from './orders';
 import { leaderById, unitById, unitsOf, leadersOf } from './query';
 import { UNIT_STATS } from './units';
 import type { Answer, Decision, GameState } from './types';
@@ -128,6 +130,20 @@ export function randomAnswer(s: GameState, d: Decision, rnd: Rand): Answer {
     case 'placeLeader':
     case 'placeUnit':
       return { kind: 'hex', hex: pick(d.options, rnd) };
+    case 'diceVictim':
+      return { kind: 'choose', index: Math.floor(rnd() * d.options.length) };
+    case 'diceOrders': {
+      // dice orders (310): each face in turn, a random piece it may order that keeps the assignment legal (or none)
+      const ids: (string | null)[] = d.faces.map(() => null);
+      d.faces.forEach((f, i) => {
+        for (const id of shuffled(diceOrderPieces(s, d.side, f), rnd)) {
+          ids[i] = id;
+          if (!validateDiceOrders(s, d.side, d.faces, ids)) return;
+        }
+        ids[i] = null;
+      });
+      return { kind: 'assign', ids };
+    }
   }
 }
 

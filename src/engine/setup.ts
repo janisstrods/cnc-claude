@@ -18,7 +18,15 @@ export interface SideSetup {
   blocks: Blocks;
   look: ArmyLook;
   commander: string;
+  /** Cards in the starting hand, and so the Command; 0 for a side with dice orders. */
   cards: number;
+  /**
+   * `'dice'`: the side orders by rolling `orderDice` dice at the start of each turn instead of playing a card (310 Utica P1,
+   * §18.10); it needs `cards: 0`. Left out: the side plays cards.
+   */
+  orders?: 'dice';
+  /** Order dice of a side with `orders: 'dice'` (a whole number, 1 or more); only with it. */
+  orderDice?: number;
 }
 
 export interface ScenarioSetup {
@@ -268,6 +276,7 @@ function checkIds(setup: ScenarioSetup) {
     if (!known(BLOCKS, ss.blocks)) throw new Error(`${side} army: unknown blocks ${String(ss.blocks)}`);
     if (!known(ARMY_LOOKS, ss.look)) throw new Error(`${side} army: unknown look ${String(ss.look)}`);
   }
+  orderDiceOf(setup);
   for (const r of setup.rules) if (!known(SPECIAL_RULE_IDS, r)) throw new Error(`unknown special rule ${String(r)}`);
   checkLegions(setup.legions);
   for (const [name, side] of [
@@ -330,6 +339,31 @@ function checkPositions(setup: ScenarioSetup, s: GameState) {
     if (under !== undefined && under !== l.side) throw new Error(`leader ${l.name} on an enemy unit at ${l.r},${l.c}`);
     if (isImpassable(s, h)) throw new Error(`leader ${l.name} on impassable ${terrainAt(s, h)} at ${l.r},${l.c}`);
   }
+}
+
+/**
+ * The order dice of each side (§18.10), validated: `orders: 'dice'` needs `cards: 0` and `orderDice` a whole number from 1;
+ * `orderDice` comes only with it. A dice side holds no cards, so neither a starting Command (`initialCommand`) nor hand growth
+ * may give it one. 0 = the side plays cards.
+ */
+function orderDiceOf(setup: ScenarioSetup): Record<Side, number> {
+  const out: Record<Side, number> = { top: 0, bottom: 0 };
+  for (const side of ['top', 'bottom'] as const) {
+    const ss = setup[side] as SideSetup & { orders?: unknown; orderDice?: unknown };
+    if (ss.orders === undefined) {
+      if (ss.orderDice !== undefined) throw new Error(`${side} army: orderDice needs orders: 'dice'`);
+      continue;
+    }
+    if (ss.orders !== 'dice') throw new Error(`${side} army: unknown orders ${String(ss.orders)}`);
+    if (ss.cards !== 0) throw new Error(`${side} army: a side with dice orders holds no cards (cards: 0)`);
+    const n = ss.orderDice;
+    if (typeof n !== 'number' || !Number.isInteger(n) || n < 1) throw new Error(`${side} army: orderDice must be a whole number, 1 or more`);
+    const held = (what: string) => new Error(`${what}: the ${side} army orders by dice and holds no cards`);
+    if (setup.initialCommand?.[side]) throw held('initialCommand');
+    if ((setup.handGrowth as { side?: unknown } | undefined)?.side === side) throw held('handGrowth');
+    out[side] = n;
+  }
+  return out;
 }
 
 /** Leaders each side starts with: on the board, in reserve and still to be placed. */
@@ -609,6 +643,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
       reserveReleased: false,
       reserveEntered: false,
       placeUnits,
+      orderDice: orderDiceOf(setup),
       turnsDone: { top: 0, bottom: 0 },
       objectives: [],
       objState: [],
@@ -664,6 +699,7 @@ export function cloneState(s: GameState): GameState {
       reserveUnits: s.special.reserveUnits.map((u) => ({ ...u })),
       reserveLeaders: s.special.reserveLeaders.map((l) => ({ ...l })),
       placeUnits: s.special.placeUnits.map((p) => ({ ...p, unit: { ...p.unit } })),
+      orderDice: s.special.orderDice,
       turnsDone: { ...s.special.turnsDone },
       objectives: s.special.objectives,
       objState: s.special.objState.map((o) => ({ taken: [...o.taken], held: { ...o.held }, sections: [...o.sections] })),

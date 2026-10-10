@@ -5,8 +5,10 @@ import { cardKind, sectionOrders } from '../engine/cards';
 import { closeCombatDice, retreatPerFlag } from '../engine/combat';
 import { nextCaptureBanners, stopCaptureAt } from '../engine/objectives';
 import { baselineRow, neighbours, rowOf, sectionsOf } from '../engine/hex';
-import { autoOrders, inCommand, rallyCandidates, spartacusDiceCount, validateRally, validateSpartacus } from '../engine/orders';
-import { leaderById, other, unitById } from '../engine/query';
+import {
+  autoOrders, diceOrderPieces, inCommand, rallyCandidates, spartacusDiceCount, validateDiceOrders, validateRally, validateSpartacus,
+} from '../engine/orders';
+import { attachedLeader, leaderById, leaderUnit, other, unitById } from '../engine/query';
 import { retreatOptions, type ElephantRetreatOption } from '../engine/retreat';
 import { rangeOf } from '../engine/elites';
 import { terrainAt } from '../engine/terrain';
@@ -604,6 +606,85 @@ export function spartacusAssign(s: GameState, side: Side, faces: DieFace[], W: W
 }
 
 // ---------------------------------------------------------------------------
+// dice orders (310 Utica P1, §18.10): a simple policy for now (the AI phase refines it)
+// ---------------------------------------------------------------------------
+
+/**
+ * The unit a flag or swords face of the side's own order roll falls on: the least costly one. Cost = the blocks it loses
+ * (swords 1; a flag the hexes its best retreat cannot take, `retreatLoss`) at their block value, a unit that would be
+ * destroyed costing the enemy's next banner on top; a leader's casualty check when blocks are lost; then the cheaper unit.
+ * Positions only (an elephant's retreat is judged as an ordinary one); ties to the first option.
+ */
+export function diceVictimIndex(s: GameState, d: D<'diceVictim'>): number {
+  let best = 0;
+  let bestCost = Infinity;
+  d.options.forEach((id, i) => {
+    const u = unitById(s, id);
+    if (!u) return;
+    let loss = 1;
+    if (d.face === 'flag') {
+      const opts = retreatOptions(s, u, retreatPerFlag(u, null));
+      loss = opts.length ? Math.min(...opts.map((o) => retreatLoss(s, u, o))) : 0;
+    }
+    const l = attachedLeader(s, u);
+    let cost = 0.05 * unitWeight(u);
+    if (loss >= u.blocks) cost += unitWeight(u) + nextBanner(s, other(u.side)) + (l ? leaderVal(s, l) / 6 : 0);
+    else if (loss > 0) cost += loss * blockVal(u) + (l ? leaderVal(s, l) / 36 : 0);
+    if (cost < bestCost - 1e-9) {
+      bestCost = cost;
+      best = i;
+    }
+  });
+  return best;
+}
+
+/**
+ * Dice-order assignment (§18.10), greedy on each piece's benefit from an order (`pieceBenefits`): helmets first, each on
+ * the leader worth most together with his attached unit; then each class face on the best unit of its class not yet
+ * ordered. Every usable face is used. A rejected assignment (never expected) uses no face.
+ */
+export function diceOrdersAssign(s: GameState, side: Side, faces: DieFace[], W: Weights): (string | null)[] {
+  if (!faces.some((f) => diceOrderPieces(s, side, f).length)) return faces.map(() => null);
+  const ben = pieceBenefits(s, side, null, W);
+  const b = (id: string) => ben.get(id) ?? 0;
+  const used = new Set<string>();
+  const ids: (string | null)[] = faces.map(() => null);
+  faces.forEach((f, i) => {
+    if (f !== 'leader') return;
+    let best: string | null = null;
+    let bv = -Infinity;
+    for (const id of diceOrderPieces(s, side, f)) {
+      const own = leaderUnit(s, leaderById(s, id)!);
+      if (used.has(id) || (own && used.has(own.id))) continue;
+      const v = b(id) + (own ? b(own.id) : 0);
+      if (v > bv) {
+        bv = v;
+        best = id;
+      }
+    }
+    if (best) {
+      ids[i] = best;
+      used.add(best);
+      const own = leaderUnit(s, leaderById(s, best)!);
+      if (own) used.add(own.id);
+    }
+  });
+  faces.forEach((f, i) => {
+    if (f === 'leader') return;
+    let best: string | null = null;
+    for (const id of diceOrderPieces(s, side, f)) {
+      if (used.has(id)) continue;
+      if (best === null || b(id) > b(best)) best = id;
+    }
+    if (best) {
+      ids[i] = best;
+      used.add(best);
+    }
+  });
+  return validateDiceOrders(s, side, faces, ids) ? faces.map(() => null) : ids;
+}
+
+// ---------------------------------------------------------------------------
 // separate commands (210 Picenum, §18.5)
 // ---------------------------------------------------------------------------
 
@@ -799,5 +880,7 @@ export function reactiveFast(s: GameState, d: Decision, W: Weights, rng: Rng): A
     case 'playCard': return { kind: 'playCard', card: s.players[d.side].hand[0] };
     case 'placeLeader': return { kind: 'hex', hex: choosePlacement(s, d, W) };
     case 'placeUnit': return { kind: 'hex', hex: d.options[0] };
+    case 'diceVictim': return { kind: 'choose', index: diceVictimIndex(s, d) };
+    case 'diceOrders': return { kind: 'assign', ids: diceOrdersAssign(s, d.side, d.faces, W) };
   }
 }

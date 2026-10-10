@@ -350,6 +350,12 @@ export interface ScenarioSpecial {
   reserveEntered: boolean;
   /** Units still to be placed by a forced placement (308, §18.9), in data order; removed once placed. Empty in most battles. */
   placeUnits: PlaceUnitDef[];
+  /**
+   * Dice orders (310 Utica P1, §18.10): the dice each side rolls at the start of its turn instead of playing a card; 0 = the
+   * side plays cards (every side of every other battle). A side with dice holds no cards and never draws. Never changed
+   * during play: `cloneState` shares it.
+   */
+  orderDice: Record<Side, number>;
   /** Turns completed per side (used by ambush reserves' `afterOwnTurns`, §18.5, and by the AI's card memory). */
   turnsDone: Record<Side, number>;
   /** Battle objectives (§18.4; empty in most battles). Never changed during play: `cloneState` shares the array. */
@@ -455,7 +461,19 @@ export type Decision =
    * A forced placement (308, §18.9) at the start of `side`'s turn, before the card: place the off-board `unit`
    * (`ScenarioSpecial.placeUnits`) on one of `options`, the empty listed hexes (answer `hex`, never null).
    */
-  | { kind: 'placeUnit'; side: Side; unit: string; options: HexId[] };
+  | { kind: 'placeUnit'; side: Side; unit: string; options: HexId[] }
+  /**
+   * Dice orders (310, §18.10): a flag or swords face of `side`'s own order roll. The side chooses the unit it falls on among
+   * `options` (its units on the board, in unit order; asked even with one): a flag makes it retreat for one flag that cannot
+   * be ignored, swords cost it 1 block. Answer `choose` (index into `options`).
+   */
+  | { kind: 'diceVictim'; side: Side; face: 'flag' | 'swords'; options: string[] }
+  /**
+   * Dice orders (310, §18.10): `side`'s order roll, every face of it (flags and swords already resolved). Answer `assign`,
+   * one entry per face: a class face orders one unit of its class, a helmet a leader (with his attached unit); null = the
+   * face is not used (flags and swords always null); no unit is ordered twice (`validateDiceOrders`).
+   */
+  | { kind: 'diceOrders'; side: Side; faces: DieFace[] };
 
 export type Answer =
   | { kind: 'playCard'; card: number }
@@ -472,7 +490,7 @@ export type Answer =
   | { kind: 'choose'; index: number }
   | { kind: 'yesno'; yes: boolean }
   | { kind: 'hex'; hex: HexId | null } // null = decline (not for placeLeader)
-  /** One entry per die face: id of the unit (rally) or unit/leader (spartacus) it is used on, or null. */
+  /** One entry per die face: id of the unit (rally) or unit/leader (spartacus, dice orders) it is used on, or null. */
   | { kind: 'assign'; ids: (string | null)[] };
 
 // ---------------------------------------------------------------------------
@@ -483,7 +501,9 @@ export type RollPurpose =
   | 'ranged' | 'close' | 'battleBack' | 'firstStrike' | 'bonus' | 'evade'
   | 'leaderCheck' | 'escape' | 'rampage' | 'marsh' | 'rally' | 'spartacus'
   /** 2 dice against each unit in a Rolling Fire path (§18.5). */
-  | 'rollingFire';
+  | 'rollingFire'
+  /** The order roll of a side with dice orders, at the start of its turn (310, §18.10). */
+  | 'diceOrders';
 
 export type GameEvent =
   | { t: 'turnStart'; side: Side; turn: number }

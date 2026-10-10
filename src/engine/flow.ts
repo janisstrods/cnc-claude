@@ -9,10 +9,11 @@ import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './mov
 import { bannerTotal, gainBanner, updateHeld } from './banners';
 import { captureOnStop, exitLeader, exitUnit, turnEndObjectives, turnStartObjectives } from './objectives';
 import {
-  autoOrders, commandChoices, orderMode, rallyCandidates, spartacusDiceCount, validateOrders, validateRally, validateSpartacus,
+  autoOrders, commandChoices, diceOrderPieces, diceOrdered, orderDice, orderMode, rallyCandidates, spartacusDiceCount, validateDiceOrders,
+  validateOrders, validateRally, validateSpartacus,
 } from './orders';
 import {
-  attachedLeader, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, unitAt, unitById,
+  attachedLeader, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, unitAt, unitById, unitsOf,
 } from './query';
 import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption } from './retreat';
 import { randInt, rollDice, rollDie, shuffle } from './rng';
@@ -1276,11 +1277,12 @@ function endOfTurn(s: GameState, ctx: FlowCtx) {
     shuffle(s, s.deck);
     ctx.emit({ t: 'reshuffle' });
   }
-  if (t.firstStrikeBy && t.firstStrikeBy !== side) drawCard(s, ctx, t.firstStrikeBy);
-  let draws = 1;
+  // a side with dice orders (310, §18.10) never draws: no First Strike replacement (it holds none), no turn-end draw
+  if (t.firstStrikeBy && t.firstStrikeBy !== side && !orderDice(s, t.firstStrikeBy)) drawCard(s, ctx, t.firstStrikeBy);
+  let draws = orderDice(s, side) ? 0 : 1;
   // hand growth (006 Trasimenus, 313 Brindisi Raid, §18.8): while its Command is below the target the side draws 2 and grows by 1
   const growth = s.special.handGrowth;
-  if (growth && growth.side === side && s.players[side].command < growth.to) {
+  if (draws && growth && growth.side === side && s.players[side].command < growth.to) {
     draws = 2;
     s.players[side].command += 1;
     ctx.emit({ t: 'command', side, command: s.players[side].command });
@@ -1301,6 +1303,26 @@ export function* turnFlow(s: GameState, ctx: FlowCtx): Gen {
   // then the forced placements that are due (308, §18.9)
   yield* forcedPlacements(s, ctx, side);
   if (s.winner) return;
+  if (orderDice(s, side)) {
+    // dice orders (310, §18.10): the order roll instead of a card
+    t.phase = 'orders';
+    yield* diceOrdersStep(s, ctx, side);
+    if (s.winner) return;
+  } else {
+    yield* cardStep(s, ctx, side);
+    if (s.winner) return;
+  }
+  if (!t.mods.noMove && Object.keys(t.ordered).length) {
+    t.phase = 'move';
+    yield* movePhase(s, ctx, 1);
+    if (s.winner) return;
+  }
+  yield* battleToEnd(s, ctx);
+}
+
+/** The card of a card-playing side's turn: it is played (a Counter Attack resolved to its copy) and gives its orders. */
+function* cardStep(s: GameState, ctx: FlowCtx, side: Side): Gen {
+  const t = s.turn;
   const pa = yield* ask(ctx, { kind: 'playCard', side }, (a) =>
     a.kind === 'playCard' && s.players[side].hand.includes(a.card) ? null : 'Play a card from your hand.');
   const cardId = (pa as { card: number }).card;
@@ -1323,13 +1345,52 @@ export function* turnFlow(s: GameState, ctx: FlowCtx): Gen {
   ctx.emit({ t: 'cardPlayed', side, card: cardId, kind, effective: effective ?? kind });
   t.phase = 'orders';
   yield* ordersStep(s, ctx, effective, mirrored);
-  if (s.winner) return;
-  if (!t.mods.noMove && Object.keys(t.ordered).length) {
-    t.phase = 'move';
-    yield* movePhase(s, ctx, 1);
-    if (s.winner) return;
+}
+
+/**
+ * Dice orders (310, §18.10, X3 Q9 with the spec's override: the rolling side makes every choice). The side rolls its order
+ * dice (purpose `diceOrders`); each flag face makes one of its units, its choice (`diceVictim`), retreat for one flag that
+ * cannot be ignored (blocks lost for hexes it cannot take, the leader casualty check as usual); then each swords face costs
+ * a unit of its choice 1 block (casualty check for its leader; banners for the enemy as usual). Each victim is chosen once
+ * the one before is resolved. Then the faces that can still order something are assigned (`diceOrders`, `validateDiceOrders`):
+ * a class face orders one unit of its class, a helmet a leader with his attached unit; unused faces are lost. No card is
+ * played: `card` and `effective` stay null and the modifiers are the defaults.
+ */
+function* diceOrdersStep(s: GameState, ctx: FlowCtx, side: Side): Gen {
+  const t = s.turn;
+  t.mods = defaultMods();
+  const faces = rollDice(s, orderDice(s, side));
+  emitRoll(ctx, 'diceOrders', faces, faces.map((f) => f !== 'flag' && f !== 'swords'), null, null);
+  for (const face of ['flag', 'swords'] as const) {
+    for (const f of faces) {
+      if (f !== face) continue;
+      const options = unitsOf(s, side).map((u) => u.id);
+      if (!options.length) continue;
+      const a = (yield* ask(ctx, { kind: 'diceVictim', side, face, options }, (a) =>
+        a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < options.length ? null : 'Choose one of your units.',
+      )) as Extract<Answer, { kind: 'choose' }>;
+      const u = unitById(s, options[a.index])!;
+      if (face === 'flag') {
+        log(s, ctx, `A flag on the order dice: the ${sideName(s, side)} ${unitName(u)} falls back.`, side);
+        yield* applyHits(s, ctx, u, 0, 1, { kind: 'ranged', striker: null, fullAtStart: u.blocks === u.maxBlocks, noFlagIgnore: true });
+      } else {
+        log(s, ctx, `Swords on the order dice: the ${sideName(s, side)} ${unitName(u)} loses a block.`, side);
+        const l = attachedLeader(s, u);
+        if (loseBlocks(s, ctx, u, 1, 'swords on the order dice')) {
+          if (l) yield* leaderOrphaned(s, ctx, l);
+        } else if (l) leaderCheck(s, ctx, l, 2);
+      }
+      if (s.winner) return;
+    }
   }
-  yield* battleToEnd(s, ctx);
+  if (!faces.some((f) => diceOrderPieces(s, side, f).length)) return;
+  const a = (yield* ask(ctx, { kind: 'diceOrders', side, faces }, (a) =>
+    a.kind === 'assign' ? validateDiceOrders(s, side, faces, a.ids) : 'Assign the order dice.',
+  )) as Extract<Answer, { kind: 'assign' }>;
+  const ids = diceOrdered(s, a.ids);
+  if (!ids.length) return;
+  for (const id of ids) addOrdered(s, id);
+  ctx.emit({ t: 'ordered', side, ids });
 }
 
 /** The rest of the active side's turn from its battle phase: the battle, Move-Fire-Move's second move, the turn end. */

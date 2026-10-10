@@ -194,6 +194,10 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       // a forced placement (308): the empty hexes the unit may be placed on
       for (const h of d.options) highlights.set(h, 'option');
       break;
+    case 'diceVictim':
+      // dice orders (310): the units a flag or swords face of the own order roll may fall on
+      for (const id of d.options) markPiece(id, 'option');
+      break;
     case 'bonusCombat': {
       const u = unitById(s, d.unit);
       if (u) highlights.set(u.hex, 'focus');

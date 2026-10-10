@@ -9,7 +9,7 @@ import { bannerTotal } from '../engine/banners';
 import { CARD_DEFS, cardKind, modsFor, sectionOrders } from '../engine/cards';
 import { ambushAvailable, ambushSectionAllowed, battleTargets, isRollingFirePath, pieceMoves } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
-import { validateOrders, validateRally, validateSpartacus } from '../engine/orders';
+import { validateDiceOrders, validateOrders, validateRally, validateSpartacus } from '../engine/orders';
 import { other, unitById } from '../engine/query';
 import { cloneState, newTurn } from '../engine/setup';
 import { rangeOf } from '../engine/elites';
@@ -25,7 +25,7 @@ import { PERSONALITIES, personalityById, personalityFor, type Personality } from
 import { DIFFICULTY, candScore, decideBattle, makeCtx, planTurn, type Cand, type DiffCfg } from './planner';
 import {
   chooseBonusCombat, chooseCavalryExtra, chooseCommandIndex, chooseIgnoreFlags, chooseLeaderEvade, chooseMomentum, choosePlacement,
-  chooseRetreat, defendChoice, rallyAssign, spartacusAssign,
+  chooseRetreat, defendChoice, diceOrdersAssign, diceVictimIndex, rallyAssign, spartacusAssign,
 } from './policies';
 import { Rng, entropySeed } from './rand';
 import { safeAnswer } from './sim';
@@ -178,6 +178,10 @@ export function isLegal(s: GameState, d: Decision, a: Answer): boolean {
     case 'placeLeader':
     case 'placeUnit':
       return a.kind === 'hex' && a.hex !== null && d.options.includes(a.hex);
+    case 'diceVictim':
+      return a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < d.options.length;
+    case 'diceOrders':
+      return a.kind === 'assign' && !validateDiceOrders(s, d.side, d.faces, a.ids);
   }
 }
 
@@ -517,6 +521,11 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
     case 'placeUnit':
       // forced placement (308): the first free hex for now (scored in the AI phase)
       return { answer: { kind: 'hex', hex: d.options[0] } };
+    case 'diceVictim':
+      // dice orders (310): the least costly unit for now (refined in the AI phase)
+      return { answer: { kind: 'choose', index: diceVictimIndex(s, d) } };
+    case 'diceOrders':
+      return { answer: { kind: 'assign', ids: diceOrdersAssign(s, me, d.faces, W) } };
   }
 }
 

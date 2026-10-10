@@ -218,6 +218,14 @@ function copyTerrain(t: TerrainSetup): TerrainSetup {
   return o;
 }
 
+/** A side of the battle: its army, and its cards or its dice orders (`orders`, `orderDice`; 310, §18.10) when it has them. */
+function copySide(ss: SideSetup): SideSetup {
+  const o: SideSetup = { army: ss.army, blocks: ss.blocks, look: ss.look, commander: ss.commander, cards: ss.cards };
+  if (ss.orders !== undefined) o.orders = ss.orders; // the engine rejects an unknown mode
+  if (ss.orderDice !== undefined) o.orderDice = ss.orderDice; // and a bad count
+  return o;
+}
+
 /** An objective with its lists copied (hexes, banners, sides). */
 function copyObjective(o: ObjectiveSetup): ObjectiveSetup {
   const out: Record<string, unknown> = { ...o };
@@ -243,8 +251,8 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   const setup: ScenarioSetup = {
     id: j.id,
     name: j.name,
-    top: { army: j.top.army, blocks: j.top.blocks, look: j.top.look, commander: j.top.commander, cards: j.top.cards },
-    bottom: { army: j.bottom.army, blocks: j.bottom.blocks, look: j.bottom.look, commander: j.bottom.commander, cards: j.bottom.cards },
+    top: copySide(j.top),
+    bottom: copySide(j.bottom),
     first: j.first,
     banners: j.banners,
     terrain: j.terrain.map(copyTerrain),

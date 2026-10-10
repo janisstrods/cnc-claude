@@ -2,6 +2,7 @@
 import { CARD_LIST } from '../engine/cards';
 import { continueTurn, turnFlow, type Gen } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
+import { orderDice } from '../engine/orders';
 import { other } from '../engine/query';
 import type { Answer, Decision, FlowCtx, GameState, HexId, Side } from '../engine/types';
 import type { Rng } from './rand';
@@ -49,6 +50,8 @@ export function safeAnswer(s: GameState, d: Decision, rng: Rng, attempt: number)
       case 'spartacus': return { kind: 'assign', ids: d.faces.map(() => null) };
       case 'placeLeader': return { kind: 'hex', hex: safePlacement(s, d) };
       case 'placeUnit': return { kind: 'hex', hex: d.options[0] };
+      case 'diceVictim': return { kind: 'choose', index: 0 };
+      case 'diceOrders': return { kind: 'assign', ids: d.faces.map(() => null) };
     }
   }
   return randomAnswer(s, d, () => rng.next());
@@ -110,12 +113,13 @@ const FIRST_STRIKE_ID = CARD_LIST.indexOf('firstStrike');
 
 /**
  * Must a resumed turn continue exactly where it stands (`continueTurn`)? Restarting it (below) runs the turn-start
- * objectives again, which would capture a hex a unit has only just reached (turn-start captures, §18.4), and judges the
- * first battle step under First Strike, a Tactic card, which hides Rolling Fire (§18.5). Battles without either keep the
- * restart, so their searches are unchanged.
+ * objectives again, which would capture a hex a unit has only just reached (turn-start captures, §18.4), judges the
+ * first battle step under First Strike, a Tactic card, which hides Rolling Fire (§18.5), and would roll a dice-ordered
+ * side's order dice again (it plays no card, §18.10). Battles without any of these keep the restart, so their searches are
+ * unchanged.
  */
 function exactResume(s: GameState): boolean {
-  if (s.special.rollingFire) return true;
+  if (s.special.rollingFire || orderDice(s, s.active)) return true;
   return s.special.objectives.some((o) => o.kind === 'capture' && o.when === 'turnStart');
 }
 

@@ -4,10 +4,10 @@
 //   sniper - like greedy, but hunts enemy leaders.
 // Strength A/Bs against these bots need a same-seed baseline: side and seed imbalance is large in this game.
 import {
-  UNIT_STATS, ambushAvailable, ambushSections, attachedLeader, battleTargets, canEvadeType, canFireAt, cardKind, cloneState,
+  UNIT_STATS, ambushAvailable, ambushSections, diceOrderPieces, attachedLeader, battleTargets, canEvadeType, canFireAt, cardKind, cloneState,
   closeCombatDice, closeHitChance, distance, eligiblePieces, evadeOptions, inSection, isLeaderId, isLoneLeader, leaderAt,
   leaderById, leaderUnit, leadersOf, movablePieces, neighbours, orderMode, pieceMoves, rallyCandidates, rangedDice, turnFlow,
-  unitAt, unitById, unitMoves, unitsOf, validateOrders, validateRally, validateSpartacus,
+  unitAt, unitById, unitMoves, unitsOf, validateDiceOrders, validateOrders, validateRally, validateSpartacus,
 } from '../../src/engine';
 import type { Answer, CardKind, Decision, GameState, HexId, Leader, SectionName, Side, Unit } from '../../src/engine/types';
 
@@ -410,6 +410,19 @@ export class Bot {
       case 'placeLeader':
       case 'placeUnit':
         return { kind: 'hex', hex: d.options[0] };
+      case 'diceVictim': // dice orders (310): no battle of the bot suites has them; any option is legal
+        return { kind: 'choose', index: 0 };
+      case 'diceOrders': {
+        const ids: (string | null)[] = d.faces.map(() => null);
+        d.faces.forEach((f, i) => {
+          for (const id of diceOrderPieces(s, d.side, f)) {
+            ids[i] = id;
+            if (!validateDiceOrders(s, d.side, d.faces, ids)) return;
+          }
+          ids[i] = null;
+        });
+        return { kind: 'assign', ids };
+      }
     }
   }
 

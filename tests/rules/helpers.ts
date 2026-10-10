@@ -54,6 +54,18 @@ export interface Pos {
    * leaders' (the last ids of the setup).
    */
   placeUnits?: ScenarioSetup['placeUnits'];
+  /**
+   * Dice orders (310 Utica P1, §18.10): the sides that order by rolling this many dice instead of playing cards (`orders:
+   * 'dice'`, `cards: 0`).
+   */
+  orderDice?: Partial<Record<Side, number>>;
+}
+
+/** A side of the QA battle: its cards, or its dice orders (`Pos.orderDice`). */
+function sideOf(p: Pos, side: Side, army: string, blocks: 'car' | 'rom', look: 'carthaginian' | 'roman', commander: string): ScenarioSetup['top'] {
+  const dice = p.orderDice?.[side];
+  if (dice === undefined) return { army, blocks, look, commander, cards: p.cards ?? 5 };
+  return { army, blocks, look, commander, cards: 0, orders: 'dice', orderDice: dice };
 }
 
 export const H = (r: number, c: number) => hexId(r, c);
@@ -62,8 +74,8 @@ export function setupOf(p: Pos): ScenarioSetup {
   return {
     id: 'qa',
     name: 'QA',
-    top: { army: p.topArmy ?? 'Carthaginian', blocks: 'car', look: 'carthaginian', commander: 'T', cards: p.cards ?? 5 },
-    bottom: { army: p.bottomArmy ?? 'Roman', blocks: 'rom', look: 'roman', commander: 'B', cards: p.cards ?? 5 },
+    top: sideOf(p, 'top', p.topArmy ?? 'Carthaginian', 'car', 'carthaginian', 'T'),
+    bottom: sideOf(p, 'bottom', p.bottomArmy ?? 'Roman', 'rom', 'roman', 'B'),
     first: p.first ?? 'bottom',
     banners: p.banners ?? 99,
     terrain: (p.terrain ?? []).map((t) => ({

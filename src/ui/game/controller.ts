@@ -738,6 +738,7 @@ export class GameController {
       case 'rally': return 'Rally';
       case 'spartacus': return 'I Am Spartacus';
       case 'rollingFire': return `Burning logs roll onto ${t}`;
+      case 'diceOrders': return `${s.players[s.active].army} order dice`;
     }
   }
 
@@ -745,6 +746,17 @@ export class GameController {
     if (p === 'spartacus') {
       if (faces.every((f) => f === 'flag' || f === 'swords')) return 'No effect';
       return this.driver.state.active === this.config.humanSide ? 'Choose units for each symbol' : 'Units ordered';
+    }
+    if (p === 'diceOrders') {
+      // dice orders (310): flags and swords fall on units of the rolling side, the symbols order units
+      const flags = faces.filter((f) => f === 'flag').length;
+      const swords = faces.filter((f) => f === 'swords').length;
+      const parts: string[] = [];
+      if (faces.length > flags + swords) parts.push(this.driver.state.active === this.config.humanSide ? 'Choose units to order' : 'Units ordered');
+      if (flags) parts.push(flags === 1 ? 'a unit falls back' : `${flags} units fall back`);
+      if (swords) parts.push(swords === 1 ? 'a unit loses a block' : `${swords} blocks lost`);
+      const text = parts.join('; ');
+      return text.charAt(0).toUpperCase() + text.slice(1);
     }
     if (p === 'rally') {
       if (!rallyCandidates(this.driver.state, this.driver.state.active).length) return 'No damaged units near a leader';

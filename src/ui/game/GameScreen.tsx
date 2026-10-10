@@ -3,6 +3,7 @@ import {
   CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, cardKind, isLeaderId, leaderAt, leaderById, leaderUnit,
   other, pieceMoves, rallyCandidates, terrainAt, isFord, unitAt, unitById, validateOrders, validateRally, validateSpartacus,
   battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf, sectionsOf, orderMode, orderLimit, rollingFirePaths, inCommand,
+  diceOrderPieces, orderDice, validateDiceOrders,
   type Answer, type DieFace, type GameState, type HexId, type RetreatOption, type SectionName, type Side,
 } from '../../engine';
 import { BLOCK_COLORS, UnitIcon, unitTypeName } from '../../art';
@@ -107,7 +108,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
 
   const bui = useMemo(() => {
     const b = boardUi(s, d, ui, human);
-    if (d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus')) {
+    if (d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus' || d.kind === 'diceOrders')) {
       for (const id of assignFocus) {
         const h = pieceHexOf(s, id);
         if (h >= 0) b.highlights.set(h, 'selected');
@@ -212,6 +213,12 @@ export function GameScreen({ controller, onExit, onRematch }: {
       case 'placeUnit':
         if (d.options.includes(h)) answer({ kind: 'hex', hex: h });
         return;
+      case 'diceVictim': {
+        // dice orders (310): the unit a flag or swords face of the own order roll falls on
+        const i = u ? d.options.indexOf(u.id) : -1;
+        if (i >= 0) answer({ kind: 'choose', index: i });
+        return;
+      }
       default:
         return;
     }
@@ -488,7 +495,18 @@ export function GameScreen({ controller, onExit, onRematch }: {
       }
       case 'rally':
       case 'spartacus':
-        return { title: d.kind === 'rally' ? 'Rally' : 'I Am Spartacus', text: 'Assign the dice in the dialog.', buttons: [] };
+      case 'diceOrders':
+        return { title: d.kind === 'rally' ? 'Rally' : d.kind === 'spartacus' ? 'I Am Spartacus' : 'Order dice', text: 'Assign the dice in the dialog.', buttons: [] };
+      case 'diceVictim':
+        // dice orders (310, §18.10): the side chooses the victims of its own flags and swords
+        return {
+          title: d.face === 'flag' ? 'Order dice: a flag' : 'Order dice: crossed swords',
+          text: d.face === 'flag'
+            ? 'Click one of your units (purple): it falls back as for one flag, which cannot be ignored.'
+            : 'Click one of your units (purple): it loses one block.',
+          buttons: [],
+          tone: 'warn',
+        };
       case 'placeLeader': {
         const l = leaderById(s, d.leader);
         // 308: a reserve leader joins one of the units of his force that entered this turn
@@ -615,9 +633,9 @@ export function GameScreen({ controller, onExit, onRematch }: {
             <div className="army-row">
               <div>
                 <div className="army-name them">{them.army}</div>
-                <div className="army-cmd" title={`${them.commander} — ${persona.name}: ${persona.epithet} · ${DIFF_LABEL[controller.config.difficulty]} · Command ${them.command}`}>{them.commander} · {persona.name} · {DIFF_LABEL[controller.config.difficulty]}</div>
+                <div className="army-cmd" title={`${them.commander} — ${persona.name}: ${persona.epithet} · ${DIFF_LABEL[controller.config.difficulty]} · ${commandLabel(s, ai)}`}>{them.commander} · {persona.name} · {DIFF_LABEL[controller.config.difficulty]}</div>
               </div>
-              <div className="ai-hand" title={`${them.hand.length} command cards`}>
+              <div className="ai-hand" title={orderDice(s, ai) ? commandLabel(s, ai) : `${them.hand.length} command cards`}>
                 {Array.from({ length: them.hand.length }).map((_, i) => <CardBack key={i} size="sm" style={{ fontSize: '1.7px', marginLeft: i ? -9 : 0 }} />)}
               </div>
             </div>
@@ -626,7 +644,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
             <div className="army-row">
               <div>
                 <div className="army-name me">{me.army} <span className="you">(you)</span></div>
-                <div className="army-cmd">{me.commander} · Command {me.command}</div>
+                <div className="army-cmd">{me.commander} · {commandLabel(s, human)}</div>
               </div>
             </div>
             <BannerTrack count={meBanners.total} held={meBanners.held} target={s.bannersToWin} blockColor={s.players[ai].blocks} label="Banners won" />
@@ -702,6 +720,9 @@ export function GameScreen({ controller, onExit, onRematch }: {
       {d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus') && (
         <AssignDialog state={s} side={human} kind={d.kind} faces={d.faces} command={d.command} onChange={setAssignFocus} onDone={(ids) => answer({ kind: 'assign', ids })} error={view.error} />
       )}
+      {d && d.side === human && d.kind === 'diceOrders' && (
+        <AssignDialog state={s} side={human} kind="diceOrders" faces={d.faces} onChange={setAssignFocus} onDone={(ids) => answer({ kind: 'assign', ids })} error={view.error} />
+      )}
 
       <Modal open={showRules} title="Rules Reference" onClose={() => setShowRules(false)} width={880}>
         <RulesReference scenario={controller.scenario} />
@@ -720,6 +741,12 @@ export function GameScreen({ controller, onExit, onRematch }: {
       </Modal>
     </div>
   );
+}
+
+/** A side's Command, or its order dice when it orders by dice (310, §18.10). */
+function commandLabel(s: GameState, side: Side): string {
+  const dice = orderDice(s, side);
+  return dice ? `Orders by ${dice} dice` : `Command ${s.players[side].command}`;
 }
 
 /** Units that charged (warriors) and still must close combat. */
@@ -780,7 +807,7 @@ const LogPanel = memo(function LogPanel({ log, human }: { log: LogLine[]; human:
   );
 });
 
-function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'spartacus'; faces: DieFace[]; command?: string; error: string | null; onChange: (ids: string[]) => void; onDone: (ids: (string | null)[]) => void }) {
+function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'spartacus' | 'diceOrders'; faces: DieFace[]; command?: string; error: string | null; onChange: (ids: string[]) => void; onDone: (ids: (string | null)[]) => void }) {
   const { state: s, side, faces, command } = p;
   // separate commands (§18.5): only the named command's pieces, and those with no command, can be chosen
   const free = (x: { command?: string }) => inCommand(x, command);
@@ -802,6 +829,18 @@ function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'sparta
         .filter((u) => face === 'leader' || UNIT_STATS[u.type].cls === face)
         .map((u) => ({ id: u.id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) — ${where(u.hex)}` }));
     }
+    if (p.kind === 'diceOrders') {
+      // dice orders (310): a symbol orders a unit of its type, a helmet a leader with his unit
+      return diceOrderPieces(s, side, face).map((id) => {
+        if (isLeaderId(id)) {
+          const l = leaderById(s, id)!;
+          const own = leaderUnit(s, l);
+          return { id, label: `Leader ${l.name || ''}${own ? ` with his ${unitTypeName(own.type)}` : ''} — ${where(l.hex)}` };
+        }
+        const u = unitById(s, id)!;
+        return { id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) — ${where(u.hex)}` };
+      });
+    }
     if (face === 'flag' || face === 'swords') return [];
     const units = unitsOf(s, side).filter((u) => free(u) && (face === 'leader' || UNIT_STATS[u.type].cls === face)).map((u) => ({ id: u.id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) — ${where(u.hex)}` }));
     const leaders = face === 'leader' ? leadersOf(s, side).filter(free).map((l) => ({ id: l.id, label: `Leader ${l.name || ''} — ${where(l.hex)}` })) : [];
@@ -814,21 +853,27 @@ function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'sparta
       let chosen: string | null = null;
       for (const o of opts) {
         const trial = [...out, o.id, ...Array(faces.length - i - 1).fill(null)];
-        const err = p.kind === 'rally' ? validateRally(s, side, faces, trial, command) : validateSpartacus(s, side, faces, trial, command);
-        if (!err) { chosen = o.id; break; }
+        if (!validate(trial)) { chosen = o.id; break; }
       }
       out.push(chosen);
     }
     return out;
   }
-  const err = p.kind === 'rally' ? validateRally(s, side, faces, ids, command) : validateSpartacus(s, side, faces, ids, command);
+  function validate(list: (string | null)[]): string | null {
+    if (p.kind === 'rally') return validateRally(s, side, faces, list, command);
+    if (p.kind === 'diceOrders') return validateDiceOrders(s, side, faces, list);
+    return validateSpartacus(s, side, faces, list, command);
+  }
+  const err = validate(ids);
   return (
     <div className="assign-float">
-      <div className="assign-title">{p.kind === 'rally' ? 'Rally your troops' : 'I Am Spartacus'}</div>
+      <div className="assign-title">{p.kind === 'rally' ? 'Rally your troops' : p.kind === 'diceOrders' ? 'Order dice' : 'I Am Spartacus'}</div>
       <p className="modal-p">
         {p.kind === 'rally'
           ? 'Each unit symbol restores one block to a damaged unit of that type in or next to a leader\'s hex. Helmets restore any type.'
-          : 'Each unit symbol orders one unit of that type; helmets order any unit or leader. Ordered units roll one extra die this turn.'}
+          : p.kind === 'diceOrders'
+            ? 'Each unit symbol orders one unit of that type, anywhere; a helmet orders a leader with his unit. Flags and swords order nothing.'
+            : 'Each unit symbol orders one unit of that type; helmets order any unit or leader. Ordered units roll one extra die this turn.'}
       </p>
       <div className="assign-list">
         {faces.map((f, i) => {

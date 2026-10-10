@@ -913,6 +913,17 @@ Data: side `cards: 0`, `orders: 'dice'`, `orderDice: 2`; the roll purpose is `di
   4. **Helmet:** orders the leader Saburra with his attached unit, or Saburra alone; a second helmet is lost.
 * Then the normal move and battle phases follow for the ordered units, with no card modifiers.
 * No legion rule applies (X3 Q1).
+* Engine: side data `orders: 'dice'` with `orderDice` (a whole number from 1) and `cards: 0` (validated; such a side may have
+  no `initialCommand` and no hand growth) → `special.orderDice[side]` (0 for a side that plays cards). In `turnFlow`, after
+  the turn-start objectives and forced placements, a dice side rolls `orderDice` dice (event `roll`, purpose `diceOrders`;
+  phase `orders`, `card` and `effective` null, default modifiers). Each flag face, then each swords face, asks
+  `diceVictim { face, options }` (the side's units on the board, unit order, asked even with one; answer `choose`), each
+  after the one before is resolved: a flag is `applyHits` with one flag and no flag ignorable (the Rolling Fire path:
+  event `flags`, the retreat with its losses and leader check), swords `loseBlocks` 1 with the leader check. Then, if any
+  face can order something, `diceOrders { faces }` (answer `assign`, one id or null per face; `validateDiceOrders`): the
+  pieces ordered are the ids plus each helmet leader's attached unit, none twice (event `ordered`). `endOfTurn` gives a dice
+  side no draw, no hand growth and no First Strike draw, and its `lastCard` stays null, so a Counter Attack against it
+  orders nothing. The AI resumes a dice side's turn exactly (`continueTurn`) in its battle rollouts.
 
 ### 18.11 Immobile units (306 Bibracte)
 

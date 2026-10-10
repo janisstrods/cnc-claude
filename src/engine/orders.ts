@@ -396,5 +396,66 @@ export function validateSpartacus(s: GameState, side: Side, faces: DieFace[], id
   return commandClash(s, [...seen], command);
 }
 
+// ---------------------------------------------------------------------------
+// dice orders (310 Utica P1, rules-reference §18.10)
+// ---------------------------------------------------------------------------
+
+/** Order dice `side` rolls at the start of its turn instead of playing a card (§18.10); 0 = it plays cards. */
+export function orderDice(s: GameState, side: Side): number {
+  return s.special.orderDice?.[side] ?? 0;
+}
+
+/**
+ * Pieces a face of a dice-order roll could order (§18.10), before anything is assigned: a class face, the units of that
+ * class on the board; a helmet, the side's leaders on the board (each brings his attached unit); flags and swords, nothing.
+ */
+export function diceOrderPieces(s: GameState, side: Side, face: DieFace): string[] {
+  if (face === 'leader') return leadersOf(s, side).map((l) => l.id);
+  if (face === 'flag' || face === 'swords') return [];
+  return unitsOf(s, side).filter((u) => UNIT_STATS[u.type].cls === face).map((u) => u.id);
+}
+
+/** The pieces an assignment of dice orders orders: each id, and the unit attached to each leader, once each, in face order. */
+export function diceOrdered(s: GameState, ids: (string | null)[]): string[] {
+  const out: string[] = [];
+  for (const id of ids) {
+    if (!id) continue;
+    out.push(id);
+    const l = isLeaderId(id) ? leaderById(s, id) : undefined;
+    const own = l && leaderUnit(s, l);
+    if (own) out.push(own.id);
+  }
+  return out;
+}
+
+/**
+ * Validate a dice-order assignment (§18.10): one entry per face; flags and swords order nothing; a class face orders one
+ * of the side's units of that class; a helmet orders one of its leaders, and his attached unit with him; no piece is
+ * ordered twice (two equal dice order two different units, and a helmet's unit is not ordered again by a class face).
+ */
+export function validateDiceOrders(s: GameState, side: Side, faces: DieFace[], ids: (string | null)[]): string | null {
+  if (!Array.isArray(ids) || ids.length !== faces.length) return 'One entry per die.';
+  for (let i = 0; i < faces.length; i++) {
+    const id = ids[i];
+    if (id === null) continue;
+    const f = faces[i];
+    if (f === 'flag' || f === 'swords') return 'Flags and swords order nothing.';
+    if (typeof id !== 'string') return 'Not a piece.';
+    if (isLeaderId(id)) {
+      const l = leaderById(s, id);
+      if (!l || l.side !== side || l.hex < 0) return 'Not your leader.';
+      if (f !== 'leader') return 'Only a helmet orders a leader.';
+      continue;
+    }
+    const u = unitById(s, id);
+    if (!u || u.side !== side || u.hex < 0) return 'Not your unit.';
+    if (f === 'leader') return 'A helmet orders a leader (with his unit).';
+    if (UNIT_STATS[u.type].cls !== f) return 'That die does not match the unit type.';
+  }
+  const all = diceOrdered(s, ids);
+  if (new Set(all).size !== all.length) return 'Each unit may be ordered only once.';
+  return null;
+}
+
 /** Leader attached to the unit, re-exported for flow convenience. */
 export { attachedLeader };
