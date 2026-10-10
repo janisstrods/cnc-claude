@@ -31,7 +31,7 @@ function Spring({ x, top, bottom, p, dark }: { x: number; top: number; bottom: n
 /** The engine itself (stand, stock, windlass, slider with bolt, spring frame, arms and string). */
 function BoltThrower({ p, i }: { p: Palette; i: number }) {
   // the Roman scorpio: frame in the shield colour and a curved front shield
-  const scorpio = KITS[p.kit].warMachine === 'scorpio';
+  const scorpio = warMachineOf(p) === 'scorpio';
   const wood = p.wood;
   const woodShade = p.woodShade;
   const frame = scorpio ? p.shield : wood;
@@ -180,9 +180,12 @@ function BallistaFigure({ p, i }: { p: Palette; i: number }) {
   );
 }
 
-/** One war machine with its two crewmen, facing right, feet at (0,0): the kit's machine (`KITS[kit].warMachine`). */
+/** The war machine a look draws: its own (`LookStyle.warMachine`), else its kit's (`KITS[kit].warMachine`). */
+export const warMachineOf = (p: Palette) => p.style.warMachine ?? KITS[p.kit].warMachine;
+
+/** One war machine with its two crewmen, facing right, feet at (0,0): the look's or kit's machine (`warMachineOf`). */
 export function MachineFigure({ p, i }: { p: Palette; i: number }) {
-  if (KITS[p.kit].warMachine === 'ballista') return <BallistaFigure p={p} i={i} />;
+  if (warMachineOf(p) === 'ballista') return <BallistaFigure p={p} i={i} />;
   return (
     <g>
       {/* the gunner laying the engine, behind it */}

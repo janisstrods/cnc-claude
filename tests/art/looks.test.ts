@@ -291,7 +291,7 @@ describe('Expansion #1 armies are drawn exactly as before Expansion #2 (rendered
   });
 });
 
-/** The looks new in Expansion #3: they draw as an older look until the art track gives them their own (see EXP3_KITS). */
+/** The looks new in Expansion #3, with their own art (see EXP3_KITS and tests/art/exp3-looks.test.ts). */
 type Exp3Look = 'sullan' | 'samnite' | 'sertorian' | 'pompeian' | 'caesarian' | 'helvetii' | 'numidian' | 'pontic';
 
 /** The kit of every look before Expansion #3 (Expansion #1 brief). */
@@ -307,11 +307,11 @@ const KITS: Record<Exclude<ArmyLook, Exp3Look>, Kit> = {
 };
 const ALL_LOOKS = Object.keys(KITS) as Exclude<ArmyLook, Exp3Look>[];
 
-/** Expansion #3 (temporary art): the Roman parties draw as Marian Romans, the Helvetii and Sertorians as Gauls, the Numidians
- *  as Carthaginians, the Pontic army as the Antigonid one, the Samnites as Syracusans. */
+/** Expansion #3: the late-Roman kit for the three Roman parties, the new Italic (Samnites) and Iberian (Sertorius) kits, the
+ *  Celtic kit for the Helvetii, the Punic kit for the Numidians, the Macedonian kit for the Pontic army. */
 const EXP3_KITS: Record<Exp3Look, Kit> = {
-  sullan: 'lateRoman', pompeian: 'lateRoman', caesarian: 'lateRoman', helvetii: 'celtic', sertorian: 'celtic',
-  numidian: 'punic', pontic: 'macedonian', samnite: 'greek',
+  sullan: 'lateRoman', pompeian: 'lateRoman', caesarian: 'lateRoman', helvetii: 'celtic', sertorian: 'iberian',
+  numidian: 'punic', pontic: 'macedonian', samnite: 'italic',
 };
 
 describe('army looks of Expansion #1', () => {

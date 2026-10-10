@@ -2,6 +2,7 @@
 // Close-up routes: #/gallery/art/detail/<look|rome|carthage|syracuse>[/TYPE,TYPE..] (tokens),
 // #/gallery/art/figures/<look>[/TYPE,TYPE..[/<elite>]] (single figures, much enlarged),
 // #/gallery/art/boxes/<look,look..>/<TYPE,TYPE..> (measured icon boxes of figure i = 2, for KitDef.iconBox)
+// Expansion pages: #/gallery/art/exp2, #/gallery/art/exp3
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
 import { hexPoints, HEX_W, HEX_R } from '../ui/geometry';
@@ -34,6 +35,7 @@ const LOOK_ORDER: ArmyLook[] = [
   'macedonian', 'antigonid', 'epirote', 'craterus', 'eumenes', 'antigonus', 'seleucid', 'ptolemaic',
   'persian', 'scythian', 'indian', 'mauryan',
   'gallic', 'germanic', 'slave', 'belgic', 'briton', 'marian',
+  'sullan', 'samnite', 'sertorian', 'pompeian', 'caesarian', 'helvetii', 'numidian', 'pontic',
 ];
 const LOOK_LABEL: Record<ArmyLook, string> = {
   roman: 'Rome', carthaginian: 'Carthage', syracusan: 'Syracuse', athenian: 'Athens', theban: 'Thebes', spartan: 'Sparta',
@@ -46,20 +48,45 @@ const LOOK_LABEL: Record<ArmyLook, string> = {
 };
 
 interface LookUse {
+  /** The block set the look stands on most often. */
   blocks: Blocks;
+  /** How many armies of the look stand on each block set. */
+  blockCount: Partial<Record<Blocks, number>>;
   types: Set<UnitType>;
   commander: string;
   elites: { type: UnitType; elite: EliteId }[];
 }
 
+/** A battle as the gallery reads it: the sides' looks, blocks and commanders, and the units (with off-board reserves). */
+interface BattleArmies {
+  id: string;
+  top: { look: ArmyLook; blocks: Blocks; commander: string };
+  bottom: { look: ArmyLook; blocks: Blocks; commander: string };
+  units: { side: 'top' | 'bottom'; type: UnitType; elite?: EliteId }[];
+}
+
+/**
+ * The Expansion #3 battles from their verified transcriptions (design/exp3-data) until they are imported as scenarios; a
+ * battle that is a scenario already is read from SCENARIOS.
+ */
+const EXP3_DATA = Object.values(import.meta.glob('../../design/exp3-data/3*.json', { eager: true, import: 'default' }) as Record<string, {
+  id: string; top: BattleArmies['top']; bottom: BattleArmies['bottom']; units: BattleArmies['units']; reserves?: BattleArmies['units'];
+}>);
+
 /** What each look fields across all scenarios: its block set, unit types, a commander's name and its elites. */
 function lookUses(): Record<string, LookUse> {
   const out: Record<string, LookUse> = {};
-  for (const sc of SCENARIOS) {
+  const battles: BattleArmies[] = SCENARIOS.map((sc) => ({ id: sc.id, top: sc.setup.top, bottom: sc.setup.bottom, units: sc.setup.units }));
+  for (const d of EXP3_DATA) {
+    if (!battles.some((b) => b.id === d.id)) battles.push({ id: d.id, top: d.top, bottom: d.bottom, units: [...d.units, ...(d.reserves ?? [])] });
+  }
+  for (const sc of battles) {
     for (const side of ['top', 'bottom'] as const) {
-      const s = sc.setup[side];
-      const u = (out[s.look] ??= { blocks: s.blocks, types: new Set(), commander: s.commander, elites: [] });
-      for (const unit of sc.setup.units) {
+      const s = sc[side];
+      const u = (out[s.look] ??= { blocks: s.blocks, blockCount: {}, types: new Set(), commander: s.commander, elites: [] });
+      u.blockCount[s.blocks] = (u.blockCount[s.blocks] ?? 0) + 1;
+      if ((u.blockCount[s.blocks] ?? 0) > (u.blockCount[u.blocks] ?? 0)) u.blocks = s.blocks;
+      for (const unit of sc.units) {
         if (unit.side !== side) continue;
         u.types.add(unit.type);
         if (unit.elite && !u.elites.some((e) => e.elite === unit.elite)) u.elites.push({ type: unit.type, elite: unit.elite });
@@ -86,6 +113,7 @@ const ELITES: { elite: EliteId; look: ArmyLook; type: UnitType; label: string }[
 const NAMED_LEADERS: { name: string; look: ArmyLook; other: string }[] = [
   { name: 'Caesar', look: 'marian', other: 'Labienus' },
   { name: 'Spartacus', look: 'slave', other: 'Crixus' },
+  { name: 'Pompey', look: 'pompeian', other: 'Afranius' },
 ];
 
 const GRASS = '#8fa25e';
@@ -469,7 +497,7 @@ function Boxes() {
 
 /** War-machine crewmen per kit (the HWM figure of the war-machine art puts them beside the engine). */
 function CrewRow() {
-  const looks: ArmyLook[] = ['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian', 'marian', 'gallic', 'germanic'];
+  const looks: ArmyLook[] = ['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian', 'marian', 'gallic', 'germanic', 'samnite', 'sertorian'];
   return (
     <>
       {looks.map((look) => {
@@ -548,7 +576,7 @@ function IconRows({ looks }: { looks: ArmyLook[] }) {
 /** The leaders with their own figure (LEADER_LOOKS, matched by name) next to an ordinary general of their look, alone and attached. */
 function NamedLeaders({ scale }: { scale: number }) {
   return (
-    <Row title="Named leaders" note="Caesar (laurel wreath, scarlet cloak, white horse) and Spartacus (Thracian helmet, sica), each beside an ordinary general of his look.">
+    <Row title="Named leaders" note="Caesar (laurel wreath, scarlet cloak, white horse), Spartacus (Thracian helmet, sica) and Pompey (bare-headed with his upswept forelock, purple cloak, dark horse), each beside an ordinary general of his look.">
       {NAMED_LEADERS.flatMap(({ name, look, other }) => {
         const art = { look, blockColor: blocksOf(look) };
         return [name, other].map((n) => (
@@ -592,7 +620,118 @@ function Exp2Gallery() {
   );
 }
 
+/** Expansion #3: Pompeians against Caesarians (Pharsalus, Thapsus), with the Pompeians' Numidian horse and elephants. */
+const EXP3_CIVIL_BOARD: BoardUnit[] = [
+  { r: 0, c: 0, type: 'LC', look: 'pompeian', blocks: 3, facing: 'right' },
+  { r: 0, c: 1, type: 'HI', look: 'pompeian', blocks: 4, facing: 'right', leader: true, name: 'Pompey' },
+  { r: 0, c: 2, type: 'MI', look: 'pompeian', blocks: 4, facing: 'right' },
+  { r: 0, c: 3, type: 'EL', look: 'pompeian', blocks: 2, facing: 'right' },
+  { r: 0, c: 4, type: 'MC', look: 'pompeian', blocks: 3, facing: 'right' },
+  { r: 0, c: 5, type: 'AX', look: 'pompeian', blocks: 4, facing: 'right', dimmed: true },
+  { r: 0, c: 6, type: 'HWM', look: 'pompeian', blocks: 2, facing: 'right' },
+  { r: 1, c: 0, type: 'MC', look: 'caesarian', blocks: 3, facing: 'left' },
+  { r: 1, c: 1, type: 'HI', look: 'caesarian', blocks: 4, facing: 'left', leader: true, name: 'Caesar' },
+  { r: 1, c: 2, type: 'MI', look: 'caesarian', blocks: 3, facing: 'left' },
+  { r: 1, c: 3, type: 'WA', look: 'caesarian', blocks: 4, facing: 'left' },
+  { r: 1, c: 4, type: 'LC', look: 'caesarian', blocks: 3, facing: 'left' },
+  { r: 1, c: 5, type: 'HWM', look: 'caesarian', blocks: 2, facing: 'left' },
+  { r: 2, c: 0, type: 'LB', look: 'pompeian', blocks: 4, facing: 'right' },
+  { r: 2, c: 1, type: 'LI', look: 'pompeian', blocks: 4, facing: 'right' },
+  { r: 2, c: 2, type: 'HI', look: 'pompeian', blocks: 2, facing: 'right' },
+  { r: 2, c: 3, type: 'LS', look: 'caesarian', blocks: 4, facing: 'left' },
+  { r: 2, c: 4, type: 'AX', look: 'caesarian', blocks: 4, facing: 'left' },
+  { r: 2, c: 5, type: 'LB', look: 'caesarian', blocks: 4, facing: 'left' },
+  { r: 2, c: 6, type: 'HI', look: 'caesarian', blocks: 4, facing: 'left' },
+];
+
+/** Italy and Spain: the Samnites at the Colline Gate, Sulla's legions, Sertorius' army against Pompey. */
+const EXP3_WEST_BOARD: BoardUnit[] = [
+  { r: 0, c: 0, type: 'AX', look: 'samnite', blocks: 4, facing: 'right' },
+  { r: 0, c: 1, type: 'MI', look: 'samnite', blocks: 4, facing: 'right', leader: true, name: 'Pontius' },
+  { r: 0, c: 2, type: 'AX', look: 'samnite', blocks: 3, facing: 'right' },
+  { r: 0, c: 3, type: 'MC', look: 'samnite', blocks: 3, facing: 'right' },
+  { r: 0, c: 4, type: 'LS', look: 'samnite', blocks: 4, facing: 'right' },
+  { r: 0, c: 5, type: 'WA', look: 'sertorian', blocks: 4, facing: 'right' },
+  { r: 0, c: 6, type: 'LI', look: 'sertorian', blocks: 4, facing: 'right' },
+  { r: 1, c: 0, type: 'MC', look: 'sullan', blocks: 3, facing: 'left' },
+  { r: 1, c: 1, type: 'MI', look: 'sullan', blocks: 4, facing: 'left', leader: true, name: 'Sulla' },
+  { r: 1, c: 2, type: 'MI', look: 'sullan', blocks: 4, facing: 'left' },
+  { r: 1, c: 3, type: 'WA', look: 'sullan', blocks: 4, facing: 'left' },
+  { r: 1, c: 4, type: 'LS', look: 'sullan', blocks: 4, facing: 'left' },
+  { r: 1, c: 5, type: 'MI', look: 'pompeian', blocks: 4, facing: 'left' },
+  { r: 2, c: 0, type: 'HI', look: 'sertorian', blocks: 4, facing: 'right', leader: true, name: 'Sertorius' },
+  { r: 2, c: 1, type: 'MI', look: 'sertorian', blocks: 4, facing: 'right' },
+  { r: 2, c: 2, type: 'AX', look: 'sertorian', blocks: 4, facing: 'right' },
+  { r: 2, c: 3, type: 'LC', look: 'sertorian', blocks: 3, facing: 'right' },
+  { r: 2, c: 4, type: 'MC', look: 'sertorian', blocks: 3, facing: 'right', edge: 'grk' },
+  { r: 2, c: 5, type: 'MI', look: 'pompeian', blocks: 4, facing: 'left', leader: true, name: 'Pompey' },
+  { r: 2, c: 6, type: 'MC', look: 'pompeian', blocks: 3, facing: 'left' },
+];
+
+/** Caesar's foreign enemies: the Helvetii (Bibracte), Juba's Numidians (Bagradas, Ruspina), Pharnaces' Pontic army (Zela). */
+const EXP3_FOREIGN_BOARD: BoardUnit[] = [
+  { r: 0, c: 0, type: 'WA', look: 'helvetii', blocks: 4, facing: 'right', leader: true, name: 'Divico' },
+  { r: 0, c: 1, type: 'WA', look: 'helvetii', blocks: 4, facing: 'right' },
+  { r: 0, c: 2, type: 'AX', look: 'helvetii', blocks: 4, facing: 'right' },
+  { r: 0, c: 3, type: 'MC', look: 'helvetii', blocks: 3, facing: 'right' },
+  { r: 0, c: 4, type: 'LC', look: 'numidian', blocks: 3, facing: 'right' },
+  { r: 0, c: 5, type: 'MC', look: 'numidian', blocks: 3, facing: 'right', leader: true, name: 'Juba' },
+  { r: 0, c: 6, type: 'WA', look: 'numidian', blocks: 4, facing: 'right' },
+  { r: 1, c: 0, type: 'HI', look: 'caesarian', blocks: 4, facing: 'left', leader: true, name: 'Caesar' },
+  { r: 1, c: 1, type: 'AX', look: 'caesarian', blocks: 4, facing: 'left' },
+  { r: 1, c: 2, type: 'LI', look: 'caesarian', blocks: 4, facing: 'left' },
+  { r: 1, c: 3, type: 'MI', look: 'numidian', blocks: 4, facing: 'right' },
+  { r: 1, c: 4, type: 'AX', look: 'numidian', blocks: 4, facing: 'right' },
+  { r: 1, c: 5, type: 'LI', look: 'numidian', blocks: 4, facing: 'right' },
+  { r: 2, c: 0, type: 'HCH', look: 'pontic', blocks: 2, facing: 'right' },
+  { r: 2, c: 1, type: 'HI', look: 'pontic', blocks: 4, facing: 'right', leader: true, name: 'Pharnaces' },
+  { r: 2, c: 2, type: 'MI', look: 'pontic', blocks: 4, facing: 'right' },
+  { r: 2, c: 3, type: 'HC', look: 'pontic', blocks: 3, facing: 'right' },
+  { r: 2, c: 4, type: 'LI', look: 'pontic', blocks: 4, facing: 'right' },
+  { r: 2, c: 5, type: 'LC', look: 'pontic', blocks: 3, facing: 'right' },
+  { r: 2, c: 6, type: 'AX', look: 'pontic', blocks: 4, facing: 'right' },
+];
+
+const EXP3_LOOKS: ArmyLook[] = ['sullan', 'samnite', 'sertorian', 'pompeian', 'caesarian', 'helvetii', 'numidian', 'pontic'];
+
+/** The Expansion #3 art only: #/gallery/art/exp3. */
+function Exp3Gallery() {
+  const red = { look: 'caesarian' as ArmyLook, blockColor: 'rom' as Blocks };
+  return (
+    <div style={{ minHeight: '100vh', padding: '22px 26px 60px', background: '#e3d3ad', fontFamily: '"EB Garamond", Georgia, serif', color: '#2b2014' }}>
+      <h1 style={{ font: '700 30px Cinzel, Georgia, serif', margin: '0 0 12px', letterSpacing: 2 }}>The Roman Civil Wars</h1>
+      <Row title="At board scale (1×)" note="Pompeians (grey blocks) against Caesarians (red); Samnites, Sullans, Sertorians and Pompeians; Caesar's foreign enemies.">
+        <BoardSample units={EXP3_CIVIL_BOARD} lone={{ r: 1, c: 6, look: 'caesarian', name: 'Antony', facing: 'left' }} />
+        <BoardSample units={EXP3_WEST_BOARD} lone={{ r: 1, c: 6, look: 'sullan', name: 'Crassus', facing: 'left' }} />
+        <BoardSample units={EXP3_FOREIGN_BOARD} lone={{ r: 1, c: 6, look: 'numidian', name: 'Saburra', facing: 'left' }} />
+      </Row>
+      <Row title="Pompeian and Caesarian, same blocks" note="The two parties on the same block colour, so only the figures tell them apart: blue and navy against red, silver against bronze, white crests against black, the lion against the bull.">
+        {(['HI', 'MI', 'AX', 'LB', 'LC', 'MC', 'WA', 'HWM'] as UnitType[]).flatMap((t) => (['pompeian', 'caesarian'] as ArmyLook[]).map((look) => (
+          <Hex key={`${t}${look}`} scale={1.5} label={`${LOOK_LABEL[look]} ${t}`}><Token type={t} look={look} blockColor="rom" /></Hex>
+        )))}
+      </Row>
+      {EXP3_LOOKS.map((look) => <LookRow key={look} look={look} />)}
+      <Row title="Red and grey Roman warriors, war machines and elephants" note="Warriors: Sulla's Spaniards (302), Caesar's Aedui and Germans (308, 315), Sertorius' Celtiberians (303), Juba's Gaetulians (312); war machines: Caesar's ballista (306, 308) and Pompey's scorpio (314); Juba's elephants with Scipio (318).">
+        <Hex scale={1.5} label="Sullan WA (302)"><Token type="WA" look="sullan" blockColor="rom" /></Hex>
+        <Hex scale={1.5} label="Caesarian WA (308, 315)"><Token type="WA" {...red} /></Hex>
+        <Hex scale={1.5} label="Sertorian WA (303)"><Token type="WA" look="sertorian" blockColor="gry" /></Hex>
+        <Hex scale={1.5} label="Numidian WA (312)"><Token type="WA" look="numidian" blockColor="gry" /></Hex>
+        <Hex scale={1.5} label="Caesarian HWM"><Token type="HWM" {...red} /></Hex>
+        <Hex scale={1.5} label="Pompeian HWM (314)"><Token type="HWM" look="pompeian" blockColor="gry" /></Hex>
+        <Hex scale={1.5} label="Pompeian EL (318)"><Token type="EL" look="pompeian" blockColor="gry" /></Hex>
+        <Hex scale={1.5} label="Pompeian EL 1/2, left"><Token type="EL" look="pompeian" blockColor="gry" blocks={1} facing="left" /></Hex>
+        <Hex scale={1.5} label="Pontic HCH (316)"><Token type="HCH" look="pontic" blockColor="eas" /></Hex>
+      </Row>
+      <NamedLeaders scale={2} />
+      <Row title="Unit icons (UnitIcon, size 64 and 32)">
+        <IconRows looks={EXP3_LOOKS} />
+      </Row>
+    </div>
+  );
+}
+
 export default function ArtGallery() {
+  if (window.location.hash.startsWith('#/gallery/art/exp3')) return <Exp3Gallery />;
   if (window.location.hash.startsWith('#/gallery/art/detail')) return <Detail />;
   if (window.location.hash.startsWith('#/gallery/art/figures')) return <Figures />;
   if (window.location.hash.startsWith('#/gallery/art/boxes')) return <Boxes />;
@@ -610,7 +749,7 @@ export default function ArtGallery() {
       <h1 style={{ font: '700 30px Cinzel, Georgia, serif', margin: '0 0 4px', letterSpacing: 2 }}>Miniatures</h1>
       <p style={{ margin: '0 0 20px', fontSize: 17 }}>
         Illustrated painted-miniature unit art · hexes shown at 2× board scale unless noted · close-ups: #/gallery/art/detail/&lt;look&gt;,
-        #/gallery/art/figures/&lt;look&gt; · Expansion #2 only: #/gallery/art/exp2
+        #/gallery/art/figures/&lt;look&gt; · Expansion #2 only: #/gallery/art/exp2 · Expansion #3 only: #/gallery/art/exp3
       </p>
 
       <Row title="At board scale (1×)">
@@ -620,6 +759,9 @@ export default function ArtGallery() {
         <BoardSample units={BIG_BOARD} lone={{ r: 1, c: 6, look: 'macedonian', name: 'Alexander', facing: 'left' }} />
         <BoardSample units={EXP2_BOARD} lone={{ r: 1, c: 6, look: 'marian', name: 'Caesar', facing: 'left' }} />
         <BoardSample units={EXP2_MOUNTED_BOARD} lone={{ r: 1, c: 6, look: 'gallic', name: 'Vercingetorix', facing: 'left' }} />
+        <BoardSample units={EXP3_CIVIL_BOARD} lone={{ r: 1, c: 6, look: 'caesarian', name: 'Antony', facing: 'left' }} />
+        <BoardSample units={EXP3_WEST_BOARD} lone={{ r: 1, c: 6, look: 'sullan', name: 'Crassus', facing: 'left' }} />
+        <BoardSample units={EXP3_FOREIGN_BOARD} lone={{ r: 1, c: 6, look: 'numidian', name: 'Saburra', facing: 'left' }} />
       </Row>
 
       <Row title="Block colours" note="Base edge, standard and captured-banner cloth of each block set, and on the board; last: a unit of a grey command in a red army (edgeBlocks, 210 Lentulus).">
@@ -677,7 +819,7 @@ export default function ArtGallery() {
       </Row>
 
       <Row title="Every kit, every type" note="One look per kit with all sixteen unit types (also the types its armies never field: a kit without its own light chariot mans the BCH with its light infantryman and a crewman).">
-        {(['syracusan', 'macedonian', 'persian', 'scythian', 'indian', 'gallic', 'germanic', 'marian'] as ArmyLook[]).map((look) => (
+        {(['syracusan', 'macedonian', 'persian', 'scythian', 'indian', 'gallic', 'germanic', 'marian', 'samnite', 'sertorian'] as ArmyLook[]).map((look) => (
           <div key={look} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, width: '100%' }}>
             {TYPES.map((t) => (
               <Hex key={t} scale={1.2} label={`${look} ${t}`}>
@@ -788,7 +930,7 @@ export default function ArtGallery() {
       </Row>
 
       <Row title="Unit icons (UnitIcon, size 64 and 32)">
-        <IconRows looks={['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian', ...EXP2_LOOKS]} />
+        <IconRows looks={['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian', ...EXP2_LOOKS, ...EXP3_LOOKS]} />
       </Row>
     </div>
   );

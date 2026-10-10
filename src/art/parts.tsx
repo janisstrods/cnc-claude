@@ -10,6 +10,9 @@ import { darken, lighten } from './color';
 import { KITS } from './kits';
 import type { EmblemKind, Palette } from './palettes';
 import { ArmBands, Exp2Device, Exp2Helm, Exp2Shield, SuebianKnot, isExp2Shield, type Exp2ShieldKind } from './exp2-parts';
+import {
+  Anastole, BronzeBelt, Exp3Device, Exp3Helm, Exp3Shield, TripleDisc, isExp3Device, isExp3Helm, isExp3Shield, type Exp3ShieldKind,
+} from './exp3-parts';
 
 export const OL = '#1d140e';
 export const OW = 0.8;
@@ -377,7 +380,8 @@ function Device({ kind, col, bg }: { kind: EmblemKind; col: string; bg: string }
         </g>
       );
     default:
-      // the Expansion #2 devices
+      // the Expansion #2 and #3 devices
+      if (isExp3Device(kind)) return <Exp3Device kind={kind} col={col} bg={bg} />;
       return <Exp2Device kind={kind} col={col} bg={bg} />;
   }
 }
@@ -395,10 +399,12 @@ export type ShieldKind =
   | 'phalanx' | 'spara' | 'pelta' | 'bamboo' | 'thureos'
   // Expansion #2: the long Celtic oval and the long hexagonal shield (spine, strip boss, painted device), the Germanic
   // board shield (iron boss), the curved oval scutum of the Marian legions (spine, long boss, winged thunderbolt)
-  | Exp2ShieldKind;
+  | Exp2ShieldKind
+  // Expansion #3: the Iberian caetra (small round buckler with a big boss and painted rings)
+  | Exp3ShieldKind;
 
 /** Shields painted by default with the army's light-troop / tribal colours (`paint`) rather than its line shields'. */
-const PAINTED_SHIELDS: ReadonlySet<ShieldKind> = new Set<ShieldKind>(['round', 'longOval', 'pelta', 'celtOval', 'hex', 'board']);
+const PAINTED_SHIELDS: ReadonlySet<ShieldKind> = new Set<ShieldKind>(['round', 'longOval', 'pelta', 'celtOval', 'hex', 'board', 'caetra']);
 
 /** The device a figure's shield carries (the look's emblems cycle by figure index; painted shields may have their own). */
 function emblemFor(p: Palette, painted: boolean, i: number): EmblemKind {
@@ -563,6 +569,7 @@ export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted,
     );
   }
   if (isExp2Shield(kind)) body = <Exp2Shield kind={kind} f={f} face={face} faceShade={faceShade} faceLight={faceLight} emb={emb} ek={ek} emblem={emblem} />;
+  if (isExp3Shield(kind)) body = <Exp3Shield f={f} face={face} faceShade={faceShade} faceLight={faceLight} emb={emb} />;
   if (!body) return null;
   if (!dx && !dy && s === 1) return <>{body}</>;
   return <g transform={`translate(${dx} ${dy})${s !== 1 ? ` scale(${s})` : ''}`}>{body}</g>;
@@ -580,11 +587,17 @@ export type Helmet =
   | 'tiara' | 'kidaris' | 'scythianCap' | 'turban' | 'kausia' | 'petasos' | 'nemes' | 'fillet'
   // Expansion #2: the Coolus helmet of the late Republic (brow peak, neck guard), the Celtic horned helmet, a laurel wreath
   // (Caesar) and a gladiator's brimmed helmet with a grille visor
-  | 'coolus' | 'horned' | 'laurel' | 'gladiator';
+  | 'coolus' | 'horned' | 'laurel' | 'gladiator'
+  // Expansion #3: the Samnite helmet with a tall feather at either side (and a crest with `horsehair` or `tall`), the
+  // Lusitanian sinew cap with three crests
+  | 'samnite' | 'sinew';
 /** `plume2`: a pair of tall feathers at the helmet's sides; `horns`: goat horns (Pyrrhus). */
 export type Crest = 'none' | 'plumes' | 'horsehair' | 'knob' | 'tall' | 'plume2' | 'horns';
-/** `locks`: long hair falling from under a helmet to the shoulders (Spartans); `knot`: combed back into a Suebian knot. */
-export type Hair = 'short' | 'long' | 'wild' | 'bald' | 'locks' | 'knot';
+/**
+ * `locks`: long hair falling from under a helmet to the shoulders (Spartans); `knot`: combed back into a Suebian knot;
+ * `anastole`: short, with the lock swept up off the forehead (Pompey).
+ */
+export type Hair = 'short' | 'long' | 'wild' | 'bald' | 'locks' | 'knot' | 'anastole';
 
 /** Headgear that leaves the hair showing at the back. */
 const HAIR_SHOWS: ReadonlySet<Helmet> = new Set<Helmet>(['none', 'cap', 'kausia', 'petasos', 'fillet', 'laurel']);
@@ -633,6 +646,7 @@ export function Head({ f, helmet, crest, hair: hairKind = 'short', beard = false
         <Hi d="M-1.6 -27.4 C-0.4 -28.4 1.2 -28.6 2.6 -28.2 M-1.8 -25.8 C-1.2 -26.8 -0.2 -27.4 0.8 -27.4" c={lighten(f.hair, 0.35)} w={0.45} o={0.9} />
       )}
       {showHair && hair === 'knot' && <SuebianKnot f={f} />}
+      {showHair && hair === 'anastole' && <Anastole f={f} />}
       {showHair && <ellipse cx={0.5} cy={-24.7} rx={0.6} ry={0.9} fill={f.skinShade} />}
       <Helm f={f} helmet={helmet} crest={crest} />
     </>
@@ -885,6 +899,7 @@ function NewHelm({ f, helmet, crest, crestEl }: { f: Fig; helmet: Helmet; crest:
       </>
     );
   }
+  if (isExp3Helm(helmet)) return <Exp3Helm f={f} helmet={helmet} crest={crest} crestEl={crestEl} />;
   return <Exp2Helm f={f} helmet={helmet} crest={crest} crestEl={crestEl} />;
 }
 
@@ -943,8 +958,11 @@ function CrestEl({ f, crest, helmet }: { f: Fig; crest: Crest; helmet: Helmet })
 // ---------------------------------------------------------------------------------------------
 // Torso, skirt and legs
 
-/** `robe`: Persian court robe to the ankles; `kaftan`: Scythian wrap-over coat; `cotton`: Indian cotton tunic to mid-shin. */
-export type Torso = 'tunic' | 'mail' | 'linen' | 'bare' | 'leather' | 'muscle' | 'scale' | 'robe' | 'kaftan' | 'cotton';
+/**
+ * `robe`: Persian court robe to the ankles; `kaftan`: Scythian wrap-over coat; `cotton`: Indian cotton tunic to mid-shin;
+ * `triple`: the Samnite triple-disc cuirass over a tunic.
+ */
+export type Torso = 'tunic' | 'mail' | 'linen' | 'bare' | 'leather' | 'muscle' | 'scale' | 'robe' | 'kaftan' | 'cotton' | 'triple';
 const CLOTH_TORSOS: ReadonlySet<Torso> = new Set<Torso>(['robe', 'kaftan', 'cotton']);
 export type Legs = 'bare' | 'greaves' | 'trousers' | 'boots';
 
@@ -957,13 +975,15 @@ const SKIRT =
 const SKIRT_SHADE =
   'M-3.8 -14.8 L-1.2 -14.8 L-1.8 -7.6 C-3 -7.7 -4.1 -8 -5.1 -8.4 C-4.7 -10.6 -4.2 -12.7 -3.8 -14.8 Z';
 
-export function Body({ f, torso, skirt = true, pteruges = false, belt = true, hips }: {
+export function Body({ f, torso, skirt = true, pteruges = false, belt = true, hips, bronzeBelt = false }: {
   f: Fig; torso: Torso; skirt?: boolean; pteruges?: boolean; belt?: boolean; hips?: string;
+  /** The broad bronze belt of the Samnites instead of the leather one. */
+  bronzeBelt?: boolean;
 }) {
   const { p } = f;
   const cloth = CLOTH_TORSOS.has(torso);
   const tFill =
-    torso === 'tunic' || cloth ? p.tunic
+    torso === 'tunic' || torso === 'triple' || cloth ? p.tunic
       : torso === 'mail' ? p.iron
         : torso === 'scale' ? p.metal
           : torso === 'linen' ? p.linen
@@ -971,7 +991,7 @@ export function Body({ f, torso, skirt = true, pteruges = false, belt = true, hi
               : torso === 'muscle' ? p.metal
                 : f.skin;
   const tShade =
-    torso === 'tunic' || cloth ? p.tunicShade
+    torso === 'tunic' || torso === 'triple' || cloth ? p.tunicShade
       : torso === 'mail' ? p.ironShade
         : torso === 'scale' ? p.metalShade
           : torso === 'linen' ? p.linenShade
@@ -1024,14 +1044,16 @@ export function Body({ f, torso, skirt = true, pteruges = false, belt = true, hi
       )}
       {torso === 'muscle' && <Hi d="M-2.4 -20.6 C-1.4 -21.4 0 -21.6 1.2 -21.4" c={p.metalLight} w={0.6} mx={0.2} mr={false} />}
       {torso === 'tunic' && <Hi d="M-0.4 -21.9 C0.4 -21 1.6 -21 2.6 -21.8" c={p.trim} w={0.7} o={1} />}
+      {torso === 'triple' && <TripleDisc p={p} />}
       {cloth && <ClothTorso f={f} torso={torso} />}
       {torso === 'bare' && <Hi d="M1.8 -19.6 C3 -19.4 3.8 -18.8 4 -18" c={f.skinShade} w={0.5} />}
-      {belt && (
+      {belt && !bronzeBelt && (
         <>
           <Shape d="M-3.9 -15.6 L4.2 -15.6 L4.1 -14 L-3.8 -14 Z" f={p.leather} sw={0.5} />
           <rect x={2.4} y={-15.4} width={1.2} height={1.2} fill={p.gold} />
         </>
       )}
+      {belt && bronzeBelt && <BronzeBelt p={p} />}
     </>
   );
 }

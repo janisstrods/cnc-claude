@@ -17,12 +17,17 @@ describe('Expansion #3 scaffold', () => {
     }
   });
 
-  it('the temporary looks reuse the older art of their parties', () => {
-    for (const look of ['sullan', 'pompeian', 'caesarian'] as const) expect(LOOKS[look]).toBe(LOOKS.marian);
-    for (const look of ['helvetii', 'sertorian'] as const) expect(LOOKS[look]).toBe(LOOKS.gallic);
-    expect(LOOKS.numidian).toBe(LOOKS.carthaginian);
-    expect(LOOKS.pontic).toBe(LOOKS.antigonid);
-    expect(LOOKS.samnite).toBe(LOOKS.syracusan);
+  it('each new look has its own art, on its intended kit', () => {
+    const KIT = {
+      sullan: 'lateRoman', pompeian: 'lateRoman', caesarian: 'lateRoman', samnite: 'italic', sertorian: 'iberian', helvetii: 'celtic',
+      numidian: 'punic', pontic: 'macedonian',
+    } as const;
+    const older = (ARMY_LOOKS as readonly string[]).filter((l) => !(EXP3_LOOKS as readonly string[]).includes(l)) as (keyof typeof LOOKS)[];
+    for (const look of EXP3_LOOKS) {
+      expect(LOOKS[look], look).toBeDefined();
+      expect(lookDef(look).kit, look).toBe(KIT[look]);
+      for (const other of older) expect(LOOKS[look], `${look} is not ${other}`).not.toBe(LOOKS[other]);
+    }
   });
 
   it('has the city wall terrain: named, passable and without dice caps yet', () => {

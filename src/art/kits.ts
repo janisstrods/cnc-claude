@@ -883,6 +883,177 @@ const LATE_ROMAN: KitDef = {
   },
 };
 
+// ---------------------------------------------------------------------------------------------
+// Expansion #3: the Samnites (Italic kit), Spain under Sertorius (Iberian kit)
+
+/**
+ * The Samnites and their Italic neighbours, after the warriors of the Paestum and Capua tomb paintings and Livy 9.40: the
+ * Samnite helmet with a tall feather at either side, the broad bronze belt, the triple-disc cuirass and greaves on the
+ * better armed, the large oval shield (the scutum the Romans took from them), javelins.
+ */
+function italicFoot(type: UnitType, i: number): FootKit {
+  const dress = { torso: 'tunic' as const, skirt: true, sleeve: true, legs: 'bare' as const, belt: 'bronze' as const };
+  switch (type) {
+    case 'LI':
+      return {
+        ...dress, helmet: 'none', crest: 'none', hair: i % 2 ? 'long' : 'short', shield: 'round', weapon: 'javelin', spare: 'javelins',
+        beard: i % 2 === 1,
+      };
+    case 'LB':
+      return { ...dress, helmet: 'none', crest: 'none', hair: 'short', shield: 'none', weapon: 'bow', beard: i % 2 === 0 };
+    case 'LS':
+      // herdsmen of the hills with slings, some in felt hats
+      return { ...dress, helmet: i % 2 ? 'petasos' : 'none', crest: 'none', hair: i % 2 ? 'short' : 'long', shield: 'none', weapon: 'sling', beard: i % 3 === 1 };
+    case 'AX':
+      // the Samnite javelinmen: feathered helmets on most, a triple-disc cuirass on one, oval shields
+      return {
+        ...dress, torso: i % 4 === 1 ? 'triple' : 'tunic', helmet: i % 4 === 3 ? 'none' : 'samnite', crest: 'plume2', hair: 'short',
+        legs: i % 2 ? 'greaves' : 'bare', shield: 'oval', shieldScale: 0.86, weapon: 'javelin', spare: 'javelins', beard: i % 2 === 0,
+      };
+    case 'WA':
+      // Lucanian and Bruttian warriors: feathered helmets or bare heads, oval shields, swords
+      return {
+        ...dress, helmet: i % 2 ? 'none' : 'samnite', crest: 'plume2', hair: i % 2 ? 'long' : 'short', shield: 'oval', shieldScale: 0.92,
+        shieldDy: 1.2, weapon: 'sword', beard: true,
+      };
+    case 'MI':
+      // the line: triple-disc cuirass, greaves, crested and feathered helmet, the big oval shield, the pilum
+      return {
+        ...dress, torso: 'triple', legs: 'greaves', helmet: 'samnite', crest: 'horsehair', hair: 'short', shield: 'oval', shieldScale: 1.04,
+        shieldDy: -0.4, weapon: 'pilum', beard: i % 2 === 1,
+      };
+    case 'HI':
+    default:
+      return {
+        ...dress, torso: 'triple', legs: 'greaves', helmet: 'samnite', crest: 'tall', hair: 'short', shield: 'oval', shieldScale: 1.04,
+        shieldDy: -0.4, weapon: 'spear', beard: i % 2 === 0,
+      };
+  }
+}
+
+/**
+ * Samnite horsemen (the riders of the Paestum tombs): the feathered helmet, the broad bronze belt, a round shield and a
+ * spear, the nobles in the triple-disc cuirass and a cloak; the light horse bare-headed with javelins.
+ */
+function italicMount(type: UnitType, i: number): MountKit {
+  if (type === 'LC') {
+    return {
+      rider: {
+        torso: 'tunic', helmet: 'none', crest: 'none', shield: 'round', weapon: 'javelin', legs: 'bare', spare: true, belt: 'bronze',
+        beard: i % 2 === 0, hair: i % 2 ? 'long' : 'short',
+      },
+      cloth: 'plain',
+    };
+  }
+  if (type === 'HC') {
+    return { rider: { torso: 'triple', helmet: 'samnite', crest: 'tall', shield: 'none', weapon: 'lance', legs: 'greaves', belt: 'bronze' }, cloth: 'plain' };
+  }
+  return {
+    rider: {
+      torso: i % 2 ? 'tunic' : 'triple', helmet: 'samnite', crest: i % 2 ? 'plume2' : 'horsehair', shield: 'round', weapon: 'spear',
+      legs: i % 2 ? 'bare' : 'greaves', belt: 'bronze', cloak: i % 3 === 2,
+    },
+    cloth: 'plain',
+  };
+}
+
+const ITALIC: KitDef = {
+  foot: italicFoot,
+  cavalry: { drawing: 'kit', mount: italicMount },
+  crew: (i) => ({ torso: 'tunic', helmet: i % 2 ? 'samnite' : 'none', crest: 'plume2', beard: i % 2 === 0 }),
+  // a Samnite war leader (Pontius Telesinus): triple-disc cuirass, crested and feathered helmet, greaves, cloak
+  general: { rider: { torso: 'triple', helmet: 'samnite', crest: 'horsehair', shield: 'none', weapon: 'standard', legs: 'greaves', cloak: true, belt: 'bronze', beard: true } },
+  bust: { helmet: 'samnite', crest: 'horsehair', beard: true },
+  // (the feathers stand taller than any crest)
+  iconBox: {
+    AX: [-41.9, 0.3, -11.7, 12.4], MI: [-42.5, 1.8, -6.7, 10.6], HI: [-41.9, 1.8, -6.7, 10.6], LC: [-35.9, 0.3, -18.2, 19.3],
+    HC: [-48.5, 0.5, -20.8, 22.7], HWM: [-39.2, 0.3, -28.1, 21.9], BCH: [-44.1, 1.4, -27.8, 29.3],
+  },
+};
+
+/**
+ * Spain under Sertorius: Iberian and Lusitanian troops in white tunics with red borders (Polybius 3.114 on the Iberians at
+ * Cannae), the small round caetra and the curved falcata, sinew caps with three crests (Strabo 3.3.6 on the Lusitanians)
+ * or crested bronze helmets, the long oval shields of the Celtiberian warriors; the medium and heavy foot are Sertorius'
+ * legions, Roman exiles and Iberians drilled and armed in the Roman way (Plutarch, Sertorius 14).
+ */
+function iberianFoot(type: UnitType, i: number): FootKit {
+  const dress = { torso: 'tunic' as const, skirt: true, sleeve: true, legs: 'bare' as const };
+  switch (type) {
+    case 'LI':
+      // Lusitanian skirmishers: sinew caps, caetra, javelins
+      return {
+        ...dress, helmet: i % 2 ? 'none' : 'sinew', crest: 'none', hair: 'long', shield: 'caetra', weapon: 'javelin', spare: 'javelins',
+        beard: i % 2 === 1,
+      };
+    case 'LB':
+      return { ...dress, helmet: 'none', crest: 'none', hair: i % 2 ? 'long' : 'short', shield: 'none', weapon: 'bow', beard: i % 2 === 1 };
+    case 'LS':
+      // Balearic slingers
+      return { ...dress, helmet: 'none', crest: 'none', hair: i % 2 ? 'long' : 'short', shield: 'none', weapon: 'sling', beard: i % 3 === 1 };
+    case 'AX':
+      // caetrati: the caetra with javelins, or the falcata drawn
+      return i % 2
+        ? { ...dress, helmet: 'montefortino', crest: 'horsehair', hair: 'short', shield: 'caetra', weapon: 'sword', falcata: true, moustache: true }
+        : { ...dress, helmet: 'sinew', crest: 'none', hair: 'long', shield: 'caetra', weapon: 'javelin', spare: 'javelins', beard: true };
+    case 'WA':
+      // Celtiberian warriors: the long oval shield, the falcata, sinew caps or crested bronze helmets
+      return {
+        ...dress, helmet: i % 2 ? 'montefortino' : 'sinew', crest: i % 2 ? 'horsehair' : 'none', hair: 'long', shield: 'longOval',
+        shieldScale: 0.94, shieldDy: 2.4, weapon: 'sword', falcata: true, tribal: true, moustache: true,
+      };
+    case 'MI':
+      // Iberians in Roman arms: Montefortino helmets, the oval scutum and the pilum, mail on some
+      return {
+        ...dress, torso: i % 2 ? 'mail' : 'tunic', sleeve: i % 2 === 0, helmet: 'montefortino', crest: i % 2 ? 'knob' : 'horsehair',
+        hair: 'short', shield: 'legionOval', weapon: 'pilum', beard: i % 2 === 0,
+      };
+    case 'HI':
+    default:
+      // the Roman exiles of Sertorius' legions: mail with shoulder doubling, plumes, scutum and pilum
+      return {
+        torso: 'mail', skirt: true, legs: 'bare', helmet: i % 2 ? 'coolus' : 'montefortino', crest: 'plumes', hair: 'short',
+        shield: 'legionOval', weapon: 'pilum', doubling: true,
+      };
+  }
+}
+
+/** Lusitanian light horse with caetrae and javelins; Iberian nobles in crested helmets with a spear and the falcata at the hip. */
+function iberianMount(type: UnitType, i: number): MountKit {
+  if (type === 'LC') {
+    return {
+      rider: {
+        torso: 'tunic', helmet: i % 2 ? 'none' : 'sinew', crest: 'none', shield: 'caetra', weapon: 'javelin', legs: 'bare', spare: true,
+        hair: 'long', beard: i % 2 === 1,
+      },
+      cloth: 'plain',
+    };
+  }
+  if (type === 'HC') return { rider: { torso: 'mail', helmet: 'montefortino', crest: 'horsehair', shield: 'none', weapon: 'lance', legs: 'bare' }, cloth: 'plain' };
+  return {
+    rider: {
+      torso: i % 2 ? 'mail' : 'tunic', helmet: 'montefortino', crest: 'horsehair', shield: 'caetra', weapon: 'spear', legs: 'bare',
+      sword: true, cloak: i % 3 === 0, moustache: true,
+    },
+    cloth: 'plain', phalerae: i % 2 === 0,
+  };
+}
+
+const IBERIAN: KitDef = {
+  foot: iberianFoot,
+  cavalry: { drawing: 'kit', mount: iberianMount },
+  crew: (i) => ({ torso: 'mail', helmet: 'montefortino', crest: i % 2 ? 'knob' : 'horsehair' }),
+  warMachine: 'scorpio',
+  ovalShieldBoss: true,
+  // Sertorius, a Roman general
+  general: { rider: CLASSIC_GENERAL },
+  bust: { helmet: 'atticOpen', crest: 'horsehair', beard: false },
+  iconBox: {
+    AX: [-35.2, 0.3, -11.7, 12.4], WA: [-40.8, 0.3, -6.1, 9.1], MI: [-42.5, 1.8, -6.1, 10.6], LC: [-35.9, 0.3, -18.2, 19.3],
+    HC: [-41, 0.5, -20.8, 22.7], HCH: [-39.6, 0.8, -27.8, 31], HWM: [-33.7, 0.3, -28.1, 21.9], BCH: [-38, 1.4, -27.8, 29.3],
+  },
+};
+
 /**
  * Fills the choices a kit leaves out: crews dressed as its medium infantry, the base game's chariot and elephant manned
  * by such crews, a light chariot with its light infantryman and a crewman, horse archers built from its light horseman,
@@ -928,6 +1099,8 @@ export const KIT_DEFS: Record<Kit, KitDef> = {
   celtic: CELTIC,
   germanic: GERMANIC,
   lateRoman: LATE_ROMAN,
+  italic: ITALIC,
+  iberian: IBERIAN,
 };
 
 /** Every figure kit, completed (see `completeKit`): the table the drawing code reads. */
