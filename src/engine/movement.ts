@@ -168,6 +168,8 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     for (const t of candidates) {
       if (t.hex !== startHex && stopsThere(t.path[t.path.length - 2] ?? OFF_BOARD, t.hex)) continue;
       if (t.dist + 1 > lim.max) continue;
+      // warriors move 2 or more hexes only to charge into close combat, which leaving the battlefield is not
+      if (lim.chargeFrom !== null && t.dist + 1 >= lim.chargeFrom) continue;
       if (!bestExit || t.dist + 1 < bestExit.dist) {
         bestExit = { hex: OFF_BOARD, dist: t.dist + 1, path: [...t.path, OFF_BOARD], canBattle: false, mustBattle: false };
       }

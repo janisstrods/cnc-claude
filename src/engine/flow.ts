@@ -348,7 +348,7 @@ function* walkPath(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, kind
   if (opt.attachLeader) {
     ctx.emit({ t: 'attach', leader: opt.attachLeader, unit: u.id });
   }
-  updateHeld(s, ctx); // where the retreat or evade ends (hexes passed through never count)
+  // the held banners are brought up to date by the caller, after the move's own losses (hexes passed through never count)
   return false;
 }
 
@@ -416,6 +416,7 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
         return { eliminated: true, vacated: true };
       }
     }
+    updateHeld(s, ctx); // where the retreat ends, after its losses
     return { eliminated: false, vacated: u.hex !== start };
   }
   const opts = retreatOptions(s, u, hexes);
@@ -432,6 +433,7 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
       leaderCheck(s, ctx, l, 2);
     }
   }
+  updateHeld(s, ctx); // where the retreat ends, after its losses (an eliminated unit's banner already brought them up to date)
   return { eliminated: false, vacated: u.hex !== start };
 }
 
@@ -631,8 +633,19 @@ function holdsFirstStrike(s: GameState, side: Side): number | null {
   return null;
 }
 
-/** Full close combat sequence. Returns true when the defender's hex was vacated (successful combat). */
-function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: HexId, role: 'attack' | 'bonus'): Gen<boolean> {
+/**
+ * Where an attacker's momentum advances ended during its close-combat sequence: `hex` is the last advance's end (the
+ * extra hex included), null while it has not advanced. A 'stop' capture needs the unit still there at the end (§18.4).
+ */
+interface AdvanceTrack {
+  hex: HexId | null;
+}
+
+/**
+ * Full close combat sequence. Returns true when the defender's hex was vacated (successful combat). `adv` records the
+ * attacker's momentum advances (bonus combats included).
+ */
+function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: HexId, role: 'attack' | 'bonus', adv: AdvanceTrack): Gen<boolean> {
   const tu = unitAt(s, targetHex);
   if (!tu) {
     const l = leaderAt(s, targetHex);
@@ -685,6 +698,7 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
     // an attached leader stays on that hex as a lone leader. The reason names war machines because the heavy war
     // machine is the only type with `evadeRemoves`; a new type with that flag needs its own reason here.
     if (UNIT_STATS[tu.type].evadeRemoves && unitById(s, tu.id)) removeUnit(s, ctx, tu, 'war machine abandoned');
+    updateHeld(s, ctx); // where the evade ends (an abandoned war machine holds nothing there)
     return false;
   }
 
@@ -705,7 +719,7 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
   if (s.winner) return false;
   const defAlive = !!unitById(s, tu.id);
   if (!defAlive || tu.hex !== targetHex || res.vacated) {
-    if (unitById(s, attacker.id)) yield* momentum(s, ctx, attacker, targetHex, role);
+    if (unitById(s, attacker.id)) yield* momentum(s, ctx, attacker, targetHex, role, adv);
     return true;
   }
   if (!firstStruck && unitById(s, attacker.id) && attacker.hex === atkHex) {
@@ -714,7 +728,7 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
   return false;
 }
 
-function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attack' | 'bonus'): Gen {
+function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attack' | 'bonus', adv: AdvanceTrack): Gen {
   if (s.winner || !isEmptyHex(s, hex) || isImpassable(s, hex)) return;
   // war machines never advance (§15), and no unit advances into terrain it may not enter
   if (UNIT_STATS[u.type].noMomentum || forbidsTerrain(u.type, terrainAt(s, hex))) return;
@@ -725,13 +739,13 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   if (!(a as { yes: boolean }).yes) return;
   const from = u.hex;
   relocate(s, u, hex);
+  adv.hex = hex;
   if (op) op.enteredHexThisTurn = true;
   ctx.emit({ t: 'advance', id: u.id, path: [from, hex] });
   breakRamparts(s, ctx, u.side, [hex]);
-  updateHeld(s, ctx);
-  if (s.winner) return;
   const checked = { done: false };
   if (terrainAt(s, hex) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
+  updateHeld(s, ctx); // where the advance ends, after the marsh check (a unit sunk there holds nothing)
   // a very steep hill (§18.6) climbed from lower ground ends the advance: no extra hex and no bonus combat
   if (s.winner || role === 'bonus' || steepClimb(s, from, hex)) return;
   const st = UNIT_STATS[u.type];
@@ -754,13 +768,13 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
         climbedExtra = steepClimb(s, f2, to);
         const joining = leaderAt(s, to);
         relocate(s, u, to);
+        adv.hex = to;
         if (joining && joining.side === u.side) joining.hex = to;
         ctx.emit({ t: 'advance', id: u.id, path: [f2, to] });
         if (joining && joining.side === u.side) ctx.emit({ t: 'attach', leader: joining.id, unit: u.id });
         breakRamparts(s, ctx, u.side, [to]);
-        updateHeld(s, ctx);
-        if (s.winner) return;
         if (terrainAt(s, to) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
+        updateHeld(s, ctx); // after the marsh check, as above
         if (s.winner) return;
       }
     }
@@ -779,7 +793,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
     c.kind === 'hex' && (c.hex === null || targets.includes(c.hex)) ? null : 'Choose a target or decline.');
   const t = (c as { hex: HexId | null }).hex;
   if (t === null) return;
-  yield* closeCombat(s, ctx, u, t, 'bonus');
+  yield* closeCombat(s, ctx, u, t, 'bonus', adv);
 }
 
 /** Adjacent hexes holding an enemy unit or a lone enemy leader. */
@@ -1141,9 +1155,11 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
       } else {
         op.battlesLeft = 0;
         op.mustBattle = false;
-        yield* closeCombat(s, ctx, u, a.target, 'attack');
-        // Capture objectives: a camp counts only where the attacking unit finally stops.
-        if (!s.winner && unitById(s, u.id)) captureOnStop(s, ctx, u);
+        const adv: AdvanceTrack = { hex: null };
+        yield* closeCombat(s, ctx, u, a.target, 'attack', adv);
+        // 'stop' captures (§18.4): a camp counts only where the attacker's last momentum advance ended, and only if the
+        // unit still stands there at the end of the sequence (not where it attacked from, nor where a retreat put it)
+        if (!s.winner && unitById(s, u.id) && u.hex === adv.hex) captureOnStop(s, ctx, u);
       }
     }
     // held banners after the whole sequence (retreats, advances, bonus combat, Rolling Fire; any battle action)

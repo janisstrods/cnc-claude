@@ -4,8 +4,9 @@
 // banners.ts. Only `exit.leadersScore` (Expansion #3) is typed but still rejected by `resolveObjectives`.
 //
 // Hooks (flow.ts): `turnStartObjectives` before the card is played, `turnEndObjectives` before the draw, `captureOnStop`
-// where a unit ends its move or its close-combat sequence, and `updateHeld` (banners.ts; held banners, held.ts) after
-// every change of unit positions (moves, momentum advances, retreats, evades, removals) and after every battle action.
+// where a unit ends its move or (at the end of its close-combat sequence) a momentum advance it still stands on, and
+// `updateHeld` (banners.ts; held banners, held.ts) after every change of unit positions (moves, momentum advances,
+// retreats, evades, removals; after the move's own losses) and after every battle action.
 // Every banner scored goes through `gainBanner`, which brings the held banners up to date first.
 import { gainBanner, updateHeld } from './banners';
 import { turnEndHeld } from './held';
@@ -199,8 +200,9 @@ function capture(s: GameState, ctx: FlowCtx, i: number, hexes: HexId[]) {
 }
 
 /**
- * Unit `u` has ended its move, or its close-combat sequence, on its hex: a 'stop' capture objective of its side takes the
- * hex (logged with the objective's text) and scores its banners. Passing through, retreating or evading never captures.
+ * Unit `u` has ended its move on its hex, or a momentum advance there that it still stands on at the end of its
+ * close-combat sequence: a 'stop' capture objective of its side takes the hex (logged with the objective's text) and
+ * scores its banners. Passing through, retreating, evading or attacking without advancing never captures.
  */
 export function captureOnStop(s: GameState, ctx: FlowCtx, u: Unit) {
   const i = stopCaptureAt(s, u.side, u.hex);

@@ -7,7 +7,7 @@ import {
   setTerrain, type GameEvent,
 } from '../../src/engine';
 import { scenarioById } from '../../src/scenarios';
-import { H, build, ev, giveCard, must, passTurn, play, setupOf, u, type Pos } from './helpers';
+import { H, build, ev, giveCard, must, noFirstStrike, passTurn, play, setupOf, u, type Pos } from './helpers';
 
 beforeEach(() => forceDice([]));
 
@@ -508,6 +508,21 @@ describe('Expansion #2 objectives', () => {
     expect(exitHexes(s, s.units[1])).toEqual([]);
   });
 
+  it('warriors exit only with a 1-hex move: the 2-hex move is a charge, and stepping off the board is not one', () => {
+    // a top warrior unit on (7,6): the row-8 exit is 2 hexes away, (8,6) then off (3 with Double Time); only from the
+    // exit hex itself is leaving a 1-hex move
+    const exit = (at: [number, number]): Pos => ({
+      first: 'top', objectives: [{ kind: 'exit', side: 'top', hexes: [[8, 5], [8, 6], [8, 7]] }],
+      units: [{ side: 'top', type: 'WA', at }],
+    });
+    const d = play(build(exit([7, 6])), 'order2C', ['u1']);
+    expect(pieceMoves(d.state, 'u1').map((m) => m.hex)).not.toContain(OFF_BOARD);
+    const d2 = play(build(exit([7, 6])), 'doubleTime', ['u1']);
+    expect(pieceMoves(d2.state, 'u1').map((m) => m.hex)).not.toContain(OFF_BOARD);
+    const d3 = play(build(exit([8, 6])), 'order2C', ['u1']);
+    expect(pieceMoves(d3.state, 'u1').find((m) => m.hex === OFF_BOARD)).toMatchObject({ dist: 1, path: [H(8, 6), OFF_BOARD] });
+  });
+
   it('cloneState copies the objective state, and setTerrain on a clone leaves the original alone', () => {
     const s = build({ ...HOLD, terrain: [...HOLD.terrain!, { at: [5, 5], t: 'rampart', faces: 'top' }] });
     const c = cloneState(s);
@@ -684,5 +699,193 @@ describe('Expansion #2 objectives', () => {
     ]);
     expect(ok({ objectives: [{ kind: 'capture', side: 'bottom', when: 'turnStart', together: 2, remove: true }] })[0])
       .toMatchObject({ when: 'turnStart', together: 2, remove: true, banners: [1] });
+  });
+});
+
+/** Events of the kinds that tell who holds, loses and scores. */
+const scoring = (es: GameEvent[]) =>
+  es.filter((e) => ['retreat', 'evade', 'advance', 'damage', 'eliminated', 'removed', 'held', 'banner', 'victory'].includes(e.t));
+
+describe("held banners count where a retreat, evade or advance ends, after that move's own losses", () => {
+  const REAR_TEXT = 'The baggage is held.';
+  /** Bottom `type` on (7,6) attacked by a top heavy infantry unit on (6,6); its rear hexes (8,6) and (8,7) are bottom hold hexes. */
+  const rear = (type: 'MI' | 'EL', blocks: number, target: number): Pos => ({
+    first: 'top', banners: target,
+    objectives: [{ kind: 'hold', side: 'bottom', hexes: [[8, 6], [8, 7]], text: REAR_TEXT }],
+    units: [{ side: 'bottom', type, at: [7, 6], blocks }, { side: 'top', type: 'HI', at: [6, 6] }],
+  });
+  /** Two flags on the bottom unit: it retreats 2 hexes, can take 1 (onto a hold hex), and loses a block for the other. */
+  function twoFlags(p: Pos): GameDriver {
+    const d = play(build(p), 'order2C', ['u2']);
+    must(d, { kind: 'endMove' });
+    ev(d);
+    forceDice(['flag', 'flag', ...Array(20).fill('light')]); // light: no hits on the medium or heavy unit, nor in the rampage
+    must(d, { kind: 'attack', unit: 'u2', target: H(7, 6) });
+    expect(d.pending).toMatchObject({ kind: 'retreat', options: [{ end: H(8, 6), losses: 1 }, { end: H(8, 7), losses: 1 }] });
+    must(d, { kind: 'choose', index: 0 });
+    return d;
+  }
+
+  it('a unit eliminated by the losses of its retreat holds nothing: the enemy scores (no false win on the hold hex)', () => {
+    const d = twoFlags(rear('MI', 1, 1));
+    expect(scoring(ev(d))).toEqual([
+      { t: 'retreat', id: 'u1', path: [H(7, 6), H(8, 6)] },
+      { t: 'damage', id: 'u1', amount: 1, left: 0, reason: 'retreat blocked' },
+      { t: 'eliminated', id: 'u1' },
+      { t: 'banner', side: 'top', total: 1, reason: 'unit eliminated' },
+      { t: 'victory', winner: 'top', reason: 'Carthaginian captured 1 banners' },
+    ]);
+  });
+
+  it('a unit that survives the losses of its retreat holds the hex after them', () => {
+    const d = twoFlags(rear('MI', 2, 3));
+    expect(scoring(ev(d))).toEqual([
+      { t: 'retreat', id: 'u1', path: [H(7, 6), H(8, 6)] },
+      { t: 'damage', id: 'u1', amount: 1, left: 1, reason: 'retreat blocked' },
+      { t: 'held', side: 'bottom', held: 1, total: 1, reason: REAR_TEXT },
+    ]);
+  });
+
+  it('an elephant eliminated by the losses of its retreat holds nothing', () => {
+    const d = twoFlags(rear('EL', 1, 1));
+    const es = scoring(ev(d));
+    expect(helds(es)).toEqual([]);
+    expect(es.slice(-4)).toEqual([
+      { t: 'damage', id: 'u1', amount: 1, left: 0, reason: 'could not retreat' },
+      { t: 'eliminated', id: 'u1' },
+      { t: 'banner', side: 'top', total: 1, reason: 'unit eliminated' },
+      { t: 'victory', winner: 'top', reason: 'Carthaginian captured 1 banners' },
+    ]);
+  });
+
+  it('a heavy war machine abandoned after its evade holds nothing where the evade ended', () => {
+    const behind: [number, number][] = [[3, 5], [3, 6], [2, 5], [2, 6], [2, 7]];
+    const s = build({
+      banners: 1, objectives: [{ kind: 'hold', side: 'top', hexes: behind, text: 'The engines hold the line.' }],
+      units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'HWM', at: [4, 6] }],
+    });
+    const d = play(s, 'order4C', ['u1']);
+    must(d, { kind: 'endMove' });
+    ev(d);
+    must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+    forceDice(Array(5).fill('light')); // no hits: it survives the roll
+    must(d, { kind: 'defend', choice: 'evade' });
+    if (d.pending?.kind === 'retreat') must(d, { kind: 'choose', index: 0 });
+    const es = scoring(ev(d));
+    expect(es.map((e) => e.t)).toEqual(['evade', 'removed']);
+    expect(d.state.winner).toBeNull();
+  });
+
+  /** Bottom `type` (1 block) on (5,6) destroys the top MI on (4,6) and advances; (4,6) or (3,6) is a marsh hold hex. */
+  const advance = (type: 'MI' | 'MC', marsh: [number, number]): Pos => ({
+    banners: 2,
+    objectives: [{ kind: 'hold', side: 'bottom', hexes: [marsh], text: 'The ford is held.' }],
+    terrain: [{ at: marsh, t: 'marsh' }],
+    units: [{ side: 'bottom', type, at: [5, 6], blocks: 1 }, { side: 'top', type: 'MI', at: [4, 6], blocks: 1 }],
+  });
+  const sunk = [
+    { t: 'eliminated', id: 'u1' },
+    { t: 'banner', side: 'top', total: 1, reason: 'unit eliminated' },
+  ];
+
+  it('a unit that sinks in the marsh it advanced into holds nothing (no false win)', () => {
+    const d = play(build(advance('MI', [4, 6])), 'order2C', ['u1']);
+    must(d, { kind: 'endMove' });
+    forceDice(Array(10).fill('medium'));
+    must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+    must(d, { kind: 'yesno', yes: true });
+    const es = scoring(ev(d));
+    expect(helds(es)).toEqual([]);
+    expect(es.slice(-2)).toEqual(sunk);
+    expect(d.state.winner).toBeNull();
+  });
+
+  it("a cavalry unit that sinks in the marsh of its extra hex holds nothing (no false win)", () => {
+    const d = play(build(advance('MC', [3, 6])), 'order2C', ['u1']);
+    must(d, { kind: 'endMove' });
+    forceDice(Array(10).fill('medium'));
+    must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+    must(d, { kind: 'yesno', yes: true });
+    must(d, { kind: 'hex', hex: H(3, 6) });
+    const es = scoring(ev(d));
+    expect(helds(es)).toEqual([]);
+    expect(es.slice(-2)).toEqual(sunk);
+    expect(d.state.winner).toBeNull();
+  });
+});
+
+describe("a 'stop' capture: only a unit ending a move or a momentum advance on the hex takes it", () => {
+  /** The top side captures every camp; its rear hexes from (6,6) are the camps (5,5) and (5,6). */
+  const REAR_CAMPS: Pos = {
+    first: 'top', objectives: [{ kind: 'capture', side: 'top', text: 'Camp!' }],
+    terrain: [{ at: [5, 5], t: 'camp' }, { at: [5, 6], t: 'camp' }],
+    units: [{ side: 'top', type: 'MI', at: [6, 6] }, { side: 'bottom', type: 'HI', at: [7, 6] }],
+  };
+  /** The top MI attacks the bottom HI and misses; the battle back's flag drives it back onto the camp (5,6). */
+  function retreatOntoCamp(): GameDriver {
+    const d = play(build(REAR_CAMPS), 'order2C', ['u1']);
+    must(d, { kind: 'endMove' });
+    ev(d);
+    forceDice([...Array(4).fill('light'), 'flag', ...Array(4).fill('light')]); // light misses the heavy and the medium unit
+    must(d, { kind: 'attack', unit: 'u1', target: H(7, 6) });
+    expect(d.pending?.kind).toBe('retreat');
+    if (d.pending?.kind !== 'retreat') throw new Error('expected a retreat');
+    must(d, { kind: 'choose', index: d.pending.options.findIndex((o) => o.end === H(5, 6)) });
+    return d;
+  }
+
+  it('the attacker driven back onto a camp by the battle back takes nothing', () => {
+    const d = retreatOntoCamp();
+    const es = ev(d);
+    expect(u(d, 'u1')?.hex).toBe(H(5, 6));
+    expect(logs(es)).not.toContain('Camp!');
+    expect(banners(es)).toEqual([]);
+    expect(d.state.special.objState[0].taken).toEqual([]);
+  });
+
+  it('a unit attacking without moving from a camp it reached by a retreat takes nothing', () => {
+    // bottom's turn: the heavy infantry drives the top MI back onto the camp (5,6) and advances into (6,6)
+    const d = play(build({ ...REAR_CAMPS, first: 'bottom' }), 'order2C', ['u2']);
+    must(d, { kind: 'endMove' });
+    forceDice(['flag', ...Array(4).fill('light')]);
+    must(d, { kind: 'attack', unit: 'u2', target: H(6, 6) });
+    if (d.pending?.kind !== 'retreat') throw new Error('expected a retreat');
+    must(d, { kind: 'choose', index: d.pending.options.findIndex((o) => o.end === H(5, 6)) });
+    must(d, { kind: 'yesno', yes: true });
+    endTurn(d);
+    expect([u(d, 'u1')?.hex, u(d, 'u2')?.hex]).toEqual([H(5, 6), H(6, 6)]);
+    turn(d, 'order2C', ['u1']); // top: attack from the camp without moving; every die misses
+    must(d, { kind: 'endMove' });
+    ev(d);
+    noFirstStrike(d.state);
+    forceDice(Array(10).fill('light'));
+    must(d, { kind: 'attack', unit: 'u1', target: H(6, 6) });
+    const es = ev(d);
+    expect(es.filter((e) => e.t === 'retreat' || e.t === 'advance' || e.t === 'damage')).toEqual([]);
+    expect(u(d, 'u1')?.hex).toBe(H(5, 6));
+    expect(logs(es)).not.toContain('Camp!');
+    expect(banners(es)).toEqual([]);
+    expect(d.state.special.objState[0].taken).toEqual([]);
+  });
+
+  it('a momentum advance onto a camp takes it', () => {
+    const s = build({
+      ...REAR_CAMPS, first: 'bottom', objectives: [{ kind: 'capture', side: 'bottom', text: 'Camp!' }],
+      units: [{ side: 'bottom', type: 'MI', at: [6, 6] }, { side: 'top', type: 'MI', at: [5, 6], blocks: 1 }],
+    });
+    const d = play(s, 'order2C', ['u1']);
+    must(d, { kind: 'endMove' });
+    ev(d);
+    forceDice(Array(4).fill('medium'));
+    must(d, { kind: 'attack', unit: 'u1', target: H(5, 6) });
+    must(d, { kind: 'yesno', yes: true });
+    const es = ev(d);
+    expect(u(d, 'u1')?.hex).toBe(H(5, 6));
+    expect(logs(es)).toContain('Camp!');
+    expect(banners(es)).toEqual([
+      { t: 'banner', side: 'bottom', total: 1, reason: 'unit eliminated' },
+      { t: 'banner', side: 'bottom', total: 2, reason: 'camp captured' },
+    ]);
+    expect(d.state.special.objState[0].taken).toEqual([H(5, 6)]);
   });
 });
