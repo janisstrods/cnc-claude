@@ -6,15 +6,20 @@ import { CardView, DieView } from '../kit';
 import { EXP2_UNIT_TYPES, unitCardLines } from '../game/uiModel';
 import './screens.css';
 
-type Tab = 'basics' | 'units' | 'combat' | 'terrain' | 'cards' | 'exp1';
+type Tab = 'basics' | 'units' | 'combat' | 'terrain' | 'cards' | 'exp1' | 'exp2';
 
 /** Unit types new in Expansion #1 (§15): described in the Expansion #1 tab, not in the base Units list. */
 export const EXP1_UNIT_TYPES: readonly UnitType[] = ['LBC', 'CAM', 'HWM'];
-/** Unit types new in Expansion #2 (§18; defined in uiModel): not in the base Units list either (their own tab comes with the Expansion #2 rules text). */
+/** Unit types new in Expansion #2 (§18; defined in uiModel): described in the Expansion #2 tab, not in the base Units list. */
 export { EXP2_UNIT_TYPES };
 const BASE_UNIT_TYPES = UNIT_TYPES.filter((t) => !EXP1_UNIT_TYPES.includes(t) && !EXP2_UNIT_TYPES.includes(t));
-/** Figure look of each Expansion #1 unit card (an army that fields it). */
-const EXP1_LOOK: Partial<Record<UnitType, [ArmyLook, Blocks]>> = { LBC: ['scythian', 'eas'], CAM: ['seleucid', 'grk'], HWM: ['macedonian', 'grk'] };
+/** Elite presets new in Expansion #2 (§18.2): in the Expansion #2 tab; every other preset is in the Expansion #1 tab. */
+export const EXP2_ELITES: readonly EliteId[] = ['tenthLegion'];
+const EXP1_ELITES = (Object.keys(ELITES) as EliteId[]).filter((id) => !EXP2_ELITES.includes(id));
+/** Figure look of each expansion unit card (an army that fields it). */
+const EXP1_LOOK: Partial<Record<UnitType, [ArmyLook, Blocks]>> = {
+  LBC: ['scythian', 'eas'], CAM: ['seleucid', 'grk'], HWM: ['macedonian', 'grk'], BCH: ['briton', 'bar'],
+};
 
 /** In a battle, pass its scenario to show that battle's special rules above the tabs. */
 export function RulesReference({ scenario }: { scenario?: ScenarioInfo } = {}) {
@@ -26,6 +31,7 @@ export function RulesReference({ scenario }: { scenario?: ScenarioInfo } = {}) {
     ['terrain', 'Terrain'],
     ['cards', 'Command cards'],
     ['exp1', 'Expansion #1'],
+    ['exp2', 'Expansion #2'],
   ];
   return (
     <div className="rules">
@@ -49,6 +55,7 @@ export function RulesReference({ scenario }: { scenario?: ScenarioInfo } = {}) {
         {tab === 'terrain' && <Terrain />}
         {tab === 'cards' && <Cards />}
         {tab === 'exp1' && <Expansion />}
+        {tab === 'exp2' && <Expansion2 />}
       </div>
     </div>
   );
@@ -112,7 +119,7 @@ export function Units() {
   return (
     <>
       <UnitCards types={BASE_UNIT_TYPES} />
-      <p className="rules-note">Light bow cavalry, camels and heavy war machines come with Expansion #1: see the Expansion #1 tab.</p>
+      <p className="rules-note">Light bow cavalry, camels and heavy war machines come with Expansion #1, Barbarian light chariots with Expansion #2: see their tabs.</p>
     </>
   );
 }
@@ -153,7 +160,7 @@ function Terrain() {
   return (
     <>
       <TerrainTable rows={rows} />
-      <p className="rules-note">Sea, ramparts and the ford without dice limits come with Expansion #1: see the Expansion #1 tab.</p>
+      <p className="rules-note">Sea, ramparts and the ford without dice limits come with Expansion #1; ditches, very steep hills and the coast played as a ford with Expansion #2: see their tabs.</p>
     </>
   );
 }
@@ -170,7 +177,7 @@ function TerrainTable({ rows }: { rows: [string, string][] }) {
   );
 }
 
-/** Reference wording of each elite preset's abilities, and the battles that field it (§17.1). */
+/** Reference wording of each elite preset's abilities, and the battles that field it (§17.1, §18.2). */
 const ELITE_REF: Record<EliteId, [string, string]> = {
   carthSacredBand: ['Every helmet it rolls in close combat hits, leader or not; may ignore 1 flag.', '002 (base game)'],
   thebanSacredBand: ['Every helmet it rolls in close combat hits, leader or not; may ignore 1 flag.', '104'],
@@ -178,8 +185,27 @@ const ELITE_REF: Record<EliteId, [string, string]> = {
   companions: ['Ignores the first sword rolled against it in close combat; may ignore 1 flag.', '107–111'],
   immortals: ['Fires like a missile unit, range 3 (1 die after moving); never fires and fights in the same turn. Not light.', '108'],
   bowAuxilia: ['Fires at range 3 instead of 2; as auxilia it cannot fire after moving 2 hexes.', '123'],
-  tenthLegion: ['Heavy infantry that throws the pilum (range 2, always 1 die, not after moving 2 hexes) and may march: 2 hexes if it does not battle.', '215, 217'],
+  tenthLegion: [
+    "Caesar's favourite legion: throws the pilum and may march; otherwise an ordinary heavy infantry unit (5 dice, retreat 1, no flag or helmet ability). The two units at the Sabis are ordered and fight separately.",
+    '215, 217',
+  ],
 };
+
+/** The elite presets of an expansion: name, unit types, battles and abilities. */
+function EliteTable({ ids }: { ids: readonly EliteId[] }) {
+  return (
+    <table className="terrain-table">
+      <tbody>
+        {ids.map((id) => (
+          <tr key={id}>
+            <th>{ELITES[id].name}<div className="muted rules-sub">{ELITES[id].types.map((t) => UNIT_STATS[t].name).join(', ')} · {ELITE_REF[id][1]}</div></th>
+            <td>{ELITE_REF[id][0]}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 /** Expansion #1 tab: new units, elites, leader traits, terrain and the battles' special rules (§15–§17). */
 export function Expansion() {
@@ -202,16 +228,7 @@ export function Expansion() {
       </ul>
       <h3>Elite units</h3>
       <p>An elite is an ordinary unit carrying a special marker (a standard on its figures). It keeps its abilities until its last block is lost, and they add to leaders and support.</p>
-      <table className="terrain-table">
-        <tbody>
-          {(Object.keys(ELITES) as EliteId[]).map((id) => (
-            <tr key={id}>
-              <th>{ELITES[id].name}<div className="muted rules-sub">{ELITES[id].types.map((t) => UNIT_STATS[t].name).join(', ')} · {ELITE_REF[id][1]}</div></th>
-              <td>{ELITE_REF[id][0]}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <EliteTable ids={EXP1_ELITES} />
       <h3>Leader traits</h3>
       <ul>
         <li><b>Alexander</b> (107–111): the unit he is attached to rolls one extra die in every close combat, on top of any terrain limit. Nothing in ranged combat, and nothing for units he is only next to.</li>
@@ -228,6 +245,59 @@ export function Expansion() {
         <li><b>117 Asculum:</b> before the first turn both sides place their leaders, the Romans first: on a unit of their own, or alone on an empty hex.</li>
         <li><b>120, 121, 124 — Roman Tactical Flexibility</b> (optional, switch it in the briefing): enemy heavy infantry with fewer than two friendly neighbours, and not on broken ground, battle back against Roman medium or heavy infantry with only 3 dice.</li>
       </ul>
+    </div>
+  );
+}
+
+/** Expansion #2 tab: the new unit, the legions, Caesar and Spartacus, battle objectives, battle rules and terrain (§18–§19). */
+export function Expansion2() {
+  const terrain: [string, string][] = [
+    ['Ditch', 'Every unit and lone leader stops on entering (212 Bruttium). No other effect: no dice limits, battle allowed, no line-of-sight block.'],
+    ['Very steep hills', 'At Cefn Carnedd (223) every hill: a unit climbing onto one from lower ground stops and may not battle that turn, and an advance up one gives no bonus combat. Close combat: uphill at most 1 die, downhill 2, hill to hill 3; card and leader bonuses add on top. Ranged combat and line of sight as usual.'],
+    ['Coast played as a ford', 'The British shore (217): drawn as sea, played as a fordable river. Units entering it stop; close combat in or out at most 2 dice, firing out at most 1 die.'],
+    ['Rampart breakers', 'At Cefn Carnedd the Briton ramparts are torn down (open ground) as soon as a Roman unit enters or passes through one, moving, advancing, retreating or evading.'],
+    ['Removed camps', 'A camp the battle removes once captured becomes open ground.'],
+  ];
+  return (
+    <div className="rules-text">
+      <p><i>Rome &amp; the Barbarians</i> adds 23 battles (201–223), from the Gallic invasion of 225 BC to the war in Britain in AD 51: Gauls, Germans, Spartacus' slaves, Belgae and Britons against the legions. Everything in the other tabs still applies unless a rule here says otherwise.</p>
+      <h3>New unit</h3>
+      <UnitCards types={EXP2_UNIT_TYPES} />
+      <ul>
+        <li><b>Barbarian light chariots</b> count as light troops and as mounted units for the cards. At full strength they roll 3 dice and may ignore 1 flag. They ignore one sword hit in every close combat and can always evade. After a winning combat they may advance and make a bonus attack, but never take the cavalry's extra hex. They cannot be rallied.</li>
+        <li>An elephant rolls 2 dice against Barbarian light chariots.</li>
+      </ul>
+      <h3>The legions</h3>
+      <ul>
+        <li><b>Marian legions</b> (206–223): every Roman medium and heavy infantry unit throws the pilum. In 201–205, before Marius' reforms, the Romans have no pilum.</li>
+        <li><b>Pilum:</b> range 2, always 1 die, whether the unit stood or moved 1 hex; not after moving 2 hexes. It is ranged combat in every other way: not while next to an enemy, never in the same turn as close combat, twice with Darken the Sky. The unit is not light troops, and from a fortified camp it cannot throw (1 die − 1 = none).</li>
+        <li><b>March:</b> the unit may move 2 hexes if it does not battle that turn, or 1 hex and battle. With Double Time: 2 hexes and battle, never 3.</li>
+      </ul>
+      <EliteTable ids={EXP2_ELITES} />
+      <h3>Leaders</h3>
+      <ul>
+        <li><b>Julius Caesar</b> (215, 217, 218): the unit he is attached to rolls one extra die in every close combat, as Alexander's. <b>Forced march:</b> an infantry unit that has Caesar with it when it begins its move may move 2 hexes and still battle (terrain still stops it, Line Command still allows 1 hex, and a pilum unit still cannot throw after 2 hexes).</li>
+        <li><b>Spartacus</b> (208, 210–214): while he is on the board, his side's I Am Spartacus rolls 2 more dice, also when a Counter Attack copies it.</li>
+      </ul>
+      <h3>Battle objectives</h3>
+      <p>Some battles add objectives that score banners on top of eliminated units and leaders. They are marked on the board; hover a marked hex to see what it scores. Only units count, never lone leaders, and a unit merely passing through counts for nothing.</p>
+      <ul>
+        <li><b>Capture</b> (pennants): a camp is taken once, by a unit standing on it at the start of its side's turn (in 011 and 114: ending its move there). Its banners are kept; some camps are then removed.</li>
+        <li><b>Hold</b> (204, 213, 214, 222): 1 banner for each marked hex a unit of that side stands on, up to a limit.</li>
+        <li><b>Hill control</b> (202 Telamon): at the end of every turn, the side with more units on the hills holds 2 banners; a tie gives them to nobody.</li>
+        <li><b>Section clear</b> (219): at the end of each Roman turn every section without a Briton unit scores 1 banner, lost as soon as a Briton unit enters it.</li>
+        <li><b>Exit</b> (arrows; 010, 210, 212, 221): a unit on a marked edge hex may leave the battlefield as one more hex of movement. It scores 1 banner and is removed, with its leader; the enemy scores nothing.</li>
+      </ul>
+      <p><b>Held banners</b> (hold, hill control, section clear) are drawn hatched on the banner track: they count toward victory, but are lost the moment the position lapses and can be regained later. A side wins as soon as its permanent and held banners together reach the target; losing a held banner afterwards does not undo the win.</p>
+      <h3>Battle rules</h3>
+      <ul>
+        <li><b>Ambush</b> (206 Aquae Sextiae): Marcellus' force waits off the board. When the Romans play a Leadership card or Order Light Troops, even on the first turn, they may spring it instead of ordering units: it enters on empty hexes of the German baseline in the card's section (any section for Leadership Any Section and Order Light Troops), then moves and battles.</li>
+        <li><b>Separate commands</b> (210 Picenum): the Roman army is two commands, Lentulus' (grey bases) and Gellius'; each unit shows its commander's initial. One card orders one army only, whatever the card: for Clash of Shields, Darken the Sky, Rally and I Am Spartacus you name the command first. Leaders belong to no command.</li>
+        <li><b>Rolling Fire</b> (210): a Slave infantry unit on a hill that has not moved, ordered by a card that is not a Tactic card, may use its battle to roll burning logs downhill, even next to an enemy. Select it, click <i>Rolling Fire</i>, then click the path hex by hex. Each step goes one row down toward the Roman edge, never onto a hill; the path runs 3 hexes or ends at the first hex that is not open ground. Every unit in the path, friend or foe, is rolled 2 dice: only its own symbol hits, no flag may be ignored and nobody battles back. Then the rolling unit loses 1 block.</li>
+        <li><b>Last-row retreat</b> (214 Silarus): a Slave unit whose retreat ends on its own baseline row with hexes it could not take is eliminated instead of losing blocks. Evades, and a retreat that ends by joining a leader, are not affected.</li>
+      </ul>
+      <h3>Terrain</h3>
+      <TerrainTable rows={terrain} />
     </div>
   );
 }

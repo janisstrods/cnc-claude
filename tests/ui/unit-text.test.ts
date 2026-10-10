@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ELITES, UNIT_STATS, UNIT_TYPES, type Leader, type LeaderTrait, type Unit, type UnitStats, type UnitType } from '../../src/engine';
 import { leaderTraitLines, unitCardLines, unitSummary } from '../../src/ui/game/uiModel';
-import { EXP1_UNIT_TYPES, EXP2_UNIT_TYPES, Expansion, Units } from '../../src/ui/screens/RulesReference';
+import { EXP1_UNIT_TYPES, EXP2_ELITES, EXP2_UNIT_TYPES, Expansion, Expansion2, Units } from '../../src/ui/screens/RulesReference';
 
 const unit = (t: UnitType, extra: Partial<Unit> = {}): Unit =>
   ({ id: 'u1', side: 'top', type: t, hex: 0, blocks: UNIT_STATS[t].blocks, maxBlocks: UNIT_STATS[t].blocks, ...extra }) as Unit;
@@ -202,14 +202,21 @@ describe('rules reference unit cards', () => {
     expect(cardsOf(Expansion)).toEqual(EXP1_UNIT_TYPES.map((t) => REFERENCE[t]));
   });
 
-  it('Expansion #2 types (the Barbarian light chariot) have generated cards but are not in the base Units tab', () => {
+  it('Expansion #2 types (the Barbarian light chariot) have generated cards in the Expansion #2 tab, not in the base Units tab', () => {
     expect([...EXP2_UNIT_TYPES]).toEqual(['BCH']);
     for (const t of EXP2_UNIT_TYPES) expect(unitCardLines(t), t).toEqual(REFERENCE[t]);
+    expect(cardsOf(Expansion2)).toEqual(EXP2_UNIT_TYPES.map((t) => REFERENCE[t]));
   });
 
-  it('the Expansion #1 tab lists every elite preset and both leader traits', () => {
+  it('the Expansion #1 tab lists every Expansion #1 elite preset and both leader traits; the Tenth Legion is in the Expansion #2 tab', () => {
     const text = renderToStaticMarkup(createElement(Expansion)).replace(/<[^>]*>/g, ' ');
-    for (const e of Object.values(ELITES)) expect(text, e.id).toContain(e.name);
+    expect([...EXP2_ELITES]).toEqual(['tenthLegion']);
+    for (const e of Object.values(ELITES)) {
+      if (EXP2_ELITES.includes(e.id)) expect(text, e.id).not.toContain(e.name);
+      else expect(text, e.id).toContain(e.name);
+    }
+    const exp2 = renderToStaticMarkup(createElement(Expansion2)).replace(/<[^>]*>/g, ' ');
+    for (const id of EXP2_ELITES) expect(exp2, id).toContain(ELITES[id].name);
     expect(text).toContain('Alexander');
     expect(text).toContain('satrap');
     for (const t of ['Sea', 'Rampart', 'Ford, no dice limit', 'Tactical Flexibility', 'Hellespont', 'Asculum']) expect(text).toContain(t);

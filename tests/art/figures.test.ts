@@ -103,13 +103,12 @@ describe('Expansion #1 figures', () => {
 
   it('Miniature draws every elite fielded in a scenario with its own figures', () => {
     const elites: { elite: EliteId; look: ArmyLook; type: UnitType }[] = [];
-    // (Expansion #2's Tenth Legion is drawn by the Expansion #2 art, not covered here)
-    for (const sc of SCENARIOS.filter((x) => x.expansion !== 'exp2')) {
+    for (const sc of SCENARIOS) {
       for (const u of sc.setup.units) {
         if (u.elite && !elites.some((e) => e.elite === u.elite)) elites.push({ elite: u.elite, look: sc.setup[u.side].look, type: u.type });
       }
     }
-    expect(elites.map((e) => e.elite).sort()).toEqual(['bowAuxilia', 'carthSacredBand', 'companions', 'immortals', 'silverShields', 'thebanSacredBand']);
+    expect(elites.map((e) => e.elite).sort()).toEqual(['bowAuxilia', 'carthSacredBand', 'companions', 'immortals', 'silverShields', 'tenthLegion', 'thebanSacredBand']);
     for (const { elite, look, type } of elites) {
       expect(fig(type, look, 2, elite), elite).not.toBe(fig(type, look, 2));
     }
