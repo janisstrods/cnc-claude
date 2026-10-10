@@ -590,7 +590,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
       )}
 
       <Modal open={showRules} title="Rules Reference" onClose={() => setShowRules(false)} width={880}>
-        <RulesReference />
+        <RulesReference scenario={controller.scenario} />
       </Modal>
 
       <Modal open={confirmExit} title="Leave the battle?" onClose={() => setConfirmExit(false)}>

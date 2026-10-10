@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CARD_DEFS, ELITES, UNIT_STATS, UNIT_TYPES, type ArmyLook, type Blocks, type CardKind, type EliteId, type UnitType } from '../../engine';
+import type { ScenarioInfo } from '../../scenarios';
 import { UnitIcon } from '../../art';
 import { CardView, DieView } from '../kit';
 import { unitCardLines } from '../game/uiModel';
@@ -13,7 +14,8 @@ const BASE_UNIT_TYPES = UNIT_TYPES.filter((t) => !EXP1_UNIT_TYPES.includes(t));
 /** Figure look of each Expansion #1 unit card (an army that fields it). */
 const EXP1_LOOK: Partial<Record<UnitType, [ArmyLook, Blocks]>> = { LBC: ['scythian', 'eas'], CAM: ['seleucid', 'grk'], HWM: ['macedonian', 'grk'] };
 
-export function RulesReference() {
+/** In a battle, pass its scenario to show that battle's special rules above the tabs. */
+export function RulesReference({ scenario }: { scenario?: ScenarioInfo } = {}) {
   const [tab, setTab] = useState<Tab>('basics');
   const tabs: [Tab, string][] = [
     ['basics', 'How to play'],
@@ -25,6 +27,14 @@ export function RulesReference() {
   ];
   return (
     <div className="rules">
+      {scenario && scenario.specialText.length > 0 && (
+        <section className="rules-battle">
+          <h3>Special rules: {scenario.name}</h3>
+          <ul>
+            {scenario.specialText.map((t) => <li key={t}>{t}</li>)}
+          </ul>
+        </section>
+      )}
       <nav className="rules-tabs">
         {tabs.map(([t, label]) => (
           <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{label}</button>
