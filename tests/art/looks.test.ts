@@ -241,6 +241,29 @@ describe('base armies are drawn exactly as before Expansion #1 (rendered SVG)', 
   });
 });
 
+describe("the base game's Sacred Band keeps its look (rendered SVG)", () => {
+  // SHA-256 of every Carthaginian Sacred Band token (scenario 002: carthSacredBand HI on the carthaginian look and
+  // Carthaginian blocks; all strengths, both facings, dimmed or not) and its icon, as drawn by Expansion #1, which gave
+  // the elite its own figures. Pinned so later art work cannot change the base game's elite unnoticed.
+  const BASELINE = 'b136dfda5311421d1bc8750ac19a394bac1581441326475f3b1cae9c13869809';
+
+  it('every Sacred Band token and icon renders byte-identically', async () => {
+    const parts: string[] = [];
+    const a = { type: 'HI', look: 'carthaginian', blockColor: 'car', elite: 'carthSacredBand' } as const;
+    for (let blocks = 1; blocks <= MAX.HI; blocks++) {
+      for (const facing of ['left', 'right'] as const) {
+        for (const dimmed of [false, true]) parts.push(svg(h(UnitToken, { ...a, blocks, maxBlocks: MAX.HI, facing, dimmed })));
+      }
+    }
+    for (const size of [24, 64]) parts.push(svg(h(UnitIcon, { ...a, size })));
+    // it is the elite's own drawing, not the plain heavy infantry
+    expect(parts[0]).not.toBe(svg(h(UnitToken, { ...a, elite: undefined, blocks: 1, maxBlocks: MAX.HI, facing: 'left', dimmed: false })));
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(parts.join('')));
+    const hex = [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, '0')).join('');
+    expect(hex).toBe(BASELINE);
+  });
+});
+
 /** The kit of every look (Expansion #1 brief). */
 const KITS: Record<ArmyLook, Kit> = {
   roman: 'roman', carthaginian: 'punic', syracusan: 'greek',

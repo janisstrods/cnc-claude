@@ -7,7 +7,8 @@ import type { ArmyLook, Blocks, EliteId, UnitType } from '../../src/engine/types
 import { LOOKS, paletteFor } from '../../src/art/palettes';
 import { UnitIcon, UnitToken } from '../../src/art';
 import { EliteStandard, Miniature, figureKind } from '../../src/art/token';
-import { figurePalette } from '../../src/art/foot';
+import { FootFigure, figurePalette, footKit } from '../../src/art/foot';
+import type { Kit } from '../../src/art/palettes';
 import { SCENARIOS } from '../../src/scenarios';
 
 const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
@@ -140,5 +141,48 @@ describe('Expansion #1 figures', () => {
         expect(s, `${look} ${type}`).toBeLessThan(1.1);
       }
     }
+  });
+});
+
+describe('Expansion #1 foot figures', () => {
+  const FOOT: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI'];
+  /** All four figures of a unit, colours stripped. */
+  const unit = (draw: (i: number) => string) => shape([0, 1, 2, 3].map(draw).join(''));
+
+  it('each new kit has its own foot figures: drawn in one palette, they differ in shape from the Roman kit', () => {
+    // the kit's own figures (footKit), all in the Roman palette (which has no per-type look overrides), so only the
+    // kit's drawing differs; the Successors' warriors are the same Celtic figures as Rome's Gauls (Galatian mercenaries)
+    const roman = paletteFor('roman', 'rom');
+    expect(roman.style.foot).toBeUndefined();
+    const kitUnit = (type: UnitType, kit: Kit) => unit((i) => svg(h(FootFigure, { kit: footKit(type, kit, i), p: roman, i })));
+    for (const kit of ['macedonian', 'persian', 'scythian', 'indian'] as Kit[]) {
+      for (const type of FOOT) {
+        if (kit === 'macedonian' && type === 'WA') {
+          expect(kitUnit(type, kit)).toBe(kitUnit(type, 'roman'));
+          continue;
+        }
+        expect(kitUnit(type, kit), `${kit} ${type}`).not.toBe(kitUnit(type, 'roman'));
+      }
+    }
+  });
+
+  it('as the armies are seated, the kit looks differ in shape from the Roman foot as well', () => {
+    for (const look of ['macedonian', 'persian', 'scythian', 'indian'] as ArmyLook[]) {
+      for (const type of FOOT) {
+        if (look === 'macedonian' && type === 'WA') continue; // the same Celtic warriors (see above)
+        expect(unit((i) => fig(type, look, i)), `${look} ${type}`).not.toBe(unit((i) => fig(type, 'roman', i)));
+      }
+    }
+  });
+
+  // looks of one kit: without the look's per-type overrides these shapes would be the same
+  it("a look's per-type overrides reach its figures: Athenian archers are not Syracusan ones", () => {
+    expect(paletteFor('athenian', 'grk').kit).toBe(paletteFor('syracusan', 'grk').kit);
+    expect(unit((i) => fig('LB', 'athenian', i))).not.toBe(unit((i) => fig('LB', 'syracusan', i)));
+  });
+
+  it("a look's per-type overrides reach its figures: Epirote skirmishers are not Macedonian ones", () => {
+    expect(paletteFor('epirote', 'grk').kit).toBe(paletteFor('macedonian', 'grk').kit);
+    expect(unit((i) => fig('LI', 'epirote', i))).not.toBe(unit((i) => fig('LI', 'macedonian', i)));
   });
 });
