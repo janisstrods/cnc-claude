@@ -7,7 +7,7 @@ import {
 import { ALL_HEXES, areAdjacent, neighbours, rowOf } from './hex';
 import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './movement';
 import { bannerTotal, gainBanner } from './banners';
-import { captureOnStop, exitUnit } from './objectives';
+import { captureOnStop, exitUnit, turnEndObjectives, turnStartObjectives, updateHeld } from './objectives';
 import {
   autoOrders, orderMode, rallyCandidates, spartacusDiceCount, validateOrders, validateRally, validateSpartacus,
 } from './orders';
@@ -164,6 +164,7 @@ function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: stri
     s.units = s.units.filter((x) => x.id !== u.id);
     ctx.emit({ t: 'eliminated', id: u.id });
     log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} eliminated.`, u.side);
+    updateHeld(s, ctx); // objective banners the unit held go before the enemy's banner counts
     gainBanner(s, ctx, other(u.side), 'unit eliminated');
     return true;
   }
@@ -174,6 +175,7 @@ function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: stri
 function removeUnit(s: GameState, ctx: FlowCtx, u: Unit, reason: string) {
   s.units = s.units.filter((x) => x.id !== u.id);
   ctx.emit({ t: 'removed', id: u.id, reason });
+  updateHeld(s, ctx);
 }
 
 /** Leader casualty check (2 dice need 2 helmets; 1 die needs 1). Returns true if the leader survives. */
@@ -341,6 +343,7 @@ function* walkPath(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, kind
   if (opt.attachLeader) {
     ctx.emit({ t: 'attach', leader: opt.attachLeader, unit: u.id });
   }
+  updateHeld(s, ctx); // where the retreat or evade ends (hexes passed through never count)
   return false;
 }
 
@@ -373,7 +376,9 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
       if (l) orphans.push(l);
     } else if (l) survivorsWithLeader.push(l);
   }
-  // banners together, then the Hellespont rules for the crushed leaders
+  // held banners of the crushed units go first; then the banners together, then the Hellespont rules for the leaders
+  updateHeld(s, ctx);
+  if (s.winner) return;
   settleBanners(s, ctx, batch, 'crushed by elephants', 'elephant retreat');
   if (s.winner) return;
   for (const l of survivorsWithLeader) if (leaderById(s, l.id)) leaderCheck(s, ctx, l, 2);
@@ -607,6 +612,8 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   relocate(s, u, hex);
   if (op) op.enteredHexThisTurn = true;
   ctx.emit({ t: 'advance', id: u.id, path: [from, hex] });
+  updateHeld(s, ctx);
+  if (s.winner) return;
   const checked = { done: false };
   if (terrainAt(s, hex) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
   if (s.winner || role === 'bonus') return;
@@ -631,6 +638,8 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
         if (joining && joining.side === u.side) joining.hex = to;
         ctx.emit({ t: 'advance', id: u.id, path: [f2, to] });
         if (joining && joining.side === u.side) ctx.emit({ t: 'attach', leader: joining.id, unit: u.id });
+        updateHeld(s, ctx);
+        if (s.winner) return;
         if (terrainAt(s, to) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
         if (s.winner) return;
       }
@@ -877,7 +886,7 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
   op.mustBattle = target.mustBattle;
   if (ldr && t.ordered[ldr.id]) t.ordered[ldr.id].moveDone = true;
   if (to === OFF_BOARD) {
-    // an exit objective (010 Castulo): the unit walks to its exit hex and steps off the board for a banner
+    // an exit objective: the unit walks to its exit hex (the path's second-to-last hex) and steps off the board for a banner
     ctx.emit({ t: 'move', id, path: target.path });
     relocate(s, u, target.path[target.path.length - 2]);
     exitUnit(s, ctx, u);
@@ -919,7 +928,10 @@ function* movePhase(s: GameState, ctx: FlowCtx, stage: 1 | 2): Gen {
     if (!movablePieces(s, stage).length) break;
     const a = yield* ask(ctx, { kind: 'move', side: s.active, stage }, (a) => validateMove(s, a, stage));
     if (a.kind === 'endMove') break;
-    if (a.kind === 'move') yield* doMove(s, ctx, a.piece, a.to, stage);
+    if (a.kind === 'move') {
+      yield* doMove(s, ctx, a.piece, a.to, stage);
+      updateHeld(s, ctx); // after every move, an ambush entry or an exit included
+    }
   }
   if (stage === 1) returnUnplacedReserves(s);
 }
@@ -975,6 +987,8 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
       // Capture objectives: a camp counts only where the attacking unit finally stops.
       if (!s.winner && unitById(s, u.id)) captureOnStop(s, ctx, u);
     }
+    // held banners after the whole sequence (retreats, advances, bonus combat; any battle action)
+    updateHeld(s, ctx);
   }
 }
 
@@ -1009,6 +1023,9 @@ export function* turnFlow(s: GameState, ctx: FlowCtx): Gen {
   const t = s.turn;
   ctx.emit({ t: 'turnStart', side, turn: t.number });
   t.phase = 'card';
+  // objectives decided at the start of the turn, before the card (turn-start captures, §18.4)
+  turnStartObjectives(s, ctx, side);
+  if (s.winner) return;
   const pa = yield* ask(ctx, { kind: 'playCard', side }, (a) =>
     a.kind === 'playCard' && s.players[side].hand.includes(a.card) ? null : 'Play a card from your hand.');
   const cardId = (pa as { card: number }).card;
@@ -1046,6 +1063,9 @@ export function* turnFlow(s: GameState, ctx: FlowCtx): Gen {
     if (s.winner) return;
   }
   t.phase = 'draw';
+  // objectives decided at the end of the turn, before the draw (majority, section clear, §18.4)
+  turnEndObjectives(s, ctx, side);
+  if (s.winner) return;
   endOfTurn(s, ctx);
   t.phase = 'done';
 }

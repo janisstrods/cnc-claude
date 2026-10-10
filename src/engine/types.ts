@@ -193,15 +193,17 @@ export type SpecialRuleId = (typeof SPECIAL_RULE_IDS)[number];
 /**
  * A battle objective (§18.4), resolved from scenario data (`ObjectiveSetup` in setup.ts) with every default filled in.
  * Objectives give banners on top of eliminated units and leaders; only units count, never lone leaders.
- * - `capture`: `side` takes each of `hexes` once (camps): `when: 'stop'` = a unit ends its move or its close-combat
- *   sequence there; `'turnStart'` = a unit stands there at the start of that side's turn. The n-th capture scores
- *   `banners[n - 1]` (the last value repeats); `together: n` = nothing until n listed hexes are occupied at once, then
- *   every listed hex is taken; `remove` = a taken hex becomes open ground. `hexes` ascending.
+ * - `capture`: `side` takes each of `hexes` once (camps, or ramparts standing in for camps, 215): `when: 'stop'` = a unit
+ *   ends its move or its close-combat sequence there; `'turnStart'` = a unit stands there at the start of that side's
+ *   turn, before its card. The n-th capture scores `banners[n - 1]` permanent banners (the last value repeats);
+ *   `together: n` ('turnStart' only; 0 = off) = nothing until n untaken listed hexes are occupied at once, then a single
+ *   capture scores `banners[0]` (1 by default) once and takes every listed hex; `remove` = a taken hex becomes open ground
+ *   (`setTerrain`; every listed hex with `together`). `hexes` ascending.
  * - `hold`: 1 held banner per listed hex a unit of `side` stands on, at most `max`.
- * - `majority`: the side of `sides` with more units on `hexes` holds `banners` (`turnEnd`: decided at each turn end;
- *   `always`: at once).
- * - `sectionClear`: at the end of `side`'s turn each section without an enemy unit scores 1 held banner, lost when an
- *   enemy unit enters it.
+ * - `majority`: the side of `sides` with strictly more units on `hexes` holds `banners`, nobody on a tie (`turnEnd`:
+ *   decided at the end of every player turn; `always`: at once).
+ * - `sectionClear`: at the end of `side`'s turn each section (from `side`'s point of view) without an enemy unit scores
+ *   1 held banner, lost as soon as an enemy unit stands in it (a unit on a boundary hex is in both sections).
  * - `exit`: a unit of `side` (`units` filter) on one of `hexes` (board-edge hexes) may move off the board as one more
  *   hex: 1 banner, the unit and its attached leader are removed (not eliminated). In `text`, `{unit}` is the unit's name.
  * `text` is the log line (the `held` event reason for held banners).
@@ -223,7 +225,7 @@ export interface ObjectiveState {
   taken: HexId[];
   /** hold / majority / sectionClear: banners this objective gives each side right now. */
   held: Record<Side, number>;
-  /** sectionClear: sections currently scored. */
+  /** sectionClear: sections currently scored (from the objective side's point of view, in left-centre-right order). */
   sections: SectionName[];
 }
 
@@ -276,7 +278,11 @@ export interface ScenarioSpecial {
 
 export interface GameState {
   scenarioId: string;
-  terrain: TerrainType[]; // length ROWS*COLS
+  /**
+   * Terrain of every hex; length ROWS*COLS. Changed during play only through `setTerrain` (removable tiles, §18.6), which
+   * replaces the array (and `rampart`) instead of changing it in place: `cloneState` shares both.
+   */
+  terrain: TerrainType[];
   fords: boolean[]; // length ROWS*COLS
   /** Fordable river hexes without the ford dice caps (108 Pinarus, §16); length ROWS*COLS. */
   noCap: boolean[];

@@ -1,9 +1,25 @@
 // Terrain effects (rules-reference §4, §7, §8; Expansion #1 terrain §16).
 import { sidesCrossed } from './hex';
-import type { GameState, HexId, TerrainType } from './types';
+import type { FlowCtx, GameState, HexId, TerrainType } from './types';
 
 export function terrainAt(s: GameState, h: HexId): TerrainType {
   return s.terrain[h] ?? 'void';
+}
+
+/**
+ * Change a hex's terrain during play (a captured camp or rampart removed, §18.4, §18.6) and emit `terrainChanged`.
+ * Copy-on-write: `cloneState` shares the terrain and rampart arrays, so they are replaced, never changed in place, and a
+ * cloned state (AI search, a replay's initial state, UI snapshots) never sees another state's change. A rampart hex
+ * loses its protected hexsides.
+ */
+export function setTerrain(s: GameState, ctx: FlowCtx, h: HexId, t: TerrainType): void {
+  s.terrain = s.terrain.slice();
+  s.terrain[h] = t;
+  if (s.rampart[h]) {
+    s.rampart = s.rampart.slice();
+    s.rampart[h] = 0;
+  }
+  ctx.emit({ t: 'terrainChanged', hex: h, terrain: t });
 }
 
 export function isFord(s: GameState, h: HexId): boolean {

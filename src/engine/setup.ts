@@ -65,9 +65,12 @@ export interface ScenarioSetup {
 
 /**
  * A battle objective as scenario data (resolved into `ObjectiveDef`, see there). Hexes are `[r, c]`. Defaults:
- * `capture` — `hexes` every camp on the board, `when: 'stop'`, `banners: [1]`, `together: 0`, `remove: false`, `text`
- * "The <army> army captures a <enemy army> camp!"; `hold` — `max` the number of hexes; `exit` — `units: 'any'`,
- * `leadersScore: false`, `text` "<army> {unit} breaks through and exits the battlefield!".
+ * `capture` — `hexes` every camp on the board (listed hexes must be camps or ramparts), `when: 'stop'`, `banners: [1]`,
+ * `together: 0` (off; needs `when: 'turnStart'`), `remove: false`, `text` "The <army> army captures a <enemy army>
+ * camp!"; `hold` — `max` the number of hexes, `text` "The <army> army holds an objective."; `majority` — `text`
+ * "Control of the objective hexes."; `sectionClear` — `text` "The <army> army has cleared a section of the enemy.";
+ * `exit` — `units: 'any'`, `leadersScore: false` (true is not supported yet: Expansion #3), `text` "<army> {unit} breaks
+ * through and exits the battlefield!".
  */
 export type ObjectiveSetup =
   | { kind: 'capture'; side: Side; hexes?: [number, number][]; when?: 'stop' | 'turnStart'; banners?: number[];
@@ -405,7 +408,10 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   return s;
 }
 
-/** Fast deep copy of a game state (plain data). */
+/**
+ * Fast deep copy of a game state (plain data). The board arrays (terrain, fords, noCap, rampart) and the objective
+ * definitions are shared: they never change in place (`setTerrain` replaces the arrays).
+ */
 export function cloneState(s: GameState): GameState {
   const ordered: TurnState['ordered'] = {};
   for (const k in s.turn.ordered) ordered[k] = { ...s.turn.ordered[k] };

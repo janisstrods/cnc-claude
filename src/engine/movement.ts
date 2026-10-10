@@ -147,8 +147,9 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
 
   results.delete(startHex);
 
-  // Exit objectives (010 Castulo): stepping off the board from a listed edge hex is one more hex of movement, from the
-  // start hex or a hex reached without joining a leader (not from terrain that stopped the unit there).
+  // Exit objectives (010 Castulo, 210, 212, 221; `exitHexes` applies their unit filter): stepping off the board from a
+  // listed edge hex is one more hex of movement, from the start hex or a hex reached without joining a leader (not from
+  // terrain that stopped the unit there).
   const exits = fromReserve ? [] : exitHexes(s, u);
   if (exits.length) {
     let bestExit: MoveTarget | null = null;
