@@ -1,7 +1,7 @@
 // The scenario loader (src/scenarios/index.ts): every field of the scenario JSON reaches ScenarioSetup unchanged, and
 // setup errors name the scenario they come from.
 import { describe, expect, it } from 'vitest';
-import { OFF_BOARD, createGame, hexId } from '../../src/engine';
+import { OFF_BOARD, createGame, hexId, type ObjectiveSetup } from '../../src/engine';
 import { scenarioById, scenarioFromJson, scenariosFromFiles, type ScenarioJson } from '../../src/scenarios';
 
 const H = (r: number, c: number) => hexId(r, c);
@@ -16,9 +16,9 @@ const RAW: ScenarioJson = {
   bottom: { army: 'Persian', blocks: 'eas', look: 'persian', commander: 'Darius III', cards: 4 },
   first: 'top',
   banners: 8,
-  rules: ['campCapture', 'leaderPlacement'],
+  rules: ['leaderPlacement'],
   options: { tacticalFlexibility: true },
-  campCapture: { side: 'top', hexes: [[8, 12]], text: 'The camp falls!' },
+  objectives: [{ kind: 'capture', side: 'top', hexes: [[8, 12]], text: 'The camp falls!' }],
   terrain: [
     { r: 4, c: 3, t: 'river', ford: 'nocap' },
     { r: 4, c: 4, t: 'river', ford: true },
@@ -75,20 +75,35 @@ describe('scenario loader', () => {
   it('reads rules, options, the camp objective and the leaders to place from the JSON', () => {
     const info = scenarioFromJson(RAW);
     expect(info.expansion).toBe('exp1');
-    expect(info.setup.rules).toEqual(['campCapture', 'leaderPlacement']);
+    expect(info.setup.rules).toEqual(['leaderPlacement']);
     expect(info.setup.options).toEqual({ tacticalFlexibility: true });
-    expect(info.setup.campCapture).toEqual({ side: 'top', hexes: [[8, 12]], text: 'The camp falls!' });
+    expect(info.setup.objectives).toEqual([{ kind: 'capture', side: 'top', hexes: [[8, 12]], text: 'The camp falls!' }]);
     expect(info.setup.placeLeaders).toEqual([{ side: 'bottom', name: 'Darius', traits: ['attachedOnly'] }, { side: 'top', name: 'Craterus' }]);
     const s = createGame(info.setup, 1);
-    expect(s.special.rules).toEqual(['campCapture', 'leaderPlacement', 'tacticalFlexibility']);
+    expect(s.special.rules).toEqual(['leaderPlacement', 'tacticalFlexibility']);
     expect(createGame(info.setup, 1, { tacticalFlexibility: false }).special.rules).not.toContain('tacticalFlexibility');
-    expect(s.special.campCapture).toEqual({ side: 'top', hexes: [H(8, 12)], text: 'The camp falls!' });
+    expect(s.special.objectives).toEqual([{
+      kind: 'capture', side: 'top', hexes: [H(8, 12)], when: 'stop', banners: [1], together: 0, remove: false, text: 'The camp falls!',
+    }]);
     expect(s.special.unplaced).toHaveLength(2);
     expect(s.leaders.filter((l) => l.hex === OFF_BOARD).map((l) => l.name)).toEqual(['Darius', 'Craterus']);
   });
 
+  it('passes the legion rule of each side through, as a copy (§18.2)', () => {
+    const raw: ScenarioJson = JSON.parse(JSON.stringify({ ...RAW, legions: { bottom: 'marius' } }));
+    const { setup } = scenarioFromJson(raw);
+    expect(setup.legions).toEqual({ bottom: 'marius' });
+    setup.legions!.top = 'julian';
+    expect(raw.legions).toEqual({ bottom: 'marius' });
+    expect(createGame(scenarioFromJson(raw).setup, 1).units.map((u) => [u.type, u.side, u.legion])).toEqual([
+      ['MC', 'top', undefined], ['LBC', 'top', undefined], ['MI', 'bottom', 'marius'], ['CAM', 'bottom', undefined],
+    ]);
+    expect(scenarioFromJson(RAW).setup.legions).toBeUndefined();
+    expect(scenarioFromJson({ ...RAW, legions: {} }).setup.legions).toBeUndefined();
+  });
+
   it('an empty options object offers no optional rule', () => {
-    const { setup } = scenarioFromJson({ ...RAW, options: {}, rules: [], campCapture: undefined, placeLeaders: undefined });
+    const { setup } = scenarioFromJson({ ...RAW, options: {}, rules: [], objectives: undefined, placeLeaders: undefined });
     expect(setup.options).toBeUndefined();
     expect(createGame(setup, 1, { tacticalFlexibility: true }).special.rules).toEqual([]);
   });
@@ -100,7 +115,8 @@ describe('scenario loader', () => {
     setup.units[0].r = 0;
     setup.leaders[0].traits!.push('attachedOnly');
     setup.placeLeaders![0].name = 'X';
-    setup.campCapture!.hexes![0][0] = 0;
+    const camp = setup.objectives![0] as Extract<ObjectiveSetup, { kind: 'capture' }>;
+    camp.hexes![0][0] = 0;
     expect(raw).toEqual(RAW);
   });
 
@@ -108,7 +124,12 @@ describe('scenario loader', () => {
     const sc = scenarioById('002');
     expect(sc.expansion).toBe('base');
     expect(sc.setup.rules).toEqual(['sacredBand']);
-    expect(scenarioById('011').setup.campCapture).toEqual({ side: 'bottom', text: 'The Romans storm a Carthaginian camp!' });
+    expect(scenarioById('011').setup.objectives).toEqual([{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }]);
+  });
+
+  it('the retired campCapture field is an error naming the scenario', () => {
+    const old = { ...RAW, objectives: undefined, campCapture: { side: 'top' } } as ScenarioJson;
+    expect(() => scenarioFromJson(old)).toThrow(/^campCapture is now a capture objective in objectives \(199\)$/);
   });
 
   it('an unknown expansion is an error naming the scenario', () => {
@@ -117,7 +138,7 @@ describe('scenario loader', () => {
 });
 
 describe('setup errors name the scenario', () => {
-  const setup = () => scenarioFromJson({ ...RAW, rules: [], campCapture: undefined, placeLeaders: undefined }).setup;
+  const setup = () => scenarioFromJson({ ...RAW, rules: [], objectives: undefined, placeLeaders: undefined }).setup;
 
   it('a unit off the board', () => {
     const st = setup();
@@ -175,8 +196,8 @@ describe('setup errors name the scenario', () => {
 
   it('a message that already names the scenario is left alone', () => {
     const st = setup();
-    st.rules = ['campCapture'];
-    expect(() => createGame(st, 1)).toThrow(/^rule campCapture needs scenario data campCapture \(199\)$/);
+    st.rules = ['leaderPlacement'];
+    expect(() => createGame(st, 1)).toThrow(/^rule leaderPlacement needs scenario data placeLeaders \(199\)$/);
     try {
       createGame(st, 1);
     } catch (e) {

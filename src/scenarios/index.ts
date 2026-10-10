@@ -2,17 +2,19 @@
 // are transcribed data (src/scenarios/data); texts are original summaries (base game below, Expansion #1 in
 // exp1-texts.ts).
 import { ELITES } from '../engine/elites';
-import type { GameOptions, ScenarioSetup, SideSetup, TerrainSetup } from '../engine/setup';
-import type { LeaderTrait, Side, SpecialRuleId } from '../engine/types';
+import { hexId, inSection, onBoard } from '../engine/hex';
+import type { GameOptions, ObjectiveSetup, ScenarioSetup, SideSetup, TerrainSetup } from '../engine/setup';
+import { COLS, type LeaderTrait, type Side, type SpecialRuleId } from '../engine/types';
 import { EXTRA_EXP1, type ScenarioTexts } from './exp1-texts';
 
 /** Which box a battle comes from. */
 export type Expansion = 'base' | 'exp1';
 
 /**
- * A scenario file in src/scenarios/data. Base-game files omit `expansion` (and keep their special rules in `EXTRA`
- * below); Expansion #1 files carry their rules, options, camp objective and leaders to place themselves. Other fields of
- * a file (the base files' copied rule text, roster checks) are ignored.
+ * A scenario file in src/scenarios/data. Base-game files omit `expansion` (and keep their special rules and objectives in
+ * `EXTRA` below); Expansion #1 files carry their rules, options, objectives and leaders to place themselves. Other fields
+ * of a file (the base files' copied rule text, roster checks) are ignored, except the retired `campCapture` (now an
+ * objective), which is an error.
  */
 export interface ScenarioJson {
   id: string;
@@ -24,9 +26,16 @@ export interface ScenarioJson {
   first: Side;
   banners: number;
   rules?: SpecialRuleId[];
+  /** Ambush reserve triggers and text (rule `magoAmbush`; 206 Aquae Sextiae). Left out: the Trebbia defaults. */
+  ambush?: ScenarioSetup['ambush'];
   /** Optional rules the battle offers, with their default (Tactical Flexibility, §17.3). */
   options?: GameOptions;
-  campCapture?: ScenarioSetup['campCapture'];
+  /** Battle objectives (camp capture, exits, §18.4). */
+  objectives?: ObjectiveSetup[];
+  /** Legion rule per side (Marius: the Romans of 206-223, §18.2). */
+  legions?: ScenarioSetup['legions'];
+  /** Separate commands (210 Picenum, §18.5); units and leaders name theirs with `command`. */
+  commands?: ScenarioSetup['commands'];
   /** `ford: 'nocap'` = fordable without dice caps; a rampart lists `faces` and/or `edges`. */
   terrain: TerrainSetup[];
   units: ScenarioSetup['units'];
@@ -55,9 +64,14 @@ const files = import.meta.glob<ScenarioJson>('./data/*.json', { eager: true, imp
 /** Texts and base-game rule data of a base battle (Expansion #1 battles keep their rules in the JSON). */
 interface Extra extends ScenarioTexts {
   rules?: SpecialRuleId[];
-  /** Camp-capture objective (with rule `campCapture`). */
-  campCapture?: ScenarioSetup['campCapture'];
+  objectives?: ObjectiveSetup[];
   patch?: (s: ScenarioSetup) => void;
+}
+
+/** 010 Castulo: the Carthaginian (top) baseline hexes in the Roman (bottom) centre and right sections. */
+const CASTULO_EXITS: [number, number][] = [];
+for (let c = 0; c < COLS; c++) {
+  if (onBoard(0, c) && (inSection(hexId(0, c), 'bottom', 'center') || inSection(hexId(0, c), 'bottom', 'right'))) CASTULO_EXITS.push([0, c]);
 }
 
 const EXTRA: Record<string, Extra> = {
@@ -136,6 +150,7 @@ const EXTRA: Record<string, Extra> = {
       "A Roman unit that exits the battlefield over the Carthaginian baseline from a centre or Roman-right hex scores a banner and is removed.",
     ],
     rules: ['castulo'],
+    objectives: [{ kind: 'exit', side: 'bottom', hexes: CASTULO_EXITS }],
     hint: 'Break out or die; protect Scipio.',
     patch: (s) => {
       s.sacredLeader = { side: 'bottom', name: 'Scipio' };
@@ -144,9 +159,8 @@ const EXTRA: Record<string, Extra> = {
   '011': {
     blurb: "Hasdrubal Barca holds a strong ridge at Baecula, his camps behind it. The young Scipio pins him with light troops and swings his legions around both flanks.",
     specialText: ['A Roman unit that ends its move in a Carthaginian camp hex gains a banner (each camp only once).'],
-    rules: ['campCapture'],
     // every camp on the board is Carthaginian; the Romans (bottom) capture them
-    campCapture: { side: 'bottom', text: 'The Romans storm a Carthaginian camp!' },
+    objectives: [{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }],
     hint: 'Assault the ridge and the camps.',
   },
   '012': {
@@ -181,11 +195,11 @@ function copyTerrain(t: TerrainSetup): TerrainSetup {
   return o;
 }
 
-function copyCamp(cc: NonNullable<ScenarioSetup['campCapture']>): NonNullable<ScenarioSetup['campCapture']> {
-  const o: NonNullable<ScenarioSetup['campCapture']> = { side: cc.side };
-  if (cc.hexes) o.hexes = cc.hexes.map(([r, c]) => [r, c]);
-  if (cc.text !== undefined) o.text = cc.text;
-  return o;
+/** An objective with its lists copied (hexes, banners, sides). */
+function copyObjective(o: ObjectiveSetup): ObjectiveSetup {
+  const out: Record<string, unknown> = { ...o };
+  for (const [k, v] of Object.entries(o)) if (Array.isArray(v)) out[k] = v.map((x: unknown) => (Array.isArray(x) ? [...x] : x));
+  return out as ObjectiveSetup;
 }
 
 /** One value given by the JSON or by `EXTRA`, never both. */
@@ -214,9 +228,13 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
     reserveLeaders: j.reserveLeaders.map(copyLeader),
     rules: [...(oneSource(j.id, 'rules', j.rules, ex?.rules) ?? [])],
   };
-  const camp = oneSource(j.id, 'campCapture', j.campCapture, ex?.campCapture);
-  if (camp) setup.campCapture = copyCamp(camp);
+  if ((j as { campCapture?: unknown }).campCapture !== undefined) throw new Error(`campCapture is now a capture objective in objectives (${j.id})`);
+  const objectives = oneSource(j.id, 'objectives', j.objectives, ex?.objectives);
+  if (objectives?.length) setup.objectives = objectives.map(copyObjective);
+  if (j.ambush) setup.ambush = { ...j.ambush, ...(j.ambush.trigger ? { trigger: [...j.ambush.trigger] } : {}) };
   if (j.options && Object.keys(j.options).length) setup.options = { ...j.options };
+  if (j.legions && Object.keys(j.legions).length) setup.legions = { ...j.legions };
+  if (j.commands !== undefined) setup.commands = Array.isArray(j.commands) ? j.commands.map((c) => ({ ...c })) : j.commands; // the engine rejects a non-list
   if (j.placeLeaders?.length) setup.placeLeaders = j.placeLeaders.map(copyLeader);
   // Trasimenus: the Roman column starts with 4 cards eventually; War Council lists 2 initially.
   if (j.id === '006') setup.bottom.cards = 4;

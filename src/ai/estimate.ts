@@ -3,7 +3,7 @@ import { battleTargets } from '../engine/flow';
 import { closeCombatDice, rangedDice, retreatPerFlag, swordIgnores, vsMountedIgnores, type StrikeRole } from '../engine/combat';
 import { neighbours } from '../engine/hex';
 import { unitById } from '../engine/query';
-import { canShoot, eliteHas, rangeOf } from '../engine/elites';
+import { canShoot, eliteHas, fireMoveLimit, rangeOf } from '../engine/elites';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType } from '../engine/units';
 import type { GameState, HexId, Leader, Unit } from '../engine/types';
 import {
@@ -309,7 +309,7 @@ export function attackNowValue(s: GameState, occ: Occ, u: Unit, moved: number, c
 export function shotValue(s: GameState, occ: Occ, u: Unit, moved: number, floor = 0): number {
   const m = s.turn.mods;
   let best = floor;
-  if (!m.noRanged && canShoot(u) && moved < UNIT_STATS[u.type].noFireAfterMove) {
+  if (!m.noRanged && canShoot(u) && moved < fireMoveLimit(u)) {
     const range = rangeOf(u);
     for (const v of s.units) {
       if (v.side === u.side || v.hex < 0) continue;

@@ -500,8 +500,8 @@ block colours. Fordable rivers use the §4/§7/§9.6 rules, except 108 (§16).
 * **113 Paraitacene (317 BC):** the hills down the left edge are impassable (`steep`, §16). The Eumenes HI labelled Silver
   Shields is `silverShields`. One LBC on each side.
 * **114 Gabiene (316 BC):** `silverShields` (the Eumenes HI so labelled). One LBC on each side. **Camp capture**
-  (`campCapture`, the 011 Baecula rule of §14 generalised so that scenario data names the capturing side and the camp
-  hexes): the camp hex in the bottom-right corner is Eumenes' camp; the first time a unit of Antigonus' army (the top
+  (a `capture` objective with timing `stop`, §18.4: the 011 Baecula rule of §14 with the capturing side and camp hexes
+  named in the data): the camp hex in the bottom-right corner is Eumenes' camp; the first time a unit of Antigonus' army (the top
   side) **ends its move on it** its side gains 1 banner. A unit that merely passes through does not capture. Once only,
   and the banner is never lost. Finishing a close-combat sequence (momentum advance, extra hex, bonus combat) standing
   on it counts as ending the move, and a retreat or evade onto it does not **[Interp]** (extends §14's "ending its
@@ -608,6 +608,9 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
 * **Section clear** (`sectionClear`; 219): at the end of that side's turn, each section with no enemy unit scores 1 held
   banner; it is lost the moment an enemy unit stands in that section. A unit on a boundary hex is in both sections
   (X2 Q9c).
+* Held banners are counted again after every change of position or removal, and first at the start of turn 1. A
+  capture hex may be a rampart standing in for a camp (215). If both sides reach the target in the same update, the
+  active side wins **[Interp]**.
 * **Exit** (`exit`; 010 Castulo, 210, 212, 221): a unit of that side on a listed edge hex may move off the board as one
   hex of movement (not from or through terrain that stops it, unless it starts there); it scores 1 permanent banner and
   is removed (not eliminated: no banner for the enemy). An attached leader leaves with it and scores nothing more
@@ -624,6 +627,11 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
 * **Separate commands** (210): each unit belongs to a command; one card orders units of one command only — every card
   type, including Clash of Shields, Darken the Sky, Rally and I Am Spartacus (the player names the command when the card
   could order units of both). Leaders belong to no command and support everyone (X2 Q7).
+  * Engine: `commands` in the scenario data, `command` on units (and, optionally, leaders). A selection may mix units
+    only of one command ("One card orders one army only."); a piece with no command goes with any. A leader whose data
+    names a command counts as a piece of it, so a card that orders him orders only that command. Clash of Shields, Darken
+    the Sky, Rally and I Am Spartacus ask `chooseCommand` (before any dice are rolled) when their eligible units belong
+    to more than one command; with eligible units in one command nothing is asked. Battles without commands are unchanged.
 * **Rolling Fire** (210, the Slaves; X2 Q6, path length **[Interp]**): a Slave infantry unit on a hill, ordered by a
   card that is not a Tactic card (a Counter Attack copying a section or troop card qualifies), that has not moved, may
   use its battle to roll burning logs downhill, even when adjacent to an enemy.

@@ -1,9 +1,9 @@
 // Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges, plus the unit
 // descriptions shown in tooltips and the rules reference.
 import {
-  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, battleReady, battleTargets, cardKind, closeCombatDice,
-  closeHitChance, eligiblePieces, eliteDef, inSection, isFord, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf,
-  mirrorKind, movablePieces, orderCommander, orderMode, other, pieceMoves, rangeOf, rangedDice, terrainAt, unitAt, unitById,
+  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, battleReady, battleTargets, canMarch, cardKind, closeCombatDice,
+  closeHitChance, eligiblePieces, eliteDef, fireMoveLimit, inSection, isFord, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf,
+  mirrorKind, movablePieces, orderCommander, orderMode, other, pieceMoves, rangeOf, rangedBaseDice, rangedDice, terrainAt, unitAt, unitById,
   type CardKind, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type Leader, type LeaderTrait,
   type SectionName, type Side, type Unit, type UnitClass, type UnitStats, type UnitType,
 } from '../../engine';
@@ -201,16 +201,13 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
 // unit descriptions (tooltips and the rules reference), generated from the unit table
 // ---------------------------------------------------------------------------
 
+/** Unit types new in Expansion #2 (§18). */
+export const EXP2_UNIT_TYPES: readonly UnitType[] = ['BCH'];
+
 /** Short plural noun for a unit type ("Heavy Chariots" → "chariots"). */
 function unitNoun(t: UnitType): string {
   const words = UNIT_STATS[t].name.split(' ');
   return words[words.length - 1].toLowerCase();
-}
-
-/** Plural noun with its qualifier, for when the bare noun is ambiguous ("Barbarian Chariots" → "Barbarian chariots"). */
-function qualifiedNoun(t: UnitType): string {
-  const [first, ...rest] = UNIT_STATS[t].name.split(' ');
-  return [first, ...rest.map((w) => w.toLowerCase())].join(' ');
 }
 
 /** Capitalise the first letter. */
@@ -247,28 +244,36 @@ function moveText(st: UnitStats, fmt: MoveFormat): string {
   return String(st.move);
 }
 
-/** Missile line of a tooltip: 2 dice standing and 1 after moving, or no fire after moving at all (heavy war machines). */
-function missileText(st: UnitStats, range: number): string {
-  const noFireAfterMoving = st.noFireAfterMove <= 1 || st.moveBattle === 0;
+/**
+ * Missile line of a tooltip: 2 dice standing and 1 after moving, or no fire after moving at all (heavy war machines). A
+ * unit whose only missile is the pilum always rolls 1 and cannot fire after moving 2 hexes (§18.2).
+ */
+function missileText(u: Unit, range: number): string {
+  const st = UNIT_STATS[u.type];
+  const limit = fireMoveLimit(u);
+  const noFireAfterMoving = limit <= 1 || st.moveBattle === 0;
+  if (rangedBaseDice(u, 0) === rangedBaseDice(u, 1)) {
+    return `Missiles: range ${range}, 1 die (${noFireAfterMoving ? 'not after moving' : `not after moving ${limit} hexes`})`;
+  }
   return `Missiles: range ${range}, 2 dice (${noFireAfterMoving ? 'not after moving' : '1 after moving'})`;
 }
 
 /**
- * Where elephants' dice differ from what the enemy would roll: "3 vs elephants, warriors, chariots; 2 vs Barbarian chariots"
- * (elephants first, then units whose base attacking dice the elephant does not copy, or whose dice vary with strength).
- * Camels roll 3 attacking and 2 battling back; the elephant's 3 matches their attack, so they are not listed.
+ * Where elephants' dice differ from what the enemy would roll: "3 vs elephants, warriors, chariots" (elephants first,
+ * then units whose base attacking dice the elephant does not copy, or whose dice vary with strength). Camels roll 3
+ * attacking and 2 battling back; the elephant's 3 matches their attack, so they are not listed. Expansion #2 types are
+ * left out so the base-game wording stays as it is (the Expansion #2 text names the elephant's dice against them).
  */
 function elephantDiceNote(): string {
   const odd = UNIT_TYPES.filter((t) => {
+    if (EXP2_UNIT_TYPES.includes(t)) return false;
     const st = UNIT_STATS[t];
     return st.elephantTable || st.fullStrengthBonus || st.elephantDiceAgainst !== st.cc;
   }).sort((a, b) => Number(UNIT_STATS[b].elephantTable) - Number(UNIT_STATS[a].elephantTable));
   const byDice = new Map<number, string[]>();
   for (const t of odd) {
     const n = UNIT_STATS[t].elephantDiceAgainst;
-    // a second type with the same noun (Barbarian chariots after the heavy ones) keeps its qualifier
-    const taken = odd.some((o) => o !== t && unitNoun(o) === unitNoun(t) && UNIT_TYPES.indexOf(o) < UNIT_TYPES.indexOf(t));
-    byDice.set(n, [...(byDice.get(n) ?? []), taken ? qualifiedNoun(t) : unitNoun(t)]);
+    byDice.set(n, [...(byDice.get(n) ?? []), unitNoun(t)]);
   }
   return [...byDice].map(([n, names]) => `${n} vs ${names.join(', ')}`).join('; ');
 }
@@ -334,17 +339,21 @@ const ELITE_TEXT: Record<EliteAbility, (u: Unit) => string> = {
   ignoreFlag: () => 'ignores 1 flag',
   ignoreSword: () => 'ignores 1 sword hit',
   ranged: (u) => `missile fire (range ${rangeOf(u)})`,
+  pilum: () => 'throws the pilum',
+  march: () => 'marches 2 hexes without battle',
 };
 
 /** Stats line for tooltips. */
 export function unitSummary(u: Unit): string[] {
   const st = UNIT_STATS[u.type];
   const lines: string[] = [];
-  lines.push(`Move ${moveText(st, MOVE_TOOLTIP)} · Retreat ${st.retreat}/flag`);
+  // a marching unit (§18.2) may move 2 hexes if it does not battle
+  const move = canMarch(u) && st.moveBattle < 2 ? MOVE_TOOLTIP.withoutBattle(st.moveBattle, 2) : moveText(st, MOVE_TOOLTIP);
+  lines.push(`Move ${move} · Retreat ${st.retreat}/flag`);
   if (st.elephantTable) lines.push(`Close combat: same dice as the enemy unit (${elephantDiceNote()})`);
   else lines.push(`Close combat ${st.cc}${st.ccBack !== st.cc ? ` (${st.ccBack} battling back)` : ''} dice${st.fullStrengthBonus ? ' (+1 at full strength)' : ''}${st.swordHits ? '' : ', swords miss'}`);
   const range = rangeOf(u);
-  if (range) lines.push(missileText(st, range));
+  if (range) lines.push(missileText(u, range));
   lines.push(EVADE_TEXT[st.evade][0]);
   const special = [
     swordIgnoreText(st, 'ignores sword hits', '1'),
@@ -366,6 +375,8 @@ export function unitSummary(u: Unit): string[] {
 const LEADER_TRAIT_TEXT: Record<LeaderTrait, string> = {
   ccBonus: '+1 close combat die to his unit',
   attachedOnly: 'Satrap: commands only his own unit; his helmets help only that unit',
+  forcedMarch: 'his infantry unit may move 2 hexes and still battle',
+  spartacusDice: 'I Am Spartacus rolls 2 more dice',
 };
 
 /** Tooltip lines for a leader's traits (none for an ordinary leader). */

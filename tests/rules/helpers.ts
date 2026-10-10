@@ -6,8 +6,9 @@ import {
 } from '../../src/engine';
 
 export interface Pos {
-  units?: { side: Side; type: UnitType; at: [number, number]; blocks?: number; elite?: EliteId }[];
-  leaders?: { side: Side; name?: string; at: [number, number]; traits?: LeaderTrait[] }[];
+  /** `command`: the command id the unit belongs to (needs `commands`, §18.5). */
+  units?: { side: Side; type: UnitType; at: [number, number]; blocks?: number; elite?: EliteId; command?: string }[];
+  leaders?: { side: Side; name?: string; at: [number, number]; traits?: LeaderTrait[]; command?: string }[];
   /** `ford: 'nocap'` = fordable without dice caps; `faces` / `edges` = a rampart's protected hexsides (§16). */
   terrain?: { at: [number, number]; t: TerrainType; ford?: boolean | 'nocap'; faces?: Side; edges?: HexDir[] }[];
   first?: Side;
@@ -18,12 +19,21 @@ export interface Pos {
   bottomArmy?: string;
   sacredLeader?: ScenarioSetup['sacredLeader'];
   initialCommand?: ScenarioSetup['initialCommand'];
-  /** Camp-capture objective (rule `campCapture`, §14 / §17.4). */
-  campCapture?: ScenarioSetup['campCapture'];
+  /** Battle objectives (camp capture, exits, §18.4). */
+  objectives?: ScenarioSetup['objectives'];
   /** Scenario options (Tactical Flexibility, §17.3). */
   options?: ScenarioSetup['options'];
   /** Leaders placed before the first turn, in placement order (rule `leaderPlacement`, 117 Asculum, §17.4). */
   placeLeaders?: ScenarioSetup['placeLeaders'];
+  /** Off-board reserve force (rule `magoAmbush`, §18.5): ids follow the board units (u<n+1>...), then the leaders. */
+  reserves?: ScenarioSetup['reserves'];
+  reserveLeaders?: ScenarioSetup['reserveLeaders'];
+  /** Ambush trigger configuration (defaults: Trebbia, §14). */
+  ambush?: ScenarioSetup['ambush'];
+  /** Legion rule per side: every MI and HI of the side has the pilum (Marius; Julian adds the march), §18.2. */
+  legions?: ScenarioSetup['legions'];
+  /** Separate commands of a side's army (210 Picenum, §18.5): one card orders units of one command. */
+  commands?: ScenarioSetup['commands'];
 }
 
 export const H = (r: number, c: number) => hexId(r, c);
@@ -37,16 +47,23 @@ export function setupOf(p: Pos): ScenarioSetup {
     first: p.first ?? 'bottom',
     banners: p.banners ?? 99,
     terrain: (p.terrain ?? []).map((t) => ({ r: t.at[0], c: t.at[1], t: t.t, ford: t.ford, faces: t.faces, edges: t.edges })),
-    units: (p.units ?? []).map((u) => ({ side: u.side, type: u.type, r: u.at[0], c: u.at[1], elite: u.elite })),
-    leaders: (p.leaders ?? []).map((l, i) => ({ side: l.side, name: l.name ?? `Ldr${i}`, r: l.at[0], c: l.at[1], traits: l.traits })),
-    reserves: [],
-    reserveLeaders: [],
+    units: (p.units ?? []).map((u) => ({
+      side: u.side, type: u.type, r: u.at[0], c: u.at[1], elite: u.elite, ...(u.command !== undefined ? { command: u.command } : {}),
+    })),
+    leaders: (p.leaders ?? []).map((l, i) => ({
+      side: l.side, name: l.name ?? `Ldr${i}`, r: l.at[0], c: l.at[1], traits: l.traits, ...(l.command !== undefined ? { command: l.command } : {}),
+    })),
+    reserves: p.reserves ?? [],
+    reserveLeaders: p.reserveLeaders ?? [],
     rules: p.rules ?? [],
     sacredLeader: p.sacredLeader,
     initialCommand: p.initialCommand,
-    campCapture: p.campCapture,
+    objectives: p.objectives,
     options: p.options,
     placeLeaders: p.placeLeaders,
+    ambush: p.ambush,
+    legions: p.legions,
+    commands: p.commands,
   };
 }
 

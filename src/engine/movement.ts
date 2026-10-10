@@ -1,12 +1,14 @@
 // Movement: reachable hexes for ordered units and leaders (rules-reference §7).
-import { inSection, neighbours, onBaseline, rowOf } from './hex';
-import { attachedLeader, enemyPieceAdjacent, leaderAt, leaderById, unitAt, unitById } from './query';
+import { canMarch } from './elites';
+import { inSection, neighbours } from './hex';
+import { exitHexes } from './objectives';
+import { attachedLeader, enemyPieceAdjacent, leaderAt, leaderById, leaderHas, unitAt, unitById } from './query';
 import { isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain, forestFighter, isLightFoot } from './units';
-import { OFF_BOARD, type GameState, type HexId, type OrderMods, type SectionName, type Side, type Unit } from './types';
+import { OFF_BOARD, type GameState, type HexId, type Leader, type OrderMods, type SectionName, type Side, type Unit } from './types';
 
 export interface MoveTarget {
-  hex: HexId; // destination (OFF_BOARD = exits the battlefield, Castulo only)
+  hex: HexId; // destination (OFF_BOARD = exits the battlefield: exit objectives, 010 Castulo)
   dist: number; // hexes moved
   path: HexId[]; // from start (inclusive) to destination (inclusive)
   canBattle: boolean;
@@ -20,8 +22,12 @@ export interface MoveLimits {
   chargeFrom: number | null; // warriors: moving this many hexes or more requires ending adjacent to an enemy (must battle)
 }
 
-/** Movement limits of a unit under the current card. */
-export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: GameState): MoveLimits {
+/**
+ * Movement limits of a unit under the current card. `leader`: the leader attached to the unit at the start of its move
+ * (none for a unit that only joins a leader during the move, or enters from reserve); Caesar's `forcedMarch` (§18.3) lets
+ * an infantry unit move 2 hexes and still battle.
+ */
+export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: GameState, leader?: Leader): MoveLimits {
   const st = UNIT_STATS[u.type];
   let max = st.move;
   let battleMax = st.moveBattle;
@@ -33,6 +39,13 @@ export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: Gam
   if (mods.mountedCharge && st.mountedChargeMove) {
     max = 3;
     battleMax = 3;
+  }
+  // March (§18.2): 2 hexes without battle. Forced march (§18.3): infantry with Caesar: 2 hexes and battle. Double Time
+  // already gives 2 with battle, so the result stays 2; the Line Command and marsh limits below still apply.
+  if (canMarch(u)) max = Math.max(max, 2);
+  if (leader && st.infantry && leaderHas(leader, 'forcedMarch')) {
+    max = Math.max(max, 2);
+    battleMax = Math.max(battleMax, 2);
   }
   if (mods.maxMove !== null) {
     max = Math.min(max, mods.maxMove);
@@ -62,9 +75,11 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   const mods = s.turn.mods;
   const fromReserve = !!opts.entryHexes;
   const startHex = u.hex;
-  const lim = unitMoveLimits(u, mods, fromReserve ? OFF_BOARD : startHex, s);
+  // the leader attached at the start of the move (a unit that joins one during its move gets nothing from him)
+  const leader = fromReserve ? undefined : attachedLeader(s, u);
+  const lim = unitMoveLimits(u, mods, fromReserve ? OFF_BOARD : startHex, s, leader);
   const st = UNIT_STATS[u.type];
-  const hasLeader = !fromReserve && !!attachedLeader(s, u);
+  const hasLeader = !!leader;
   const passThrough = mods.passThrough && isLightFoot(u);
   const results = new Map<HexId, MoveTarget>();
 
@@ -132,15 +147,16 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
 
   results.delete(startHex);
 
-  // Castulo: Roman (bottom) units may exit off the Carthaginian (top) baseline from centre or Roman-right hexes.
-  if (s.special.rules.includes('castulo') && u.side === 'bottom' && !fromReserve) {
+  // Exit objectives (010 Castulo, 210, 212, 221; `exitHexes` applies their unit filter): stepping off the board from a
+  // listed edge hex is one more hex of movement, from the start hex or a hex reached without joining a leader (not from
+  // terrain that stopped the unit there).
+  const exits = fromReserve ? [] : exitHexes(s, u);
+  if (exits.length) {
     let bestExit: MoveTarget | null = null;
     const candidates: { hex: HexId; dist: number; path: HexId[] }[] = [];
-    if (rowOf(startHex) === 0) candidates.push({ hex: startHex, dist: opts.alreadyMoved ?? 0, path: [startHex] });
-    for (const t of results.values()) if (rowOf(t.hex) === 0 && !t.attachesTo) candidates.push(t);
+    if (exits.includes(startHex)) candidates.push({ hex: startHex, dist: opts.alreadyMoved ?? 0, path: [startHex] });
+    for (const t of results.values()) if (exits.includes(t.hex) && !t.attachesTo) candidates.push(t);
     for (const t of candidates) {
-      if (!onBaseline(t.hex, 'top')) continue;
-      if (!(inSection(t.hex, 'bottom', 'center') || inSection(t.hex, 'bottom', 'right'))) continue;
       if (t.hex !== startHex && (stopsAll(s, t.hex) || (st.mounted && stopsMounted(s, t.hex)))) continue;
       if (t.dist + 1 > lim.max) continue;
       if (!bestExit || t.dist + 1 < bestExit.dist) {

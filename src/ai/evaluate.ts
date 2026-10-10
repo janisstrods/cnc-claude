@@ -5,6 +5,7 @@ import {
 } from '../engine/combat';
 import { unitMoves } from '../engine/movement';
 import { halfCol, neighbours, rowOf } from '../engine/hex';
+import { exitAllows } from '../engine/objectives';
 import { isRomanArmy, leaderHas, other } from '../engine/query';
 import { ccCapOfHex, isHill, isImpassable } from '../engine/terrain';
 import { eliteHas, rangeOf } from '../engine/elites';
@@ -523,32 +524,41 @@ function advancePenalty(units: Unit[], enemies: Unit[], W: Weights): number {
   return pen * W.adv;
 }
 
-/** Scenario objectives, positive = good for `me`. */
+/** Scenario objectives (exits and camp captures), positive = good for `me`. */
 function objectives(s: GameState, me: Side, W: Weights): number {
-  const rules = s.special.rules;
+  const { objectives: list, objState } = s.special;
   let v = 0;
-  if (rules.includes('castulo')) {
-    // Roman (bottom) units exit over row 0 from the centre or Roman-right sections (half-column >= 8).
-    let r = 0;
-    for (const u of s.units) {
-      if (u.side !== 'bottom' || u.hex < 0) continue;
-      const x2 = halfCol(u.hex);
-      const lateral = x2 < 8 ? (8 - x2) / 2 : 0;
-      r += 0.035 * (8 - Math.min(8, rowOf(u.hex) + lateral)) * (battered(u) ? 1.3 : 1);
+  for (let i = 0; i < list.length; i++) {
+    const o = list[i];
+    if (o.kind === 'exit') {
+      // units that may exit are drawn to the exit edge (a board row: 010 Castulo, row 0 from half-column 8 on): rows to
+      // go plus half the columns outside the exit hexes, units that took losses more (they score as much)
+      const row = rowOf(o.hexes[0]);
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (const h of o.hexes) {
+        lo = Math.min(lo, halfCol(h));
+        hi = Math.max(hi, halfCol(h));
+      }
+      let r = 0;
+      for (const u of s.units) {
+        if (u.hex < 0 || !exitAllows(o, u)) continue;
+        const x2 = halfCol(u.hex);
+        const lateral = x2 < lo ? (lo - x2) / 2 : x2 > hi ? (x2 - hi) / 2 : 0;
+        r += 0.035 * (8 - Math.min(8, Math.abs(rowOf(u.hex) - row) + lateral)) * (battered(u) ? 1.3 : 1);
+      }
+      v += (me === o.side ? 1 : -1) * r * W.objective;
+    } else if (o.kind === 'capture') {
+      // camps still to capture, drawing the capturing side's nearest unit
+      let r = 0;
+      for (const h of o.hexes) {
+        if (objState[i].taken.includes(h)) continue;
+        let dmin = 99;
+        for (const u of s.units) if (u.side === o.side && u.hex >= 0) dmin = Math.min(dmin, hexDist(u.hex, h));
+        r += 0.07 * Math.max(0, 6 - dmin) / 6;
+      }
+      v += (me === o.side ? 1 : -1) * r * W.objective;
     }
-    v += (me === 'bottom' ? 1 : -1) * r * W.objective;
-  }
-  const cc = s.special.campCapture;
-  if (cc && rules.includes('campCapture')) {
-    // camps still to capture, drawing the capturing side's nearest unit
-    let r = 0;
-    for (const h of cc.hexes) {
-      if (s.special.campsCaptured.includes(h)) continue;
-      let dmin = 99;
-      for (const u of s.units) if (u.side === cc.side && u.hex >= 0) dmin = Math.min(dmin, hexDist(u.hex, h));
-      r += 0.07 * Math.max(0, 6 - dmin) / 6;
-    }
-    v += (me === cc.side ? 1 : -1) * r * W.objective;
   }
   return v;
 }

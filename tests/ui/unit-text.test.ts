@@ -21,10 +21,9 @@ const TOOLTIP: Record<UnitType, string[]> = {
   LC: ['Move 4 · Retreat 4/flag', 'Close combat 2 dice, swords miss', 'Missiles: range 2, 2 dice (1 after moving)', 'Can evade'],
   MC: ['Move 3 · Retreat 3/flag', 'Close combat 3 dice', 'Can evade foot & heavy mounted'],
   HC: ['Move 2 · Retreat 2/flag', 'Close combat 4 dice', 'Can evade foot & elephants'],
-  // The elephant's dice note also lists Expansion #2's Barbarian chariots (fixed 2 dice, whatever their strength).
   EL: [
     'Move 2 · Retreat 1/flag',
-    'Close combat: same dice as the enemy unit (3 vs elephants, warriors, chariots; 2 vs Barbarian chariots)',
+    'Close combat: same dice as the enemy unit (3 vs elephants, warriors, chariots)',
     'Cannot evade',
     'Ignores sword hits · rampages when it retreats',
   ],
@@ -214,5 +213,41 @@ describe('rules reference unit cards', () => {
     expect(text).toContain('Alexander');
     expect(text).toContain('satrap');
     for (const t of ['Sea', 'Rampart', 'Ford, no dice limit', 'Tactical Flexibility', 'Hellespont', 'Asculum']) expect(text).toContain(t);
+  });
+});
+
+describe('pilum and march wording (§18.2)', () => {
+  it('a unit of a Marius legion has a 1-die missile line that stops after 2 hexes of movement', () => {
+    expect(unitSummary(unit('MI', { legion: 'marius' }))).toEqual([
+      'Move 1 · Retreat 1/flag',
+      'Close combat 4 dice',
+      'Missiles: range 2, 1 die (not after moving 2 hexes)',
+      'Cannot evade',
+    ]);
+  });
+  it('a Julian legion unit also marches: 1 hex and battle, or 2 without battle', () => {
+    expect(unitSummary(unit('HI', { legion: 'julian' }))[0]).toBe('Move 1, or 2 without battle · Retreat 1/flag');
+  });
+  it('the Tenth Legion lists its pilum and its march', () => {
+    expect(unitSummary(unit('HI', { elite: 'tenthLegion' }))).toEqual([
+      'Move 1, or 2 without battle · Retreat 1/flag',
+      'Close combat 5 dice',
+      'Missiles: range 2, 1 die (not after moving 2 hexes)',
+      'Cannot evade',
+      'Tenth Legion: throws the pilum, marches 2 hexes without battle',
+    ]);
+  });
+  it('units outside a legion keep their lines (the Immortals still roll 2, 1 after moving)', () => {
+    expect(unitSummary(unit('MI'))).toEqual(TOOLTIP.MI);
+    expect(unitSummary(unit('MI', { elite: 'immortals' }))[2]).toBe('Missiles: range 3, 2 dice (1 after moving)');
+    expect(unitSummary(unit('MI', { elite: 'immortals', legion: 'marius' }))[2]).toBe('Missiles: range 3, 2 dice (1 after moving)');
+  });
+});
+
+describe('Caesar and Spartacus wording (§18.3)', () => {
+  const leader = (traits: LeaderTrait[]): Leader => ({ id: 'L1', side: 'bottom', name: 'X', hex: 0, traits });
+  it('lists the forced march and the extra Spartacus dice next to the +1 die', () => {
+    expect(leaderTraitLines(leader(['ccBonus', 'forcedMarch']))).toEqual(['+1 close combat die to his unit', 'his infantry unit may move 2 hexes and still battle']);
+    expect(leaderTraitLines(leader(['spartacusDice']))).toEqual(['I Am Spartacus rolls 2 more dice']);
   });
 });

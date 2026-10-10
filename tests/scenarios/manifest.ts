@@ -250,7 +250,7 @@ export const MANIFEST: Record<string, BattleManifest> = {
       top: { LI: 3, AX: 2, MI: 2, HI: 2, LBC: 1, MC: 3, HC: 1, EL: 2 },
       bottom: { LI: 3, AX: 3, MI: 1, HI: 3, LBC: 1, MC: 1, HC: 1, EL: 3 },
     },
-    elites: [['bottom', 'silverShields', 'HI']], rules: ['campCapture'],
+    elites: [['bottom', 'silverShields', 'HI']], rules: [],
     terrain: { types: { camp: 1 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
     checksum: { terrain: 'ebd59ccd', pieces: '5d096d11' },
   },

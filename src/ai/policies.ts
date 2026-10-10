@@ -2,10 +2,10 @@
 // Used both for live answers and inside Monte-Carlo simulations (for both sides).
 import { cardKind, sectionOrders } from '../engine/cards';
 import { closeCombatDice, retreatPerFlag } from '../engine/combat';
-import { capturableCamp } from '../engine/flow';
+import { capturableAt } from '../engine/objectives';
 import { neighbours, sectionsOf } from '../engine/hex';
-import { rallyCandidates, validateRally, validateSpartacus } from '../engine/orders';
-import { leaderById, other, unitById } from '../engine/query';
+import { autoOrders, rallyCandidates, validateRally, validateSpartacus } from '../engine/orders';
+import { leaderById, other, unitById, unitsOf } from '../engine/query';
 import { retreatOptions, type ElephantRetreatOption } from '../engine/retreat';
 import { rangeOf } from '../engine/elites';
 import { terrainAt } from '../engine/terrain';
@@ -448,7 +448,7 @@ function valueAt(s: GameState, u: Unit, hex: HexId, W: Weights, withBonus: boole
  * forfeits the banner).
  */
 export function campBanner(s: GameState, u: Unit, h: HexId): number {
-  if (h < 0 || !capturableCamp(s, u.side, h)) return 0;
+  if (h < 0 || !capturableAt(s, u.side, h)) return 0;
   if (s.players[u.side].banners + 1 >= s.bannersToWin) return WIN_SCORE;
   return nextBanner(s, u.side);
 }
@@ -508,8 +508,8 @@ export function chooseBonusCombat(s: GameState, d: D<'bonusCombat'>, W: Weights)
 // rally
 // ---------------------------------------------------------------------------
 
-export function rallyAssign(s: GameState, side: Side, faces: DieFace[]): (string | null)[] {
-  const cands = rallyCandidates(s, side);
+export function rallyAssign(s: GameState, side: Side, faces: DieFace[], command?: string): (string | null)[] {
+  const cands = rallyCandidates(s, side, command);
   const ids: (string | null)[] = faces.map(() => null);
   if (!cands.length) return ids;
   const occ = new Occ(s);
@@ -542,7 +542,7 @@ export function rallyAssign(s: GameState, side: Side, faces: DieFace[]): (string
   faces.forEach((f, i) => {
     if (f === 'leader') assign(i, cands);
   });
-  if (validateRally(s, side, faces, ids)) return faces.map(() => null);
+  if (validateRally(s, side, faces, ids, command)) return faces.map(() => null);
   return ids;
 }
 
@@ -550,11 +550,13 @@ export function rallyAssign(s: GameState, side: Side, faces: DieFace[]): (string
 // I Am Spartacus
 // ---------------------------------------------------------------------------
 
-export function spartacusAssign(s: GameState, side: Side, faces: DieFace[], W: Weights): (string | null)[] {
+export function spartacusAssign(s: GameState, side: Side, faces: DieFace[], W: Weights, command?: string): (string | null)[] {
   const ben = pieceBenefits(s, side, 'spartacus', W);
   const b = (id: string) => ben.get(id) ?? 0;
-  const units = s.units.filter((u) => u.side === side && u.hex >= 0);
-  const leaders = s.leaders.filter((l) => l.side === side && l.hex >= 0);
+  // separate commands (§18.5): only the named command's pieces, and those with no command
+  const free = (p: { command?: string }) => command === undefined || p.command === undefined || p.command === command;
+  const units = s.units.filter((u) => u.side === side && u.hex >= 0 && free(u));
+  const leaders = s.leaders.filter((l) => l.side === side && l.hex >= 0 && free(l));
   const used = new Set<string>();
   const ids: (string | null)[] = faces.map(() => null);
   faces.forEach((f, i) => {
@@ -581,8 +583,32 @@ export function spartacusAssign(s: GameState, side: Side, faces: DieFace[], W: W
       ids[i] = best;
     }
   });
-  if (validateSpartacus(s, side, faces, ids)) return faces.map(() => null);
+  if (validateSpartacus(s, side, faces, ids, command)) return faces.map(() => null);
   return ids;
+}
+
+// ---------------------------------------------------------------------------
+// separate commands (210 Picenum, §18.5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Which command a card with automatic or dice orders acts for: the one with the most pieces it would affect, the first
+ * on a tie. A cheap, legal stand-in until the AI weighs the commands properly (Task 19).
+ */
+export function chooseCommandIndex(s: GameState, d: D<'chooseCommand'>): number {
+  const kind = s.turn.effective;
+  let best = 0;
+  let bestN = -1;
+  d.options.forEach((id, i) => {
+    const n = kind === 'clash' || kind === 'darken' ? autoOrders(s, d.side, kind, id).length
+      : kind === 'rally' ? rallyCandidates(s, d.side, id).length
+        : unitsOf(s, d.side).filter((u) => u.command === id).length;
+    if (n > bestN) {
+      best = i;
+      bestN = n;
+    }
+  });
+  return best;
 }
 
 // ---------------------------------------------------------------------------
@@ -715,8 +741,9 @@ export function reactiveFast(s: GameState, d: Decision, W: Weights, rng: Rng): A
     case 'momentum': return { kind: 'yesno', yes: quickMomentum(s, d, W) };
     case 'cavalryExtra': return { kind: 'hex', hex: quickCavalryExtra(s, d, W) };
     case 'bonusCombat': return { kind: 'hex', hex: chooseBonusCombat(s, d, W) };
-    case 'rally': return { kind: 'assign', ids: rallyAssign(s, d.side, d.faces) };
-    case 'spartacus': return { kind: 'assign', ids: spartacusAssign(s, d.side, d.faces, W) };
+    case 'chooseCommand': return { kind: 'choose', index: chooseCommandIndex(s, d) };
+    case 'rally': return { kind: 'assign', ids: rallyAssign(s, d.side, d.faces, d.command) };
+    case 'spartacus': return { kind: 'assign', ids: spartacusAssign(s, d.side, d.faces, W, d.command) };
     case 'battle': return greedyBattle(s, W, rng);
     case 'move': return { kind: 'endMove' };
     case 'orders': return { kind: 'orders', pieces: [] };

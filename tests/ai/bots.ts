@@ -375,13 +375,15 @@ export class Bot {
         }
         return { kind: 'hex', hex: best };
       }
+      case 'chooseCommand': // separate commands (210): no battle of the bot suites has them; the first is legal
+        return { kind: 'choose', index: 0 };
       case 'rally': {
-        const cands = rallyCandidates(s, d.side).sort((a, b) => a.blocks / a.maxBlocks - b.blocks / b.maxBlocks);
+        const cands = rallyCandidates(s, d.side, d.command).sort((a, b) => a.blocks / a.maxBlocks - b.blocks / b.maxBlocks);
         const ids: (string | null)[] = [];
         for (let i = 0; i < d.faces.length; i++) {
           let chosen: string | null = null;
           for (const u of cands) {
-            if (!validateRally(s, d.side, d.faces, [...ids, u.id, ...Array(d.faces.length - i - 1).fill(null)])) {
+            if (!validateRally(s, d.side, d.faces, [...ids, u.id, ...Array(d.faces.length - i - 1).fill(null)], d.command)) {
               chosen = u.id;
               break;
             }
@@ -396,7 +398,7 @@ export class Bot {
         for (let i = 0; i < d.faces.length; i++) {
           let chosen: string | null = null;
           for (const id of pieces) {
-            if (!validateSpartacus(s, d.side, d.faces, [...ids, id, ...Array(d.faces.length - i - 1).fill(null)])) {
+            if (!validateSpartacus(s, d.side, d.faces, [...ids, id, ...Array(d.faces.length - i - 1).fill(null)], d.command)) {
               chosen = id;
               break;
             }

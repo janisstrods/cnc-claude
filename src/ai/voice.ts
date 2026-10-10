@@ -197,7 +197,7 @@ const TROOPS: Partial<Record<ArmyLook, Partial<Record<UnitType, string>>>> = {
 /** Elite units are called by their own name (§17.1). */
 const ELITE_NAMES: Record<EliteId, string> = {
   carthSacredBand: 'Sacred Band', thebanSacredBand: 'Sacred Band', silverShields: 'Silver Shields', companions: 'Companions',
-  immortals: 'Immortals', bowAuxilia: 'bowmen',
+  immortals: 'Immortals', bowAuxilia: 'bowmen', tenthLegion: 'Tenth Legion',
 };
 
 export function troopName(s: GameState, side: Side, t: UnitType | undefined, elite?: EliteId): string {

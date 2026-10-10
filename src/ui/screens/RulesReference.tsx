@@ -3,15 +3,15 @@ import { CARD_DEFS, ELITES, UNIT_STATS, UNIT_TYPES, type ArmyLook, type Blocks, 
 import type { ScenarioInfo } from '../../scenarios';
 import { UnitIcon } from '../../art';
 import { CardView, DieView } from '../kit';
-import { unitCardLines } from '../game/uiModel';
+import { EXP2_UNIT_TYPES, unitCardLines } from '../game/uiModel';
 import './screens.css';
 
 type Tab = 'basics' | 'units' | 'combat' | 'terrain' | 'cards' | 'exp1';
 
 /** Unit types new in Expansion #1 (§15): described in the Expansion #1 tab, not in the base Units list. */
 export const EXP1_UNIT_TYPES: readonly UnitType[] = ['LBC', 'CAM', 'HWM'];
-/** Unit types new in Expansion #2 (§18): not in the base Units list either (their own tab comes with the Expansion #2 rules text). */
-export const EXP2_UNIT_TYPES: readonly UnitType[] = ['BCH'];
+/** Unit types new in Expansion #2 (§18; defined in uiModel): not in the base Units list either (their own tab comes with the Expansion #2 rules text). */
+export { EXP2_UNIT_TYPES };
 const BASE_UNIT_TYPES = UNIT_TYPES.filter((t) => !EXP1_UNIT_TYPES.includes(t) && !EXP2_UNIT_TYPES.includes(t));
 /** Figure look of each Expansion #1 unit card (an army that fields it). */
 const EXP1_LOOK: Partial<Record<UnitType, [ArmyLook, Blocks]>> = { LBC: ['scythian', 'eas'], CAM: ['seleucid', 'grk'], HWM: ['macedonian', 'grk'] };
@@ -178,6 +178,7 @@ const ELITE_REF: Record<EliteId, [string, string]> = {
   companions: ['Ignores the first sword rolled against it in close combat; may ignore 1 flag.', '107–111'],
   immortals: ['Fires like a missile unit, range 3 (1 die after moving); never fires and fights in the same turn. Not light.', '108'],
   bowAuxilia: ['Fires at range 3 instead of 2; as auxilia it cannot fire after moving 2 hexes.', '123'],
+  tenthLegion: ['Heavy infantry that throws the pilum (range 2, always 1 die, not after moving 2 hexes) and may march: 2 hexes if it does not battle.', '215, 217'],
 };
 
 /** Expansion #1 tab: new units, elites, leader traits, terrain and the battles' special rules (§15–§17). */

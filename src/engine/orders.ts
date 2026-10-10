@@ -62,9 +62,74 @@ export function leadershipChain(l: Leader, chain: number): number {
   return leaderHas(l, 'attachedOnly') ? 0 : chain;
 }
 
-/** Pieces ordered automatically by Clash of Shields / Darken the Sky. */
-export function autoOrders(s: GameState, side: Side, kind: CardKind): string[] {
-  const units = unitsOf(s, side);
+/** Extra dice Spartacus gives his side's I Am Spartacus roll (§18.3). */
+const SPARTACUS_EXTRA_DICE = 2;
+
+/**
+ * Dice `side` rolls for I Am Spartacus (§18.3): its Command, and 2 more while a leader of the side with `spartacusDice` is
+ * on the board (not once he is eliminated, nor while he waits off the board). Never the other side's Spartacus.
+ */
+export function spartacusDiceCount(s: GameState, side: Side): number {
+  const bonus = leadersOf(s, side).some((l) => leaderHas(l, 'spartacusDice')) ? SPARTACUS_EXTRA_DICE : 0;
+  return s.players[side].command + bonus;
+}
+
+// ---------------------------------------------------------------------------
+// separate commands (210 Picenum, rules-reference §18.5)
+// ---------------------------------------------------------------------------
+
+/** Why a selection is refused when it spans two commands. */
+export const ONE_ARMY = 'One card orders one army only.';
+const NOT_THE_COMMAND = 'That piece is not in the command you named.';
+
+/** Command a unit or leader belongs to; undefined = none, so free to go with any command. */
+function commandOf(s: GameState, id: string): string | undefined {
+  return (isLeaderId(id) ? leaderById(s, id) : unitById(s, id))?.command;
+}
+
+/** Is a piece with this command part of the command named (if any)? A piece with no command always is. */
+const inCommand = (p: { command?: string }, command: string | undefined): boolean =>
+  command === undefined || p.command === undefined || p.command === command;
+
+/**
+ * Do the pieces (and the command already named, if any) belong to more than one command? Pieces with no command, and
+ * battles without commands, never clash.
+ */
+function commandClash(s: GameState, ids: string[], command?: string): string | null {
+  if (!s.special.commands.length) return null;
+  let seen = command;
+  for (const id of ids) {
+    const c = commandOf(s, id);
+    if (c === undefined) continue;
+    if (seen !== undefined && c !== seen) return ONE_ARMY;
+    seen = c;
+  }
+  return null;
+}
+
+/**
+ * The commands a card that orders without a selection (Clash of Shields, Darken the Sky) or by dice (Rally, I Am
+ * Spartacus) could order, when there is more than one (§18.5): the ids of those with an eligible unit, in the battle's
+ * data order. The player names one (`chooseCommand`) before the card acts. Empty = nothing to ask (also in every battle
+ * without commands).
+ */
+export function commandChoices(s: GameState, side: Side, kind: CardKind | null): string[] {
+  if (!kind || !s.special.commands.length) return [];
+  const m = orderMode(s, side, kind);
+  let pool: Unit[];
+  if (m.mode === 'auto') pool = autoOrders(s, side, kind).map((id) => unitById(s, id)!);
+  else if (m.mode === 'dice') pool = kind === 'rally' ? rallyCandidates(s, side) : unitsOf(s, side);
+  else return [];
+  const present = s.special.commands.filter((c) => c.side === side && pool.some((u) => u.command === c.id)).map((c) => c.id);
+  return present.length > 1 ? present : [];
+}
+
+/**
+ * Pieces ordered automatically by Clash of Shields / Darken the Sky; with `command` (the one the player named, §18.5)
+ * only the units of that command (and those with no command).
+ */
+export function autoOrders(s: GameState, side: Side, kind: CardKind, command?: string): string[] {
+  const units = unitsOf(s, side).filter((u) => inCommand(u, command));
   if (kind === 'clash') return units.filter((u) => enemyUnitAdjacent(s, u.hex, side)).map((u) => u.id);
   if (kind === 'darken') return units.filter(canShoot).map((u) => u.id);
   return [];
@@ -195,8 +260,15 @@ function assignSections(hexSecs: SectionName[][], counts: Partial<Record<Section
   return go(0);
 }
 
-/** Validate an order selection. Returns an error message, or null when legal. */
+/**
+ * Validate an order selection. Returns an error message, or null when legal. In a battle with separate commands (§18.5)
+ * the pieces must also belong to one command.
+ */
 export function validateOrders(s: GameState, side: Side, kind: CardKind | null, pieces: string[]): string | null {
+  return validateSelection(s, side, kind, pieces) ?? commandClash(s, pieces);
+}
+
+function validateSelection(s: GameState, side: Side, kind: CardKind | null, pieces: string[]): string | null {
   const m = orderMode(s, side, kind);
   if (new Set(pieces).size !== pieces.length) return 'A piece may only be ordered once.';
   for (const id of pieces) {
@@ -257,11 +329,14 @@ export function validateOrders(s: GameState, side: Side, kind: CardKind | null, 
   }
 }
 
-/** Units that the Rally card may restore: damaged, not `noRally` (EL/HCH), in or adjacent to a friendly leader's hex. */
-export function rallyCandidates(s: GameState, side: Side): Unit[] {
+/**
+ * Units that the Rally card may restore: damaged, not `noRally` (EL/HCH), in or adjacent to a friendly leader's hex; with
+ * `command` (named by the player, §18.5) only those of that command (and those with no command).
+ */
+export function rallyCandidates(s: GameState, side: Side, command?: string): Unit[] {
   const leaders = leadersOf(s, side);
   return unitsOf(s, side).filter(
-    (u) => u.blocks < u.maxBlocks && !UNIT_STATS[u.type].noRally &&
+    (u) => u.blocks < u.maxBlocks && !UNIT_STATS[u.type].noRally && inCommand(u, command) &&
       leaders.some((l) => l.hex === u.hex || areAdjacent(l.hex, u.hex)),
   );
 }
@@ -271,7 +346,11 @@ function faceMatches(face: DieFace, u: Unit): boolean {
   return face === UNIT_STATS[u.type].cls;
 }
 
-export function validateRally(s: GameState, side: Side, faces: DieFace[], ids: (string | null)[]): string | null {
+/**
+ * Validate a Rally assignment: one entry per die. `command`: the command the player named (§18.5; the Rally decision
+ * carries it), whose units alone may be rallied; the units rallied belong to one command either way.
+ */
+export function validateRally(s: GameState, side: Side, faces: DieFace[], ids: (string | null)[], command?: string): string | null {
   if (ids.length !== faces.length) return 'One entry per die.';
   const cands = rallyCandidates(s, side);
   const used = new Map<string, number>();
@@ -280,14 +359,19 @@ export function validateRally(s: GameState, side: Side, faces: DieFace[], ids: (
     if (id === null) continue;
     const u = cands.find((x) => x.id === id);
     if (!u) return 'That unit cannot be rallied.';
+    if (!inCommand(u, command)) return NOT_THE_COMMAND;
     if (!faceMatches(faces[i], u)) return 'That die does not match the unit type.';
     used.set(id, (used.get(id) ?? 0) + 1);
     if (used.get(id)! > u.maxBlocks - u.blocks) return 'A unit may not exceed its starting strength.';
   }
-  return null;
+  return commandClash(s, [...used.keys()], command);
 }
 
-export function validateSpartacus(s: GameState, side: Side, faces: DieFace[], ids: (string | null)[]): string | null {
+/**
+ * Validate an I Am Spartacus assignment: one entry per die. `command`: the command the player named (§18.5; the decision
+ * carries it): only its units and leaders with no command can be ordered; the pieces ordered belong to one command either way.
+ */
+export function validateSpartacus(s: GameState, side: Side, faces: DieFace[], ids: (string | null)[], command?: string): string | null {
   if (ids.length !== faces.length) return 'One entry per die.';
   const seen = new Set<string>();
   for (let i = 0; i < faces.length; i++) {
@@ -300,14 +384,16 @@ export function validateSpartacus(s: GameState, side: Side, faces: DieFace[], id
       const l = leaderById(s, id);
       if (!l || l.side !== side || l.hex < 0) return 'Not your leader.';
       if (f !== 'leader') return 'Only a helmet may order a leader.';
+      if (!inCommand(l, command)) return NOT_THE_COMMAND;
       continue;
     }
     const u = unitById(s, id);
     if (!u || u.side !== side || u.hex < 0) return 'Not your unit.';
     if (f === 'flag' || f === 'swords') return 'Flags and swords order nothing.';
     if (!faceMatches(f, u)) return 'That die does not match the unit type.';
+    if (!inCommand(u, command)) return NOT_THE_COMMAND;
   }
-  return null;
+  return commandClash(s, [...seen], command);
 }
 
 /** Leader attached to the unit, re-exported for flow convenience. */

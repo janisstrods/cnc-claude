@@ -2,7 +2,7 @@
 import type { EliteId, Unit, UnitType } from './types';
 import { UNIT_STATS } from './units';
 
-export type EliteAbility = 'helmetHits' | 'ignoreFlag' | 'ignoreSword' | 'ranged';
+export type EliteAbility = 'helmetHits' | 'ignoreFlag' | 'ignoreSword' | 'ranged' | 'pilum' | 'march';
 
 export interface EliteDef {
   id: EliteId;
@@ -22,6 +22,8 @@ export const ELITES: Record<EliteId, EliteDef> = {
   companions: { id: 'companions', name: 'Companions', abilities: ['ignoreSword', 'ignoreFlag'], types: ['MC'] },
   immortals: { id: 'immortals', name: 'Immortals', abilities: ['ranged'], range: 3, types: ['MI'] },
   bowAuxilia: { id: 'bowAuxilia', name: 'Bow-armed auxilia', abilities: ['ranged'], range: 3, types: ['AX'] },
+  // Expansion #2 (§18.2): an ordinary HI that throws the pilum and may march 2 hexes without battling.
+  tenthLegion: { id: 'tenthLegion', name: 'Tenth Legion', abilities: ['pilum', 'march'], types: ['HI'] },
 };
 
 /** The preset of a unit's elite id (undefined for ordinary units). */
@@ -34,12 +36,45 @@ export function eliteHas(u: Unit, a: EliteAbility): boolean {
   return eliteDef(u)?.abilities.includes(a) ?? false;
 }
 
-/** Ranged weapon range of a unit: its type's range, or the elite preset's if larger (0 = cannot shoot). */
+/** Does the unit throw the pilum (§18.2)? A unit of a Marius or Julian legion, or an elite with the pilum (Tenth Legion). */
+export function hasPilum(u: Unit): boolean {
+  return u.legion !== undefined || eliteHas(u, 'pilum');
+}
+
+/** May the unit march (§18.2): move 2 hexes if it does not battle? A Julian legion unit, or an elite with the march. */
+export function canMarch(u: Unit): boolean {
+  return u.legion === 'julian' || eliteHas(u, 'march');
+}
+
+/** Range of the pilum, in hexes, and the hexes a unit may have moved and still throw it: 0 or 1 (§18.2). */
+const PILUM_RANGE = 2;
+const PILUM_FIRE_LIMIT = 2;
+
+/**
+ * Ranged weapon range of a unit: its type's range, the elite preset's or the pilum's (2), whichever is largest (0 = cannot
+ * shoot).
+ */
 export function rangeOf(u: Unit): number {
-  return Math.max(UNIT_STATS[u.type].range, eliteDef(u)?.range ?? 0);
+  return Math.max(UNIT_STATS[u.type].range, eliteDef(u)?.range ?? 0, hasPilum(u) ? PILUM_RANGE : 0);
 }
 
 /** Can the unit make ranged attacks at all? */
 export function canShoot(u: Unit): boolean {
   return rangeOf(u) > 0;
+}
+
+/**
+ * Base dice of a ranged attack after `moved` hexes this turn, before the terrain caps, the camp and card bonuses: 2 when the
+ * unit did not move and 1 when it did. A unit whose only missile weapon is the pilum (the type has no range and the elite no
+ * ranged weapon) always rolls 1 (§18.2); the Immortals keep their 2 / 1.
+ */
+export function rangedBaseDice(u: Unit, moved: number): number {
+  if (hasPilum(u) && UNIT_STATS[u.type].range === 0 && !eliteHas(u, 'ranged')) return 1;
+  return moved > 0 ? 1 : 2;
+}
+
+/** Hexes a unit may have moved and still fire: below this limit it can fire, at or above it it cannot (the pilum: 2). */
+export function fireMoveLimit(u: Unit): number {
+  const limit = UNIT_STATS[u.type].noFireAfterMove;
+  return hasPilum(u) ? Math.min(limit, PILUM_FIRE_LIMIT) : limit;
 }

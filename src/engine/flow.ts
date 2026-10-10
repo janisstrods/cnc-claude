@@ -1,13 +1,15 @@
 // Turn flow as a generator: yields Decisions, receives Answers (rules-reference §5-§13).
-import { CARD_DEFS, cardKind, defaultMods, mirrorKind, modsFor } from './cards';
+import { CARD_DEFS, cardKind, defaultMods, drawCard, mirrorKind, modsFor } from './cards';
 import {
   canFireAt, closeCombatDice, helmetsCount, ignorableFlags, rangedDice, retreatPerFlag, scoreClassOnly, scoreClose,
   swordIgnores, vsMountedIgnores, type StrikeRole,
 } from './combat';
 import { ALL_HEXES, areAdjacent, neighbours, rowOf } from './hex';
 import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './movement';
+import { bannerTotal, gainBanner, updateHeld } from './banners';
+import { captureOnStop, exitUnit, turnEndObjectives, turnStartObjectives } from './objectives';
 import {
-  autoOrders, orderMode, rallyCandidates, validateOrders, validateRally, validateSpartacus,
+  autoOrders, commandChoices, orderMode, rallyCandidates, spartacusDiceCount, validateOrders, validateRally, validateSpartacus,
 } from './orders';
 import {
   attachedLeader, isEmptyHex, isLeaderId, isRomanArmy, leaderAt, leaderById, leaderUnit, other, unitAt, unitById,
@@ -16,7 +18,7 @@ import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOption
 import { randInt, rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
 import { isFord, isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
-import { canShoot } from './elites';
+import { canShoot, fireMoveLimit } from './elites';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forbidsTerrain, forestFighter } from './units';
 import {
   OFF_BOARD,
@@ -48,50 +50,6 @@ function log(s: GameState, ctx: FlowCtx, text: string, side?: Side) {
 
 function emitRoll(ctx: FlowCtx, purpose: RollPurpose, faces: DieFace[], scoring: boolean[], by: string | null, against: string | null) {
   ctx.emit({ t: 'roll', purpose, faces, scoring, by, against });
-}
-
-/**
- * `side` draws one card (reshuffling the discards into an empty deck). Hellespont (§17.4): while the side owes cards for
- * lost leaders (`cardDebt`), any draw pays off one owed card instead of drawing (the end-of-turn draw, the First Strike
- * draw, Trasimenus' and Beneventum's extra draws alike).
- */
-function drawCard(s: GameState, ctx: FlowCtx, side: Side) {
-  if (s.special.cardDebt[side] > 0) {
-    s.special.cardDebt[side]--;
-    log(s, ctx, `The ${s.players[side].army} army draws no card: it lost a leader.`, side);
-    return;
-  }
-  if (s.deck.length === 0) {
-    if (s.discard.length === 0) return;
-    s.deck = s.discard;
-    s.discard = [];
-    shuffle(s, s.deck);
-    ctx.emit({ t: 'reshuffle' });
-  }
-  s.players[side].hand.push(s.deck.pop()!);
-  ctx.emit({ t: 'draw', side });
-}
-
-export function gainBanner(s: GameState, ctx: FlowCtx, side: Side, reason: string) {
-  if (s.winner) return;
-  const p = s.players[side];
-  p.banners++;
-  ctx.emit({ t: 'banner', side, total: p.banners, reason });
-  if (p.banners >= s.bannersToWin) {
-    s.winner = side;
-    s.winReason = `${p.army} captured ${p.banners} banners`;
-    ctx.emit({ t: 'victory', winner: side, reason: s.winReason });
-    return;
-  }
-  // 2nd Beneventum: the Romans grow to 6 cards on their 3rd banner.
-  if (s.special.rules.includes('beneventumHand') && isRomanArmy(s, side) && p.banners === 3 && !s.special.beneventumBonusGiven) {
-    s.special.beneventumBonusGiven = true;
-    p.command = 6;
-    ctx.emit({ t: 'command', side, command: 6 });
-    log(s, ctx, `Gracchus rallies his volunteers: the ${p.army} player now holds 6 command cards.`, side);
-    drawCard(s, ctx, side);
-    drawCard(s, ctx, side);
-  }
 }
 
 /**
@@ -140,15 +98,19 @@ function leaderLost(s: GameState, ctx: FlowCtx, l: Leader, reason: string, text:
  * banners one by one, then the Hellespont rules for each leader lost in the batch (banners resolve first, §17.4).
  */
 function settleBanners(s: GameState, ctx: FlowCtx, b: BannerBatch, reason: string, drawReason: string) {
-  const before = { top: s.players.top.banners, bottom: s.players.bottom.banners };
+  // held banners are brought up to date first; only a win produced by that update ends the step here
+  const decided = s.winner !== null;
+  updateHeld(s, ctx);
+  if (!decided && s.winner) return;
+  const before = { top: bannerTotal(s, 'top'), bottom: bannerTotal(s, 'bottom') };
   const add = { top: b.gains.filter((x) => x === 'top').length, bottom: b.gains.filter((x) => x === 'bottom').length };
   const winTop = before.top + add.top >= s.bannersToWin && add.top > 0;
   const winBottom = before.bottom + add.bottom >= s.bannersToWin && add.bottom > 0;
   if (winTop && winBottom) {
     s.players.top.banners += add.top;
     s.players.bottom.banners += add.bottom;
-    ctx.emit({ t: 'banner', side: 'top', total: s.players.top.banners, reason: drawReason });
-    ctx.emit({ t: 'banner', side: 'bottom', total: s.players.bottom.banners, reason: drawReason });
+    ctx.emit({ t: 'banner', side: 'top', total: bannerTotal(s, 'top'), reason: drawReason });
+    ctx.emit({ t: 'banner', side: 'bottom', total: bannerTotal(s, 'bottom'), reason: drawReason });
     s.winner = 'draw';
     s.winReason = 'Both armies broke at the same moment';
     ctx.emit({ t: 'victory', winner: 'draw', reason: s.winReason });
@@ -206,7 +168,7 @@ function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: stri
     s.units = s.units.filter((x) => x.id !== u.id);
     ctx.emit({ t: 'eliminated', id: u.id });
     log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} eliminated.`, u.side);
-    gainBanner(s, ctx, other(u.side), 'unit eliminated');
+    gainBanner(s, ctx, other(u.side), 'unit eliminated'); // held banners first: the unit no longer holds anything
     return true;
   }
   return false;
@@ -216,6 +178,7 @@ function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: stri
 function removeUnit(s: GameState, ctx: FlowCtx, u: Unit, reason: string) {
   s.units = s.units.filter((x) => x.id !== u.id);
   ctx.emit({ t: 'removed', id: u.id, reason });
+  updateHeld(s, ctx);
 }
 
 /** Leader casualty check (2 dice need 2 helmets; 1 die needs 1). Returns true if the leader survives. */
@@ -314,20 +277,6 @@ function* marshCheckUnit(s: GameState, ctx: FlowCtx, u: Unit, leaderChecked: { d
   return false;
 }
 
-/** Camp capture (011 Baecula, 114 Gabiene): would a unit of `side` stopping on hex `h` capture a camp now? */
-export function capturableCamp(s: GameState, side: Side, h: HexId): boolean {
-  const cc = s.special.campCapture;
-  return !!cc && s.special.rules.includes('campCapture') && cc.side === side && cc.hexes.includes(h) && !s.special.campsCaptured.includes(h);
-}
-
-/** A unit stops on a camp hex of the camp-capture objective: 1 banner, once per camp. */
-function captureCamp(s: GameState, ctx: FlowCtx, u: Unit) {
-  if (!capturableCamp(s, u.side, u.hex)) return;
-  s.special.campsCaptured.push(u.hex);
-  log(s, ctx, s.special.campCapture!.text, u.side);
-  gainBanner(s, ctx, u.side, 'camp captured');
-}
-
 /** Move a unit (and attached leader) to hex h without checks. */
 function relocate(s: GameState, u: Unit, h: HexId) {
   const l = attachedLeader(s, u);
@@ -397,6 +346,7 @@ function* walkPath(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, kind
   if (opt.attachLeader) {
     ctx.emit({ t: 'attach', leader: opt.attachLeader, unit: u.id });
   }
+  updateHeld(s, ctx); // where the retreat or evade ends (hexes passed through never count)
   return false;
 }
 
@@ -663,6 +613,8 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   relocate(s, u, hex);
   if (op) op.enteredHexThisTurn = true;
   ctx.emit({ t: 'advance', id: u.id, path: [from, hex] });
+  updateHeld(s, ctx);
+  if (s.winner) return;
   const checked = { done: false };
   if (terrainAt(s, hex) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
   if (s.winner || role === 'bonus') return;
@@ -687,6 +639,8 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
         if (joining && joining.side === u.side) joining.hex = to;
         ctx.emit({ t: 'advance', id: u.id, path: [f2, to] });
         if (joining && joining.side === u.side) ctx.emit({ t: 'attach', leader: joining.id, unit: u.id });
+        updateHeld(s, ctx);
+        if (s.winner) return;
         if (terrainAt(s, to) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
         if (s.winner) return;
       }
@@ -741,7 +695,7 @@ export function battleTargets(s: GameState, unitId: string): BattleTarget[] {
       if (t && closeCombatDice(s, u, t, { role: 'attack', fullAtStart: u.blocks === u.maxBlocks, ordered: true }) > 0) out.push({ hex: h, kind: 'close' });
     }
   }
-  if (!m.noRanged && canShoot(u) && op.moved < UNIT_STATS[u.type].noFireAfterMove) {
+  if (!m.noRanged && canShoot(u) && op.moved < fireMoveLimit(u)) {
     const hexes = new Set<HexId>();
     for (const v of s.units) if (v.side !== u.side && v.hex >= 0) hexes.add(v.hex);
     for (const l of s.leaders) if (l.side !== u.side && l.hex >= 0 && !leaderUnit(s, l)) hexes.add(l.hex);
@@ -767,11 +721,14 @@ function addOrdered(s: GameState, id: string, extra: Partial<OrderedPiece> = {})
   };
 }
 
-const LEADERSHIP: CardKind[] = ['inspiredL', 'inspiredC', 'inspiredR', 'leadershipAny'];
-
+/**
+ * Whether `side` may spring its ambush reserve with a card of `kind` (the effective kind: a Counter Attack counts as the
+ * card it copies): the battle's `special.ambush` data names the trigger cards and the own turns that must be finished.
+ */
 export function ambushAvailable(s: GameState, side: Side, kind: CardKind | null): boolean {
-  return !!kind && LEADERSHIP.includes(kind) && s.special.rules.includes('magoAmbush') && s.special.reserveSide === side &&
-    !s.special.reserveReleased && s.special.turnsDone[side] >= 1 && s.special.reserveUnits.length > 0;
+  const a = s.special.ambush;
+  return !!kind && !!a && a.trigger.includes(kind) && s.special.reserveSide === side &&
+    !s.special.reserveReleased && s.special.turnsDone[side] >= a.afterOwnTurns && s.special.reserveUnits.length > 0;
 }
 
 export function ambushSections(kind: CardKind): SectionName[] {
@@ -790,7 +747,7 @@ function releaseAmbush(s: GameState, ctx: FlowCtx, side: Side, section: SectionN
   s.special.reserveUnits = [];
   s.special.reserveLeaders = [];
   for (const id of ids) addOrdered(s, id, { fromReserve: true });
-  log(s, ctx, `Ambush! Mago's hidden force strikes from the ${section}.`, side);
+  log(s, ctx, s.special.ambush!.text.replace(/\{section\}/g, section), side);
   ctx.emit({ t: 'ordered', side, ids });
 }
 
@@ -806,15 +763,35 @@ function returnUnplacedReserves(s: GameState) {
   for (const p of [...backU, ...backL]) delete s.turn.ordered[p.id];
 }
 
+/**
+ * Separate commands (§18.5): when the pieces `kind` could order belong to more than one command, the player names one
+ * before the card acts (before any dice are rolled). Returns the command named, or undefined when nothing was asked
+ * (always, in a battle without commands).
+ */
+function* chooseCommandStep(s: GameState, ctx: FlowCtx, side: Side, kind: CardKind): Gen<string | undefined> {
+  const options = commandChoices(s, side, kind);
+  if (!options.length) return undefined;
+  const a = (yield* ask(ctx, { kind: 'chooseCommand', side, options }, (a) =>
+    a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < options.length ? null : 'Choose a command.',
+  )) as Extract<Answer, { kind: 'choose' }>;
+  const id = options[a.index];
+  log(s, ctx, `Orders go to the ${s.special.commands.find((c) => c.id === id)!.name} command.`, side);
+  return id;
+}
+
 function* rallyStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
+  const command = yield* chooseCommandStep(s, ctx, side, 'rally');
   const faces = rollDice(s, s.players[side].command);
-  const cands = rallyCandidates(s, side);
+  const cands = rallyCandidates(s, side, command);
   emitRoll(ctx, 'rally', faces, faces.map((f) => f !== 'flag' && f !== 'swords'), null, null);
   if (!cands.length) {
     log(s, ctx, 'No damaged units are near a leader: nothing to rally.', side);
     return [];
   }
-  const a = yield* ask(ctx, { kind: 'rally', side, faces }, (a) => (a.kind === 'assign' ? validateRally(s, side, faces, a.ids) : 'Assign the rally dice.'));
+  const a = yield* ask(
+    ctx, { kind: 'rally', side, faces, ...(command !== undefined ? { command } : {}) },
+    (a) => (a.kind === 'assign' ? validateRally(s, side, faces, a.ids, command) : 'Assign the rally dice.'),
+  );
   const ids = (a as { ids: (string | null)[] }).ids;
   const rallied = new Map<string, number>();
   for (const id of ids) if (id) rallied.set(id, (rallied.get(id) ?? 0) + 1);
@@ -828,10 +805,14 @@ function* rallyStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
 
 function* spartacusStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
   s.turn.reshuffleAfter = true;
-  const faces = rollDice(s, s.players[side].command);
+  const command = yield* chooseCommandStep(s, ctx, side, 'spartacus');
+  const faces = rollDice(s, spartacusDiceCount(s, side));
   emitRoll(ctx, 'spartacus', faces, faces.map((f) => f !== 'flag' && f !== 'swords'), null, null);
   if (faces.every((f) => f === 'flag' || f === 'swords')) return [];
-  const a = yield* ask(ctx, { kind: 'spartacus', side, faces }, (a) => (a.kind === 'assign' ? validateSpartacus(s, side, faces, a.ids) : 'Choose the pieces to order.'));
+  const a = yield* ask(
+    ctx, { kind: 'spartacus', side, faces, ...(command !== undefined ? { command } : {}) },
+    (a) => (a.kind === 'assign' ? validateSpartacus(s, side, faces, a.ids, command) : 'Choose the pieces to order.'),
+  );
   return (a as { ids: (string | null)[] }).ids.filter((x): x is string => !!x);
 }
 
@@ -842,13 +823,15 @@ function* ordersStep(s: GameState, ctx: FlowCtx, kind: CardKind | null, mirrored
   const mode = orderMode(s, side, kind);
   let ids: string[] = [];
   if (mode.mode === 'none' || !kind) return;
-  if (mode.mode === 'auto') ids = autoOrders(s, side, kind);
-  else if (mode.mode === 'dice') ids = kind === 'rally' ? yield* rallyStep(s, ctx, side) : yield* spartacusStep(s, ctx, side);
+  if (mode.mode === 'auto') {
+    const command = yield* chooseCommandStep(s, ctx, side, kind);
+    ids = autoOrders(s, side, kind, command);
+  } else if (mode.mode === 'dice') ids = kind === 'rally' ? yield* rallyStep(s, ctx, side) : yield* spartacusStep(s, ctx, side);
   else {
     const ambush = ambushAvailable(s, side, kind);
     const a = (yield* ask(ctx, { kind: 'orders', side, card: kind, mirrored }, (a) => {
       if (a.kind !== 'orders') return 'Choose the units to order.';
-      if (a.ambushSection) return ambush && ambushSections(kind).includes(a.ambushSection) ? null : "Mago's ambush is not available.";
+      if (a.ambushSection) return ambush && ambushSections(kind).includes(a.ambushSection) ? null : 'The ambush is not available.';
       return validateOrders(s, side, kind, a.pieces);
     })) as Extract<Answer, { kind: 'orders' }>;
     if (a.ambushSection) {
@@ -930,12 +913,10 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
   op.mustBattle = target.mustBattle;
   if (ldr && t.ordered[ldr.id]) t.ordered[ldr.id].moveDone = true;
   if (to === OFF_BOARD) {
-    // Castulo: exit off the Carthaginian baseline for a banner.
+    // an exit objective: the unit walks to its exit hex (the path's second-to-last hex) and steps off the board for a banner
     ctx.emit({ t: 'move', id, path: target.path });
-    s.units = s.units.filter((x) => x.id !== u.id);
-    if (ldr) s.leaders = s.leaders.filter((x) => x.id !== ldr.id);
-    log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} breaks through and exits the battlefield!`, u.side);
-    gainBanner(s, ctx, u.side, 'unit exited');
+    relocate(s, u, target.path[target.path.length - 2]);
+    exitUnit(s, ctx, u);
     return;
   }
   relocate(s, u, to);
@@ -952,7 +933,7 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
   if (terrainAt(s, to) === 'marsh') {
     if (yield* marshCheckUnit(s, ctx, u, { done: false })) return;
   }
-  captureCamp(s, ctx, u);
+  captureOnStop(s, ctx, u);
 }
 
 function validateMove(s: GameState, a: Answer, stage: 1 | 2): string | null {
@@ -974,7 +955,10 @@ function* movePhase(s: GameState, ctx: FlowCtx, stage: 1 | 2): Gen {
     if (!movablePieces(s, stage).length) break;
     const a = yield* ask(ctx, { kind: 'move', side: s.active, stage }, (a) => validateMove(s, a, stage));
     if (a.kind === 'endMove') break;
-    if (a.kind === 'move') yield* doMove(s, ctx, a.piece, a.to, stage);
+    if (a.kind === 'move') {
+      yield* doMove(s, ctx, a.piece, a.to, stage);
+      updateHeld(s, ctx); // after every move, an ambush entry or an exit included
+    }
   }
   if (stage === 1) returnUnplacedReserves(s);
 }
@@ -1027,9 +1011,11 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
       op.battlesLeft = 0;
       op.mustBattle = false;
       yield* closeCombat(s, ctx, u, a.target, 'attack');
-      // Camp capture: a camp counts only where the attacking unit finally stops.
-      if (!s.winner && unitById(s, u.id)) captureCamp(s, ctx, u);
+      // Capture objectives: a camp counts only where the attacking unit finally stops.
+      if (!s.winner && unitById(s, u.id)) captureOnStop(s, ctx, u);
     }
+    // held banners after the whole sequence (retreats, advances, bonus combat; any battle action)
+    updateHeld(s, ctx);
   }
 }
 
@@ -1064,6 +1050,9 @@ export function* turnFlow(s: GameState, ctx: FlowCtx): Gen {
   const t = s.turn;
   ctx.emit({ t: 'turnStart', side, turn: t.number });
   t.phase = 'card';
+  // objectives decided at the start of the turn, before the card (turn-start captures, §18.4)
+  turnStartObjectives(s, ctx, side);
+  if (s.winner) return;
   const pa = yield* ask(ctx, { kind: 'playCard', side }, (a) =>
     a.kind === 'playCard' && s.players[side].hand.includes(a.card) ? null : 'Play a card from your hand.');
   const cardId = (pa as { card: number }).card;
@@ -1101,6 +1090,9 @@ export function* turnFlow(s: GameState, ctx: FlowCtx): Gen {
     if (s.winner) return;
   }
   t.phase = 'draw';
+  // objectives decided at the end of the turn, before the draw (majority, section clear, §18.4)
+  turnEndObjectives(s, ctx, side);
+  if (s.winner) return;
   endOfTurn(s, ctx);
   t.phase = 'done';
 }

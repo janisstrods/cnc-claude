@@ -19,20 +19,21 @@
   },
   "first": "top",
   "banners": 7,
-  "rules": [
-    "campCapture"
-  ],
+  "rules": [],
   "options": {},
-  "campCapture": {
-    "side": "top",
-    "hexes": [
-      [
-        8,
-        12
-      ]
-    ],
-    "text": "Antigonus' troops seize Eumenes' baggage camp!"
-  },
+  "objectives": [
+    {
+      "kind": "capture",
+      "side": "top",
+      "hexes": [
+        [
+          8,
+          12
+        ]
+      ],
+      "text": "Antigonus' troops seize Eumenes' baggage camp!"
+    }
+  ],
   "terrain": [
     {
       "r": 8,

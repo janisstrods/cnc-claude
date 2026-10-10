@@ -8,7 +8,15 @@ export type UnitType = 'LI' | 'LB' | 'LS' | 'AX' | 'WA' | 'MI' | 'HI' | 'LC' | '
 export type UnitClass = 'light' | 'medium' | 'heavy';
 
 /** Elite unit presets (see elites.ts). A unit with `elite` set gets that preset's abilities on top of its type's. */
-export type EliteId = 'carthSacredBand' | 'thebanSacredBand' | 'silverShields' | 'companions' | 'immortals' | 'bowAuxilia';
+export type EliteId =
+  | 'carthSacredBand' | 'thebanSacredBand' | 'silverShields' | 'companions' | 'immortals' | 'bowAuxilia' | 'tenthLegion';
+
+/**
+ * Legion rule of a unit's army (Expansion #2/#3, rules-reference §18.2): `marius` = the pilum (range 2, always 1 die);
+ * `julian` = the pilum and the march. Stamped by the scenario's `legions` data on every MI and HI of the named side.
+ */
+export const LEGIONS = ['marius', 'julian'] as const;
+export type Legion = (typeof LEGIONS)[number];
 
 /**
  * Terrain of a hex. A fordable river is `river` with `fords[hex] === true` (and `noCap[hex]` when it has no dice caps).
@@ -56,14 +64,19 @@ export interface Unit {
   maxBlocks: number;
   /** Elite preset (e.g. scenario 002's Carthaginian Sacred Band); absent for ordinary units. */
   elite?: EliteId;
+  /** Legion rule of the unit's army (pilum, march; §18.2); absent for units outside a legion. */
+  legion?: Legion;
+  /** Id of the separate command the unit belongs to (`ScenarioSpecial.commands`, 210 Picenum, §18.5); absent outside one. */
+  command?: string;
 }
 
 /**
- * Leader traits (Expansion #1, rules-reference §17.2). `ccBonus` (Alexander): the unit he is attached to rolls +1 close
+ * Leader traits (rules-reference §17.2, §18.3). `ccBonus` (Alexander, Caesar): the unit he is attached to rolls +1 close
  * combat die. `attachedOnly` (the Persian satraps): his helmets count and a Leadership card played on him orders only for
- * his own unit.
+ * his own unit. `forcedMarch` (Caesar): an infantry unit that has him attached when it begins its move may move 2 hexes and
+ * still battle. `spartacusDice` (Spartacus): his side's I Am Spartacus roll has 2 more dice while he is on the board.
  */
-export type LeaderTrait = 'ccBonus' | 'attachedOnly';
+export type LeaderTrait = 'ccBonus' | 'attachedOnly' | 'forcedMarch' | 'spartacusDice';
 
 export interface Leader {
   id: string; // "L<n>"
@@ -72,6 +85,8 @@ export interface Leader {
   hex: HexId;
   /** Special abilities (see LeaderTrait); absent for ordinary leaders. */
   traits?: LeaderTrait[];
+  /** Command the leader belongs to (§18.5): a card that orders him orders only that command; absent = free (210). */
+  command?: string;
 }
 
 export interface PlayerState {
@@ -154,14 +169,15 @@ export interface TurnState {
   mods: OrderMods;
   firstStrikeBy: Side | null; // defender who played First Strike this turn (draws first)
   reshuffleAfter: boolean; // I Am Spartacus
-  ambushSection: SectionName | null; // Trebbia: section where Mago's force enters this turn
+  ambushSection: SectionName | null; // ambush reserve (Trebbia, 206): section where the force enters this turn
 }
 
 /**
- * Scenario special rules (§14, §17). Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112 Hellespont),
- * `frightAtFirstSight` (116 Heraclea), `leaderPlacement` (117 Asculum: leaders are placed before the first turn),
- * `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3) and `campCapture` (a side gains a banner for
- * stopping on listed camp hexes: 011 Baecula, 114 Gabiene). Scenario data is validated against this list.
+ * Scenario special rules (§14, §17). `castulo` (010): losing the sacred leader (`ScenarioSetup.sacredLeader`) loses the
+ * battle; Castulo's exit is a battle objective. Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112
+ * Hellespont), `frightAtFirstSight` (116 Heraclea), `leaderPlacement` (117 Asculum: leaders are placed before the first
+ * turn) and `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3). Camp capture (011 Baecula, 114
+ * Gabiene) is a battle objective (`ObjectiveDef`), not a rule. Scenario data is validated against this list.
  */
 export const SPECIAL_RULE_IDS = [
   'sacredBand',
@@ -169,7 +185,6 @@ export const SPECIAL_RULE_IDS = [
   'trasimenusHand',
   'beneventumHand',
   'castulo',
-  'campCapture',
   'leaderLossCostsCard',
   'allLeadersSuddenDeath',
   'frightAtFirstSight',
@@ -179,17 +194,75 @@ export const SPECIAL_RULE_IDS = [
 /** A scenario special rule (see SPECIAL_RULE_IDS). */
 export type SpecialRuleId = (typeof SPECIAL_RULE_IDS)[number];
 
-/** Camp-capture objective (rule `campCapture`): units of `side` stopping on one of `hexes` gain a banner, once per camp. */
-export interface CampCapture {
-  side: Side;
-  /** Camp hexes that can be captured, ascending. */
-  hexes: HexId[];
-  /** Log line when a camp falls. */
+/**
+ * A battle objective (§18.4), resolved from scenario data (`ObjectiveSetup` in setup.ts) with every default filled in.
+ * Objectives give banners on top of eliminated units and leaders; only units count, never lone leaders.
+ * - `capture`: `side` takes each of `hexes` once (camps, or ramparts standing in for camps, 215): `when: 'stop'` = a unit
+ *   ends its move or its close-combat sequence there; `'turnStart'` = a unit stands there at the start of that side's
+ *   turn, before its card. The n-th capture scores `banners[n - 1]` permanent banners (the last value repeats);
+ *   `together: n` ('turnStart' only; 0 = off) = nothing until n untaken listed hexes are occupied at once, then a single
+ *   capture scores `banners[0]` (1 by default) once and takes every listed hex; `remove` = a taken hex becomes open ground
+ *   (`setTerrain`; every listed hex with `together`). `hexes` ascending.
+ * - `hold`: 1 held banner per listed hex a unit of `side` stands on, at most `max`.
+ * - `majority`: the side of `sides` with strictly more units on `hexes` holds `banners`, nobody on a tie (`turnEnd`:
+ *   decided at the end of every player turn; `always`: at once).
+ * - `sectionClear`: at the end of `side`'s turn each section (from `side`'s point of view) without an enemy unit scores
+ *   1 held banner, lost as soon as an enemy unit stands in it (a unit on a boundary hex is in both sections).
+ * - `exit`: a unit of `side` (`units` filter) on one of `hexes` (board-edge hexes) may move off the board as one more
+ *   hex: 1 banner, the unit and its attached leader are removed (not eliminated). In `text`, `{unit}` is the unit's name.
+ * `text` is the log line (the `held` event reason for held banners).
+ */
+export type ObjectiveDef =
+  | { kind: 'capture'; side: Side; hexes: HexId[]; when: 'stop' | 'turnStart'; banners: number[]; together: number;
+      remove: boolean; text: string }
+  | { kind: 'hold'; side: Side; hexes: HexId[]; max: number; text: string }
+  | { kind: 'majority'; sides: Side[]; hexes: HexId[]; banners: number; when: 'turnEnd' | 'always'; text: string }
+  | { kind: 'sectionClear'; side: Side; text: string }
+  | { kind: 'exit'; side: Side; hexes: HexId[]; units: 'any' | 'foot' | 'cavalry'; leadersScore: boolean; text: string };
+
+/** The objective of one kind. */
+export type ObjectiveOf<K extends ObjectiveDef['kind']> = Extract<ObjectiveDef, { kind: K }>;
+
+/** Play state of one objective (`ScenarioSpecial.objState[i]` belongs to `objectives[i]`). */
+export interface ObjectiveState {
+  /** capture: hexes captured so far, in order. */
+  taken: HexId[];
+  /** hold / majority / sectionClear: banners this objective gives each side right now. */
+  held: Record<Side, number>;
+  /** sectionClear: sections currently scored (from the objective side's point of view, in left-centre-right order). */
+  sections: SectionName[];
+}
+
+/**
+ * The ambush reserve (rule `magoAmbush`, §14 and §18.5) with every default filled in: the Trebbia defaults are the four
+ * Leadership cards, one finished own turn and the Mago text; 206 Aquae Sextiae adds Order Light Troops, from the first turn.
+ */
+export interface AmbushDef {
+  /** Cards that spring the ambush (the card played, or the one a Counter Attack copies). */
+  trigger: CardKind[];
+  /** Own turns the reserve's side must have finished first (Trebbia 1, 206 0). */
+  afterOwnTurns: number;
+  /** The log line; `{section}` is replaced by the section the force enters from. */
   text: string;
+}
+
+/**
+ * A separate command of one side's army (210 Picenum, §18.5): one card orders units of one command only. `blocks`
+ * recolours the command's base edges (art only, e.g. Lentulus' grey).
+ */
+export interface CommandDef {
+  id: string;
+  name: string;
+  side: Side;
+  blocks?: Blocks;
 }
 
 export interface ScenarioSpecial {
   rules: SpecialRuleId[];
+  /** Separate commands (§18.5), in data order; empty in most battles. Never changed during play: `cloneState` shares the array. */
+  commands: CommandDef[];
+  /** Ambush trigger data: set exactly when the rule `magoAmbush` is on, else null. Never changed during play. */
+  ambush: AmbushDef | null;
   /** Off-board reserve force (Trebbia: Mago's ambush). */
   reserveUnits: Unit[];
   reserveLeaders: Leader[];
@@ -197,10 +270,10 @@ export interface ScenarioSpecial {
   reserveReleased: boolean;
   /** Turns completed per side (used by hand-growth rules and Mago). */
   turnsDone: Record<Side, number>;
-  /** Camp-capture objective (Baecula, Gabiene); null without the `campCapture` rule. */
-  campCapture: CampCapture | null;
-  /** Camp hexes already captured. */
-  campsCaptured: HexId[];
+  /** Battle objectives (§18.4; empty in most battles). Never changed during play: `cloneState` shares the array. */
+  objectives: ObjectiveDef[];
+  /** State of each objective, by index (`cloneState` copies it). */
+  objState: ObjectiveState[];
   /** Castulo: id of Publius Scipio. */
   sacredLeaderId: string | null;
   beneventumBonusGiven: boolean;
@@ -222,7 +295,11 @@ export interface ScenarioSpecial {
 
 export interface GameState {
   scenarioId: string;
-  terrain: TerrainType[]; // length ROWS*COLS
+  /**
+   * Terrain of every hex; length ROWS*COLS. Changed during play only through `setTerrain` (removable tiles, §18.6), which
+   * replaces the array (and `rampart`) instead of changing it in place: `cloneState` shares both.
+   */
+  terrain: TerrainType[];
   fords: boolean[]; // length ROWS*COLS
   /** Fordable river hexes without the ford dice caps (108 Pinarus, §16); length ROWS*COLS. */
   noCap: boolean[];
@@ -272,16 +349,23 @@ export type Decision =
   | { kind: 'momentum'; side: Side; unit: string; hex: HexId; bonus?: boolean }
   | { kind: 'cavalryExtra'; side: Side; unit: string; options: HexId[] }
   | { kind: 'bonusCombat'; side: Side; unit: string; targets: HexId[] }
-  | { kind: 'rally'; side: Side; faces: DieFace[] }
-  | { kind: 'spartacus'; side: Side; faces: DieFace[] }
+  /** `command`: the command the player named for this card (§18.5); only its units can be rallied. Absent without commands. */
+  | { kind: 'rally'; side: Side; faces: DieFace[]; command?: string }
+  /** `command`: as for Rally, only its units (and leaders with no command) can be ordered. */
+  | { kind: 'spartacus'; side: Side; faces: DieFace[]; command?: string }
+  /**
+   * Which command a card orders (§18.5), asked before Clash of Shields, Darken the Sky, Rally and I Am Spartacus act
+   * when their eligible units belong to more than one command. `options` = command ids, in data order; answer `choose`.
+   */
+  | { kind: 'chooseCommand'; side: Side; options: string[] }
   /** Asculum: place `leader` before the first turn on one of `options` (answer `hex`, never null). */
   | { kind: 'placeLeader'; side: Side; leader: string; options: HexId[] };
 
 export type Answer =
   | { kind: 'playCard'; card: number }
-  /** pieces: unit and/or leader ids. ambushSection: Trebbia - release Mago's force in that section instead. */
+  /** pieces: unit and/or leader ids. ambushSection: release the off-board ambush force in that section instead (Trebbia, 206). */
   | { kind: 'orders'; pieces: string[]; ambushSection?: SectionName }
-  | { kind: 'move'; piece: string; to: HexId } // to = OFF_BOARD only for Castulo exits
+  | { kind: 'move'; piece: string; to: HexId } // to = OFF_BOARD only for exit objectives (010 Castulo)
   | { kind: 'endMove' }
   | { kind: 'attack'; unit: string; target: HexId }
   | { kind: 'endBattle' }
@@ -325,7 +409,12 @@ export type GameEvent =
   | { t: 'advance'; id: string; path: HexId[] }
   | { t: 'rampage'; id: string }
   | { t: 'rallied'; id: string; blocks: number }
+  /** `total`: the side's banner total (permanent + held, `bannerTotal`). */
   | { t: 'banner'; side: Side; total: number; reason: string }
+  /** A side's held banners (hold, majority, section clear objectives) changed: `held` now, `total` = its banner total. */
+  | { t: 'held'; side: Side; held: number; total: number; reason: string }
+  /** A hex's terrain changed during play (a captured camp removed, §18.4). */
+  | { t: 'terrainChanged'; hex: HexId; terrain: TerrainType }
   | { t: 'draw'; side: Side }
   | { t: 'reshuffle' }
   | { t: 'command'; side: Side; command: number }

@@ -147,6 +147,7 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
   const leaders = leadersOf(s, side);
   const total = (ids: string[]) => ids.reduce((a, id) => a + Math.max(0, b(id)), 0);
   const valid = (ids: string[]) => !validateOrders(s, side, kind, ids);
+  const clash = commandClash(s, units, leaders);
   const fill = (order: string[], seed: string[] = []): string[] => {
     const sel = [...seed];
     for (const id of order) {
@@ -213,6 +214,7 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
       const sel: string[] = [];
       for (const id of elig) {
         if (sel.length >= mode.max) break;
+        if (clash(sel, id)) continue;
         if (b(id) > 0.002 || sel.length === 0) sel.push(id);
       }
       push(sel);
@@ -225,7 +227,7 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
       for (const l of leaders) {
         if (sec && !inSection(l.hex, side, sec)) continue;
         // a satrap's chain is empty (§17.2): he orders only himself and his unit
-        per.push(...leadershipChains(s, side, kind, l, leadershipChain(l, mode.chain), b, units));
+        per.push(...leadershipChains(s, side, kind, l, leadershipChain(l, mode.chain), b, units, clash));
       }
       per.sort((x, y) => y.benefit - x.benefit);
       per.slice(0, 2).forEach((c, i) => {
@@ -250,7 +252,7 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
           grew = false;
           const hexes = sel.map((id) => foot.find((u) => u.id === id)!.hex);
           const cand = foot
-            .filter((u) => !sel.includes(u.id) && hexes.some((h) => areAdjacent(h, u.hex)))
+            .filter((u) => !sel.includes(u.id) && !clash(sel, u.id) && hexes.some((h) => areAdjacent(h, u.hex)))
             .sort((x, y) => b(y.id) - b(x.id));
           for (const u of cand) {
             if (b(u.id) <= 0.002 && mode.max !== null) break;
@@ -283,8 +285,25 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
   return res;
 }
 
+/**
+ * Separate commands (§18.5): `clash(sel, id)` is true when adding the piece to the selection would mix two commands
+ * (pieces with no command go with any). Never true in a battle without commands.
+ */
+function commandClash(s: GameState, units: Unit[], leaders: Leader[]): (sel: string[], id: string) => boolean {
+  if (!s.special.commands.length) return () => false;
+  const command = new Map<string, string | undefined>([...units, ...leaders].map((p) => [p.id, p.command]));
+  return (sel, id) => {
+    const c = command.get(id);
+    return c !== undefined && sel.some((x) => {
+      const d = command.get(x);
+      return d !== undefined && d !== c;
+    });
+  };
+}
+
 function leadershipChains(
   s: GameState, side: Side, kind: CardKind, l: Leader, chain: number, b: (id: string) => number, units: Unit[],
+  clash: (sel: string[], id: string) => boolean,
 ): OrderCandidate[] {
   const own = leaderUnit(s, l);
   const base = [l.id, ...(own ? [own.id] : [])];
@@ -297,7 +316,7 @@ function leadershipChains(
     let best: Unit | null = null;
     let bv = -Infinity;
     for (const u of units) {
-      if (sel.includes(u.id)) continue;
+      if (sel.includes(u.id) || clash(sel, u.id)) continue;
       if (![...hexes].some((h) => areAdjacent(h, u.hex))) continue;
       const v = b(u.id);
       if (v > bv) {

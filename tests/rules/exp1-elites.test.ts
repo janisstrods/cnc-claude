@@ -31,6 +31,7 @@ describe('elite presets', () => {
       companions: ['MC', ['ignoreSword', 'ignoreFlag'], undefined],
       immortals: ['MI', ['ranged'], 3],
       bowAuxilia: ['AX', ['ranged'], 3],
+      tenthLegion: ['HI', ['pilum', 'march'], undefined],
     };
     for (const [id, [type, abilities, range]] of Object.entries(table) as [EliteId, [string, string[], number | undefined]][]) {
       const def = ELITES[id];
