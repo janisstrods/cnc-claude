@@ -1,10 +1,11 @@
 // The painted battlefield: frame, grassland, terrain features, hex grid and section dividers.
 import { memo, useId, useMemo } from 'react';
+import type { TerrainType } from '../../engine/types';
 import { BOARD_H, BOARD_W, hexCenter } from '../geometry';
 import { Frame, grassDefs, GrassBase, HexGrid, SectionDividers } from './base';
 import { paintDitches } from './ditch';
 import { paintBroken, paintCamps } from './ground';
-import { boardCtx, fieldOutline, type PaintTerrain } from './hexmath';
+import { boardCtx, fieldOutline } from './hexmath';
 import { paintHills, paintSteep } from './hills';
 import { paintRamparts } from './rampart';
 import { paintCoastFords, paintSea } from './sea';
@@ -16,7 +17,7 @@ export interface BoardArtProps {
    * Length 117 (index r*13+c); 'plain' for open ground, 'void' for off-board slots. The board is drawn from the current
    * arrays: a camp or rampart removed during play (`setTerrain`, §18.6) is open ground at once.
    */
-  terrain: readonly PaintTerrain[];
+  terrain: readonly TerrainType[];
   /** True where a river hex is fordable. */
   fords: readonly boolean[];
   /** Protected-hexside mask of each rampart hex (GameState.rampart: bit i = direction E, NE, NW, W, SW, SE); absent = none. */
@@ -40,7 +41,7 @@ const NO_RAMPARTS: readonly number[] = [];
 const NO_ART: readonly (string | undefined)[] = [];
 
 /** The terrain as painted: a fordable river hex with `'coast'` art is drawn as (fordable) sea. */
-function paintedTerrain(terrain: readonly PaintTerrain[], art: readonly (string | undefined)[]): readonly PaintTerrain[] {
+function paintedTerrain(terrain: readonly TerrainType[], art: readonly (string | undefined)[]): readonly TerrainType[] {
   if (!art.some((a) => a === 'coast')) return terrain;
   return terrain.map((t, i) => (art[i] === 'coast' && t === 'river' ? 'sea' : t));
 }

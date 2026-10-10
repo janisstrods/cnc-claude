@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import {
   CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, cardKind, isLeaderId, leaderAt, leaderById, leaderUnit,
   other, pieceMoves, rallyCandidates, terrainAt, isFord, unitAt, unitById, validateOrders, validateRally, validateSpartacus,
-  battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf, sectionsOf, orderMode, orderLimit, rollingFirePaths,
+  battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf, sectionsOf, orderMode, orderLimit, rollingFirePaths, inCommand,
   type Answer, type DieFace, type GameState, type HexId, type RetreatOption, type SectionName, type Side,
 } from '../../engine';
 import { BLOCK_COLORS, UnitIcon, unitTypeName } from '../../art';
@@ -459,7 +459,9 @@ export function GameScreen({ controller, onExit, onRematch }: {
       case 'bonusCombat':
         return { title: 'Bonus combat', text: 'Click a red target to attack again, or decline.', buttons: [btn('No bonus attack', () => answer({ kind: 'hex', hex: null }), { variant: 'secondary' })] };
       case 'chooseCommand': {
-        // separate commands (210, §18.5): one card acts for one command; hovering a button marks its units
+        // separate commands (210, §18.5): one card acts for one command; hovering or focusing a button marks its units
+        const focus = (id: string) => () => setCmdFocus(id);
+        const unfocus = (id: string) => () => setCmdFocus((f) => (f === id ? null : f));
         return {
           title: 'Which command?',
           text: `One card orders one army only. Choose the command ${s.turn.effective ? CARD_DEFS[s.turn.effective].title : 'this card'} acts for.`,
@@ -471,8 +473,10 @@ export function GameScreen({ controller, onExit, onRematch }: {
                 key={`cmd-${id}`}
                 variant={i === 0 ? 'primary' : 'secondary'}
                 onClick={() => answer({ kind: 'choose', index: i })}
-                onMouseEnter={() => setCmdFocus(id)}
-                onMouseLeave={() => setCmdFocus((f) => (f === id ? null : f))}
+                onMouseEnter={focus(id)}
+                onMouseLeave={unfocus(id)}
+                onFocus={focus(id)}
+                onBlur={unfocus(id)}
               >
                 {col && <span className="cmd-swatch" style={{ background: col }} aria-hidden />}
                 {`${possessive(c?.name ?? id)} command`}
@@ -576,7 +580,13 @@ export function GameScreen({ controller, onExit, onRematch }: {
             onLeaderClick={onLeaderClickS}
           />
           {view.toast && (
-            <div className={`turn-toast ${view.toast.kind === 'notice' ? 'toast-notice' : ''}`} key={view.toast.id}>{view.toast.text}</div>
+            <div
+              className={`turn-toast ${view.toast.kind === 'notice' ? 'toast-notice' : ''}`}
+              key={view.toast.id}
+              {...(view.toast.kind === 'notice' ? { role: 'status', 'aria-live': 'polite' as const } : {})}
+            >
+              {view.toast.text}
+            </div>
           )}
           {view.cardShow && (
             <div className="card-show" key={view.cardShow.id}>
@@ -759,7 +769,7 @@ const LogPanel = memo(function LogPanel({ log, human }: { log: LogLine[]; human:
 function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'spartacus'; faces: DieFace[]; command?: string; error: string | null; onChange: (ids: string[]) => void; onDone: (ids: (string | null)[]) => void }) {
   const { state: s, side, faces, command } = p;
   // separate commands (§18.5): only the named command's pieces, and those with no command, can be chosen
-  const free = (x: { command?: string }) => command === undefined || x.command === undefined || x.command === command;
+  const free = (x: { command?: string }) => inCommand(x, command);
   const [ids, setIds] = useState<(string | null)[]>(() => suggest());
   useEffect(() => {
     p.onChange(ids.filter((x): x is string => !!x));

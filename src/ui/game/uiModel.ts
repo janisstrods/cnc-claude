@@ -2,7 +2,7 @@
 // descriptions shown in tooltips and the rules reference.
 import {
   ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, bannerTotal, baselineRow, battleReady, battleTargets, canMarch,
-  cardKind, closeCombatDice, closeHitChance, commandClash, eligiblePieces, eliteDef, fireMoveLimit, heldBanners, inSection, isFord, isLeaderId, leaderAt,
+  cardKind, closeCombatDice, closeHitChance, commandClash, commandOf, eligiblePieces, inCommand, eliteDef, fireMoveLimit, heldBanners, inSection, isFord, isLeaderId, leaderAt,
   leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces, nextCaptureBanners, orderCommander, orderMode, other, pieceMoves,
   rangeOf, rangedBaseDice, rangedDice, rollingFirePaths, rowOf, sectionsOf, terrainAt, unitAt, unitById, veryHills,
   type Blocks, type CardKind, type CommandDef, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type Leader,
@@ -104,7 +104,7 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       // separate commands (210, §18.5): once a piece of one command is picked, only that command's pieces stay marked
       const cmd = selectionCommand(s, ui.orderSel);
       for (const id of eligiblePieces(s, human, d.card)) {
-        if (cmd === undefined || pieceCommand(s, id) === undefined || pieceCommand(s, id) === cmd) markPiece(id, 'eligible');
+        if (inCommand({ command: commandOf(s, id) }, cmd)) markPiece(id, 'eligible');
       }
       for (const id of ui.orderSel) markPiece(id, 'selected');
       break;
@@ -600,15 +600,10 @@ export function objectiveTipLines(s: GameState, h: HexId): string[] {
   return s.special.objectives.flatMap((o, i) => objectiveLines(s, o, i, h));
 }
 
-/** The separate command a unit or leader belongs to (210, §18.5), or undefined. */
-export function pieceCommand(s: GameState, id: string): string | undefined {
-  return (isLeaderId(id) ? leaderById(s, id) : unitById(s, id))?.command;
-}
-
 /** The command of an order selection: that of its first piece with one (undefined = none yet, or no commands). */
 export function selectionCommand(s: GameState, sel: readonly string[]): string | undefined {
   for (const id of sel) {
-    const c = pieceCommand(s, id);
+    const c = commandOf(s, id);
     if (c !== undefined) return c;
   }
   return undefined;

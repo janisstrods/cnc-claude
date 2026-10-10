@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { ALL_HEXES, leaderUnit, rowOf, colOf, type GameState, type HexId, type Leader, type Side, type Unit } from '../../engine';
+import { ALL_HEXES, leaderUnit, rowOf, colOf, veryHills, type GameState, type HexId, type Leader, type Side, type Unit } from '../../engine';
 import { BLOCK_COLORS, LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
 import { BoardArt, ObjectiveMarkers, scenarioArt } from '../terrain';
 import { BOARD_H, BOARD_W, HEX_R, hexCenterId, hexPoints } from '../geometry';
@@ -144,7 +144,7 @@ export function Board(p: BoardProps) {
   const top = flipped ? 'bottom' : 'top';
   const bottom = flipped ? 'top' : 'bottom';
   const hexArt = scenarioArt(state.scenarioId);
-  const steepHills = state.special.rules.includes('veryHills');
+  const steepHills = veryHills(state);
   const art = useMemo(
     () => (
       <BoardArt

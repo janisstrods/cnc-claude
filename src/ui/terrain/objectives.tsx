@@ -6,7 +6,8 @@
 // markers turn with a flipped board; the pennants and arrows themselves stay upright.
 import { useId } from 'react';
 import { BLOCK_COLORS, type SideColors } from '../../art';
-import { COLS, ROWS, type Blocks, type HexId, type ObjectiveDef, type ObjectiveState, type SectionName, type Side } from '../../engine/types';
+import { colOf, hexId, rowOf } from '../../engine/hex';
+import { ROWS, type Blocks, type HexId, type ObjectiveDef, type ObjectiveState, type SectionName, type Side } from '../../engine/types';
 import { BOARD_H, BOARD_W, HEX_R } from '../geometry';
 import {
   boardCtx,
@@ -38,11 +39,7 @@ export interface ObjectiveMarkersProps {
 const INK = '#1d140c';
 const GOLD = '#e9c25a';
 
-const rc = (h: HexId) => ({ r: Math.floor(h / COLS), c: h % COLS });
-const centre = (h: HexId, flipped: boolean): Pt => {
-  const { r, c } = rc(h);
-  return vCenter(r, c, flipped);
-};
+const centre = (h: HexId, flipped: boolean): Pt => vCenter(rowOf(h), colOf(h), flipped);
 const colors = (blocks: Record<Side, Blocks>, side: Side): SideColors => BLOCK_COLORS[blocks[side]];
 
 /** Outline (one subpath per loop) of the union of `hexes`: every hexside whose neighbour is not in the set. */
@@ -53,11 +50,12 @@ function areaOutline(hexes: readonly HexId[], flipped: boolean): string {
   const key = (p: Pt) => `${Math.round(p.x * 2)},${Math.round(p.y * 2)}`;
   const at = new Map<string, E[]>();
   for (const h of set) {
-    const { r, c } = rc(h);
+    const r = rowOf(h);
+    const c = colOf(h);
     const p = vCenter(r, c, flipped);
     for (const d of DIRS) {
       const [nr, nc] = neighborRC(r, c, d);
-      if (onBoard(nr, nc) && set.has(nr * COLS + nc)) continue;
+      if (onBoard(nr, nc) && set.has(hexId(nr, nc))) continue;
       const [i, j] = edgeCorners(screenDir(d, flipped));
       const e: E = { a: corner(p, i), b: corner(p, j), used: false };
       edges.push(e);
@@ -141,7 +139,8 @@ function Standard({ base, c, held }: { base: Pt; c: SideColors; held: boolean })
 
 /** Screen direction (unit vector) out of the board across the outer edge of edge hex `h`: off the top or bottom row first. */
 function outward(h: HexId, flipped: boolean): Pt {
-  const { r, c } = rc(h);
+  const r = rowOf(h);
+  const c = colOf(h);
   const p = vCenter(r, c, flipped);
   let x = 0;
   let y = 0;
@@ -160,7 +159,8 @@ function outward(h: HexId, flipped: boolean): Pt {
 
 /** Exit marker of edge hex `h`: its outer hexsides drawn in the side's colour and an arrow pointing off the board. */
 function ExitArrow({ h, flipped, c }: { h: HexId; flipped: boolean; c: SideColors }) {
-  const { r, c: col } = rc(h);
+  const r = rowOf(h);
+  const col = colOf(h);
   const p = vCenter(r, col, flipped);
   const u = outward(h, flipped);
   let sides = '';
@@ -307,9 +307,11 @@ export function ObjectiveMarkers({ objectives, objState, flipped, blocks, units 
   return (
     <g className="objective-markers" pointerEvents="none">
       <defs>
-        <clipPath id={clip}>
-          <path d={field(flipped)} />
-        </clipPath>
+        {tints.length > 0 && (
+          <clipPath id={clip}>
+            <path d={field(flipped)} />
+          </clipPath>
+        )}
         {defs}
       </defs>
       {tints.length > 0 && <g clipPath={`url(#${clip})`}>{tints}</g>}

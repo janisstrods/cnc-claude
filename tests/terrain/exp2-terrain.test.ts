@@ -5,18 +5,18 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { BLOCK_COLORS } from '../../src/art';
-import { COLS, createGame, ROWS, type ObjectiveDef, type ObjectiveState, type Side } from '../../src/engine';
+import { COLS, createGame, ROWS, type ObjectiveDef, type ObjectiveState, type Side, type TerrainType } from '../../src/engine';
 import { scenarioById } from '../../src/scenarios';
 import { BOARD_W, hexCenter, isOnBoard } from '../../src/ui/geometry';
-import { BoardArt, boardArtPropsEqual, ObjectiveMarkers, terrainArtOf, terrainName, TerrainIcon, type BoardArtProps, type PaintTerrain } from '../../src/ui/terrain';
+import { BoardArt, boardArtPropsEqual, ObjectiveMarkers, terrainArtOf, terrainName, TerrainIcon, type BoardArtProps } from '../../src/ui/terrain';
 
 const svg = (el: ReturnType<typeof createElement>) => renderToStaticMarkup(createElement('svg', null, el));
 const art = (p: BoardArtProps) => svg(createElement(BoardArt, p));
 const hx = (r: number, c: number) => r * COLS + c;
 
 /** An open board with the given terrain. */
-function board(cells: [number, number, PaintTerrain, boolean?][]): { terrain: PaintTerrain[]; fords: boolean[] } {
-  const terrain: PaintTerrain[] = [];
+function board(cells: [number, number, TerrainType, boolean?][]): { terrain: TerrainType[]; fords: boolean[] } {
+  const terrain: TerrainType[] = [];
   const fords: boolean[] = [];
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) terrain.push(isOnBoard(r, c) ? 'plain' : 'void'), fords.push(false);
   for (const [r, c, t, f] of cells) {
@@ -47,7 +47,7 @@ describe('defaults draw the boards as before', () => {
 
 describe('ditch', () => {
   // 212 Bruttium: nine ditch hexes across the centre and right, running off the right edge
-  const row = Array.from({ length: 9 }, (_, k): [number, number, PaintTerrain] => [4, 4 + k, 'ditch']);
+  const row = Array.from({ length: 9 }, (_, k): [number, number, TerrainType] => [4, 4 + k, 'ditch']);
 
   it.each([false, true])('a row of ditch hexes is one trench through every ditch hex centre (flipped %s)', (flipped) => {
     const { terrain, fords } = board(row);
@@ -100,7 +100,7 @@ describe('ditch', () => {
 });
 
 describe('coast played as a ford (217)', () => {
-  const coast = Array.from({ length: 11 }, (_, k): [number, number, PaintTerrain, boolean] => [8, 1 + k, 'river', true]);
+  const coast = Array.from({ length: 11 }, (_, k): [number, number, TerrainType, boolean] => [8, 1 + k, 'river', true]);
   const setup = { terrain: coast.map(([r, c]) => ({ r, c, t: 'sea', ford: true })) };
 
   it('terrainArtOf marks the hexes of entries with art, and sea hexes played as a ford, as coast', () => {
@@ -245,8 +245,11 @@ describe('objective markers', () => {
 
   it.each([false, true])('section clear: a tint over each section the side scores, mirrored on a flipped board (flipped %s)', (flipped) => {
     const o: ObjectiveDef = { kind: 'sectionClear', side: 'top', text: '' };
-    expect(markers([o], [st0()], flipped)).not.toContain('section-tint');
+    const none = markers([o], [st0()], flipped);
+    expect(none).not.toContain('section-tint');
+    expect(none).not.toContain('<clipPath'); // the field clip only comes with tints to clip
     const html = markers([o], [{ ...st0(), sections: ['left'] }], flipped);
+    expect(html.match(/<clipPath/g)).toHaveLength(1);
     const rects = [...html.matchAll(/<rect class="section-tint section-left" x="([\d.]+)" y="0" width="([\d.]+)"/g)];
     expect(rects).toHaveLength(1);
     // the top side's left is the right of the board as the bottom player sees it (the left of a flipped board)

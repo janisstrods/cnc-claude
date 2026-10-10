@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { UNIT_STATS, createGame, leaderUnit, type GameOptions, type GameState, type Side, type UnitType } from '../../engine';
+import { UNIT_STATS, createGame, leaderUnit, veryHills, type GameOptions, type GameState, type Side, type UnitType } from '../../engine';
 import { SCENARIOS, type Expansion, type ScenarioInfo } from '../../scenarios';
 import { LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
-import { BoardArt, ObjectiveMarkers, terrainArtOf } from '../terrain';
+import { BoardArt, ObjectiveMarkers, scenarioArt } from '../terrain';
 import { Button, Icon, Modal, Panel } from '../kit';
 import { BOARD_H, BOARD_W, hexCenterId } from '../geometry';
 import type { Difficulty, SavedGame } from '../game/controller';
@@ -86,12 +86,12 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
 function SetupPreview({ sc, state, flipped, humanSide }: { sc: ScenarioInfo; state: GameState; flipped: boolean; humanSide: Side }) {
   const top = flipped ? 'bottom' : 'top';
   const bottom = flipped ? 'top' : 'bottom';
-  const art = useMemo(() => terrainArtOf(sc.setup), [sc]);
+  const art = scenarioArt(sc.id);
   const blocks = { top: state.players.top.blocks, bottom: state.players.bottom.blocks };
   return (
     <svg className="preview-svg" viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}>
       <BoardArt
-        terrain={state.terrain} fords={state.fords} rampart={state.rampart} art={art} steepHills={state.special.rules.includes('veryHills')}
+        terrain={state.terrain} fords={state.fords} rampart={state.rampart} art={art} steepHills={veryHills(state)}
         flipped={flipped} topLabel={state.players[top].army} bottomLabel={state.players[bottom].army}
       />
       <ObjectiveMarkers objectives={state.special.objectives} objState={state.special.objState} flipped={flipped} blocks={blocks} units={state.units} />

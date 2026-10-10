@@ -1,11 +1,9 @@
 // Battlefield / terrain art for Commands & Colors: Ancients (original procedural SVG).
-import { COLS, ROWS } from '../../engine/types';
+import { COLS, ROWS, type TerrainType } from '../../engine/types';
 import { scenarioById } from '../../scenarios';
-import type { PaintTerrain } from './hexmath';
 
 export { BoardArt, boardArtPropsEqual } from './BoardArt';
 export type { BoardArtProps } from './BoardArt';
-export type { PaintTerrain } from './hexmath';
 export { ObjectiveMarkers } from './objectives';
 export type { ObjectiveMarkersProps } from './objectives';
 export { TerrainIcon } from './TerrainIcon';
@@ -52,7 +50,7 @@ export function scenarioArt(scenarioId: string): readonly (string | undefined)[]
  * Human-readable terrain name ("Hill", "Forest", "Fordable River", ...). `noCap`: a ford without dice limits (§16).
  * `art`: the hex's art (`terrainArtOf`); a fordable river with `'coast'` art is a coast played as a ford (217).
  */
-export function terrainName(t: PaintTerrain, ford: boolean, noCap = false, art?: string): string {
+export function terrainName(t: TerrainType, ford: boolean, noCap = false, art?: string): string {
   if (art === 'coast' && t === 'river') return 'Coastal Ford';
   switch (t) {
     case 'plain':

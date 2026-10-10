@@ -66,22 +66,7 @@ function lookUses(): Record<string, LookUse> {
   }
   return out;
 }
-/**
- * The Expansion #2 armies until their battles are in the scenario list: blocks, the unit types they field (survey of
- * battles 201-223), a commander, elites.
- */
-const EXP2: Partial<Record<ArmyLook, LookUse>> = {
-  gallic: { blocks: 'bar', types: new Set(['LI', 'AX', 'WA', 'LC', 'MC', 'BCH']), commander: 'Aneroestes', elites: [] },
-  germanic: { blocks: 'bar', types: new Set(['LI', 'LB', 'AX', 'WA', 'MI', 'LC', 'MC']), commander: 'Arminius', elites: [] },
-  slave: { blocks: 'bar', types: new Set(['LI', 'LS', 'AX', 'WA', 'MI', 'LC', 'MC']), commander: 'Crixus', elites: [] },
-  belgic: { blocks: 'bar', types: new Set(['LI', 'AX', 'WA', 'MC']), commander: 'Boduognatus', elites: [] },
-  briton: { blocks: 'bar', types: new Set(['LI', 'LB', 'AX', 'WA', 'LC', 'MC', 'BCH']), commander: 'Caratacus', elites: [] },
-  marian: {
-    blocks: 'rom', types: new Set(['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI', 'LC', 'MC', 'HWM']), commander: 'Marius',
-    elites: [{ type: 'HI', elite: 'tenthLegion' }],
-  },
-};
-const USES = { ...EXP2, ...lookUses() } as Record<string, LookUse>;
+const USES = lookUses();
 const blocksOf = (look: ArmyLook): Blocks => USES[look]?.blocks ?? 'grk';
 
 /** Every elite preset with the look and unit type it belongs to. */

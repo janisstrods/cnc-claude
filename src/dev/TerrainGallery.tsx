@@ -4,12 +4,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { UnitToken } from '../art';
 import { rampartMask, type TerrainSetup } from '../engine/setup';
-import { COLS, ROWS, type ArmyLook, type Blocks, type ObjectiveDef, type ObjectiveState, type Side, type UnitType } from '../engine/types';
+import { COLS, ROWS, type ArmyLook, type Blocks, type ObjectiveDef, type ObjectiveState, type Side, type TerrainType, type UnitType } from '../engine/types';
 import { BOARD_H, BOARD_W, hexCenter, isOnBoard } from '../ui/geometry';
-import { BoardArt, ObjectiveMarkers, TerrainIcon, terrainArtOf, terrainName, type PaintTerrain } from '../ui/terrain';
+import { BoardArt, ObjectiveMarkers, TerrainIcon, terrainArtOf, terrainName } from '../ui/terrain';
 
 /** A terrain entry: the scenario file format, plus the Expansion #2 `ditch` and `art` (until the engine has them). */
-type TerrainEntry = Omit<TerrainSetup, 't'> & { t: PaintTerrain; art?: string };
+type TerrainEntry = Omit<TerrainSetup, 't'> & { t: TerrainType; art?: string };
 
 interface ScenarioJson {
   id: string;
@@ -317,8 +317,8 @@ function cropBox(hexes: [number, number][], flipped: boolean): string {
   return `${x0.toFixed(1)} ${y0.toFixed(1)} ${(x1 - x0).toFixed(1)} ${(y1 - y0).toFixed(1)}`;
 }
 
-function boardArrays(s: ScenarioJson): { terrain: PaintTerrain[]; fords: boolean[]; rampart: number[]; art: (string | undefined)[] } {
-  const terrain: PaintTerrain[] = [];
+function boardArrays(s: ScenarioJson): { terrain: TerrainType[]; fords: boolean[]; rampart: number[]; art: (string | undefined)[] } {
+  const terrain: TerrainType[] = [];
   const fords: boolean[] = [];
   const rampart: number[] = [];
   for (let r = 0; r < ROWS; r++) {
@@ -431,7 +431,7 @@ function Board({
   );
 }
 
-const LEGEND: { t: PaintTerrain; ford?: boolean; art?: string }[] = [
+const LEGEND: { t: TerrainType; ford?: boolean; art?: string }[] = [
   { t: 'plain' },
   { t: 'hill' },
   { t: 'forest' },

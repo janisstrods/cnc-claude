@@ -1,6 +1,7 @@
 // Hills (shaded grassy mounds merging into ridges) and steep hills (raised rocky plateaus).
 import { addToGrid, blurGrid, contours, decimate, fillGrid, isoPath, loopArea, makeGrid, polyPath } from './field';
-import { fmt, type PaintCtx, type PaintTerrain, type Pt, type Rect } from './hexmath';
+import type { TerrainType } from '../../engine/types';
+import { fmt, type PaintCtx, type Pt, type Rect } from './hexmath';
 import { fbm, rng } from './noise';
 import { P } from './palette';
 
@@ -222,7 +223,7 @@ function paintVerySteep(ctx: PaintCtx, hills: Pt[], patternFill: string | undefi
   );
 }
 
-export function regionGrid(ctx: PaintCtx, t: PaintTerrain, step = 3, blur = 3, noiseAmp = 0.25, noiseScale = 24, seed = 5) {
+export function regionGrid(ctx: PaintCtx, t: TerrainType, step = 3, blur = 3, noiseAmp = 0.25, noiseScale = 24, seed = 5) {
   const hs = ctx.hexes.filter((h) => h.t === t);
   const g = makeGrid(rectAround(ctx, hs, 70), step);
   fillGrid(g, (x, y) => (ctx.terrainAt(x, y) === t ? 1 : 0));
