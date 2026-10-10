@@ -4,7 +4,7 @@ import { attachedLeader, enemyUnitAdjacent, isRomanArmy, leaderAt, leaderHas, le
 import {
   ccCapOfHex, hillGroups, isCamp, isHill, rampartProtects, rangedFromCap, rangedTargetCap, terrainAt, terrainBlocksLOS,
 } from './terrain';
-import { eliteHas, rangeOf } from './elites';
+import { eliteHas, rangeOf, rangedBaseDice } from './elites';
 import { UNIT_STATS, elephantDiceVs, frightens } from './units';
 import type { DieFace, GameState, HexId, Leader, Unit, UnitType } from './types';
 
@@ -81,7 +81,7 @@ export function closeCombatDice(s: GameState, striker: Unit, target: Unit | Lead
 
 /** Dice for ranged combat. `moved` = hexes moved this turn. */
 export function rangedDice(s: GameState, firer: Unit, targetHex: HexId, moved: number, ordered: boolean): number {
-  let dice = moved > 0 ? 1 : 2;
+  let dice = rangedBaseDice(firer, moved);
   dice = Math.min(dice, rangedFromCap(s, firer.hex), rangedTargetCap(s, targetHex));
   if (isCamp(s, firer.hex)) dice -= 1;
   if (ordered && firer.side === s.active) dice += s.turn.mods.rangedBonus;

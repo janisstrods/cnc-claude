@@ -215,3 +215,31 @@ describe('rules reference unit cards', () => {
     for (const t of ['Sea', 'Rampart', 'Ford, no dice limit', 'Tactical Flexibility', 'Hellespont', 'Asculum']) expect(text).toContain(t);
   });
 });
+
+describe('pilum and march wording (§18.2)', () => {
+  it('a unit of a Marius legion has a 1-die missile line that stops after 2 hexes of movement', () => {
+    expect(unitSummary(unit('MI', { legion: 'marius' }))).toEqual([
+      'Move 1 · Retreat 1/flag',
+      'Close combat 4 dice',
+      'Missiles: range 2, 1 die (not after moving 2 hexes)',
+      'Cannot evade',
+    ]);
+  });
+  it('a Julian legion unit also marches: 1 hex and battle, or 2 without battle', () => {
+    expect(unitSummary(unit('HI', { legion: 'julian' }))[0]).toBe('Move 1, or 2 without battle · Retreat 1/flag');
+  });
+  it('the Tenth Legion lists its pilum and its march', () => {
+    expect(unitSummary(unit('HI', { elite: 'tenthLegion' }))).toEqual([
+      'Move 1, or 2 without battle · Retreat 1/flag',
+      'Close combat 5 dice',
+      'Missiles: range 2, 1 die (not after moving 2 hexes)',
+      'Cannot evade',
+      'Tenth Legion: throws the pilum, marches 2 hexes without battle',
+    ]);
+  });
+  it('units outside a legion keep their lines (the Immortals still roll 2, 1 after moving)', () => {
+    expect(unitSummary(unit('MI'))).toEqual(TOOLTIP.MI);
+    expect(unitSummary(unit('MI', { elite: 'immortals' }))[2]).toBe('Missiles: range 3, 2 dice (1 after moving)');
+    expect(unitSummary(unit('MI', { elite: 'immortals', legion: 'marius' }))[2]).toBe('Missiles: range 3, 2 dice (1 after moving)');
+  });
+});

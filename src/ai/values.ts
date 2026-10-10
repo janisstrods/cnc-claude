@@ -23,6 +23,7 @@ export const ELITE_WEIGHT: Record<EliteId, number> = {
   companions: 1.2,
   immortals: 1.15,
   bowAuxilia: 1.1,
+  tenthLegion: 1.1, // an ordinary HI that also throws the pilum and marches
 };
 
 export const LEADER_VALUE = 0.4;

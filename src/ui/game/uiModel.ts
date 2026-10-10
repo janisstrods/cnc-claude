@@ -1,9 +1,9 @@
 // Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges, plus the unit
 // descriptions shown in tooltips and the rules reference.
 import {
-  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, battleReady, battleTargets, cardKind, closeCombatDice,
-  closeHitChance, eligiblePieces, eliteDef, inSection, isFord, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf,
-  mirrorKind, movablePieces, orderCommander, orderMode, other, pieceMoves, rangeOf, rangedDice, terrainAt, unitAt, unitById,
+  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, battleReady, battleTargets, canMarch, cardKind, closeCombatDice,
+  closeHitChance, eligiblePieces, eliteDef, fireMoveLimit, inSection, isFord, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf,
+  mirrorKind, movablePieces, orderCommander, orderMode, other, pieceMoves, rangeOf, rangedBaseDice, rangedDice, terrainAt, unitAt, unitById,
   type CardKind, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type Leader, type LeaderTrait,
   type SectionName, type Side, type Unit, type UnitClass, type UnitStats, type UnitType,
 } from '../../engine';
@@ -244,9 +244,17 @@ function moveText(st: UnitStats, fmt: MoveFormat): string {
   return String(st.move);
 }
 
-/** Missile line of a tooltip: 2 dice standing and 1 after moving, or no fire after moving at all (heavy war machines). */
-function missileText(st: UnitStats, range: number): string {
-  const noFireAfterMoving = st.noFireAfterMove <= 1 || st.moveBattle === 0;
+/**
+ * Missile line of a tooltip: 2 dice standing and 1 after moving, or no fire after moving at all (heavy war machines). A
+ * unit whose only missile is the pilum always rolls 1 and cannot fire after moving 2 hexes (§18.2).
+ */
+function missileText(u: Unit, range: number): string {
+  const st = UNIT_STATS[u.type];
+  const limit = fireMoveLimit(u);
+  const noFireAfterMoving = limit <= 1 || st.moveBattle === 0;
+  if (rangedBaseDice(u, 0) === rangedBaseDice(u, 1)) {
+    return `Missiles: range ${range}, 1 die (${noFireAfterMoving ? 'not after moving' : `not after moving ${limit} hexes`})`;
+  }
   return `Missiles: range ${range}, 2 dice (${noFireAfterMoving ? 'not after moving' : '1 after moving'})`;
 }
 
@@ -331,17 +339,21 @@ const ELITE_TEXT: Record<EliteAbility, (u: Unit) => string> = {
   ignoreFlag: () => 'ignores 1 flag',
   ignoreSword: () => 'ignores 1 sword hit',
   ranged: (u) => `missile fire (range ${rangeOf(u)})`,
+  pilum: () => 'throws the pilum',
+  march: () => 'marches 2 hexes without battle',
 };
 
 /** Stats line for tooltips. */
 export function unitSummary(u: Unit): string[] {
   const st = UNIT_STATS[u.type];
   const lines: string[] = [];
-  lines.push(`Move ${moveText(st, MOVE_TOOLTIP)} · Retreat ${st.retreat}/flag`);
+  // a marching unit (§18.2) may move 2 hexes if it does not battle
+  const move = canMarch(u) && st.moveBattle < 2 ? MOVE_TOOLTIP.withoutBattle(st.moveBattle, 2) : moveText(st, MOVE_TOOLTIP);
+  lines.push(`Move ${move} · Retreat ${st.retreat}/flag`);
   if (st.elephantTable) lines.push(`Close combat: same dice as the enemy unit (${elephantDiceNote()})`);
   else lines.push(`Close combat ${st.cc}${st.ccBack !== st.cc ? ` (${st.ccBack} battling back)` : ''} dice${st.fullStrengthBonus ? ' (+1 at full strength)' : ''}${st.swordHits ? '' : ', swords miss'}`);
   const range = rangeOf(u);
-  if (range) lines.push(missileText(st, range));
+  if (range) lines.push(missileText(u, range));
   lines.push(EVADE_TEXT[st.evade][0]);
   const special = [
     swordIgnoreText(st, 'ignores sword hits', '1'),

@@ -32,6 +32,8 @@ export interface ScenarioJson {
   options?: GameOptions;
   /** Battle objectives (camp capture, exits, §18.4). */
   objectives?: ObjectiveSetup[];
+  /** Legion rule per side (Marius: the Romans of 206-223, §18.2). */
+  legions?: ScenarioSetup['legions'];
   /** `ford: 'nocap'` = fordable without dice caps; a rampart lists `faces` and/or `edges`. */
   terrain: TerrainSetup[];
   units: ScenarioSetup['units'];
@@ -229,6 +231,7 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   if (objectives?.length) setup.objectives = objectives.map(copyObjective);
   if (j.ambush) setup.ambush = { ...j.ambush, ...(j.ambush.trigger ? { trigger: [...j.ambush.trigger] } : {}) };
   if (j.options && Object.keys(j.options).length) setup.options = { ...j.options };
+  if (j.legions && Object.keys(j.legions).length) setup.legions = { ...j.legions };
   if (j.placeLeaders?.length) setup.placeLeaders = j.placeLeaders.map(copyLeader);
   // Trasimenus: the Roman column starts with 4 cards eventually; War Council lists 2 initially.
   if (j.id === '006') setup.bottom.cards = 4;

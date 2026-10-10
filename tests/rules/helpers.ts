@@ -29,6 +29,8 @@ export interface Pos {
   reserveLeaders?: ScenarioSetup['reserveLeaders'];
   /** Ambush trigger configuration (defaults: Trebbia, §14). */
   ambush?: ScenarioSetup['ambush'];
+  /** Legion rule per side: every MI and HI of the side has the pilum (Marius; Julian adds the march), §18.2. */
+  legions?: ScenarioSetup['legions'];
 }
 
 export const H = (r: number, c: number) => hexId(r, c);
@@ -53,6 +55,7 @@ export function setupOf(p: Pos): ScenarioSetup {
     options: p.options,
     placeLeaders: p.placeLeaders,
     ambush: p.ambush,
+    legions: p.legions,
   };
 }
 

@@ -8,9 +8,9 @@ import { LEADER_TRAITS } from './query';
 import { TERRAIN_NAMES, isImpassable, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain } from './units';
 import {
-  ARMY_LOOKS, BLOCKS, COLS, OFF_BOARD, ROWS, SPECIAL_RULE_IDS,
+  ARMY_LOOKS, BLOCKS, COLS, LEGIONS, OFF_BOARD, ROWS, SPECIAL_RULE_IDS,
   type AmbushDef, type ArmyLook, type Blocks, type EliteId, type GameState, type HexDir, type HexId, type Leader, type LeaderTrait,
-  type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
+  type Legion, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
 export interface SideSetup {
@@ -45,6 +45,11 @@ export interface ScenarioSetup {
    * Aquae Sextiae: the Leadership cards and Order Light Troops, `afterOwnTurns: 0`, its own text.
    */
   ambush?: Partial<AmbushDef>;
+  /**
+   * Legion rule per side (§18.2): every MI and HI of the side, on the board and in reserve, gets the pilum (`marius`) or the
+   * pilum and the march (`julian`). Marius legions in 206-223 for the Romans; the Barbarians and Slaves have none.
+   */
+  legions?: Partial<Record<Side, Legion>>;
   /** Castulo: name of the leader whose loss ends the game. */
   sacredLeader?: { side: Side; name: string };
   /** Starting Command for a side when different from `cards` (Trasimenus Romans start with 2). */
@@ -145,6 +150,26 @@ function effectiveRules(setup: ScenarioSetup, options: GameOptions | undefined):
 const known = (list: readonly string[], v: unknown): boolean => typeof v === 'string' && list.includes(v);
 const has = (table: object, k: unknown): boolean => typeof k === 'string' && Object.prototype.hasOwnProperty.call(table, k);
 
+/** The unit types a legion rule gives the pilum to (§18.2). */
+const LEGION_TYPES: readonly UnitType[] = ['MI', 'HI'];
+
+/** `legions` names sides and legions of the types (`marius`, `julian`). */
+function checkLegions(legions: unknown) {
+  if (legions === undefined) return;
+  if (typeof legions !== 'object' || legions === null || Array.isArray(legions)) throw new Error('legions must be an object of sides');
+  for (const [side, legion] of Object.entries(legions)) {
+    if (side !== 'top' && side !== 'bottom') throw new Error(`legions: unknown side ${side}`);
+    if (!known(LEGIONS, legion)) throw new Error(`legions: unknown legion ${String(legion)} (${side})`);
+  }
+}
+
+/** The unit with its side's legion stamped, if it is a type the legion rule covers. */
+function withLegion(unit: Unit, legions: ScenarioSetup['legions']): Unit {
+  const legion = legions?.[unit.side];
+  if (legion && LEGION_TYPES.includes(unit.type)) unit.legion = legion;
+  return unit;
+}
+
 /**
  * Ids and values of the scenario data that the types promise but JSON cannot (spec "Error handling"): block sets, looks,
  * special rules, terrain types, ford values and unit types (on the board and in reserve).
@@ -156,6 +181,7 @@ function checkIds(setup: ScenarioSetup) {
     if (!known(ARMY_LOOKS, ss.look)) throw new Error(`${side} army: unknown look ${String(ss.look)}`);
   }
   for (const r of setup.rules) if (!known(SPECIAL_RULE_IDS, r)) throw new Error(`unknown special rule ${String(r)}`);
+  checkLegions(setup.legions);
   for (const t of setup.terrain) {
     // 'void' marks the hexes off the board: it is not scenario terrain
     if (!has(TERRAIN_NAMES, t.t) || t.t === 'void') throw new Error(`unknown terrain ${String(t.t)} at ${t.r},${t.c}`);
@@ -292,7 +318,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
       }
       unit.elite = u.elite;
     }
-    return unit;
+    return withLegion(unit, setup.legions);
   });
   const leaders: Leader[] = setup.leaders.map((l) => {
     if (!onBoard(l.r, l.c)) throw new Error(`leader ${l.name} off board ${l.r},${l.c}`);
@@ -310,7 +336,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   }
   const reserveUnits: Unit[] = setup.reserves.map((u) => {
     const st = UNIT_STATS[u.type];
-    return { id: `u${nextId++}`, side: u.side, type: u.type, hex: OFF_BOARD, blocks: st.blocks, maxBlocks: st.blocks };
+    return withLegion({ id: `u${nextId++}`, side: u.side, type: u.type, hex: OFF_BOARD, blocks: st.blocks, maxBlocks: st.blocks }, setup.legions);
   });
   const reserveLeaders: Leader[] = setup.reserveLeaders.map((l) => withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: OFF_BOARD }, l.traits));
 

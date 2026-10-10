@@ -89,6 +89,19 @@ describe('scenario loader', () => {
     expect(s.leaders.filter((l) => l.hex === OFF_BOARD).map((l) => l.name)).toEqual(['Darius', 'Craterus']);
   });
 
+  it('passes the legion rule of each side through, as a copy (§18.2)', () => {
+    const raw: ScenarioJson = JSON.parse(JSON.stringify({ ...RAW, legions: { bottom: 'marius' } }));
+    const { setup } = scenarioFromJson(raw);
+    expect(setup.legions).toEqual({ bottom: 'marius' });
+    setup.legions!.top = 'julian';
+    expect(raw.legions).toEqual({ bottom: 'marius' });
+    expect(createGame(scenarioFromJson(raw).setup, 1).units.map((u) => [u.type, u.side, u.legion])).toEqual([
+      ['MC', 'top', undefined], ['LBC', 'top', undefined], ['MI', 'bottom', 'marius'], ['CAM', 'bottom', undefined],
+    ]);
+    expect(scenarioFromJson(RAW).setup.legions).toBeUndefined();
+    expect(scenarioFromJson({ ...RAW, legions: {} }).setup.legions).toBeUndefined();
+  });
+
   it('an empty options object offers no optional rule', () => {
     const { setup } = scenarioFromJson({ ...RAW, options: {}, rules: [], objectives: undefined, placeLeaders: undefined });
     expect(setup.options).toBeUndefined();

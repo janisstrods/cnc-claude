@@ -1,4 +1,5 @@
 // Movement: reachable hexes for ordered units and leaders (rules-reference §7).
+import { canMarch } from './elites';
 import { inSection, neighbours } from './hex';
 import { exitHexes } from './objectives';
 import { attachedLeader, enemyPieceAdjacent, leaderAt, leaderById, unitAt, unitById } from './query';
@@ -35,6 +36,8 @@ export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: Gam
     max = 3;
     battleMax = 3;
   }
+  // March (§18.2): 2 hexes without battle; Double Time already gives 2 with battle, so the result stays 2
+  if (canMarch(u)) max = Math.max(max, 2);
   if (mods.maxMove !== null) {
     max = Math.min(max, mods.maxMove);
     battleMax = Math.min(battleMax, max);

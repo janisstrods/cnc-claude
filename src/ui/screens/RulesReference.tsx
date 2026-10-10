@@ -178,6 +178,7 @@ const ELITE_REF: Record<EliteId, [string, string]> = {
   companions: ['Ignores the first sword rolled against it in close combat; may ignore 1 flag.', '107–111'],
   immortals: ['Fires like a missile unit, range 3 (1 die after moving); never fires and fights in the same turn. Not light.', '108'],
   bowAuxilia: ['Fires at range 3 instead of 2; as auxilia it cannot fire after moving 2 hexes.', '123'],
+  tenthLegion: ['Heavy infantry that throws the pilum (range 2, always 1 die, not after moving 2 hexes) and may march: 2 hexes if it does not battle.', '215, 217'],
 };
 
 /** Expansion #1 tab: new units, elites, leader traits, terrain and the battles' special rules (§15–§17). */

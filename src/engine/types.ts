@@ -8,7 +8,15 @@ export type UnitType = 'LI' | 'LB' | 'LS' | 'AX' | 'WA' | 'MI' | 'HI' | 'LC' | '
 export type UnitClass = 'light' | 'medium' | 'heavy';
 
 /** Elite unit presets (see elites.ts). A unit with `elite` set gets that preset's abilities on top of its type's. */
-export type EliteId = 'carthSacredBand' | 'thebanSacredBand' | 'silverShields' | 'companions' | 'immortals' | 'bowAuxilia';
+export type EliteId =
+  | 'carthSacredBand' | 'thebanSacredBand' | 'silverShields' | 'companions' | 'immortals' | 'bowAuxilia' | 'tenthLegion';
+
+/**
+ * Legion rule of a unit's army (Expansion #2/#3, rules-reference §18.2): `marius` = the pilum (range 2, always 1 die);
+ * `julian` = the pilum and the march. Stamped by the scenario's `legions` data on every MI and HI of the named side.
+ */
+export const LEGIONS = ['marius', 'julian'] as const;
+export type Legion = (typeof LEGIONS)[number];
 
 /**
  * Terrain of a hex. A fordable river is `river` with `fords[hex] === true` (and `noCap[hex]` when it has no dice caps).
@@ -56,6 +64,8 @@ export interface Unit {
   maxBlocks: number;
   /** Elite preset (e.g. scenario 002's Carthaginian Sacred Band); absent for ordinary units. */
   elite?: EliteId;
+  /** Legion rule of the unit's army (pilum, march; §18.2); absent for units outside a legion. */
+  legion?: Legion;
 }
 
 /**
