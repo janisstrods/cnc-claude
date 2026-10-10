@@ -1,15 +1,17 @@
 // Dev gallery for the miniature art: http://localhost:5173/#/gallery/art
-// Close-up route: #/gallery/art/detail/<look|rome|carthage|syracuse>[/TYPE,TYPE..]
+// Close-up routes: #/gallery/art/detail/<look|rome|carthage|syracuse>[/TYPE,TYPE..] (tokens),
+// #/gallery/art/figures/<look>[/TYPE,TYPE..[/<elite>]] (single figures, much enlarged)
 import type { ReactNode } from 'react';
-import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
+import type { ArmyLook, Blocks, UnitType } from '../engine/types';
 import { hexPoints, HEX_W, HEX_R } from '../ui/geometry';
 import { BLOCK_COLORS, LEADER_ATTACH_OFFSET, LOOKS, LeaderToken, UnitIcon, UnitToken, paletteFor, unitTypeName } from '../art';
 import { crewFigure } from '../art/foot';
+import type { ArtEliteId } from '../art/palettes';
 import { FacingRightCtx } from '../art/parts';
-import { BasePlate } from '../art/token';
+import { BasePlate, Miniature, figureKind } from '../art/token';
 import { SCENARIOS } from '../scenarios';
 
-const TYPES: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI', 'LC', 'LBC', 'MC', 'HC', 'CAM', 'EL', 'HCH', 'HWM'];
+const TYPES: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI', 'LC', 'LBC', 'MC', 'HC', 'CAM', 'EL', 'HCH', 'HWM', 'BCH'];
 const BASE_TYPES: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI', 'LC', 'MC', 'HC', 'EL', 'HCH'];
 const FOOT_TYPES: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI'];
 /** The gallery's three base armies (these names are also accepted by the `detail` route). */
@@ -45,7 +47,7 @@ interface LookUse {
   blocks: Blocks;
   types: Set<UnitType>;
   commander: string;
-  elites: { type: UnitType; elite: EliteId }[];
+  elites: { type: UnitType; elite: ArtEliteId }[];
 }
 
 /** What each look fields across all scenarios: its block set, unit types, a commander's name and its elites. */
@@ -64,17 +66,39 @@ function lookUses(): Record<string, LookUse> {
   }
   return out;
 }
-const USES = lookUses();
+/**
+ * The Expansion #2 armies until their battles are in the scenario list: blocks, the unit types they field (survey of
+ * battles 201-223; BCH and HWM get their figures in plan Task 15), a commander, elites.
+ */
+const EXP2: Partial<Record<ArmyLook, LookUse>> = {
+  gallic: { blocks: 'bar', types: new Set(['LI', 'AX', 'WA', 'LC', 'MC', 'BCH']), commander: 'Aneroestes', elites: [] },
+  germanic: { blocks: 'bar', types: new Set(['LI', 'LB', 'AX', 'WA', 'MI', 'LC', 'MC']), commander: 'Arminius', elites: [] },
+  slave: { blocks: 'bar', types: new Set(['LI', 'LS', 'AX', 'WA', 'MI', 'LC', 'MC']), commander: 'Crixus', elites: [] },
+  belgic: { blocks: 'bar', types: new Set(['LI', 'AX', 'WA', 'MC']), commander: 'Boduognatus', elites: [] },
+  briton: { blocks: 'bar', types: new Set(['LI', 'LB', 'AX', 'WA', 'LC', 'MC', 'BCH']), commander: 'Caratacus', elites: [] },
+  marian: {
+    blocks: 'rom', types: new Set(['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI', 'LC', 'MC', 'HWM']), commander: 'Marius',
+    elites: [{ type: 'HI', elite: 'tenthLegion' }],
+  },
+};
+const USES = { ...EXP2, ...lookUses() } as Record<string, LookUse>;
 const blocksOf = (look: ArmyLook): Blocks => USES[look]?.blocks ?? 'grk';
 
 /** Every elite preset with the look and unit type it belongs to. */
-const ELITES: { elite: EliteId; look: ArmyLook; type: UnitType; label: string }[] = [
+const ELITES: { elite: ArtEliteId; look: ArmyLook; type: UnitType; label: string }[] = [
   { elite: 'carthSacredBand', look: 'carthaginian', type: 'HI', label: 'Carthaginian Sacred Band' },
   { elite: 'thebanSacredBand', look: 'theban', type: 'MI', label: 'Theban Sacred Band' },
   { elite: 'silverShields', look: 'eumenes', type: 'HI', label: 'Silver Shields' },
   { elite: 'immortals', look: 'persian', type: 'MI', label: 'Immortals' },
   { elite: 'bowAuxilia', look: 'mauryan', type: 'AX', label: 'Bow Auxilia' },
   { elite: 'companions', look: 'macedonian', type: 'MC', label: 'Companions' },
+  { elite: 'tenthLegion', look: 'marian', type: 'HI', label: 'Tenth Legion' },
+];
+
+/** The leaders with their own figures (LEADER_LOOKS), next to their look's ordinary general. */
+const NAMED_LEADERS: { name: string; look: ArmyLook; other: string }[] = [
+  { name: 'Caesar', look: 'marian', other: 'Labienus' },
+  { name: 'Spartacus', look: 'slave', other: 'Crixus' },
 ];
 
 const GRASS = '#8fa25e';
@@ -106,16 +130,20 @@ function Row({ title, note, children }: { title: string; note?: string; children
 }
 
 /** A unit token at full strength unless `blocks` is given (UnitToken draws the elite's own figures and its standard). */
-function Token({ type, look, blockColor, blocks, facing = 'right', elite, dimmed }: {
-  type: UnitType; look: ArmyLook; blockColor: Blocks; blocks?: number; facing?: 'left' | 'right'; elite?: EliteId; dimmed?: boolean;
+function Token({ type, look, blockColor, blocks, facing = 'right', elite, dimmed, edgeBlocks }: {
+  type: UnitType; look: ArmyLook; blockColor: Blocks; blocks?: number; facing?: 'left' | 'right'; elite?: ArtEliteId; dimmed?: boolean; edgeBlocks?: Blocks;
 }) {
-  return <UnitToken type={type} look={look} blockColor={blockColor} blocks={blocks ?? MAX[type]} maxBlocks={MAX[type]} facing={facing} elite={elite} dimmed={dimmed} />;
+  return <UnitToken type={type} look={look} blockColor={blockColor} edgeBlocks={edgeBlocks} blocks={blocks ?? MAX[type]} maxBlocks={MAX[type]} facing={facing} elite={elite} dimmed={dimmed} />;
 }
 
-interface BoardUnit { r: number; c: number; type: UnitType; look: ArmyLook; blocks: number; facing: 'left' | 'right'; leader?: boolean; dimmed?: boolean; elite?: EliteId }
+interface BoardUnit {
+  r: number; c: number; type: UnitType; look: ArmyLook; blocks: number; facing: 'left' | 'right'; leader?: boolean; dimmed?: boolean;
+  elite?: ArtEliteId; edge?: Blocks; name?: string;
+}
 
 /** A small battle line at true board scale (1 SVG unit = 1 px) to judge readability. */
 function BoardSample({ units, lone }: { units: BoardUnit[]; lone?: { r: number; c: number; look: ArmyLook; name: string; facing: 'left' | 'right' } }) {
+  const art = (u: BoardUnit) => ({ look: u.look, blockColor: blocksOf(u.look) });
   const W = 7.5 * HEX_W + 20;
   const H = 2 * HEX_R * 1.5 + 2 * HEX_R + 20;
   const pos = (r: number, c: number) => ({ x: 10 + HEX_W / 2 + c * HEX_W + (r % 2 ? HEX_W / 2 : 0), y: 10 + HEX_R + r * HEX_R * 1.5 });
@@ -129,13 +157,12 @@ function BoardSample({ units, lone }: { units: BoardUnit[]; lone?: { r: number; 
       {hexes}
       {units.map((u, k) => {
         const { x, y } = pos(u.r, u.c);
-        const art = { look: u.look, blockColor: blocksOf(u.look) };
         return (
           <g key={k} transform={`translate(${x} ${y})`}>
-            <Token type={u.type} {...art} blocks={u.blocks} facing={u.facing} dimmed={u.dimmed} elite={u.elite} />
+            <Token type={u.type} {...art(u)} blocks={u.blocks} facing={u.facing} dimmed={u.dimmed} elite={u.elite} edgeBlocks={u.edge} />
             {u.leader && (
               <g transform={`translate(${LEADER_ATTACH_OFFSET.x} ${LEADER_ATTACH_OFFSET.y})`}>
-                <LeaderToken {...art} facing={u.facing} attached />
+                <LeaderToken {...art(u)} facing={u.facing} attached name={u.name} />
               </g>
             )}
           </g>
@@ -245,6 +272,30 @@ const BIG_BOARD: BoardUnit[] = [
   { r: 2, c: 6, type: 'HCH', look: 'indian', blocks: 2, facing: 'left' },
 ];
 
+/** Expansion #2: Gauls, Germans and the Slave army against the Marian legions (Vercellae, Silarus, the Sabis). */
+const EXP2_BOARD: BoardUnit[] = [
+  { r: 0, c: 0, type: 'LC', look: 'gallic', blocks: 3, facing: 'right' },
+  { r: 0, c: 1, type: 'WA', look: 'gallic', blocks: 4, facing: 'right', leader: true },
+  { r: 0, c: 2, type: 'WA', look: 'germanic', blocks: 4, facing: 'right' },
+  { r: 0, c: 3, type: 'AX', look: 'belgic', blocks: 3, facing: 'right' },
+  { r: 0, c: 4, type: 'WA', look: 'briton', blocks: 4, facing: 'right' },
+  { r: 0, c: 5, type: 'LI', look: 'gallic', blocks: 4, facing: 'right', dimmed: true },
+  { r: 0, c: 6, type: 'MC', look: 'germanic', blocks: 3, facing: 'right' },
+  { r: 1, c: 0, type: 'MC', look: 'marian', blocks: 3, facing: 'left' },
+  { r: 1, c: 1, type: 'HI', look: 'marian', blocks: 4, facing: 'left', elite: 'tenthLegion', leader: true, name: 'Caesar' },
+  { r: 1, c: 2, type: 'MI', look: 'marian', blocks: 4, facing: 'left' },
+  { r: 1, c: 3, type: 'MI', look: 'marian', blocks: 2, facing: 'left' },
+  { r: 1, c: 4, type: 'AX', look: 'marian', blocks: 4, facing: 'left' },
+  { r: 1, c: 5, type: 'LB', look: 'marian', blocks: 3, facing: 'left' },
+  { r: 2, c: 0, type: 'WA', look: 'slave', blocks: 4, facing: 'right', leader: true, name: 'Spartacus' },
+  { r: 2, c: 1, type: 'MI', look: 'slave', blocks: 4, facing: 'right' },
+  { r: 2, c: 2, type: 'AX', look: 'slave', blocks: 4, facing: 'right' },
+  { r: 2, c: 3, type: 'LS', look: 'slave', blocks: 4, facing: 'right' },
+  { r: 2, c: 4, type: 'MI', look: 'marian', blocks: 4, facing: 'left', edge: 'gry' },
+  { r: 2, c: 5, type: 'LI', look: 'germanic', blocks: 4, facing: 'right' },
+  { r: 2, c: 6, type: 'WA', look: 'marian', blocks: 4, facing: 'left' },
+];
+
 /** Looks that field a type in their battles (gallery order). */
 const fielding = (t: UnitType) => LOOK_ORDER.filter((look) => USES[look]?.types.has(t));
 
@@ -336,9 +387,34 @@ function Detail() {
   );
 }
 
+/** Single figures (i = 0..3) much enlarged: #/gallery/art/figures/<look>/<TYPE,TYPE..>[/<elite>]. */
+function Figures() {
+  const parts = window.location.hash.split('/');
+  const look = (parts[4] && parts[4] in LOOKS ? parts[4] : 'roman') as ArmyLook;
+  const list = (parts[5] ?? 'WA,AX,MI,HI').split(',') as UnitType[];
+  const elite = (parts[6] || undefined) as ArtEliteId | undefined;
+  const p = paletteFor(look, blocksOf(look));
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 10, background: '#e3d3ad' }}>
+      {list.map((t) => (
+        <div key={t} style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+          <span style={{ font: '700 18px Cinzel, serif', width: 50 }}>{t}</span>
+          {[0, 1, 2, 3].map((i) => (
+            <svg key={i} width={figureKind(t) === 'foot' ? 220 : 330} height={300} viewBox={figureKind(t) === 'foot' ? '-16 -46 34 47' : '-26 -50 52 52'} style={{ background: GRASS, borderRadius: 4 }}>
+              <FacingRightCtx.Provider value>
+                <Miniature type={t} p={p} i={i} elite={elite} />
+              </FacingRightCtx.Provider>
+            </svg>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** War-machine crewmen per kit (the HWM figure of the war-machine art puts them beside the engine). */
 function CrewRow() {
-  const looks: ArmyLook[] = ['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian'];
+  const looks: ArmyLook[] = ['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian', 'marian', 'gallic', 'germanic'];
   return (
     <>
       {looks.map((look) => {
@@ -358,8 +434,105 @@ function CrewRow() {
   );
 }
 
+const EXP2_LOOKS: ArmyLook[] = ['gallic', 'belgic', 'briton', 'germanic', 'slave', 'marian'];
+
+/** A look's row: every type it fields, its elites, its leader alone and attached. */
+function LookRow({ look }: { look: ArmyLook }) {
+  const use = USES[look];
+  const art = { look, blockColor: blocksOf(look) };
+  const fielded = TYPES.filter((t) => use?.types.has(t));
+  return (
+    <Row title={`${LOOK_LABEL[look]} — ${LOOKS[look].kit} kit, ${art.blockColor} blocks`} note={`The unit types this army fields in its battles${use?.elites.length ? '; elites at the end' : ''}.`}>
+      {fielded.map((t) => (
+        <Hex key={t} scale={1.5} label={unitTypeName(t)}>
+          <Token type={t} {...art} />
+        </Hex>
+      ))}
+      {use?.elites.map((e) => (
+        <Hex key={e.elite} scale={1.5} label={`${e.elite} (${e.type})`}>
+          <Token type={e.type} {...art} elite={e.elite} />
+        </Hex>
+      ))}
+      <Hex scale={1.5} label="Leader">
+        <LeaderToken {...art} facing="right" attached={false} name={use?.commander ?? 'General'} showName />
+      </Hex>
+      <Hex scale={1.5} label="Attached">
+        <Token type={fielded.includes('HI') ? 'HI' : fielded[0] ?? 'HI'} {...art} />
+        <g transform={`translate(${LEADER_ATTACH_OFFSET.x} ${LEADER_ATTACH_OFFSET.y})`}>
+          <LeaderToken {...art} facing="right" attached />
+        </g>
+      </Hex>
+    </Row>
+  );
+}
+
+/** Units of every Expansion #2 look as icons (UnitIcon at 64 and 32). */
+function IconRows({ looks }: { looks: ArmyLook[] }) {
+  return (
+    <>
+      {looks.map((look) => (
+        <div key={look} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, width: '100%' }}>
+          {TYPES.map((t) => (
+            <div key={t} style={{ background: '#2a2016', borderRadius: 8, padding: 4, textAlign: 'center' }}>
+              <svg width={72} height={72} viewBox="-36 -36 72 72" style={{ display: 'block' }}>
+                <circle r={34} fill="#f1e4c4" />
+                <UnitIcon type={t} look={look} blockColor={blocksOf(look)} size={64} />
+              </svg>
+              <svg width={36} height={36} viewBox="-18 -18 36 36" style={{ display: 'block', margin: '2px auto 0' }}>
+                <UnitIcon type={t} look={look} blockColor={blocksOf(look)} size={32} />
+              </svg>
+              <div style={{ color: '#f1e4c4', font: '700 11px Cinzel, serif' }}>{t}</div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** The Expansion #2 art only: #/gallery/art/exp2. */
+function Exp2Gallery() {
+  return (
+    <div style={{ minHeight: '100vh', padding: '22px 26px 60px', background: '#e3d3ad', fontFamily: '"EB Garamond", Georgia, serif', color: '#2b2014' }}>
+      <h1 style={{ font: '700 30px Cinzel, Georgia, serif', margin: '0 0 12px', letterSpacing: 2 }}>Rome &amp; the Barbarians</h1>
+      <Row title="At board scale (1×)">
+        <BoardSample units={EXP2_BOARD} lone={{ r: 1, c: 6, look: 'marian', name: 'Caesar', facing: 'left' }} />
+      </Row>
+      <Row title="Block colours" note="The Barbarian green and the grey Roman command (edgeBlocks) beside the other sets.">
+        <BlockSwatches />
+      </Row>
+      {EXP2_LOOKS.map((look) => <LookRow key={look} look={look} />)}
+      <Row title="Tenth Legion" note="Marian HI and the Tenth Legion elite (crimson gold-rimmed scuta with the bull, white plumes, greaves, the eagle marker).">
+        <Hex label="Marian HI"><Token type="HI" look="marian" blockColor="rom" /></Hex>
+        <Hex label="Tenth Legion"><Token type="HI" look="marian" blockColor="rom" elite="tenthLegion" /></Hex>
+        <Hex label="Tenth Legion 2/4, left"><Token type="HI" look="marian" blockColor="rom" elite="tenthLegion" blocks={2} facing="left" /></Hex>
+      </Row>
+      <Row title="Named leaders" note="Caesar and Spartacus (LEADER_LOOKS, matched by name) next to an ordinary general of their look.">
+        {NAMED_LEADERS.flatMap(({ name, look, other }) => {
+          const art = { look, blockColor: blocksOf(look) };
+          return [name, other].map((n) => (
+            <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Hex scale={2} label={`${n} (${LOOK_LABEL[look]})`}>
+                <LeaderToken {...art} facing="right" attached={false} name={n} showName />
+              </Hex>
+              <svg width={120} height={120} viewBox="-14 -14 28 28" style={{ background: GRASS, borderRadius: 4 }}>
+                <LeaderToken {...art} facing="right" attached name={n} />
+              </svg>
+            </div>
+          ));
+        })}
+      </Row>
+      <Row title="Unit icons (UnitIcon, size 64 and 32)">
+        <IconRows looks={EXP2_LOOKS} />
+      </Row>
+    </div>
+  );
+}
+
 export default function ArtGallery() {
   if (window.location.hash.startsWith('#/gallery/art/detail')) return <Detail />;
+  if (window.location.hash.startsWith('#/gallery/art/figures')) return <Figures />;
+  if (window.location.hash.startsWith('#/gallery/art/exp2')) return <Exp2Gallery />;
   return (
     <div
       style={{
@@ -372,7 +545,8 @@ export default function ArtGallery() {
     >
       <h1 style={{ font: '700 30px Cinzel, Georgia, serif', margin: '0 0 4px', letterSpacing: 2 }}>Miniatures</h1>
       <p style={{ margin: '0 0 20px', fontSize: 17 }}>
-        Illustrated painted-miniature unit art · hexes shown at 2× board scale unless noted · close-ups: #/gallery/art/detail/&lt;look&gt;
+        Illustrated painted-miniature unit art · hexes shown at 2× board scale unless noted · close-ups: #/gallery/art/detail/&lt;look&gt;,
+        #/gallery/art/figures/&lt;look&gt; · Expansion #2 only: #/gallery/art/exp2
       </p>
 
       <Row title="At board scale (1×)">
@@ -380,40 +554,14 @@ export default function ArtGallery() {
         <BoardSample units={EXP_BOARD} lone={{ r: 1, c: 6, look: 'macedonian', name: 'Alexander', facing: 'left' }} />
         <BoardSample units={GREEK_BOARD} lone={{ r: 1, c: 6, look: 'theban', name: 'Epaminondas', facing: 'left' }} />
         <BoardSample units={BIG_BOARD} lone={{ r: 1, c: 6, look: 'macedonian', name: 'Alexander', facing: 'left' }} />
+        <BoardSample units={EXP2_BOARD} lone={{ r: 1, c: 6, look: 'marian', name: 'Caesar', facing: 'left' }} />
       </Row>
 
       <Row title="Block colours" note="Base edge, standard and captured-banner cloth of each block set, and on the board; last: a unit of a grey command in a red army (edgeBlocks, 210 Lentulus).">
         <BlockSwatches />
       </Row>
 
-      {LOOK_ORDER.map((look) => {
-        const use = USES[look];
-        const art = { look, blockColor: blocksOf(look) };
-        const fielded = TYPES.filter((t) => use?.types.has(t));
-        return (
-          <Row key={look} title={`${LOOK_LABEL[look]} — ${LOOKS[look].kit} kit, ${art.blockColor} blocks`} note={`The unit types this army fields in its battles${use?.elites.length ? '; elites at the end' : ''}.`}>
-            {fielded.map((t) => (
-              <Hex key={t} scale={1.5} label={unitTypeName(t)}>
-                <Token type={t} {...art} />
-              </Hex>
-            ))}
-            {use?.elites.map((e) => (
-              <Hex key={e.elite} scale={1.5} label={`${e.elite} (${e.type})`}>
-                <Token type={e.type} {...art} elite={e.elite} />
-              </Hex>
-            ))}
-            <Hex scale={1.5} label="Leader">
-              <LeaderToken {...art} facing="right" attached={false} name={use?.commander ?? 'General'} showName />
-            </Hex>
-            <Hex scale={1.5} label="Attached">
-              <Token type={fielded.includes('HI') ? 'HI' : fielded[0] ?? 'HI'} {...art} />
-              <g transform={`translate(${LEADER_ATTACH_OFFSET.x} ${LEADER_ATTACH_OFFSET.y})`}>
-                <LeaderToken {...art} facing="right" attached />
-              </g>
-            </Hex>
-          </Row>
-        );
-      })}
+      {LOOK_ORDER.map((look) => <LookRow key={look} look={look} />)}
 
       <Row title="Elites" note="Each elite next to its army's ordinary unit.">
         {ELITES.flatMap(({ elite, look, type, label }) => {
@@ -458,8 +606,8 @@ export default function ArtGallery() {
         <Hex scale={1.5} label="HWM 1/2, left"><Token type="HWM" look="roman" blockColor="rom" blocks={1} facing="left" /></Hex>
       </Row>
 
-      <Row title="Every kit, every type" note="One look per kit with all fifteen unit types (also the types its armies never field).">
-        {(['syracusan', 'macedonian', 'persian', 'scythian', 'indian'] as ArmyLook[]).map((look) => (
+      <Row title="Every kit, every type" note="One look per kit with all sixteen unit types (also the types its armies never field; BCH draws the chariot until plan Task 15).">
+        {(['syracusan', 'macedonian', 'persian', 'scythian', 'indian', 'gallic', 'germanic', 'marian'] as ArmyLook[]).map((look) => (
           <div key={look} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, width: '100%' }}>
             {TYPES.map((t) => (
               <Hex key={t} scale={1.2} label={`${look} ${t}`}>
@@ -472,6 +620,22 @@ export default function ArtGallery() {
 
       <Row title="War-machine crews" note="crewFigure(palette, i, pose) per kit: crank, load, aim.">
         <CrewRow />
+      </Row>
+
+      <Row title="Named leaders" note="Leaders with their own figure (LEADER_LOOKS, matched by name) next to an ordinary general of their look: Caesar (laurel wreath, scarlet cloak, white horse) and Spartacus (Thracian helmet, sica).">
+        {NAMED_LEADERS.flatMap(({ name, look, other }) => {
+          const art = { look, blockColor: blocksOf(look) };
+          return [name, other].map((n) => (
+            <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Hex scale={1.6} label={`${n} (${LOOK_LABEL[look]})`}>
+                <LeaderToken {...art} facing="right" attached={false} name={n} showName />
+              </Hex>
+              <svg width={96} height={96} viewBox="-14 -14 28 28" style={{ background: GRASS, borderRadius: 4 }}>
+                <LeaderToken {...art} facing="right" attached name={n} />
+              </svg>
+            </div>
+          ));
+        })}
       </Row>
 
       <Row title="Leaders of every look" note="Alone (mounted general with the army's standard) and attached (portrait medallion).">
@@ -568,22 +732,7 @@ export default function ArtGallery() {
       </Row>
 
       <Row title="Unit icons (UnitIcon, size 64 and 32)">
-        {(['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian'] as ArmyLook[]).map((look) => (
-          <div key={look} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, width: '100%' }}>
-            {TYPES.map((t) => (
-              <div key={t} style={{ background: '#2a2016', borderRadius: 8, padding: 4, textAlign: 'center' }}>
-                <svg width={72} height={72} viewBox="-36 -36 72 72" style={{ display: 'block' }}>
-                  <circle r={34} fill="#f1e4c4" />
-                  <UnitIcon type={t} look={look} blockColor={blocksOf(look)} size={64} />
-                </svg>
-                <svg width={36} height={36} viewBox="-18 -18 36 36" style={{ display: 'block', margin: '2px auto 0' }}>
-                  <UnitIcon type={t} look={look} blockColor={blocksOf(look)} size={32} />
-                </svg>
-                <div style={{ color: '#f1e4c4', font: '700 11px Cinzel, serif' }}>{t}</div>
-              </div>
-            ))}
-          </div>
-        ))}
+        <IconRows looks={['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian', ...EXP2_LOOKS]} />
       </Row>
     </div>
   );

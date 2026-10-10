@@ -1,11 +1,11 @@
 // Horses and riders (LC, MC, HC, LBC, leaders), and the half-figures that crew elephants, chariots and camels.
 // Facing right, hooves at y = 0.
 import { useContext } from 'react';
-import type { EliteId, UnitType } from '../engine/types';
+import type { UnitType } from '../engine/types';
 import { darken, lighten } from './color';
 import { figurePalette, type CrewDress } from './foot';
 import { KITS, type MountKit } from './kits';
-import type { Kit, LookPalette, Palette } from './palettes';
+import type { ArtEliteId, Kit, LookPalette, Palette } from './palettes';
 import {
   Arm, Body, FacingRightCtx, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, dots, makeFig,
   type Crest, type Fig, type Hair, type Helmet, type ShieldKind, type Torso,
@@ -199,6 +199,8 @@ export interface RiderKit {
   bow?: 'self' | 'scythian';
   /** Turned in the saddle, shooting back over the horse's croup. */
   backShot?: boolean;
+  /** A sword raised in the near hand instead of the reins (Spartacus' sica). */
+  sidearm?: 'sica';
 }
 
 const HORSE_SCALE = 1.12;
@@ -333,10 +335,30 @@ export function Rider({ kit, f, standard }: { kit: RiderKit; f: Fig; standard?: 
       )}
       {kit.shield === 'aspis' && <Shield kind="aspis" f={f} dx={0.4 + 0.75 * 0.2} dy={13.4 - 14.4 * 0.25} s={0.75} />}
       {kit.shield === 'oval' && <Shield kind="oval" f={f} dx={0.6} dy={14.6 - 13.8 * 0.25} s={0.75} />}
-      {kit.shield === 'none' && (kit.weapon === 'lance' || kit.weapon === 'standard') && (
+      {kit.shield === 'none' && (kit.weapon === 'lance' || kit.weapon === 'standard') && !kit.sidearm && (
         <Arm s={ns} e={[4.4, -4.4]} h={[7.2, -4.8]} f={f} near sleeve={sleeve} long={long} />
       )}
+      {kit.sidearm && <RaisedSica f={f} s={ns} sleeve={sleeve} long={long} />}
     </>
+  );
+}
+
+/** The near arm raised with a sica, its curved blade hooking forward (rider frame). */
+function RaisedSica({ f, s, sleeve, long }: { f: Fig; s: [number, number]; sleeve: string; long: boolean }) {
+  const { p } = f;
+  const h: [number, number] = [7.4, -13.8];
+  const ux = 0.5;
+  const uy = -0.866;
+  const nx = -uy;
+  const ny = ux;
+  const r = (v: number) => v.toFixed(2);
+  const g = (t: number, side: number) => `${r(h[0] + ux * t + nx * side)} ${r(h[1] + uy * t + ny * side)}`;
+  return (
+    <g>
+      <path d={`M${g(1, -0.75)} Q${g(5.8, -0.6)} ${g(8.6, 2.6)} Q${g(4.8, 2.6)} ${g(1, 0.75)} Z`} fill={p.ironLight} stroke={OL} strokeWidth={0.55} strokeLinejoin="round" />
+      <Line2 d={`M${g(0.9, -1.6)} L${g(0.9, 1.6)}`} w={0.65} c={p.metal} ow={0.4} />
+      <Arm s={s} e={[5.6, -8.6]} h={h} f={f} near sleeve={sleeve} long={long} />
+    </g>
   );
 }
 
@@ -377,7 +399,7 @@ function lookMount(type: UnitType, p: Palette, i: number): MountKit {
 }
 
 /** The mount of a horse archer (any kit) or of a kit-drawn cavalry figure; base cavalry is drawn in `MountedFigure`. */
-function kitMount(type: UnitType, p: Palette, i: number, elite: EliteId | undefined): Mount {
+function kitMount(type: UnitType, p: Palette, i: number, elite: ArtEliteId | undefined): Mount {
   const light = type === 'LC' || type === 'LBC';
   const pose = light ? 1 + (i % 2) : type === 'HC' ? 2 * (i % 2) : i % 3;
   const coat = type === 'HC' ? 1 : light ? 2 : 0;
@@ -399,7 +421,7 @@ function companionsPalette(p: Palette): Palette {
 }
 
 /** A mounted figure of an Expansion #1 kit, or a horse archer of any kit. */
-function KitMounted({ type, p: armyP, i, elite }: { type: UnitType; p: Palette; i: number; elite?: EliteId }) {
+function KitMounted({ type, p: armyP, i, elite }: { type: UnitType; p: Palette; i: number; elite?: ArtEliteId }) {
   const fp = figurePalette(armyP, i);
   const p = elite === 'companions' ? companionsPalette(fp) : fp;
   const f = makeFig(p, i);
@@ -438,7 +460,7 @@ function KitMounted({ type, p: armyP, i, elite }: { type: UnitType; p: Palette; 
 }
 
 /** One mounted miniature (LC, MC, HC, LBC). `elite` gives the Companions their own figures. */
-export function MountedFigure({ type, p, i, elite }: { type: UnitType; p: Palette; i: number; elite?: EliteId }) {
+export function MountedFigure({ type, p, i, elite }: { type: UnitType; p: Palette; i: number; elite?: ArtEliteId }) {
   const cavalry = KITS[p.kit].cavalry;
   if (type === 'LBC' || cavalry.drawing !== 'base') return <KitMounted type={type} p={p} i={i} elite={elite} />;
   const f = makeFig(p, i);

@@ -597,6 +597,76 @@ const INDIAN: KitDef = {
   },
 };
 
+// ---------------------------------------------------------------------------------------------
+// Expansion #2: the Celts (Gauls, Belgae, Britons), the Germanic tribes, the legions of the late Republic
+
+/**
+ * Gauls, Belgae and Britons: trousers and torcs, long painted shields (oval or hexagonal) with a spine and a strip boss,
+ * long swords; bare-chested warriors, mail and Montefortino or horned helmets on a few nobles.
+ */
+function celticFoot(type: UnitType, i: number): FootKit {
+  const dress = { legs: 'trousers' as const, crest: 'none' as const, moustache: true };
+  const tunic = { ...dress, torso: 'tunic' as const, skirt: true, sleeve: true };
+  const bare = { ...dress, torso: 'bare' as const, skirt: false, torc: true };
+  const long = { shield: 'celtOval' as const, shieldScale: 0.94, shieldDy: 2.4 };
+  switch (type) {
+    case 'LI':
+      // young javelinmen, bare-headed, with a small shield
+      return {
+        ...(i % 2 ? bare : tunic), helmet: 'none', hair: i % 2 ? 'wild' : 'long', shield: 'celtOval', shieldScale: 0.76,
+        weapon: 'javelin', spare: 'javelins', moustache: i % 2 === 1,
+      };
+    case 'LB':
+      return { ...tunic, helmet: 'none', hair: i % 2 ? 'long' : 'short', shield: 'none', weapon: 'bow', moustache: i % 2 === 0 };
+    case 'LS':
+      return { ...(i % 2 ? tunic : bare), helmet: 'none', hair: i % 2 ? 'short' : 'long', shield: 'none', weapon: 'sling', torc: false };
+    case 'AX':
+      // javelins and a spear, a few in helmets
+      return {
+        ...tunic, helmet: i % 4 === 1 ? 'montefortino' : 'none', hair: 'long', shield: 'celtOval', shieldScale: 0.88,
+        weapon: 'javelin', spare: 'spear', torc: i % 2 === 0,
+      };
+    case 'WA':
+      // the warband: bare-chested swordsmen; a noble in mail and a Montefortino, one in a horned helmet
+      if (i % 4 === 1) return { ...tunic, torso: 'mail', sleeve: false, helmet: 'montefortino', crest: 'horsehair', hair: 'long', ...long, weapon: 'sword', torc: true };
+      if (i % 4 === 3) return { ...tunic, helmet: 'horned', hair: 'long', ...long, weapon: 'sword', torc: true };
+      return { ...bare, helmet: 'none', hair: i % 4 === 0 ? 'wild' : 'long', ...long, weapon: 'sword' };
+    case 'MI':
+      // a chief's retinue: helmets, long shields and spears
+      return {
+        ...tunic, torso: i % 2 ? 'mail' : 'tunic', sleeve: i % 2 === 0, helmet: i % 2 ? 'montefortino' : 'coolus',
+        crest: i % 2 ? 'horsehair' : 'knob', hair: 'long', ...long, weapon: 'spear', torc: true,
+      };
+    case 'HI':
+    default:
+      return { ...tunic, torso: 'mail', sleeve: false, helmet: 'montefortino', crest: 'horsehair', hair: 'long', shield: 'hex', weapon: 'spear', torc: true };
+  }
+}
+
+/** Celtic horsemen: javelins and round shields on the light horse, mail, helmets, oval shields and spears on the nobles. */
+function celticMount(type: UnitType, i: number): MountKit {
+  const dress = { crest: 'none' as const, legs: 'trousers' as const, moustache: true, hair: 'long' as const };
+  if (type === 'LC') return { rider: { ...dress, torso: i % 2 ? 'bare' : 'tunic', helmet: 'none', shield: 'round', weapon: 'javelin', spare: true }, cloth: 'plain' };
+  if (type === 'HC') return { rider: { ...dress, torso: 'mail', helmet: 'montefortino', crest: 'horsehair', shield: 'none', weapon: 'lance' }, cloth: 'plain' };
+  return { rider: { ...dress, torso: 'mail', helmet: i % 2 ? 'montefortino' : 'coolus', crest: i % 2 ? 'horsehair' : 'knob', shield: 'oval', weapon: 'spear' }, cloth: 'plain' };
+}
+
+const CELTIC: KitDef = {
+  foot: celticFoot,
+  cavalry: { drawing: 'kit', mount: celticMount },
+  // a chieftain in mail and a horned helmet, with his torc and cloak
+  general: {
+    rider: { torso: 'mail', helmet: 'horned', crest: 'none', shield: 'none', weapon: 'standard', legs: 'trousers', cloak: true, moustache: true, hair: 'long' },
+    torque: true,
+  },
+  bust: { helmet: 'horned', crest: 'none', beard: false, moustache: true, hair: 'long', torc: true, chest: 'mail' },
+  // (union over the Gallic, Belgic, British and Slave looks; HCH and BCH are the fallback chariot until its own figure)
+  iconBox: {
+    MI: [-40, 1.8, -8.2, 10.2], HI: [-40, 1.8, -6.1, 9.7], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31],
+    HWM: [-32, 0.4, -28.1, 21.9], BCH: [-39.6, 0.9, -27.8, 31],
+  },
+};
+
 /**
  * Fills the choices a kit leaves out: crews dressed as its medium infantry, the base game's chariot and elephant manned
  * by such crews, horse archers built from its light horseman, the self bow, the oxybeles, plain shields, no icon boxes.
@@ -637,6 +707,7 @@ export const KIT_DEFS: Record<Kit, KitDef> = {
   persian: PERSIAN,
   scythian: SCYTHIAN,
   indian: INDIAN,
+  celtic: CELTIC,
 };
 
 /** Every figure kit, completed (see `completeKit`): the table the drawing code reads. */

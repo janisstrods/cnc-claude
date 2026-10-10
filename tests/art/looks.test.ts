@@ -298,8 +298,9 @@ const KITS: Record<ArmyLook, Kit> = {
   macedonian: 'macedonian', antigonid: 'macedonian', epirote: 'macedonian', craterus: 'macedonian', eumenes: 'macedonian',
   antigonus: 'macedonian', seleucid: 'macedonian', ptolemaic: 'macedonian',
   persian: 'persian', scythian: 'scythian', indian: 'indian', mauryan: 'indian',
-  // Expansion #2 (temporary art: the Barbarian looks draw as Carthaginian, the Marian Romans as Roman)
-  gallic: 'punic', germanic: 'punic', slave: 'punic', belgic: 'punic', briton: 'punic', marian: 'roman',
+  // Expansion #2: the Celtic kit for the Gauls, Belgae, Britons and the Slave army (with Thracian, Germanic and Italian
+  // figures among them), the Germanic kit, the late-Roman kit for the Marian legions
+  gallic: 'celtic', germanic: 'punic', slave: 'punic', belgic: 'celtic', briton: 'celtic', marian: 'roman',
 };
 const ALL_LOOKS = Object.keys(KITS) as ArmyLook[];
 

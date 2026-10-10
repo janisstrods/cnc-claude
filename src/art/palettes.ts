@@ -1,11 +1,18 @@
-import type { ArmyLook, Blocks, UnitType } from '../engine/types';
+import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
 import type { CrewDress, FootLook } from './foot';
-import type { ElephantDef, MountKit } from './kits';
+import type { BustDef, ElephantDef, HorseCoat, MountKit } from './kits';
+import type { RiderKit } from './mounted';
 import type { Crest, Helmet } from './parts';
 
 /** Figure kit: the shapes (helmets, shields, torsos, mounts) an army's miniatures are built from. */
-export type Kit = 'roman' | 'punic' | 'greek' | 'macedonian' | 'persian' | 'scythian' | 'indian';
+export type Kit = 'roman' | 'punic' | 'greek' | 'macedonian' | 'persian' | 'scythian' | 'indian' | 'celtic';
+
+/**
+ * The elite presets that have art: the engine's `EliteId`, plus the Tenth Legion until the engine's Expansion #2 types
+ * (plan Task 5) add it to `EliteId` on this branch; then this is just `EliteId`.
+ */
+export type ArtEliteId = EliteId | 'tenthLegion';
 
 /** Cloth colours of a captured banner (the victory banner track). */
 export interface BannerCloth {
@@ -87,6 +94,11 @@ export interface LookPalette {
   capShade?: string;
   /** Woven / embroidered pattern on robes, tunics, trousers and bow cases. */
   pattern?: string;
+  // Optional swatches of the Expansion #2 looks.
+  /** Hide and fur cloaks (Germanic warriors). */
+  fur?: string;
+  /** Woad body paint (Britons). */
+  woad?: string;
 }
 
 /** Devices painted on shields and on the army standard (drawn by `Emblem` in parts.tsx). */
@@ -94,13 +106,20 @@ export type EmblemKind =
   | 'rome' | 'carthage' | 'syracuse'
   | 'owl' | 'gorgon' | 'bull' | 'triskeles' | 'club' | 'lambda' | 'phi' | 'tripod'
   | 'star' | 'macShield' | 'thunderbolt' | 'anchor' | 'eagle' | 'trident'
-  | 'wingedDisc' | 'stag' | 'wheel' | 'meru' | 'none';
+  | 'wingedDisc' | 'stag' | 'wheel' | 'meru'
+  // Expansion #2: Celtic La Tene scroll, boar, back-to-back crescents and the chalk-figure horse; Germanic shield paint
+  // (two halves, a ring round the boss, diagonal bands); Jupiter's winged thunderbolt of the legions; the freedman's cap
+  | 'scroll' | 'boar' | 'crescents' | 'horse' | 'halves' | 'ring' | 'bands' | 'wingedBolt' | 'pileus'
+  | 'none';
 
 /** Device on the cloth of the army standard: an emblem, or the Roman laurel wreath. */
 export type StandardDevice = EmblemKind | 'wreath';
 
 /** Pole-top ornament of the army standard. */
-export type Finial = 'eagle' | 'crescent' | 'lozenge' | 'star' | 'spearhead' | 'royalEagle' | 'wheel' | 'trident' | 'stag';
+export type Finial =
+  | 'eagle' | 'crescent' | 'lozenge' | 'star' | 'spearhead' | 'royalEagle' | 'wheel' | 'trident' | 'stag'
+  // Expansion #2: a bronze boar or bull (the Cimbri's bull, Plutarch) and the cap of liberty on a spear
+  | 'boar' | 'bull' | 'pileus';
 
 /**
  * Look-specific art choices beyond the swatches: shield devices, the army standard, per-figure paint variants and the
@@ -112,10 +131,13 @@ export interface LookStyle {
   emblems: EmblemKind[];
   /** Devices on painted light-troop shields (default: `emblems`). */
   paintEmblems?: EmblemKind[];
-  /** Standard: device on the banner cloth and the finial; `parasol` is the Indian royal parasol (chattra). */
+  /**
+   * Standard: device on the banner cloth and the finial; `parasol` is the Indian royal parasol (chattra), `carnyx` the
+   * Celtic war trumpet with its boar's head and a streamer in the side colour, `aquila` the legion's eagle over a vexillum.
+   */
   device: StandardDevice;
   finial: Finial;
-  standard?: 'banner' | 'parasol';
+  standard?: 'banner' | 'parasol' | 'carnyx' | 'aquila';
   /** Paint variants per figure index (cycled): mixed contingents, colourful robes. */
   variants?: Partial<LookPalette>[];
   /** Overrides of the kit's foot figures per unit type: one override, or one per figure index (cycled). */
@@ -345,6 +367,8 @@ interface LookSpec {
   bannerEmblem?: string;
   cap?: string;
   pattern?: string;
+  fur?: string;
+  woad?: string;
 }
 
 function look(o: LookSpec): LookPalette {
@@ -372,6 +396,8 @@ function look(o: LookSpec): LookPalette {
     bannerEmblem: o.bannerEmblem ?? '#f2c94f',
     ...(o.cap ? { cap: o.cap, capShade: darken(o.cap, 0.32) } : {}),
     ...(o.pattern ? { pattern: o.pattern } : {}),
+    ...(o.fur ? { fur: o.fur } : {}),
+    ...(o.woad ? { woad: o.woad } : {}),
   };
 }
 
@@ -386,6 +412,11 @@ const shieldOf = (c: string, emblem?: string): Partial<LookPalette> => {
 };
 const capOf = (c: string): Partial<LookPalette> => ({ cap: c, capShade: darken(c, 0.32) });
 const trousersOf = (c: string): Partial<LookPalette> => ({ trousers: c, trousersShade: darken(c, 0.34) });
+/** Painted (light-troop and tribal) shield colours for one figure. */
+const paintOf = (c: string, emblem: string): Partial<LookPalette> => {
+  const [paint, paintShade, paintLight] = tone(c, 0.34, 0.32);
+  return { paint, paintShade, paintLight, paintEmblem: emblem };
+};
 
 // --- Greek city armies (kit `greek`) --------------------------------------------------------
 
@@ -554,6 +585,45 @@ const MAURYAN = look({
   metal: ['#d4a648', '#8e6620', '#f6de96'], crest: '#8a1e2a', crestAlt: '#f2e6c8',
   skin: INDIAN_SKIN, hair: INDIAN_HAIR, horses: HORSES_EAST, saddle: '#8a1e2a',
   cap: '#f2e6c8', pattern: '#8a1e2a',
+});
+
+// --- Expansion #2: Gauls, Belgae, Britons, Germans, the Slave army, the Marian legions ---------
+// The Barbarian armies face red Romans in every battle, so none of their tunics, shields or painted shields is red.
+
+const NORTH_SKIN = ['#ecc29c', '#dfae84', '#e8b890', '#d8a47c'];
+const NORTH_HAIR = ['#a8582a', '#d8b060', '#6a4020', '#c08a3c'];
+const HORSES_NORTH: LookPalette['horses'] = [
+  { coat: '#9a7046', shade: '#664828', mane: '#2e1e12' },
+  { coat: '#5e4030', shade: '#3c281c', mane: '#1a110b' },
+  { coat: '#c8bca4', shade: '#928670', mane: '#5e5444' },
+];
+
+/** The Gauls: mustard, blue, green and brown cloth, whitewashed long shields with painted devices, bronze helmets. */
+const GALLIC = look({
+  tunic: '#c09238', trim: '#2f5a8a', trousers: '#4f6a3a', cloak: '#3a5f8a',
+  shield: '#3f6a94', shieldRim: '#8a6a3a', shieldEmblem: '#f0e2b4',
+  paint: '#ebe1c4', paintEmblem: '#2c4c7c',
+  crest: '#2a2420', crestAlt: '#c8a040',
+  skin: NORTH_SKIN, hair: NORTH_HAIR, horses: HORSES_NORTH, saddle: '#3a5f8a',
+});
+
+/** The Belgae: dark blue and undyed wool, white and slate hexagonal shields. */
+const BELGIC = look({
+  tunic: '#2f4f74', trim: '#e2d6aa', trousers: '#6a5a44', cloak: '#283c5a',
+  shield: '#e4e0d2', shieldRim: '#6a5a44', shieldEmblem: '#22385e',
+  paint: '#e6e2d4', paintEmblem: '#22385e',
+  crest: '#e6e2d4', crestAlt: '#2f4f74',
+  skin: NORTH_SKIN, hair: NORTH_HAIR, horses: HORSES_NORTH, saddle: '#283c5a',
+});
+
+/** The Britons: woad on the skin, olive, green and tan checks, bronze-coloured shields with scrolls and horses. */
+const BRITON = look({
+  tunic: '#7a6c38', trim: '#c8a24a', trousers: '#4e6448', cloak: '#4e6448',
+  shield: '#b8904a', shieldRim: '#6a4a24', shieldEmblem: '#2e2418',
+  paint: '#b8904a', paintEmblem: '#2e2418',
+  crest: '#2e2418', crestAlt: '#c8a24a',
+  skin: NORTH_SKIN, hair: NORTH_HAIR, horses: HORSES_NORTH, saddle: '#4e6448',
+  woad: '#2e5cb0',
 });
 
 /** Side colours of each block set (base edge and standard cloth). */
@@ -763,14 +833,83 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
       general: { horse: { coat: '#ece6da', shade: '#b0a690', mane: '#8a7e6a' } },
     },
   },
-  // Expansion #2 (temporary until the art track): the Barbarian looks draw as the Carthaginian look, Marian Romans as the Roman.
-  gallic: CARTHAGINIAN_LOOK,
+  // Expansion #2 (Rome & the Barbarians)
+  gallic: {
+    kit: 'celtic', palette: GALLIC,
+    style: {
+      emblems: ['scroll', 'triskeles', 'boar', 'crescents'], device: 'boar', finial: 'boar', standard: 'carnyx',
+      variants: [
+        {},
+        { ...tunicOf('#3a6a9a'), ...trousersOf('#a8843a'), ...paintOf('#c8a040', '#2a2620') },
+        { ...tunicOf('#557a3a'), ...trousersOf('#6a5a40'), ...paintOf('#2f5a8a', '#f0e0b0') },
+        { ...tunicOf('#8a5a34'), ...trousersOf('#3a5a7a'), ...paintOf('#4f7a3a', '#f0e0b0') },
+      ],
+      general: { cloak: '#2f5a3a' },
+    },
+  },
+  belgic: {
+    kit: 'celtic', palette: BELGIC,
+    style: {
+      emblems: ['crescents', 'wheel', 'ring', 'scroll'], device: 'crescents', finial: 'boar', standard: 'carnyx',
+      variants: [
+        {},
+        { ...tunicOf('#7a6a4c'), ...paintOf('#2c3c58', '#e6e2d4') },
+        { ...tunicOf('#d8d2c0'), ...trousersOf('#2f4f74'), ...paintOf('#4a5a6e', '#e6e2d4') },
+        { ...tunicOf('#4a5a6a'), ...paintOf('#2c3c58', '#e6e2d4') },
+      ],
+      // the hexagonal shields of the northern Belgae
+      foot: { LI: { shield: 'hex' }, AX: { shield: 'hex' }, WA: { shield: 'hex' }, MI: { shield: 'hex' } },
+    },
+  },
+  briton: {
+    kit: 'celtic', palette: BRITON,
+    style: {
+      emblems: ['scroll', 'ring', 'triskeles', 'scroll'], device: 'horse', finial: 'boar', standard: 'carnyx',
+      variants: [
+        {},
+        { ...tunicOf('#4e6a4a'), ...trousersOf('#7a6c38'), ...paintOf('#e2d8bc', '#2e2418') },
+        { ...tunicOf('#94744a'), ...trousersOf('#4a4e66'), ...paintOf('#5a6e4a', '#e8d8a8') },
+        { ...tunicOf('#5a5a6e'), ...trousersOf('#94744a'), ...paintOf('#b8904a', '#2e2418') },
+      ],
+      // woad on every figure; fewer helmets and more bare chests than the Gauls
+      foot: {
+        LI: { woad: true, torso: 'bare', skirt: false, sleeve: false, torc: true },
+        LB: { woad: true },
+        LS: { woad: true },
+        AX: [{ woad: true, helmet: 'none' }, { woad: true, helmet: 'none', torso: 'bare', skirt: false, sleeve: false }],
+        WA: [{ woad: true }, { woad: true, torso: 'bare', skirt: false, sleeve: false, helmet: 'none', crest: 'none', hair: 'wild' }],
+        MI: { woad: true },
+      },
+    },
+  },
   germanic: CARTHAGINIAN_LOOK,
   slave: CARTHAGINIAN_LOOK,
-  belgic: CARTHAGINIAN_LOOK,
-  briton: CARTHAGINIAN_LOOK,
   marian: ROMAN_LOOK,
 };
+
+/**
+ * A named leader's own figure instead of his look's general (the mounted general and the attached portrait): the leaders
+ * the battles single out, matched by the names the scenarios give them.
+ */
+export interface LeaderLook {
+  /** The names he goes by in the scenarios (compared ignoring case). */
+  names: string[];
+  /** Changes to the general's rider (headgear, armour, cloak, a weapon in hand). */
+  rider?: Partial<RiderKit>;
+  horse?: HorseCoat;
+  /** His colours over the look's general colours (cloak, crest, saddle cloth). */
+  colours?: Partial<LookPalette>;
+  /** Changes to the portrait. */
+  bust?: Partial<BustDef>;
+}
+
+export const LEADER_LOOKS: LeaderLook[] = [];
+
+/** The named leader's own look, if he has one. */
+export function leaderLook(name: string | undefined): LeaderLook | undefined {
+  const n = name?.trim().toLowerCase();
+  return n ? LEADER_LOOKS.find((l) => l.names.some((x) => x.toLowerCase() === n)) : undefined;
+}
 
 /** The art of a look; throws when the look has none (so a missing look fails loudly instead of drawing wrong). */
 export function lookDef(look: ArmyLook): LookDef {
