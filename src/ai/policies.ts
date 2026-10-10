@@ -798,5 +798,6 @@ export function reactiveFast(s: GameState, d: Decision, W: Weights, rng: Rng): A
     case 'orders': return { kind: 'orders', pieces: [] };
     case 'playCard': return { kind: 'playCard', card: s.players[d.side].hand[0] };
     case 'placeLeader': return { kind: 'hex', hex: choosePlacement(s, d, W) };
+    case 'placeUnit': return { kind: 'hex', hex: d.options[0] };
   }
 }

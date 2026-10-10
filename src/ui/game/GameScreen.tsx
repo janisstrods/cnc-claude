@@ -209,6 +209,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
         if (d.targets.includes(h)) answer({ kind: 'hex', hex: h });
         return;
       case 'placeLeader':
+      case 'placeUnit':
         if (d.options.includes(h)) answer({ kind: 'hex', hex: h });
         return;
       default:
@@ -490,11 +491,24 @@ export function GameScreen({ controller, onExit, onRematch }: {
         return { title: d.kind === 'rally' ? 'Rally' : 'I Am Spartacus', text: 'Assign the dice in the dialog.', buttons: [] };
       case 'placeLeader': {
         const l = leaderById(s, d.leader);
+        // 308: a reserve leader joins one of the units of his force that entered this turn
+        if (!s.special.unplaced.includes(d.leader)) {
+          return { title: `Place ${l?.name || 'your leader'}`, text: 'Click one of the units that entered (gold) to attach him.', buttons: undoBtn ? [undoBtn] : [] };
+        }
         const more = s.special.unplaced.filter((id) => id !== d.leader && leaderById(s, id)?.side === human).length;
         return {
           title: `Place ${l?.name || 'your leader'}`,
           text: `Before the battle: click one of your units (gold) to attach him, or any faintly marked empty hex where he stands alone.${more ? ` ${more} more to place after him.` : ''}`,
           buttons: undoBtn ? [undoBtn] : [],
+        };
+      }
+      case 'placeUnit': {
+        // a forced placement (308): the reinforcement waits off the board
+        const p = s.special.placeUnits.find((x) => x.unit.id === d.unit);
+        return {
+          title: `Place your ${p ? unitTypeName(p.unit.type) : 'reinforcement'}`,
+          text: 'Reinforcements arrive before you play a card: click a highlighted hex to place the unit.',
+          buttons: [],
         };
       }
       default:

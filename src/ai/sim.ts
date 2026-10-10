@@ -48,6 +48,7 @@ export function safeAnswer(s: GameState, d: Decision, rng: Rng, attempt: number)
       case 'rally':
       case 'spartacus': return { kind: 'assign', ids: d.faces.map(() => null) };
       case 'placeLeader': return { kind: 'hex', hex: safePlacement(s, d) };
+      case 'placeUnit': return { kind: 'hex', hex: d.options[0] };
     }
   }
   return randomAnswer(s, d, () => rng.next());

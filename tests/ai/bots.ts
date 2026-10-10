@@ -408,6 +408,7 @@ export class Bot {
         return { kind: 'assign', ids };
       }
       case 'placeLeader':
+      case 'placeUnit':
         return { kind: 'hex', hex: d.options[0] };
     }
   }

@@ -61,6 +61,11 @@ export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: Gam
 export interface UnitMoveOptions {
   /** Entry hexes for a reserve unit (an ambush reserve, §18.5): placement counts as the first hex. */
   entryHexes?: HexId[];
+  /**
+   * With `entryHexes`: the unit is placed on an entry hex and moves no further (308 reinforcements, `ambush.noMove`,
+   * §18.9). Placement is then not movement: each target has `dist` 0, so the unit fires as one that did not move.
+   */
+  entryOnly?: boolean;
   /** Hexes already moved this turn (Move-Fire-Move second move starts fresh: pass 0). */
   alreadyMoved?: number;
 }
@@ -127,8 +132,8 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     for (const e of opts.entryHexes!) {
       const k = canEnter(e, OFF_BOARD);
       if (k === 'no' || k === 'pass') continue;
-      record(e, 1, [e], k === 'attach' ? leaderAt(s, e)!.id : undefined);
-      if (k === 'yes') {
+      record(e, opts.entryOnly ? 0 : 1, [e], k === 'attach' ? leaderAt(s, e)!.id : undefined);
+      if (k === 'yes' && !opts.entryOnly) {
         queue.push({ hex: e, dist: 1, path: [e], stopped: false });
         best.set(e, 1);
       }
@@ -271,8 +276,13 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
   return [...results.values()];
 }
 
-/** Baseline entry hexes for an ambush reserve (§18.5) in a section (enemy baseline, section from the owner's view). */
+/**
+ * Entry hexes for an ambush reserve (§18.5) in a section: the empty passable enemy-baseline hexes of the section (from the
+ * owner's view), or, when the ambush has fixed entry hexes (308, §18.9), the empty ones of those whatever the section.
+ */
 export function ambushEntryHexes(s: GameState, side: Side, section: SectionName): HexId[] {
+  const fixed = s.special.ambush?.entryHexes;
+  if (fixed) return fixed.filter((h) => !isImpassable(s, h) && !unitAt(s, h) && !leaderAt(s, h));
   const row = side === 'top' ? 8 : 0;
   const out: HexId[] = [];
   for (let c = 0; c < 13; c++) {

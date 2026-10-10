@@ -881,6 +881,15 @@ The ambush reserve of §18.5 with three options (X3 Q6; the card-trigger and rel
   ordinary unit and that turn's card may order it. If every listed hex is occupied, the placement waits for the start of the
   first later turn at which one is free **[Interp]**. It is triggered once, by the first Gallic entry. Until placed, the unit
   exists off the board (it is not one of the `reserves`).
+* Engine: `ambush.entryHexes` (`[r, c]` in the data, hex ids in `AmbushDef`; on the board, passable, each once): the empty
+  ones (no unit, no leader) are the entry hexes whatever the section, and `ambushSectionAllowed` accepts any section.
+  `ambush.noMove`: an entry target has `dist` 0, so the unit's `moved` stays 0 (2 dice); it gets no further move that turn.
+  `ambush.attachLeader` (needs a reserve leader): the leader is placed with an entered unit by a move during the movement
+  (as Mago); if he is still off the board at its end and a unit of his force entered, `placeLeader` asks for one of their
+  hexes (event `leaderPlaced`, then `attach`). `placeUnits` (needs the ambush rule; ids after the reserve leaders', legion
+  stamped) are kept in `special.placeUnits`; `special.reserveEntered` is set by the first reserve unit that enters; at the
+  start of the side's turn, after the turn-start objectives and before the card, `placeUnit` offers the listed hexes with
+  no unit and no leader (event `unitPlaced`). Battles without these fields are unchanged.
 
 ### 18.10 Dice orders (310 Utica P1)
 

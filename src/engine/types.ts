@@ -256,6 +256,7 @@ export interface ObjectiveState {
 /**
  * The ambush reserve (rule `magoAmbush`, §14 and §18.5) with every default filled in: the Trebbia defaults are the four
  * Leadership cards, one finished own turn and the Mago text; 206 Aquae Sextiae adds Order Light Troops, from the first turn.
+ * The reinforcement options of 308 Gergovia (§18.9) are present only when the scenario gives them (never in 005, 206).
  */
 export interface AmbushDef {
   /** Cards that spring the ambush (the card played, or the one a Counter Attack copies). */
@@ -264,6 +265,35 @@ export interface AmbushDef {
   afterOwnTurns: number;
   /** The log line; `{section}` is replaced by the section the force enters from. */
   text: string;
+  /**
+   * Fixed entry hexes (308, data order): the units enter on these, one per empty hex, instead of the enemy baseline hexes
+   * of the card's section. The section is still asked, and any section is accepted (`ambushSectionAllowed`).
+   */
+  entryHexes?: HexId[];
+  /**
+   * No further move (308): the entry hex is the whole move and counts as no hex moved (placement is not movement), so
+   * the units fire as units that did not move; they may battle, momentum advance and bonus combat, but move no more
+   * that turn.
+   */
+  noMove?: boolean;
+  /**
+   * The reserve leader must join one of the units that entered (308 Vercingetorix): if he was not placed with one during
+   * the movement, he is placed at its end (decision `placeLeader`, the entered units' hexes).
+   */
+  attachLeader?: boolean;
+}
+
+/**
+ * A forced placement (308, §18.9): `unit` waits off the board (it is not one of the ambush reserves) until it is placed on
+ * an empty hex of `hexes` at the start of one of its side's turns, before the card; `after: 'ambush'` = the first turn of
+ * its side that starts after a unit of the ambush force has entered the board (`ScenarioSpecial.reserveEntered`). While
+ * every listed hex holds a unit or a leader, it waits for a later turn start.
+ */
+export interface PlaceUnitDef {
+  unit: Unit;
+  /** Hexes it may be placed on, in data order (never changed during play: `cloneState` shares the array). */
+  hexes: HexId[];
+  after: 'ambush';
 }
 
 /**
@@ -311,6 +341,10 @@ export interface ScenarioSpecial {
   reserveLeaders: Leader[];
   reserveSide: Side | null;
   reserveReleased: boolean;
+  /** A unit of the ambush force has entered the board (set once, never cleared); forced placements wait for it (§18.9). */
+  reserveEntered: boolean;
+  /** Units still to be placed by a forced placement (308, §18.9), in data order; removed once placed. Empty in most battles. */
+  placeUnits: PlaceUnitDef[];
   /** Turns completed per side (used by ambush reserves' `afterOwnTurns`, §18.5, and by the AI's card memory). */
   turnsDone: Record<Side, number>;
   /** Battle objectives (§18.4; empty in most battles). Never changed during play: `cloneState` shares the array. */
@@ -407,8 +441,16 @@ export type Decision =
    * when their eligible units belong to more than one command. `options` = command ids, in data order; answer `choose`.
    */
   | { kind: 'chooseCommand'; side: Side; options: string[] }
-  /** Asculum: place `leader` before the first turn on one of `options` (answer `hex`, never null). */
-  | { kind: 'placeLeader'; side: Side; leader: string; options: HexId[] };
+  /**
+   * Place `leader` on one of `options` (answer `hex`, never null): Asculum's leaders before the first turn; a reserve leader
+   * with `ambush.attachLeader` (308) still off the board at the end of the movement joins a unit of his force that entered.
+   */
+  | { kind: 'placeLeader'; side: Side; leader: string; options: HexId[] }
+  /**
+   * A forced placement (308, §18.9) at the start of `side`'s turn, before the card: place the off-board `unit`
+   * (`ScenarioSpecial.placeUnits`) on one of `options`, the empty listed hexes (answer `hex`, never null).
+   */
+  | { kind: 'placeUnit'; side: Side; unit: string; options: HexId[] };
 
 export type Answer =
   | { kind: 'playCard'; card: number }
@@ -457,8 +499,13 @@ export type GameEvent =
   | { t: 'evade'; id: string; path: HexId[] }
   | { t: 'leaderEvade'; id: string; path: HexId[]; offBoard: boolean }
   | { t: 'attach'; leader: string; unit: string }
-  /** A leader placed before the first turn (Asculum); an `attach` event follows when he joins a unit. */
+  /**
+   * A leader placed before the first turn (Asculum), or a reserve leader placed with an entered unit at the end of the
+   * movement (308); an `attach` event follows when he joins a unit.
+   */
   | { t: 'leaderPlaced'; id: string; hex: HexId }
+  /** An off-board unit placed on the board by a forced placement (308, §18.9). */
+  | { t: 'unitPlaced'; id: string; hex: HexId }
   | { t: 'advance'; id: string; path: HexId[] }
   | { t: 'rampage'; id: string }
   | { t: 'rallied'; id: string; blocks: number }

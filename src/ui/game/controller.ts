@@ -620,8 +620,9 @@ export class GameController {
       case 'attach':
         this.set({ display: after });
         break;
-      case 'leaderPlaced': {
-        // Asculum: a leader placed before the first turn
+      case 'leaderPlaced':
+      case 'unitPlaced': {
+        // Asculum: a leader placed before the first turn; 308: a reserve leader placed with an entered unit, a forced placement
         const side = this.sideOf(e.id, after);
         this.addLog({ text: `${this.name(e.id, after)} takes position.`, side, kind: 'info' });
         this.set({ display: after });

@@ -49,6 +49,11 @@ export interface Pos {
   lastRowRetreat?: ScenarioSetup['lastRowRetreat'];
   /** Hand growth (006 Trasimenus, 313 Brindisi Raid, §18.8). */
   handGrowth?: ScenarioSetup['handGrowth'];
+  /**
+   * Forced placements (308, §18.9): off-board units placed at a turn start after the ambush. Their ids follow the reserve
+   * leaders' (the last ids of the setup).
+   */
+  placeUnits?: ScenarioSetup['placeUnits'];
 }
 
 export const H = (r: number, c: number) => hexId(r, c);
@@ -86,6 +91,7 @@ export function setupOf(p: Pos): ScenarioSetup {
     ...(p.rampartBreakers !== undefined ? { rampartBreakers: p.rampartBreakers } : {}),
     ...(p.lastRowRetreat !== undefined ? { lastRowRetreat: p.lastRowRetreat } : {}),
     ...(p.handGrowth !== undefined ? { handGrowth: p.handGrowth } : {}),
+    ...(p.placeUnits !== undefined ? { placeUnits: p.placeUnits } : {}),
   };
 }
 

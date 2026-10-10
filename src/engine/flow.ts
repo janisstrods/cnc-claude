@@ -901,11 +901,24 @@ export function ambushAvailable(s: GameState, side: Side, kind: CardKind | null)
     !s.special.reserveReleased && s.special.turnsDone[side] >= a.afterOwnTurns && s.special.reserveUnits.length > 0;
 }
 
+const SECTIONS: readonly SectionName[] = ['left', 'center', 'right'];
+
+/** The sections an ambush card lets the force enter from (Inspired: its own; the other trigger cards: any). */
 export function ambushSections(kind: CardKind): SectionName[] {
   if (kind === 'inspiredL') return ['left'];
   if (kind === 'inspiredC') return ['center'];
   if (kind === 'inspiredR') return ['right'];
-  return ['left', 'center', 'right'];
+  return [...SECTIONS];
+}
+
+/**
+ * Is `section` an accepted answer for springing the ambush with a card of `kind`? One of the card's sections
+ * (`ambushSections`), or any section when the force has fixed entry hexes (308, §18.9: the section is still asked, but
+ * it is irrelevant).
+ */
+export function ambushSectionAllowed(s: GameState, kind: CardKind, section: SectionName): boolean {
+  if (s.special.ambush?.entryHexes) return SECTIONS.includes(section);
+  return ambushSections(kind).includes(section);
 }
 
 function releaseAmbush(s: GameState, ctx: FlowCtx, side: Side, section: SectionName) {
@@ -1001,7 +1014,7 @@ function* ordersStep(s: GameState, ctx: FlowCtx, kind: CardKind | null, mirrored
     const ambush = ambushAvailable(s, side, kind);
     const a = (yield* ask(ctx, { kind: 'orders', side, card: kind, mirrored }, (a) => {
       if (a.kind !== 'orders') return 'Choose the units to order.';
-      if (a.ambushSection) return ambush && ambushSections(kind).includes(a.ambushSection) ? null : 'The ambush is not available.';
+      if (a.ambushSection) return ambush && ambushSectionAllowed(s, kind, a.ambushSection) ? null : 'The ambush is not available.';
       return validateOrders(s, side, kind, a.pieces);
     })) as Extract<Answer, { kind: 'orders' }>;
     if (a.ambushSection) {
@@ -1043,11 +1056,14 @@ export function pieceMoves(s: GameState, id: string, stage: 1 | 2 = s.turn.phase
   // a unit that moves onto or off a city wall moves 1 hex in all that turn (§18.7): no second Move-Fire-Move move after a
   // first move that began on a wall or climbed onto one
   if (stage === 2 && op.moved > 0 && (isWall(s, op.startHex) || isWall(s, u.hex))) return [];
+  const noMove = !!s.special.ambush?.noMove;
   if (op.fromReserve && u.hex === OFF_BOARD) {
     const sec = s.turn.ambushSection;
     if (!sec) return [];
-    return unitMoves(s, id, { entryHexes: ambushEntryHexes(s, u.side, sec) });
+    return unitMoves(s, id, { entryHexes: ambushEntryHexes(s, u.side, sec), entryOnly: noMove });
   }
+  // 308 (§18.9): a unit that entered from the reserve this turn moves no further
+  if (op.fromReserve && noMove) return [];
   return unitMoves(s, id);
 }
 
@@ -1102,7 +1118,10 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
   }
   relocate(s, u, to);
   ctx.emit({ t: 'move', id, path: from === OFF_BOARD ? [to] : target.path });
-  if (from === OFF_BOARD) ctx.emit({ t: 'reserveEnter', id, hex: to });
+  if (from === OFF_BOARD) {
+    ctx.emit({ t: 'reserveEnter', id, hex: to });
+    s.special.reserveEntered = true; // the forced placements after the ambush may follow (308, §18.9)
+  }
   breakRamparts(s, ctx, u.side, entered); // 223: every rampart on the path, the destination too
   if (target.attachesTo) {
     const l = leaderById(s, target.attachesTo);
@@ -1142,7 +1161,38 @@ function* movePhase(s: GameState, ctx: FlowCtx, stage: 1 | 2): Gen {
       updateHeld(s, ctx); // after every move, an ambush entry or an exit included
     }
   }
-  if (stage === 1) returnUnplacedReserves(s);
+  if (stage === 1) {
+    yield* attachReserveLeaders(s, ctx);
+    returnUnplacedReserves(s);
+  }
+}
+
+/**
+ * `ambush.attachLeader` (308, §18.9): a reserve leader still off the board at the end of the movement, when units of his
+ * force entered this turn, must join one of them now (decision `placeLeader`: the hexes of those units without a leader,
+ * ascending; asked even when there is one). Without units entered he goes back to the reserve with the rest of the force.
+ */
+function* attachReserveLeaders(s: GameState, ctx: FlowCtx): Gen {
+  if (!s.special.ambush?.attachLeader) return;
+  for (const op of Object.values(s.turn.ordered)) {
+    if (!op.fromReserve || !op.isLeader) continue;
+    const l = leaderById(s, op.id);
+    if (!l || l.hex !== OFF_BOARD) continue;
+    const options = Object.values(s.turn.ordered)
+      .filter((o) => o.fromReserve && !o.isLeader)
+      .map((o) => unitById(s, o.id))
+      .filter((u): u is Unit => !!u && u.hex >= 0 && u.side === l.side && !leaderAt(s, u.hex))
+      .map((u) => u.hex)
+      .sort((a, b) => a - b);
+    if (!options.length) continue;
+    const a = yield* ask(ctx, { kind: 'placeLeader', side: l.side, leader: l.id, options }, (a) =>
+      a.kind === 'hex' && a.hex !== null && options.includes(a.hex) ? null : 'Place the leader with one of the units that entered.');
+    const hex = (a as { hex: HexId }).hex;
+    l.hex = hex;
+    op.moveDone = true;
+    ctx.emit({ t: 'leaderPlaced', id: l.id, hex });
+    ctx.emit({ t: 'attach', leader: l.id, unit: unitAt(s, hex)!.id });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1248,6 +1298,9 @@ export function* turnFlow(s: GameState, ctx: FlowCtx): Gen {
   // objectives decided at the start of the turn, before the card (turn-start captures, §18.4)
   turnStartObjectives(s, ctx, side);
   if (s.winner) return;
+  // then the forced placements that are due (308, §18.9)
+  yield* forcedPlacements(s, ctx, side);
+  if (s.winner) return;
   const pa = yield* ask(ctx, { kind: 'playCard', side }, (a) =>
     a.kind === 'playCard' && s.players[side].hand.includes(a.card) ? null : 'Play a card from your hand.');
   const cardId = (pa as { card: number }).card;
@@ -1312,6 +1365,35 @@ export function* continueTurn(s: GameState, ctx: FlowCtx, from: 'move' | 'battle
     if (s.winner) return;
   }
   yield* battleToEnd(s, ctx);
+}
+
+/**
+ * Forced placements (308, §18.9) at the start of `side`'s turn, before its card: each unit of `special.placeUnits` of
+ * that side whose condition is met (`after: 'ambush'`: a unit of the ambush force has entered) is placed on one of its
+ * listed hexes holding no unit and no leader (decision `placeUnit`, asked even when one hex is free). With every hex
+ * taken it waits for a later turn start. The placed unit is an ordinary unit from then on: the turn's card may order it.
+ */
+function* forcedPlacements(s: GameState, ctx: FlowCtx, side: Side): Gen {
+  const sp = s.special;
+  for (let i = 0; i < sp.placeUnits.length;) {
+    const p = sp.placeUnits[i];
+    const due = p.unit.side === side && p.after === 'ambush' && sp.reserveEntered;
+    const options = due ? p.hexes.filter((h) => !unitAt(s, h) && !leaderAt(s, h)) : [];
+    if (!options.length) {
+      i++;
+      continue;
+    }
+    const a = yield* ask(ctx, { kind: 'placeUnit', side, unit: p.unit.id, options }, (a) =>
+      a.kind === 'hex' && a.hex !== null && options.includes(a.hex) ? null : 'Place the unit on a highlighted hex.');
+    const hex = (a as { hex: HexId }).hex;
+    sp.placeUnits.splice(i, 1);
+    const u = p.unit;
+    u.hex = hex;
+    s.units.push(u);
+    ctx.emit({ t: 'unitPlaced', id: u.id, hex });
+    updateHeld(s, ctx); // the unit may stand on an objective hex
+    if (s.winner) return;
+  }
 }
 
 /** Advance to the next player's turn (call after turnFlow completes without a winner). */

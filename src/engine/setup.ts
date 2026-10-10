@@ -10,7 +10,7 @@ import { UNIT_STATS, forbidsTerrain } from './units';
 import {
   ARMY_LOOKS, BLOCKS, COLS, LEGIONS, OFF_BOARD, ROWS, SPECIAL_RULE_IDS,
   type AmbushDef, type ArmyLook, type Blocks, type CommandDef, type EliteId, type GameState, type HandGrowth, type HexDir, type HexId, type Leader, type LeaderTrait,
-  type Legion, type ObjectiveMarker, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
+  type Legion, type ObjectiveMarker, type PlaceUnitDef, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
 export interface SideSetup {
@@ -43,9 +43,16 @@ export interface ScenarioSetup {
   rules: SpecialRuleId[];
   /**
    * Ambush trigger data (needs the rule `magoAmbush`; fields left out take the Trebbia defaults, see `AmbushDef`). 206
-   * Aquae Sextiae: the Leadership cards and Order Light Troops, `afterOwnTurns: 0`, its own text.
+   * Aquae Sextiae: the Leadership cards and Order Light Troops, `afterOwnTurns: 0`, its own text. 308 Gergovia (§18.9):
+   * fixed `entryHexes`, `noMove`, `attachLeader`.
    */
-  ambush?: Partial<AmbushDef>;
+  ambush?: AmbushSetup;
+  /**
+   * Forced placements (308, §18.9): each unit waits off the board (it is not one of `reserves`) and is placed on an empty
+   * hex of `hexes` at the start of its side's first turn after a unit of the ambush force entered (`after: 'ambush'`;
+   * needs the rule `magoAmbush`). Its id follows the reserve leaders'.
+   */
+  placeUnits?: PlaceUnitSetup[];
   /**
    * Legion rule per side (§18.2): every MI and HI of the side, on the board and in reserve, gets the pilum (`marius`) or the
    * pilum and the march (`julian`). Marius legions in 206-223 for the Romans; the Barbarians and Slaves have none.
@@ -107,6 +114,17 @@ export type ObjectiveSetup =
   | { kind: 'majority'; sides: Side[]; hexes: [number, number][]; banners: number; when: 'turnEnd' | 'always'; text?: string }
   | { kind: 'sectionClear'; side: Side; text?: string }
   | { kind: 'exit'; side: Side; hexes: [number, number][]; units?: 'any' | 'foot' | 'cavalry'; leadersScore?: boolean; text?: string };
+
+/** Ambush data as the scenario gives it (`AmbushDef`, every field optional; the entry hexes as `[r, c]`). */
+export type AmbushSetup = Partial<Omit<AmbushDef, 'entryHexes'>> & { entryHexes?: [number, number][] };
+
+/** A forced placement as scenario data (`PlaceUnitDef`; hexes as `[r, c]`). */
+export interface PlaceUnitSetup {
+  side: Side;
+  type: UnitType;
+  hexes: [number, number][];
+  after: 'ambush';
+}
 
 /** Optional rules chosen for a game. Only rules the scenario offers (`ScenarioSetup.options`) can be switched. */
 export interface GameOptions {
@@ -340,9 +358,32 @@ const DEFAULT_AMBUSH: AmbushDef = {
   text: "Ambush! Mago's hidden force strikes from the {section}.",
 };
 
+/** Is `v` an `[r, c]` pair of whole numbers? */
+const isHexPair = (v: unknown): v is [number, number] =>
+  Array.isArray(v) && v.length === 2 && Number.isInteger(v[0]) && Number.isInteger(v[1]);
+
+/**
+ * Hex ids of a list of `[r, c]` pairs, validated (a list of pairs, at least one, each on the board, none twice); `what`
+ * words the errors ("ambush entry hex 9,0 is off the board").
+ */
+function hexList(list: unknown, listErr: string, emptyErr: string, what: string): HexId[] {
+  if (!Array.isArray(list) || !list.every(isHexPair)) throw new Error(listErr);
+  if (!list.length) throw new Error(emptyErr);
+  const out: HexId[] = [];
+  for (const [r, c] of list) {
+    if (!onBoard(r, c)) throw new Error(`${what} ${r},${c} is off the board`);
+    const h = hexId(r, c);
+    if (out.includes(h)) throw new Error(`${what} ${r},${c} is listed twice`);
+    out.push(h);
+  }
+  return out;
+}
+
 /**
  * The ambush data of a battle: null without the rule `magoAmbush`, else the scenario's data over the Trebbia defaults.
- * The rule needs a reserve force (at least one reserve unit).
+ * The rule needs a reserve force (at least one reserve unit). The reinforcement options (308, §18.9) are copied only when
+ * given: `entryHexes` (on the board, each once; passable, checked on the built board by `checkReinforcementHexes`),
+ * `noMove` and `attachLeader` (which needs a reserve leader).
  */
 function resolveAmbush(setup: ScenarioSetup, rules: SpecialRuleId[]): AmbushDef | null {
   const a: unknown = setup.ambush;
@@ -351,7 +392,7 @@ function resolveAmbush(setup: ScenarioSetup, rules: SpecialRuleId[]): AmbushDef 
     return null;
   }
   if (a !== undefined && (typeof a !== 'object' || a === null || Array.isArray(a))) throw new Error('ambush must be an object');
-  const d: Partial<AmbushDef> = (a ?? {}) as Partial<AmbushDef>;
+  const d: AmbushSetup = (a ?? {}) as AmbushSetup;
   if (d.trigger !== undefined) {
     if (!Array.isArray(d.trigger)) throw new Error('ambush trigger must be a list of cards');
     if (!d.trigger.length) throw new Error('ambush trigger: needs at least one card');
@@ -361,12 +402,65 @@ function resolveAmbush(setup: ScenarioSetup, rules: SpecialRuleId[]): AmbushDef 
     throw new Error('ambush afterOwnTurns must be a whole number, 0 or more');
   }
   if (d.text !== undefined && typeof d.text !== 'string') throw new Error('ambush text must be a string');
+  const entryHexes = d.entryHexes === undefined ? undefined
+    : hexList(d.entryHexes, 'ambush entryHexes must be a list of [r, c] hexes', 'ambush entryHexes: needs at least one hex', 'ambush entry hex');
+  for (const k of ['noMove', 'attachLeader'] as const) {
+    if (d[k] !== undefined && typeof d[k] !== 'boolean') throw new Error(`ambush ${k} must be true or false`);
+  }
+  if (d.attachLeader && !setup.reserveLeaders.length) throw new Error('ambush attachLeader needs a reserve leader');
   if (!setup.reserves.length) throw new Error('the ambush (rule magoAmbush) needs reserve units');
   return {
     trigger: [...(d.trigger ?? DEFAULT_AMBUSH.trigger)],
     afterOwnTurns: d.afterOwnTurns ?? DEFAULT_AMBUSH.afterOwnTurns,
     text: d.text ?? DEFAULT_AMBUSH.text,
+    ...(entryHexes ? { entryHexes } : {}),
+    ...(d.noMove !== undefined ? { noMove: d.noMove } : {}),
+    ...(d.attachLeader !== undefined ? { attachLeader: d.attachLeader } : {}),
   };
+}
+
+/**
+ * The forced placements of a battle (308, §18.9), validated, with their units built (ids from `nextId` on, legions
+ * stamped); none when the scenario gives none. They come after the ambush, so they need its rule. The hexes are checked
+ * for terrain on the built board (`checkReinforcementHexes`).
+ */
+function resolvePlaceUnits(setup: ScenarioSetup, ambush: AmbushDef | null, nextId: () => string): PlaceUnitDef[] {
+  const list: unknown = setup.placeUnits;
+  if (list === undefined) return [];
+  if (!Array.isArray(list)) throw new Error('placeUnits must be a list');
+  const out: PlaceUnitDef[] = [];
+  for (const p of list as Partial<PlaceUnitSetup & { command: unknown }>[]) {
+    if (p?.side !== 'top' && p?.side !== 'bottom') throw new Error(`placeUnits: unknown side ${String(p?.side)}`);
+    if (!has(UNIT_STATS, p.type)) throw new Error(`placeUnits: unknown unit type ${String(p.type)}`);
+    const type = p.type as UnitType;
+    if (p.after !== 'ambush') throw new Error(`placeUnits ${type}: after must be 'ambush'`);
+    if (p.command !== undefined) throw new Error(`unit to place ${type}: command ${String(p.command)} is only for pieces on the board`);
+    const msg = `placeUnits ${type}: hexes must be a list of [r, c] hexes, at least one`;
+    const hexes = hexList(p.hexes, msg, msg, `placeUnits ${type}: hex`);
+    if (!ambush) throw new Error('placeUnits after the ambush need the magoAmbush rule');
+    const st = UNIT_STATS[type];
+    const unit = withLegion({ id: nextId(), side: p.side, type, hex: OFF_BOARD, blocks: st.blocks, maxBlocks: st.blocks }, setup.legions);
+    out.push({ unit, hexes, after: 'ambush' });
+  }
+  return out;
+}
+
+/**
+ * The reinforcement hexes on the built board (§18.9): the ambush entry hexes must be passable, and each forced
+ * placement's hexes passable and open to its unit type (no mounted unit on a city wall).
+ */
+function checkReinforcementHexes(s: GameState) {
+  const where = (h: HexId) => `${Math.floor(h / COLS)},${h % COLS}`;
+  for (const h of s.special.ambush?.entryHexes ?? []) {
+    if (isImpassable(s, h)) throw new Error(`ambush entry hex ${where(h)} is impassable`);
+  }
+  for (const p of s.special.placeUnits) {
+    for (const h of p.hexes) {
+      if (isImpassable(s, h)) throw new Error(`placeUnits ${p.unit.type}: hex ${where(h)} is impassable`);
+      const t = terrainAt(s, h);
+      if (forbidsTerrain(p.unit.type, t)) throw new Error(`placeUnits ${p.unit.type}: hex ${where(h)} is ${t}, which it may not enter`);
+    }
+  }
 }
 
 /**
@@ -450,6 +544,8 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     return withLegion({ id: `u${nextId++}`, side: u.side, type: u.type, hex: OFF_BOARD, blocks: st.blocks, maxBlocks: st.blocks }, setup.legions);
   });
   const reserveLeaders: Leader[] = setup.reserveLeaders.map((l) => withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: OFF_BOARD }, l.traits));
+  // forced placements (308): their units take the ids after the reserve leaders', so no other id changes
+  const placeUnits = resolvePlaceUnits(setup, ambush, () => `u${nextId++}`);
 
   const rngHolder = { rng: seed >>> 0, rngCalls: 0 };
   const deck = shuffle(rngHolder, CARD_LIST.map((_, i) => i));
@@ -500,6 +596,8 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
       reserveLeaders,
       reserveSide: reserveUnits[0]?.side ?? reserveLeaders[0]?.side ?? null,
       reserveReleased: false,
+      reserveEntered: false,
+      placeUnits,
       turnsDone: { top: 0, bottom: 0 },
       objectives: [],
       objState: [],
@@ -513,6 +611,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     nextId,
   };
   checkPositions(setup, s);
+  checkReinforcementHexes(s);
   s.special.objectives = resolveObjectives(setup, terrain, fords, s.players);
   s.special.objState = s.special.objectives.map(newObjectiveState);
   for (const side of [setup.first, setup.first === 'top' ? 'bottom' : 'top'] as Side[]) {
@@ -553,6 +652,7 @@ export function cloneState(s: GameState): GameState {
       ambush: s.special.ambush,
       reserveUnits: s.special.reserveUnits.map((u) => ({ ...u })),
       reserveLeaders: s.special.reserveLeaders.map((l) => ({ ...l })),
+      placeUnits: s.special.placeUnits.map((p) => ({ ...p, unit: { ...p.unit } })),
       turnsDone: { ...s.special.turnsDone },
       objectives: s.special.objectives,
       objState: s.special.objState.map((o) => ({ taken: [...o.taken], held: { ...o.held }, sections: [...o.sections] })),

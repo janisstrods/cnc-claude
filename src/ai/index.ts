@@ -7,7 +7,7 @@
 // Battles use rollouts per candidate attack; reactive decisions use fast expected-value heuristics.
 import { bannerTotal } from '../engine/banners';
 import { CARD_DEFS, cardKind, modsFor, sectionOrders } from '../engine/cards';
-import { ambushAvailable, ambushSections, battleTargets, isRollingFirePath, pieceMoves } from '../engine/flow';
+import { ambushAvailable, ambushSectionAllowed, battleTargets, isRollingFirePath, pieceMoves } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
 import { validateOrders, validateRally, validateSpartacus } from '../engine/orders';
 import { other, unitById } from '../engine/query';
@@ -143,7 +143,7 @@ export function isLegal(s: GameState, d: Decision, a: Answer): boolean {
       return a.kind === 'playCard' && s.players[d.side].hand.includes(a.card);
     case 'orders':
       if (a.kind !== 'orders') return false;
-      if (a.ambushSection) return ambushAvailable(s, d.side, d.card) && ambushSections(d.card).includes(a.ambushSection);
+      if (a.ambushSection) return ambushAvailable(s, d.side, d.card) && ambushSectionAllowed(s, d.card, a.ambushSection);
       return !validateOrders(s, d.side, d.card, a.pieces);
     case 'move':
       if (a.kind === 'endMove') return true;
@@ -176,6 +176,7 @@ export function isLegal(s: GameState, d: Decision, a: Answer): boolean {
     case 'spartacus':
       return a.kind === 'assign' && !validateSpartacus(s, d.side, d.faces, a.ids, d.command);
     case 'placeLeader':
+    case 'placeUnit':
       return a.kind === 'hex' && a.hex !== null && d.options.includes(a.hex);
   }
 }
@@ -513,6 +514,9 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       return { answer: { kind: 'assign', ids: spartacusAssign(s, me, d.faces, W, d.command) } };
     case 'placeLeader':
       return { answer: { kind: 'hex', hex: choosePlacement(s, d, W) } };
+    case 'placeUnit':
+      // forced placement (308): the first free hex for now (scored in the AI phase)
+      return { answer: { kind: 'hex', hex: d.options[0] } };
   }
 }
 

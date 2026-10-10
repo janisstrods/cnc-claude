@@ -190,6 +190,10 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       // Asculum: own units (gold) to attach the leader to; empty hexes, where he stands alone, only faintly marked
       for (const h of d.options) highlights.set(h, unitAt(s, h) ? 'placeUnit' : 'placeEmpty');
       break;
+    case 'placeUnit':
+      // a forced placement (308): the empty hexes the unit may be placed on
+      for (const h of d.options) highlights.set(h, 'option');
+      break;
     case 'bonusCombat': {
       const u = unitById(s, d.unit);
       if (u) highlights.set(u.hex, 'focus');

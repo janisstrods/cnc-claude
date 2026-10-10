@@ -27,8 +27,13 @@ export interface ScenarioJson {
   first: Side;
   banners: number;
   rules?: SpecialRuleId[];
-  /** Ambush reserve triggers and text (rule `magoAmbush`; 206 Aquae Sextiae). Left out: the Trebbia defaults. */
+  /**
+   * Ambush reserve triggers and text (rule `magoAmbush`; 206 Aquae Sextiae); 308's fixed `entryHexes`, `noMove` and
+   * `attachLeader` (§18.9). Left out: the Trebbia defaults.
+   */
   ambush?: ScenarioSetup['ambush'];
+  /** Forced placements after the ambush (308 Gergovia's Roman MI, §18.9). */
+  placeUnits?: ScenarioSetup['placeUnits'];
   /** Optional rules the battle offers, with their default (Tactical Flexibility, §17.3). */
   options?: GameOptions;
   /** Battle objectives (camp capture, exits, §18.4). */
@@ -220,6 +225,9 @@ function copyObjective(o: ObjectiveSetup): ObjectiveSetup {
   return out as ObjectiveSetup;
 }
 
+/** A list of `[r, c]` hexes copied pair by pair (anything else is left for the engine to reject). */
+const copyHexes = <T>(v: T): T => (Array.isArray(v) ? (v.map((x: unknown) => (Array.isArray(x) ? [...x] : x)) as T) : v);
+
 /** One value given by the JSON or by `EXTRA`, never both. */
 function oneSource<T>(id: string, field: string, json: T | undefined, extra: T | undefined): T | undefined {
   if (json !== undefined && extra !== undefined) throw new Error(`${field} is given twice, in the JSON and in EXTRA (${id})`);
@@ -249,7 +257,14 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   if ((j as { campCapture?: unknown }).campCapture !== undefined) throw new Error(`campCapture is now a capture objective in objectives (${j.id})`);
   const objectives = oneSource(j.id, 'objectives', j.objectives, ex?.objectives);
   if (objectives?.length) setup.objectives = objectives.map(copyObjective);
-  if (j.ambush) setup.ambush = { ...j.ambush, ...(j.ambush.trigger ? { trigger: [...j.ambush.trigger] } : {}) };
+  if (j.ambush) {
+    setup.ambush = { ...j.ambush, ...(j.ambush.trigger ? { trigger: [...j.ambush.trigger] } : {}) };
+    if (j.ambush.entryHexes !== undefined) setup.ambush.entryHexes = copyHexes(j.ambush.entryHexes);
+  }
+  if (j.placeUnits !== undefined) {
+    // the engine rejects a non-list and bad entries
+    setup.placeUnits = Array.isArray(j.placeUnits) ? j.placeUnits.map((p) => ({ ...p, hexes: copyHexes(p.hexes) })) : j.placeUnits;
+  }
   if (j.options && Object.keys(j.options).length) setup.options = { ...j.options };
   if (j.legions && Object.keys(j.legions).length) setup.legions = { ...j.legions };
   const handGrowth = oneSource(j.id, 'handGrowth', j.handGrowth, ex?.handGrowth);

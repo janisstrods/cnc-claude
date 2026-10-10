@@ -126,6 +126,7 @@ export function randomAnswer(s: GameState, d: Decision, rnd: Rand): Answer {
       return { kind: 'assign', ids };
     }
     case 'placeLeader':
+    case 'placeUnit':
       return { kind: 'hex', hex: pick(d.options, rnd) };
   }
 }

@@ -335,3 +335,41 @@ describe('Expansion #3 terrain through the loader (design/exp3-data/308.json, §
     expect(sides).toHaveLength(12);
   });
 });
+
+describe('Expansion #3 reinforcements through the loader (design/exp3-data/308.json, §18.9)', () => {
+  const raw = (): ScenarioJson => ({ ...(JSON.parse(JSON.stringify(gergovia)) as ScenarioJson), expansion: 'exp2' });
+  const G = [[3, 0], [4, 0], [5, 0], [6, 0], [7, 0]] as [number, number][];
+  const R = [[8, 0], [8, 1], [8, 2], [8, 3], [8, 4]] as [number, number][];
+
+  it('keeps the fixed entry hexes, noMove and attachLeader of the Gallic reinforcements', () => {
+    const sc = scenarioFromJson(raw());
+    expect(sc.setup.ambush).toMatchObject({ afterOwnTurns: 0, entryHexes: G, noMove: true, attachLeader: true });
+    const s = createGame(sc.setup, 1);
+    expect(s.special.ambush).toMatchObject({
+      trigger: ['inspiredL', 'inspiredC', 'inspiredR', 'leadershipAny'], afterOwnTurns: 0,
+      entryHexes: G.map(([r, c]) => H(r, c)), noMove: true, attachLeader: true,
+    });
+    expect(s.special.reserveUnits.map((u) => u.type)).toEqual(['AX', 'AX', 'WA', 'WA']);
+    expect(s.special.reserveLeaders.map((l) => l.name)).toEqual(['Vercingetorix']);
+  });
+
+  it('keeps the Roman forced placement: an off-board Julian MI for the left baseline, apart from the reserves', () => {
+    const sc = scenarioFromJson(raw());
+    expect(sc.setup.placeUnits).toEqual([{ side: 'bottom', type: 'MI', hexes: R, after: 'ambush' }]);
+    const s = createGame(sc.setup, 1);
+    expect(s.special.placeUnits.map((p) => [p.unit.side, p.unit.type, p.unit.hex, p.unit.legion, p.hexes, p.after])).toEqual([
+      ['bottom', 'MI', OFF_BOARD, 'julian', R.map(([r, c]) => H(r, c)), 'ambush'],
+    ]);
+    expect(s.units.some((u) => u.id === s.special.placeUnits[0].unit.id)).toBe(false);
+  });
+
+  it('the setup is a copy: changing its entry hexes or placements leaves the JSON data alone', () => {
+    const j = raw();
+    const keep = JSON.parse(JSON.stringify(j));
+    const { setup } = scenarioFromJson(j);
+    setup.ambush!.entryHexes![0][0] = 8;
+    setup.placeUnits![0].hexes[0][1] = 9;
+    setup.placeUnits![0].type = 'HI';
+    expect(j).toEqual(keep);
+  });
+});
