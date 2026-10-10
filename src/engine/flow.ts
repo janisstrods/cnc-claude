@@ -109,9 +109,10 @@ interface BannerBatch {
  * A leader is eliminated (killed for a banner). **Every leader elimination goes through here** (killLeader and the
  * elephant's blocked retreat), so the Hellespont count and rules are never skipped: he leaves the board, the loss is
  * counted, Castulo's Scipio ends the battle; then the opponent scores the banner and `afterLeaderLoss` applies the
- * Hellespont rules. With `batch` the banner and the Hellespont rules wait for `settleBanners` (banners first). A leader
- * who leaves the board by evading off his baseline or exiting with his unit is not eliminated. Returns true when his
- * loss ended the battle (Castulo's Scipio).
+ * Hellespont rules. With `batch` the banner and the Hellespont rules wait for `settleBanners` (banners first), and
+ * `reason` is ignored: the batch's banners carry the reason passed to `settleBanners`. A leader who leaves the board by
+ * evading off his baseline or exiting with his unit is not eliminated. Returns true when his loss ended the battle
+ * (Castulo's Scipio).
  */
 function leaderLost(s: GameState, ctx: FlowCtx, l: Leader, reason: string, text: string, batch?: BannerBatch): boolean {
   s.leaders = s.leaders.filter((x) => x.id !== l.id);
@@ -617,7 +618,8 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
       yield* walkPath(s, ctx, tu, opt, 'evade', checked);
     }
     // §15: a war machine that survived the roll is abandoned after its evade move (no banner, no leader casualty check);
-    // an attached leader stays on that hex as a lone leader.
+    // an attached leader stays on that hex as a lone leader. The reason names war machines because the heavy war
+    // machine is the only type with `evadeRemoves`; a new type with that flag needs its own reason here.
     if (UNIT_STATS[tu.type].evadeRemoves && unitById(s, tu.id)) removeUnit(s, ctx, tu, 'war machine abandoned');
     return false;
   }
