@@ -25,7 +25,11 @@ export interface Pos {
   options?: ScenarioSetup['options'];
   /** Leaders placed before the first turn, in placement order (rule `leaderPlacement`, 117 Asculum, §17.4). */
   placeLeaders?: ScenarioSetup['placeLeaders'];
-  /** Off-board reserve force (rule `magoAmbush`, §18.5): ids follow the board units (u<n+1>...), then the leaders. */
+  /**
+ * Off-board reserve force (rule `magoAmbush`, §18.5). Units and leaders share one id counter, in the order board units,
+ * board leaders, `placeLeaders`, reserve units, reserve leaders: with n board units and no leaders the reserve units are
+ * u<n+1>..., each leader before them takes a number first.
+ */
   reserves?: ScenarioSetup['reserves'];
   reserveLeaders?: ScenarioSetup['reserveLeaders'];
   /** Ambush trigger configuration (defaults: Trebbia, §14). */

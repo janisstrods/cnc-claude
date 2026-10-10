@@ -53,6 +53,11 @@ function pair(atk: UnitType, def: UnitType, defBlocks?: number) {
 
 const S = (type: UnitType) => build({ units: [{ side: 'top', type, at: [4, 6] }] }).units[0];
 
+type PosUnit = NonNullable<Pos['units']>[number];
+/** A board unit of the bottom / top side, for `build`. */
+const bottom = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}): PosUnit => ({ side: 'bottom', type, at, ...extra });
+const top = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}): PosUnit => ({ side: 'top', type, at, ...extra });
+
 // ---------------------------------------------------------------------------------------------
 // Scaffold: ids of the Expansion #2 block sets and army looks
 
@@ -255,10 +260,7 @@ describe('Barbarian light chariot (BCH): momentum', () => {
 // Pilum, march, Marius legions and the Tenth Legion (§18.2; rulings Q2, Q3)
 
 describe('pilum and march', () => {
-  type PosUnit = NonNullable<Pos['units']>[number];
   const MARIUS: Pos['legions'] = { bottom: 'marius' };
-  const bottom = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}): PosUnit => ({ side: 'bottom', type, at, ...extra });
-  const top = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}): PosUnit => ({ side: 'top', type, at, ...extra });
   const unitOf = (type: UnitType, extra: Partial<Unit> = {}): Unit => ({ ...build({ units: [{ side: 'bottom', type, at: [4, 6] }] }).units[0], ...extra });
 
   /** Order u1 with `card`, optionally move it, then fire at `target` (every die misses a medium target); the ranged dice. */
@@ -539,9 +541,6 @@ describe('pilum and march', () => {
 // Caesar (forcedMarch) and Spartacus (spartacusDice) (§18.3; rulings Q4, Q5)
 
 describe('Caesar and Spartacus', () => {
-  type PosUnit = NonNullable<Pos['units']>[number];
-  const bottom = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}): PosUnit => ({ side: 'bottom', type, at, ...extra });
-  const top = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}): PosUnit => ({ side: 'top', type, at, ...extra });
   const CAESAR: LeaderTrait[] = ['ccBonus', 'forcedMarch'];
   const caesar = (at: [number, number]): NonNullable<Pos['leaders']>[number] => ({ side: 'bottom', name: 'Caesar', at, traits: CAESAR });
   const dists = (moves: { dist: number }[]) => Math.max(...moves.map((m) => m.dist));

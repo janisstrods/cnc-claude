@@ -276,6 +276,12 @@ describe('objectives', () => {
   });
 
   it('every camp or rampart a capture or hold objective names is a distinct hex, and each capture battle has its camps', () => {
+    for (const id of EXP2) {
+      const named = (scenarioById(id).setup.objectives ?? [])
+        .filter((o) => o.kind === 'capture' || o.kind === 'hold')
+        .flatMap((o) => (o.hexes ?? []).map(([r, c]) => H(r, c)));
+      expect(new Set(named).size, `${id}: a hex named by two objectives, or twice by one`).toBe(named.length);
+    }
     const camps = (id: string) => sorted(hexesOf(game(id), 'camp'));
     expect(camps('201')).toEqual(sorted(['3,5', '4,4', '4,5']));
     expect(camps('204')).toEqual(sorted(['8,8', '8,9']));
@@ -528,10 +534,15 @@ describe('the manifest notices a changed battle', () => {
     return [rowOf(h), h - rowOf(h) * COLS];
   };
 
-  const done: Record<string, string[]> = {};
-  const tried = (kind: string, id: string) => (done[kind] ??= []).push(id);
+  /** A fresh record of the battles each kind of change was tried on; every test makes its own. */
+  function tracker() {
+    const done: Record<string, string[]> = {};
+    const tried = (kind: string, id: string) => (done[kind] ??= []).push(id);
+    return { done, tried };
+  }
 
   it('moving a unit or a leader changes the piece checksum and nothing else; dropping an elite does too', () => {
+    const { done, tried } = tracker();
     for (const id of EXP2) {
       const unit = after(id, (st, base) => {
         [st.units[0].r, st.units[0].c] = freeHex(base);
@@ -580,6 +591,7 @@ describe('the manifest notices a changed battle', () => {
   });
 
   it('flipping a river ford changes the river tally and the terrain checksum; so does a coast ford (217)', () => {
+    const { done, tried } = tracker();
     for (const id of EXP2) {
       const r = after(id, (st) => {
         const t = st.terrain.find((x) => x.t === 'river');
@@ -606,6 +618,7 @@ describe('the manifest notices a changed battle', () => {
   });
 
   it('moving a terrain hex keeps every count but changes the terrain checksum', () => {
+    const { done, tried } = tracker();
     for (const id of EXP2) {
       const r = after(id, (st, base) => {
         const t = st.terrain[0];
@@ -628,6 +641,7 @@ describe('the manifest notices a changed battle', () => {
   });
 
   it('changing the type of a terrain hex changes the tally and the terrain checksum', () => {
+    const { done, tried } = tracker();
     for (const id of EXP2) {
       const r = after(id, (st) => {
         const t = st.terrain.find((x) => ['hill', 'forest', 'marsh', 'broken'].includes(x.t));
@@ -644,6 +658,7 @@ describe('the manifest notices a changed battle', () => {
   });
 
   it('turning a rampart to face the other way keeps the edge count but changes the terrain checksum', () => {
+    const { done, tried } = tracker();
     const MIRROR: Record<HexDir, HexDir> = { E: 'E', W: 'W', NE: 'SE', NW: 'SW', SE: 'NE', SW: 'NW' };
     const FACES: Record<Side, HexDir[]> = { top: ['NW', 'NE'], bottom: ['SW', 'SE'] };
     for (const id of EXP2) {

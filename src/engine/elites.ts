@@ -46,8 +46,9 @@ export function canMarch(u: Unit): boolean {
   return u.legion === 'julian' || eliteHas(u, 'march');
 }
 
-/** Range of the pilum, in hexes, and the hexes a unit may have moved and still throw it: 0 or 1 (§18.2). */
+/** Range of the pilum, in hexes (§18.2). */
 const PILUM_RANGE = 2;
+/** Exclusive bound on the hexes a unit may have moved and still throw the pilum: it throws after moving 0 or 1 hexes, not 2 (§18.2). */
 const PILUM_FIRE_LIMIT = 2;
 
 /**

@@ -59,7 +59,7 @@ export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: Gam
 }
 
 export interface UnitMoveOptions {
-  /** Entry hexes for a reserve unit (Mago's ambush): placement counts as the first hex. */
+  /** Entry hexes for a reserve unit (an ambush reserve, §18.5): placement counts as the first hex. */
   entryHexes?: HexId[];
   /** Hexes already moved this turn (Move-Fire-Move second move starts fresh: pass 0). */
   alreadyMoved?: number;
@@ -205,7 +205,7 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
   if (!l) return [];
   const results = new Map<HexId, MoveTarget>();
   if (opts.entryHexes) {
-    // Mago: may only be placed with one of the reserve units that entered this turn.
+    // ambush reserve (§18.5): a leader may only be placed with one of the reserve units that entered this turn.
     for (const h of opts.entryHexes) {
       const v = unitAt(s, h);
       if (v && v.side === l.side && !leaderAt(s, h)) results.set(h, { hex: h, dist: 1, path: [h], canBattle: false, mustBattle: false, attachesTo: v.id });
@@ -243,7 +243,7 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
   return [...results.values()];
 }
 
-/** Baseline entry hexes for Mago's ambush in a section (enemy baseline, section from the owner's view). */
+/** Baseline entry hexes for an ambush reserve (§18.5) in a section (enemy baseline, section from the owner's view). */
 export function ambushEntryHexes(s: GameState, side: Side, section: SectionName): HexId[] {
   const row = side === 'top' ? 8 : 0;
   const out: HexId[] = [];

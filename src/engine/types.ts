@@ -279,12 +279,12 @@ export interface ScenarioSpecial {
   lastRowRetreat: Side | null;
   /** Ambush trigger data: set exactly when the rule `magoAmbush` is on, else null. Never changed during play. */
   ambush: AmbushDef | null;
-  /** Off-board reserve force (Trebbia: Mago's ambush). */
+  /** Off-board reserve force of an ambush (Trebbia's Mago, 206, ...; §18.5). */
   reserveUnits: Unit[];
   reserveLeaders: Leader[];
   reserveSide: Side | null;
   reserveReleased: boolean;
-  /** Turns completed per side (used by hand-growth rules and Mago). */
+  /** Turns completed per side (used by hand-growth rules and by ambush reserves' `afterOwnTurns`, §18.5). */
   turnsDone: Record<Side, number>;
   /** Battle objectives (§18.4; empty in most battles). Never changed during play: `cloneState` shares the array. */
   objectives: ObjectiveDef[];
@@ -365,9 +365,9 @@ export type Decision =
   | { kind: 'momentum'; side: Side; unit: string; hex: HexId; bonus?: boolean }
   | { kind: 'cavalryExtra'; side: Side; unit: string; options: HexId[] }
   | { kind: 'bonusCombat'; side: Side; unit: string; targets: HexId[] }
-  /** `command`: the command the player named for this card (§18.5); only its units can be rallied. Absent without commands. */
+  /** `command`: the command the player named for this card (§18.5); only its units can be rallied. Absent whenever no command question was asked. */
   | { kind: 'rally'; side: Side; faces: DieFace[]; command?: string }
-  /** `command`: as for Rally, only its units (and leaders with no command) can be ordered. */
+  /** `command`: as for Rally (absent whenever no command question was asked), only its units (and leaders with no command) can be ordered. */
   | { kind: 'spartacus'; side: Side; faces: DieFace[]; command?: string }
   /**
    * Which command a card orders (§18.5), asked before Clash of Shields, Darken the Sky, Rally and I Am Spartacus act

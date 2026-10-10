@@ -1,5 +1,7 @@
 // Expansion #2 order mechanics (rules-reference §18.5): the ambush reserve of Trebbia made configurable for 206 Aquae
-// Sextiae (any Leadership card or Order Light Troops, from the side's first turn, with its own log text).
+// Sextiae (any Leadership card or Order Light Troops, from the side's first turn, with its own log text), and the separate
+// commands of 210 Picenum (one card orders units of one command only; Rally and I Am Spartacus ask which command; scenario
+// data for commands).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   GameDriver, OFF_BOARD, ambushAvailable, ambushSections, cloneState, createGame, forceDice, forcedDiceLeft, inSection, pieceMoves,
@@ -477,10 +479,12 @@ describe('separate commands', () => {
       expect(err(s, 'orderMedium', ['u1', 'u2'])).toBeNull();
       expect(err(s, 'orderMedium', ['u2', 'u4', 'u3'])).toBe(MIXED);
     });
-    it('Order 1 unit (no unit of the named class) is one unit, so one command', () => {
-      const s = build(ROW);
-      expect(err(s, 'orderHeavy', ['u1'])).toBeNull();
-      expect(err(s, 'orderHeavy', ['u1', 'u3'])).not.toBeNull();
+    it('Order 1 unit (no unit of the named class) is one unit, so one command: either command may supply it, two units are refused by the card', () => {
+      const s = build(ROW); // no heavy units: Order Heavy Troops orders one unit of the player's choice
+      expect(err(s, 'orderHeavy', ['u1'])).toBeNull(); // Lentulus'
+      expect(err(s, 'orderHeavy', ['u3'])).toBeNull(); // Gellius'
+      expect(err(s, 'orderHeavy', ['u1', 'u3'])).toBe('Order a single unit of your choice.'); // the card's own limit, not "one army only"
+      expect(err(s, 'orderHeavy', ['u1', 'u3'])).not.toBe(MIXED);
     });
     it('a unit with no command goes with either command, but not with both', () => {
       const s = build({ ...ROW, units: [...ROW.units!, { side: 'bottom', type: 'MI', at: [7, 5] }] }); // u6: no command

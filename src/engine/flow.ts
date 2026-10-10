@@ -1120,6 +1120,7 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
     if (!battleReady(s).length) break;
     const a = yield* ask(ctx, { kind: 'battle', side: s.active }, (a) => validateBattle(s, a));
     if (a.kind === 'endBattle') break;
+    // validateBattle lets through only endBattle, rollingFire and attack, so nothing else reaches here
     if (a.kind === 'rollingFire') {
       yield* rollingFire(s, ctx, unitById(s, a.unit)!, a.path);
     } else if (a.kind === 'attack') {
@@ -1136,7 +1137,7 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
         // Capture objectives: a camp counts only where the attacking unit finally stops.
         if (!s.winner && unitById(s, u.id)) captureOnStop(s, ctx, u);
       }
-    } else continue;
+    }
     // held banners after the whole sequence (retreats, advances, bonus combat, Rolling Fire; any battle action)
     updateHeld(s, ctx);
   }
