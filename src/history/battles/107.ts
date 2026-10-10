@@ -122,7 +122,7 @@ const history: BattleHistory = {
           ph3: [660, 430],
         },
         broken: ['merc'],
-        gone: ['pc1', 'pc2', 'pc3', 'pc4', 'pc5', 'ally', 'agr'],
+        gone: ['pc1', 'pc2', 'pc3', 'pc4', 'pc5'],
         arrows: [
           { side: 'top', points: [[215, 334], [190, 440], [228, 522], [255, 546]] },
           { side: 'top', points: [[925, 308], [870, 430], [800, 520], [752, 548]] },

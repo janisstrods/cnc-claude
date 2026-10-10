@@ -137,8 +137,7 @@ const history: BattleHistory = {
     ],
   },
   sources: [
-    'Livy, History of Rome 24.14–16',
-    'Livy, History of Rome 22.57, 24.17, 25.20',
+    'Livy, History of Rome 24.14–16 (also 22.57, 24.17, 25.20)',
     "J. F. Lazenby, Hannibal's War (1978)",
   ],
 };

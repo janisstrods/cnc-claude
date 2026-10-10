@@ -14,7 +14,7 @@ const history: BattleHistory = {
     top: {
       name: 'Carthaginians, Africans and Spaniards',
       commanders: ['Hasdrubal Barca'],
-      strength: 'Unknown; thinned by Spanish desertions, probably smaller than Scipio’s army',
+      strength: 'Unknown; thinned by Spanish desertions, probably smaller than Scipio\'s army',
       forces: 'African and Spanish foot, Numidian horse, Balearic slingers and African light infantry, some elephants.',
     },
     bottom: {

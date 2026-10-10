@@ -6,7 +6,7 @@ const history: BattleHistory = {
   context: {
     war: 'Second Punic War, 218–201 BC',
     text: [
-      "Hannibal had crossed the Alps in 218 BC and destroyed Roman armies at the Trebbia and Lake Trasimene. The dictator Fabius Maximus then shadowed him and refused battle, a cautious strategy that cost Fabius his popularity. For 216 BC Rome raised the largest army in its history, eight reinforced legions with as many allied troops, under the consuls Lucius Aemilius Paullus and Gaius Terentius Varro.",
+      "Hannibal had crossed the Alps in 218 BC and destroyed Roman armies at the Trebbia and Lake Trasimenus. The dictator Fabius Maximus then shadowed him and refused battle, a cautious strategy that cost Fabius his popularity. For 216 BC Rome raised the largest army in its history, eight reinforced legions with as many allied troops, under the consuls Lucius Aemilius Paullus and Gaius Terentius Varro.",
       "In early summer Hannibal seized the Roman supply depot at Cannae in Apulia. The consuls followed him there, and on 2 August, Varro's turn of command, the Romans formed for battle on the open plain beside the river Aufidus.",
     ],
   },

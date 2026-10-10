@@ -55,7 +55,7 @@ const history: BattleHistory = {
     phases: [
       {
         title: 'The crossing',
-        caption: "In a night storm Alexander crosses about 27 km above his camp, landing first on an island by mistake. His cavalry rides ahead of the foot. Porus' son comes up with 2,000 horse and 120 chariots (Ptolemy's figures).",
+        caption: "After a stormy night Alexander crosses at dawn, about 27 km above his camp, landing first on an island by mistake. His cavalry rides ahead of the foot. Porus' son comes up with 2,000 horse and 120 chariots (Ptolemy's figures).",
         at: {
           comp: [180, 175],
           ha: [170, 228],

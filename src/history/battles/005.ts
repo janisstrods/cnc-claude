@@ -6,7 +6,7 @@ const history: BattleHistory = {
   context: {
     war: 'Second Punic War, 218–201 BC',
     text: [
-      'After the Ticinus, Scipio withdrew behind the Trebia, a tributary of the Po near Placentia. His colleague Tiberius Sempronius Longus, recalled from Sicily, where he had been preparing to invade Africa, joined him there with a second consular army, while the Gauls of the region went over to Hannibal in growing numbers.',
+      'After the Ticinus, Scipio withdrew behind the Trebbia, a tributary of the Po near Placentia. His colleague Tiberius Sempronius Longus, recalled from Sicily, where he had been preparing to invade Africa, joined him there with a second consular army, while the Gauls of the region went over to Hannibal in growing numbers.',
       'Scipio, still weak from his wound, urged delay. Sempronius, buoyed by a successful skirmish with Carthaginian raiders and with the consular elections approaching, wanted a battle. So did Hannibal, while the Gauls were eager and the Roman levies raw. On the flat ground between the camps he found an overgrown stream bed where troops could lie hidden, and there, the night before the battle, he posted his brother Mago with 2,000 picked men.',
     ],
   },
@@ -26,7 +26,7 @@ const history: BattleHistory = {
   },
   map: {
     terrain: [
-      { kind: 'river', points: [[-40, 498], [110, 490], [250, 503], [370, 497], [460, 520], [520, 580], [540, 640]], width: 24, label: 'Trebia' },
+      { kind: 'river', points: [[-40, 498], [110, 490], [250, 503], [370, 497], [460, 520], [520, 580], [540, 640]], width: 24, label: 'Trebbia' },
       { kind: 'woods', points: [[640, 600], [660, 560], [760, 535], [930, 528], [930, 566], [770, 574], [690, 612]] },
       { kind: 'river', points: [[620, 640], [660, 578], [760, 552], [940, 546]], width: 7 },
       { kind: 'label', at: [880, 592], text: 'Overgrown stream bed' },
@@ -59,7 +59,7 @@ const history: BattleHistory = {
     phases: [
       {
         title: 'Across the icy river',
-        caption: "Drawn out at dawn by Numidian raiders, the Romans wade the swollen, breast-high Trebia in sleet without breakfast. Hannibal's fed and rested army waits, elephants before both cavalry wings, while Mago lies hidden behind the Romans.",
+        caption: "Drawn out at dawn by Numidian raiders, the Romans wade the swollen, breast-high Trebbia in sleet without breakfast. Hannibal's fed and rested army waits, elephants before both cavalry wings, while Mago lies hidden behind the Romans.",
         at: {
           numL: [70, 205],
           cavL: [150, 200],

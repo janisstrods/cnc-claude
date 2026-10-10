@@ -73,12 +73,13 @@ const history: BattleHistory = {
           teg: [290, 118],
           cen1: [690, 100],
           cen2: [790, 152],
-          ath: [720, 262],
+          ath: [790, 222],
         },
         arrows: [
           { side: 'top', points: [[165, 192], [160, 138]] },
           { side: 'top', points: [[290, 198], [290, 140]] },
           { side: 'top', points: [[480, 200], [570, 140], [660, 116]] },
+          { side: 'top', points: [[668, 236], [722, 236]] },
         ],
       },
       {

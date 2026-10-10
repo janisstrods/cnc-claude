@@ -7,7 +7,7 @@ const history: BattleHistory = {
     war: 'Second Punic War, 218–201 BC',
     text: [
       "In the spring of 217 BC Rome posted its new consuls to bar Hannibal's way south: Gnaeus Servilius Geminus at Ariminum on the Adriatic and Gaius Flaminius at Arretium in Etruria. Hannibal crossed the Apennines by an unexpected route and struggled through flooded marshland, where he lost the sight of one eye. He then ravaged the country around Flaminius to provoke him.",
-      'Flaminius, a popular politician eager for a victory, followed without waiting for his colleague. Hannibal turned along the north shore of Lake Trasimene, where the road passes through a narrow entrance into a valley ringed by hills. That night he hid his army on the slopes above it, and at dawn, in June, the Roman column marched in through a thick mist.',
+      'Flaminius, a popular politician eager for a victory, followed without waiting for his colleague. Hannibal turned along the north shore of Lake Trasimenus, where the road passes through a narrow entrance into a valley ringed by hills. That night he hid his army on the slopes above it, and at dawn, in June, the Roman column marched in through a thick mist.',
     ],
   },
   sides: {
@@ -28,7 +28,7 @@ const history: BattleHistory = {
     north: 0,
     terrain: [
       { kind: 'hills', points: [[-60, -60], [1060, -60], [1060, 470], [900, 498], [770, 508], [690, 468], [650, 340], [560, 320], [400, 358], [250, 420], [120, 440], [40, 468], [-60, 480]] },
-      { kind: 'lake', points: [[-60, 580], [120, 562], [300, 530], [480, 532], [620, 552], [800, 566], [1060, 560], [1060, 660], [-60, 660]], label: 'Lake Trasimene' },
+      { kind: 'lake', points: [[-60, 580], [120, 562], [300, 530], [480, 532], [620, 552], [800, 566], [1060, 560], [1060, 660], [-60, 660]], label: 'Lake Trasimenus' },
       { kind: 'road', points: [[-60, 512], [120, 500], [300, 498], [480, 504], [620, 526], [780, 540], [1060, 536]] },
       { kind: 'label', at: [300, 120], text: 'Hills above the shore' },
       { kind: 'label', at: [860, 120], text: 'Steep hill' },

@@ -1,6 +1,6 @@
 // Dev gallery for the battle histories: #/gallery/history lists the battles; #/gallery/history/<id> shows one battle's
 // game board (for orientation), all three slides with every map phase, and the last phase flipped, on one page for
-// screenshots (scripts/shot.sh).
+// screenshots (scripts/shot.sh); #/gallery/history/maps[/<first>-<last>] is a contact sheet of every map phase.
 import { useEffect, useMemo, useState } from 'react';
 import { createGame } from '../engine';
 import { SCENARIOS, type ScenarioInfo } from '../scenarios';
@@ -10,6 +10,7 @@ import { UnitToken } from '../art';
 import { BoardArt } from '../ui/terrain';
 import { BOARD_H, BOARD_W, hexCenterId } from '../ui/geometry';
 import { MapSlide, OutcomeSlide, RoadSlide, SLIDE_TITLES, sideColors } from '../ui/history/HistoryDialog';
+import { BattleMap } from '../ui/history/BattleMap';
 import '../ui/history/history.css';
 
 function GameBoard({ sc }: { sc: ScenarioInfo }) {
@@ -72,8 +73,41 @@ function Battle({ sc }: { sc: ScenarioInfo }) {
   );
 }
 
+/** Contact sheet: every phase of every battle's map, two to a row (#/gallery/history/maps[/<first id>-<last id>]). */
+function MapSheet({ range }: { range?: string }) {
+  const [lo, hi] = (range ?? '000-999').split('-');
+  const ids = SCENARIOS.filter((s) => hasHistory(s.id) && s.id >= lo && s.id <= (hi ?? lo));
+  const [all, setAll] = useState<BattleHistory[] | null>(null);
+  useEffect(() => {
+    Promise.all(ids.map((s) => loadHistory(s.id))).then(setAll);
+  }, [range]);
+  if (!all) return <div style={sheet}>Loading…</div>;
+  return (
+    <>
+      {all.map((h) => {
+        const sc = SCENARIOS.find((s) => s.id === h.id)!;
+        const colors = sideColors(sc);
+        return (
+          <div key={h.id} style={{ ...sheet, padding: '10px 14px' }}>
+            <h2 style={{ ...h2, fontSize: 15 }}>{h.id} {sc.name}: top {sc.setup.top.army}, bottom {sc.setup.bottom.army}</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {h.map.phases.map((ph, i) => (
+                <div key={i}>
+                  <BattleMap map={h.map} phase={i} colors={colors} />
+                  <div style={{ fontSize: 12 }}><b>{i + 1}. {ph.title}</b></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 export default function HistoryGallery() {
   const id = window.location.hash.split('/')[3];
+  if (id === 'maps') return <div style={page}><MapSheet range={window.location.hash.split('/')[4]} /></div>;
   const sc = id ? SCENARIOS.find((s) => s.id === id) : undefined;
   if (sc) return <div style={page}><Battle sc={sc} /></div>;
   return (

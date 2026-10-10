@@ -118,7 +118,7 @@ const history: BattleHistory = {
     losses: 'Not recorded. Publius Scipio fell with much of his army.',
     text: [
       'The victors marched at once to join Hasdrubal Barca against Gnaeus, whose Celtiberians had already been bribed to go home. Gnaeus retreated, made a last stand on a bare hill and was killed twenty-nine days after his brother.',
-      'Survivors rallied under a Roman knight, Lucius Marcius, and held on north of the Ebro, but Rome had all but lost Spain. In 210 BC it sent Publius’ son, the future Scipio Africanus, to take up his father’s command. He took New Carthage the next year and turned the war in Spain around.',
+      'Survivors rallied under a Roman knight, Lucius Marcius, and held on north of the Ebro, but Rome had all but lost Spain. In 210 BC it sent Publius\' son, the future Scipio Africanus, to take up his father\'s command. He took New Carthage the next year and turned the war in Spain around.',
     ],
   },
   sources: [

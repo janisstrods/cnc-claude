@@ -128,9 +128,9 @@ const history: BattleHistory = {
   outcome: {
     winner: 'bottom',
     result: 'Decisive Roman victory',
-    losses: 'No figures survive. Livy says very many of Hasdrubal’s men fell, and few would have escaped had the Spaniards not fled so early.',
+    losses: 'No figures survive. Livy says very many of Hasdrubal\'s men fell, and few would have escaped had the Spaniards not fled so early.',
     text: [
-      'The battle mattered more for what it prevented than for what it won. Hasdrubal could neither march to Italy nor feel safe in Spain, and wavering Spanish peoples went over to Rome. Carthage sent to Spain the army that Mago, Hannibal’s brother, had been gathering for Italy: some 12,000 foot, 1,500 horse and 20 elephants.',
+      'The battle mattered more for what it prevented than for what it won. Hasdrubal could neither march to Italy nor feel safe in Spain, and wavering Spanish peoples went over to Rome. Carthage sent to Spain the army that Mago, Hannibal\'s brother, had been gathering for Italy: some 12,000 foot, 1,500 horse and 20 elephants.',
       'Rome had kept the war in Spain from feeding the war in Italy. Hasdrubal finally slipped away after Baecula in 208 BC, only to be destroyed at the Metaurus the next year.',
     ],
   },

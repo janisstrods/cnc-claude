@@ -115,7 +115,7 @@ const history: BattleHistory = {
     losses: 'Unknown. The Roman javelinmen and cavalry suffered heavily and the consul was badly wounded; some 600 of his rearguard were caught at the river afterwards.',
     text: [
       "Scipio fell back across the Po to the colony of Placentia (Piacenza), breaking the bridge behind him. The clash showed that Hannibal's cavalry outclassed Rome's on open ground, and the wounded consul chose to wait in a strong position for his colleague, Tiberius Sempronius Longus, recalled from Sicily.",
-      'The defeat swung the Gauls of the Po valley towards Hannibal. Soon afterwards some 2,000 Gallic foot and nearly 200 horse serving with the Romans attacked their camp and deserted to him, and the Boii made an alliance with him. About a month later the two consular armies, united, met him in battle at the Trebia.',
+      'The defeat swung the Gauls of the Po valley towards Hannibal. Soon afterwards some 2,000 Gallic foot and nearly 200 horse serving with the Romans attacked their camp and deserted to him, and the Boii made an alliance with him. About a month later the two consular armies, united, met him in battle at the Trebbia.',
     ],
   },
   sources: [

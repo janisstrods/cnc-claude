@@ -132,7 +132,7 @@ const history: BattleHistory = {
     result: 'Decisive Carthaginian victory',
     losses: 'Romans: almost the whole army; c. 2,000 escaped, and Regulus was captured with 500 men (Polybius). Carthaginians: c. 800 mercenaries.',
     text: [
-      'The invasion of Africa was over. A Roman fleet sent to rescue the survivors at Aspis beat the Carthaginian fleet off Cape Hermaeum, but on the voyage home a storm off Camarina in Sicily wrecked most of it: Polybius says only 80 of 364 ships survived. Xanthippus soon sailed home, wisely in Polybius’ view, given Carthaginian jealousy.',
+      'The invasion of Africa was over. A Roman fleet sent to rescue the survivors at Aspis beat the Carthaginian fleet off Cape Hermaeum, but on the voyage home a storm off Camarina in Sicily wrecked most of it: Polybius says only 80 of 364 ships survived. Xanthippus soon sailed home, wisely in Polybius\' view, given Carthaginian jealousy.',
       'The war returned to Sicily and the sea and lasted until 241 BC. Regulus died a captive. Later Roman writers told how he was sent to Rome on parole to negotiate, urged the Senate to refuse, and went back to Carthage to be tortured to death; Polybius says nothing of this, and many historians doubt it.',
     ],
   },
