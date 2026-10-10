@@ -2,9 +2,11 @@
 import { memo } from 'react';
 import type { ArmyLook, Blocks } from '../engine/types';
 import { darken, lighten } from './color';
-import { paletteFor, type Finial, type Kit, type Palette } from './palettes';
-import { Emblem, FacingRightCtx, Head, Hi, Line2, OL, Paint, Shape, makeFig, type Crest, type Fig, type Helmet } from './parts';
-import { HORSE_GEOM, Horse, Rider, type RiderKit } from './mounted';
+import { KITS } from './kits';
+import { leaderLook, paletteFor, type Finial, type LeaderLook, type Palette } from './palettes';
+import { WingPair } from './exp2-parts';
+import { Emblem, FacingRightCtx, Head, Hi, Line2, OL, Paint, Shape, makeFig, type Fig } from './parts';
+import { HORSE_GEOM, Horse, Rider } from './mounted';
 import { BasePlate } from './token';
 
 /** Where the board should place an attached leader token, relative to the unit hex centre. */
@@ -13,6 +15,8 @@ export const LEADER_ATTACH_OFFSET = { x: 29, y: -28 } as const;
 /** The army standard (pole + hanging banner) drawn in a rider's frame (seat at 0,0). */
 export function Standard({ p, x1 = -3.8, y1 = 6, x2 = -0.6, y2 = -41 }: { p: Palette; x1?: number; y1?: number; x2?: number; y2?: number }) {
   if (p.style.standard === 'parasol') return <Parasol p={p} x1={x1} y1={y1} x2={x2} y2={y2} />;
+  if (p.style.standard === 'carnyx') return <Carnyx p={p} x1={x1} y1={y1} x2={x2} y2={y2} />;
+  if (p.style.standard === 'aquila') return <Aquila p={p} x1={x1} y1={y1} x2={x2} y2={y2} />;
   const cx = x2 - 0.2;
   const top = y2 + 4.6;
   const w = 13.6;
@@ -62,6 +66,78 @@ function Parasol({ p, x1, y1, x2, y2 }: { p: Palette; x1: number; y1: number; x2
   );
 }
 
+const n2 = (v: number) => v.toFixed(2);
+
+/**
+ * The Celtic carnyx: a tall bronze war trumpet whose bell is a boar's head with open jaws and a bristling crest, a streamer
+ * in the side colour tied under the head.
+ */
+function Carnyx({ p, x1, y1, x2, y2 }: { p: Palette; x1: number; y1: number; x2: number; y2: number }) {
+  const t = `translate(${n2(x2)} ${n2(y2)})`;
+  return (
+    <g>
+      <Line2 d={`M${x1} ${y1} L${n2(x1 + 1.6)} ${n2(y1 + 1.4)}`} w={1.2} c={p.metal} ow={0.5} />
+      <Line2 d={`M${x1} ${y1} L${n2(x2 - 0.6)} ${n2(y2 + 3.6)}`} w={1.25} c={p.metal} ow={0.6} />
+      <Hi d={`M${n2(x1 + 0.3)} ${n2(y1 - 2)} L${n2(x2 - 0.2)} ${n2(y2 + 5)}`} c={p.metalLight} w={0.35} o={0.8} />
+      <g transform={t}>
+        {/* streamer in the side colour */}
+        <Shape d="M-0.6 5.2 C-3.4 5.4 -6.6 7.4 -10.6 6.6 L-9.8 8.4 L-11 9.6 C-7 10.4 -3.6 9 -0.4 8.4 Z" f={p.banner} sw={0.6} />
+        <Paint d="M-10.6 6.6 L-9.8 8.4 L-11 9.6 C-9.4 9.9 -7.8 9.8 -6.4 9.4 C-7.6 8.6 -9 7.4 -10.6 6.6 Z" f={p.bannerShade} o={0.85} />
+        <Hi d="M-1 6.4 C-3.6 6.8 -6.4 8 -9.2 7.8" c={lighten(p.banner, 0.35)} w={0.45} o={0.8} />
+        {/* boar's head bell */}
+        <Shape d="M-2 4 C-2.6 1 -1.6 -1.6 0.8 -2.4 C2.4 -2.8 3.8 -2 5.4 -0.6 L6.6 0.4 L6.2 1.4 L4.2 1.2 L5.6 2.8 L5.2 3.4 L2.6 2.6 C1.4 3.6 0.2 4.4 -2 4 Z" f={p.metal} sw={0.55} />
+        <path d="M-1.4 -0.6 L-1.6 -2.2 L-0.6 -1.6 L-0.4 -3.2 L0.4 -2.2 L0.9 -3.6 L1.5 -2.4 L2.3 -3.4 L2.6 -2.2 Z" fill={p.metalShade} stroke={OL} strokeWidth={0.4} strokeLinejoin="round" />
+        <path d="M4.2 1.2 L5.6 2.8" stroke={OL} strokeWidth={0.45} />
+        <path d="M4.6 1.3 L5.1 1.9 L4.4 2.1 Z" fill="#b8302e" />
+        <circle cx={2.6} cy={-0.6} r={0.42} fill={OL} />
+        <Shape d="M1 -1.6 L0.6 -3.4 L2 -2 Z" f={p.metal} sw={0.4} />
+        <Hi d="M-0.8 0.4 C0.2 -1 1.6 -1.6 3.4 -1.2" c={p.metalLight} w={0.45} o={0.9} />
+      </g>
+    </g>
+  );
+}
+
+/** Jupiter's thunderbolt of the aquila, under the eagle's talons. */
+const AQUILA_BOLT = 'M-2.8 0.4 L2.8 0.4 M-2.2 0.4 L-1.6 1.4 L-1 0.4 M1 0.4 L1.6 1.4 L2.2 0.4';
+
+/** The legion's eagle: a gold eagle with raised wings on a thunderbolt, a gold wreath, and a vexillum in the side colour. */
+function Aquila({ p, x1, y1, x2, y2 }: { p: Palette; x1: number; y1: number; x2: number; y2: number }) {
+  const cx = x2 - 0.2;
+  const top = y2 + 9.2;
+  const w = 10.4;
+  const h = 8.2;
+  const l = cx - w / 2;
+  const r = cx + w / 2;
+  return (
+    <g>
+      <Line2 d={`M${x1} ${y1} L${x2} ${y2}`} w={1.0} c={p.wood} ow={0.6} />
+      {/* vexillum */}
+      <Shape d={`M${n2(l)} ${n2(top)} L${n2(r)} ${n2(top)} L${n2(r)} ${n2(top + h)} L${n2(l)} ${n2(top + h)} Z`} f={p.banner} sw={0.7} />
+      <Paint d={`M${n2(l)} ${n2(top)} L${n2(l + 2.4)} ${n2(top)} L${n2(l + 2.4)} ${n2(top + h)} L${n2(l)} ${n2(top + h)} Z`} f={p.bannerShade} o={0.8} mx={cx} />
+      <path d={`M${n2(l + 0.6)} ${n2(top + h)} L${n2(l + 0.6)} ${n2(top + h + 1.4)} M${n2(l + 2.4)} ${n2(top + h)} L${n2(l + 2.4)} ${n2(top + h + 1.4)} M${n2(cx - 0.6)} ${n2(top + h)} L${n2(cx - 0.6)} ${n2(top + h + 1.4)} M${n2(cx + 1.2)} ${n2(top + h)} L${n2(cx + 1.2)} ${n2(top + h + 1.4)} M${n2(r - 0.6)} ${n2(top + h)} L${n2(r - 0.6)} ${n2(top + h + 1.4)}`} stroke={p.gold} strokeWidth={0.6} />
+      <BannerDevice p={p} cx={cx} cy={top + h / 2} />
+      <Line2 d={`M${n2(l - 0.8)} ${n2(top)} L${n2(r + 0.8)} ${n2(top)}`} w={0.8} c={p.gold} ow={0.45} />
+      {/* wreath */}
+      <circle cx={n2(x2 + 0.1)} cy={n2(y2 + 4.6)} r={1.7} fill="none" stroke={OL} strokeWidth={1.3} />
+      <circle cx={n2(x2 + 0.1)} cy={n2(y2 + 4.6)} r={1.7} fill="none" stroke={p.gold} strokeWidth={0.6} strokeDasharray="0.9 0.35" />
+      {/* the eagle on its thunderbolt */}
+      <g transform={`translate(${n2(x2)} ${n2(y2 + 0.6)})`}>
+        <path d={AQUILA_BOLT} fill="none" stroke={OL} strokeWidth={1.1} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={AQUILA_BOLT} fill="none" stroke={p.gold} strokeWidth={0.5} strokeLinecap="round" strokeLinejoin="round" />
+        <g fill={p.gold} stroke={OL} strokeWidth={0.4} strokeLinejoin="round">
+          <WingPair spread={0.4} y={-2.4} s={1.2} />
+          <path d="M-0.7 -0.6 L0 0.6 L0.7 -0.6 Z" />
+          <ellipse cx={0} cy={-2.5} rx={1.15} ry={2} />
+          <circle cx={0.5} cy={-4.9} r={0.85} />
+          <path d="M1.2 -5.2 L2.1 -4.8 L1.2 -4.4 Z" />
+        </g>
+        <Hi d="M-2.8 -7.2 C-2.4 -5.8 -1.6 -4.6 -0.8 -4" c={p.goldShade} w={0.35} o={1} />
+        <Hi d="M2.8 -7.2 C2.4 -5.8 1.6 -4.6 0.8 -4" c={p.goldShade} w={0.35} o={1} />
+      </g>
+    </g>
+  );
+}
+
 const FINIAL_FIG = new WeakMap<Palette, Fig>();
 function figOf(p: Palette): Fig {
   let f = FINIAL_FIG.get(p);
@@ -71,7 +147,10 @@ function figOf(p: Palette): Fig {
 
 /** Pole-top ornament of the standard at (x, y). */
 function FinialEl({ p, kind, x, y }: { p: Palette; kind: Finial; x: number; y: number }) {
-  if (kind === 'star' || kind === 'royalEagle' || kind === 'wheel' || kind === 'trident' || kind === 'stag') {
+  if (
+    kind === 'star' || kind === 'royalEagle' || kind === 'wheel' || kind === 'trident' || kind === 'stag'
+    || kind === 'boar' || kind === 'bull' || kind === 'pileus'
+  ) {
     const s = kind === 'wheel' ? 0.62 : 0.7;
     return (
       <g>
@@ -154,57 +233,19 @@ function BannerDevice({ p, cx, cy }: { p: Palette; cx: number; cy: number }) {
   );
 }
 
-const GENERAL_KIT: RiderKit = {
-  torso: 'muscle', helmet: 'attic', crest: 'horsehair', shield: 'none', weapon: 'standard', legs: 'greaves', cloak: true,
-};
-
-/** The mounted general of the Expansion #1 kits (the base kits all ride as GENERAL_KIT). */
-const KIT_GENERALS: Partial<Record<Kit, RiderKit>> = {
-  // Macedonian king: Phrygian helmet with tall plumes, gilded cuirass, cloak
-  macedonian: { torso: 'muscle', helmet: 'phrygian', crest: 'plume2', shield: 'none', weapon: 'standard', legs: 'greaves', cloak: true },
-  // Persian noble: upright tiara, robe, trousers
-  persian: { torso: 'robe', helmet: 'kidaris', crest: 'none', shield: 'none', weapon: 'standard', legs: 'trousers', cloak: true, beard: true },
-  // Scythian chief: pointed cap, scale coat, trousers
-  scythian: { torso: 'scale', helmet: 'scythianCap', crest: 'none', shield: 'none', weapon: 'standard', legs: 'trousers', beard: true },
-  // Indian raja: turban and white cotton, under the royal parasol
-  indian: { torso: 'cotton', helmet: 'turban', crest: 'none', shield: 'none', weapon: 'standard', legs: 'bare', beard: true },
-};
-
-/** Helmet, crest and beard of the attached-leader portrait, per kit. */
-const BUSTS: Partial<Record<Kit, { helmet: Helmet; crest: Crest; beard: boolean }>> = {
-  macedonian: { helmet: 'phrygian', crest: 'horsehair', beard: false },
-  persian: { helmet: 'kidaris', crest: 'none', beard: true },
-  scythian: { helmet: 'scythianCap', crest: 'none', beard: true },
-  indian: { helmet: 'turban', crest: 'none', beard: true },
-};
-
-/** Mounted general with cloak and standard, facing right, hooves at y = 0. */
-export function MountedGeneral({ p }: { p: Palette }) {
-  const gp = generalPalette(p);
+/**
+ * Mounted general with cloak and standard, facing right, hooves at y = 0: his kit's general (`KITS[kit].general`), or a
+ * named leader's own figure (`leader`, from `LEADER_LOOKS`).
+ */
+export function MountedGeneral({ p, leader }: { p: Palette; leader?: LeaderLook }) {
+  const gp = generalPalette(p, leader);
   const f = makeFig(gp, 1);
-  const kitGeneral = KIT_GENERALS[p.kit];
-  if (kitGeneral) return <KitGeneral p={p} gp={gp} f={f} kit={kitGeneral} />;
+  const def = KITS[p.kit].general;
+  // the look's general helmet and crest (Theban, Spartan, Pyrrhus' horns) and horse replace the kit's
   const g = p.style.general;
-  const rider = g?.helmet || g?.crest ? { ...GENERAL_KIT, helmet: g.helmet ?? GENERAL_KIT.helmet, crest: g.crest ?? GENERAL_KIT.crest } : GENERAL_KIT;
-  const horse = g?.horse ?? (p.kit === 'greek' ? p.horses[0] : { coat: '#e6dfd0', shade: '#aea592', mane: '#8c8272' });
-  return (
-    <g>
-      <g transform={`scale(${HORSE_GEOM.scale})`}>
-        <Horse coat={horse.coat} shade={horse.shade} mane={horse.mane} pose={2} cloth={gp.saddle} clothTrim={p.gold} light={lighten(horse.coat, 0.5)} />
-      </g>
-      <g transform={`translate(${HORSE_GEOM.seatX} ${HORSE_GEOM.seatY})`}>
-        <Rider kit={rider} f={f} standard={<Standard p={p} x1={-3.8} y1={6} x2={-0.9} y2={-40} />} />
-      </g>
-      <path d="M5.8 -22.4 Q11 -19.6 16.6 -20.6" fill="none" stroke="#3a2416" strokeWidth={0.55} />
-    </g>
-  );
-}
-
-/** The general of the Macedonian, Persian, Scythian and Indian kits (eastern lords wear a gold torque). */
-function KitGeneral({ p, gp, f, kit }: { p: Palette; gp: Palette; f: Fig; kit: RiderKit }) {
-  const g = p.style.general;
-  const rider = g?.helmet || g?.crest ? { ...kit, helmet: g.helmet ?? kit.helmet, crest: g.crest ?? kit.crest } : kit;
-  const horse = g?.horse ?? p.horses[0];
+  const lookRider = g?.helmet || g?.crest ? { ...def.rider, helmet: g.helmet ?? def.rider.helmet, crest: g.crest ?? def.rider.crest } : def.rider;
+  const rider = leader?.rider ? { ...lookRider, ...leader.rider } : lookRider;
+  const horse = leader?.horse ?? g?.horse ?? def.horse ?? p.horses[0];
   const ub = 'translate(-0.6 13.4)';
   return (
     <g>
@@ -214,11 +255,11 @@ function KitGeneral({ p, gp, f, kit }: { p: Palette; gp: Palette; f: Fig; kit: R
       <g transform={`translate(${HORSE_GEOM.seatX} ${HORSE_GEOM.seatY})`}>
         <Rider kit={rider} f={f} standard={<Standard p={p} x1={-3.8} y1={6} x2={-0.9} y2={-40} />} />
         {/* gold torque of rank */}
-        {p.kit !== 'macedonian' && <g transform={ub}>
+        {def.torque && <g transform={ub}>
           <Line2 d="M-0.8 -21.6 C0.2 -20.9 1.4 -20.9 2.4 -21.6" w={0.75} c={p.gold} ow={0.4} />
-          {p.kit === 'indian' && <circle cx={0.4} cy={-24.4} r={0.45} fill={p.gold} stroke={OL} strokeWidth={0.25} />}
+          {def.jewel && <circle cx={0.4} cy={-24.4} r={0.45} fill={p.gold} stroke={OL} strokeWidth={0.25} />}
         </g>}
-        {p.kit === 'scythian' && <ScythianGorytos p={gp} />}
+        {def.gorytos && <ScythianGorytos p={gp} />}
       </g>
       <path d="M5.8 -22.4 Q11 -19.6 16.6 -20.6" fill="none" stroke="#3a2416" strokeWidth={0.55} />
     </g>
@@ -237,14 +278,15 @@ function ScythianGorytos({ p }: { p: Palette }) {
   );
 }
 
-/** Generals wear gilded bronze (and their look's general colours). */
-export function generalPalette(p: Palette): Palette {
+/** Generals wear gilded bronze (and their look's general colours, then a named leader's own). */
+export function generalPalette(p: Palette, leader?: LeaderLook): Palette {
   const g = p.style.general;
+  const own = leader?.colours;
   if (g) {
     const { horse: _h, helmet: _he, crest: _c, ...colours } = g;
-    return { ...p, metal: '#dcae4a', metalShade: '#97691c', metalLight: '#fbe6a2', ...colours };
+    return { ...p, metal: '#dcae4a', metalShade: '#97691c', metalLight: '#fbe6a2', ...colours, ...own };
   }
-  return { ...p, metal: '#dcae4a', metalShade: '#97691c', metalLight: '#fbe6a2' };
+  return { ...p, metal: '#dcae4a', metalShade: '#97691c', metalLight: '#fbe6a2', ...own };
 }
 
 const CAMEO = '#f1e5c6';
@@ -253,28 +295,47 @@ const CAMEO = '#f1e5c6';
  * Head-and-shoulders portrait used in the attached-leader medallion (facing right, centred on 0,0, cameo field r = 8).
  * The look's general helmet and crest (Theban, Spartan, Pyrrhus' horns) replace the kit's, as on the mounted general.
  */
-function Bust({ f }: { f: Fig }) {
+function Bust({ f, leader }: { f: Fig; leader?: LeaderLook }) {
   const { p } = f;
-  const b = BUSTS[p.kit];
+  const b = leader?.bust ? { ...KITS[p.kit].bust, ...leader.bust } : KITS[p.kit].bust;
   const g = p.style.general;
-  const helmet = g?.helmet ?? b?.helmet ?? 'atticOpen';
-  const crest = g?.crest ?? b?.crest ?? 'horsehair';
-  const eastern = p.kit === 'persian' || p.kit === 'scythian' || p.kit === 'indian';
+  const helmet = leader?.bust?.helmet ?? g?.helmet ?? b.helmet;
+  const crest = leader?.bust?.crest ?? g?.crest ?? b.crest;
+  const eastern = !!b.robe;
+  const chest = b.chest;
   return (
     <>
       <g transform="translate(-0.75 24.4) scale(1.05)">
-        <Head f={f} helmet={helmet} crest={crest} beard={b ? b.beard : p.kit !== 'roman'} />
+        <Head f={f} helmet={helmet} crest={crest} beard={b.beard} hair={b.hair} moustache={b.moustache} torc={b.torc} />
       </g>
       {/* cloak across the shoulders */}
       <Shape d="M-7.63 2.4 C-5.8 1.4 -3.4 1.2 0 1.5 C3.4 1.7 5.8 2 7.63 2.4 A 8 8 0 0 1 -7.63 2.4 Z" f={p.cloak} sw={0.6} />
       <Paint d="M-7.63 2.4 C-6.6 1.9 -5.6 1.6 -4.4 1.5 C-5.2 3.6 -5.2 5.4 -4.6 6.55 A 8 8 0 0 1 -7.63 2.4 Z" f={p.cloakShade} mx={0} />
-      {/* gilded cuirass (eastern lords: an embroidered robe) */}
-      <Shape d="M-2.6 2.4 C-1 1.8 1.8 1.8 3.4 2.6 C3.9 4.2 3.9 5.8 3.4 7.24 A 8 8 0 0 1 -2.6 7.57 C-2.9 6 -3 4.2 -2.6 2.4 Z" f={eastern ? p.tunic : p.metal} sw={0.55} />
-      {eastern
-        ? <Hi d="M0.6 2 L0.9 7.6 M-1.8 3.4 L-1.6 3.4 M2.6 4.4 L2.8 4.4 M-1.4 5.8 L-1.2 5.8" c={p.pattern ?? p.gold} w={0.6} o={1} />
-        : <Hi d="M0 4 C1 3.7 2.2 3.9 2.8 4.6 M-0.4 6.4 C0.8 6 2 6.2 2.9 6.8" c={p.metalShade} w={0.4} />}
-      {!eastern && <Hi d="M-1.6 2.6 C-0.6 2.2 0.8 2.2 1.8 2.5" c={p.metalLight} w={0.5} />}
+      {chest ? <BustChest p={p} chest={chest} /> : (
+        <>
+          {/* gilded cuirass (eastern lords: an embroidered robe) */}
+          <Shape d={CHEST} f={eastern ? p.tunic : p.metal} sw={0.55} />
+          {eastern
+            ? <Hi d="M0.6 2 L0.9 7.6 M-1.8 3.4 L-1.6 3.4 M2.6 4.4 L2.8 4.4 M-1.4 5.8 L-1.2 5.8" c={p.pattern ?? p.gold} w={0.6} o={1} />
+            : <Hi d="M0 4 C1 3.7 2.2 3.9 2.8 4.6 M-0.4 6.4 C0.8 6 2 6.2 2.9 6.8" c={p.metalShade} w={0.4} />}
+          {!eastern && <Hi d="M-1.6 2.6 C-0.6 2.2 0.8 2.2 1.8 2.5" c={p.metalLight} w={0.5} />}
+        </>
+      )}
       <circle cx={3.3} cy={2.9} r={0.8} fill={p.gold} stroke={OL} strokeWidth={0.35} />
+    </>
+  );
+}
+
+const CHEST = 'M-2.6 2.4 C-1 1.8 1.8 1.8 3.4 2.6 C3.9 4.2 3.9 5.8 3.4 7.24 A 8 8 0 0 1 -2.6 7.57 C-2.9 6 -3 4.2 -2.6 2.4 Z';
+
+/** The chest of a portrait in mail (Celtic and Germanic chiefs) or a plain tunic. */
+function BustChest({ p, chest }: { p: Palette; chest: 'mail' | 'tunic' }) {
+  const mail = chest === 'mail';
+  return (
+    <>
+      <Shape d={CHEST} f={mail ? p.iron : p.tunic} sw={0.55} />
+      <Hi d="M-2.2 4 C-0.6 4.4 1.6 4.4 3.6 3.9 M-2.4 5.8 C-0.6 6.2 1.6 6.2 3.6 5.7" c={mail ? p.ironShade : p.tunicShade} w={0.45} o={0.9} />
+      <Hi d="M-1.6 2.5 C-0.6 2.1 0.8 2.1 1.8 2.4" c={mail ? p.ironLight : p.trim} w={0.5} o={0.9} />
     </>
   );
 }
@@ -282,6 +343,8 @@ function Bust({ f }: { f: Fig }) {
 export interface LeaderTokenProps {
   look: ArmyLook;
   blockColor: Blocks;
+  /** The block set of the leader's own command when it differs from his side's: the base edge of a leader alone. */
+  edgeBlocks?: Blocks;
   facing: 'left' | 'right';
   attached: boolean;
   name?: string;
@@ -300,11 +363,12 @@ function NameRibbon({ name, y, p }: { name: string; y: number; p: Palette }) {
   );
 }
 
-function LeaderTokenImpl({ look, blockColor, facing, attached, name, showName }: LeaderTokenProps) {
+function LeaderTokenImpl({ look, blockColor, edgeBlocks, facing, attached, name, showName }: LeaderTokenProps) {
   const p = paletteFor(look, blockColor);
   const flip = facing === 'left' ? -1 : 1;
+  const leader = leaderLook(name);
   if (attached) {
-    const f = makeFig(generalPalette(p), 1);
+    const f = makeFig(generalPalette(p, leader), 1);
     return (
       <g>
         <circle cx={0.8} cy={1.2} r={11} fill="#000" opacity={0.35} />
@@ -315,7 +379,7 @@ function LeaderTokenImpl({ look, blockColor, facing, attached, name, showName }:
         <path d="M-6.4 -3.6 A 7.4 7.4 0 0 1 2.6 -6.9" fill="none" stroke="#ffffff" strokeWidth={0.9} opacity={0.5} />
         <g transform={`scale(${flip} 1)`}>
           <FacingRightCtx.Provider value={facing === 'right'}>
-            <Bust f={f} />
+            <Bust f={f} leader={leader} />
           </FacingRightCtx.Provider>
         </g>
         <path d="M-8.8 -5.2 A 10.4 10.4 0 0 1 -1.6 -10.2" fill="none" stroke="#fff4c8" strokeWidth={0.7} opacity={0.8} />
@@ -325,11 +389,11 @@ function LeaderTokenImpl({ look, blockColor, facing, attached, name, showName }:
   }
   return (
     <g>
-      <BasePlate p={p} rx={31} ry={10} cy={14} />
+      <BasePlate p={edgeBlocks ? paletteFor(look, edgeBlocks) : p} rx={31} ry={10} cy={14} />
       <ellipse cx={2} cy={20.6} rx={19} ry={2.8} fill="#1a1208" opacity={0.42} />
       <g transform={`translate(${2 * flip} 20.4) scale(${1.08 * flip} 1.08)`}>
         <FacingRightCtx.Provider value={facing === 'right'}>
-          <MountedGeneral p={p} />
+          <MountedGeneral p={p} leader={leader} />
         </FacingRightCtx.Provider>
       </g>
       {showName && name ? <NameRibbon name={name} y={31} p={p} /> : null}

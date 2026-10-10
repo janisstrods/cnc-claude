@@ -1,14 +1,13 @@
 // Rivers (with fords) and lakes. (The sea has its own painter, sea.tsx; rivers still run into it.)
-import type { TerrainType } from '../../engine/types';
 import { addToGrid, blurGrid, fillGrid, isoPath, makeGrid, polyPath } from './field';
-import { DIRS, fmt, neighborRC, RI, type Dir, type HexInfo, type PaintCtx, type Pt } from './hexmath';
+import { DIRS, fmt, neighborRC, RI, type Dir, type HexInfo, type PaintCtx, type PaintTerrain, type Pt } from './hexmath';
 import { fbm, rng } from './noise';
 import { P } from './palette';
 
 type PortKind = 'hex' | 'lake' | 'off' | 'end';
 
 /** Standing water a river can run into: lakes and the sea. */
-const isStill = (t: TerrainType) => t === 'lake' || t === 'sea';
+const isStill = (t: PaintTerrain) => t === 'lake' || t === 'sea';
 interface Port {
   d: Dir;
   kind: PortKind;
@@ -446,7 +445,7 @@ export function paintRivers(ctx: PaintCtx, id?: (s: string) => string): JSX.Elem
   );
 }
 
-const isLake = (t: TerrainType) => t === 'lake';
+const isLake = (t: PaintTerrain) => t === 'lake';
 
 export function paintLakes(ctx: PaintCtx): JSX.Element | null {
   const lakes = ctx.hexes.filter((h) => isLake(h.t));

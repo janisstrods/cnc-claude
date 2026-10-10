@@ -1,20 +1,22 @@
 // Foot soldier miniatures (LI, LB, LS, AX, WA, MI, HI) and war-machine crews. Drawn facing right, feet at (0,0), ~30 units tall.
 import type { EliteId, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
-import { TRIBAL_HAIR, TRIBAL_SKIN, type Kit, type LookPalette, type Palette } from './palettes';
+import { KITS } from './kits';
+import { TRIBAL_HAIR, TRIBAL_SKIN, type EmblemKind, type Kit, type LookPalette, type Palette } from './palettes';
 import {
-  Arm, Body, Head, Hi, Line2, LegsEl, OL, Paint, Shape, Shield, Spear, makeFig,
+  Arm, Body, Head, Hi, Line2, LegsEl, OL, Paint, Shape, Shield, Spear, dots, makeFig,
   type Crest, type Fig, type Hair, type Helmet, type Legs, type ShieldKind, type Torso,
 } from './parts';
 
 /**
  * `sarissa`: the Macedonian pike (rear ranks upright, front ranks lowered); `longbow`: the Indian bamboo bow resting on
  * the ground; `axe`: Scythian / Persian sagaris; `greatsword`: Indian broadsword; `guardSpear`: a spear held upright in
- * front with both hands (the Immortals).
+ * front with both hands (the Immortals); `club`: a knotted wooden club (Germanic warriors); `sica`: the curved Thracian
+ * short sword.
  */
 export type FootWeapon =
   | 'spear' | 'longSpear' | 'pilum' | 'javelin' | 'sword' | 'bow' | 'sling'
-  | 'sarissa' | 'longbow' | 'axe' | 'greatsword' | 'guardSpear';
+  | 'sarissa' | 'longbow' | 'axe' | 'greatsword' | 'guardSpear' | 'club' | 'sica';
 
 export interface FootKit {
   /** The unit type the kit was made for (looks and elites override per type). */
@@ -53,196 +55,26 @@ export interface FootKit {
   cloak?: boolean;
   /** Bow shape for `bow`: the plain self bow, or the short double-curved Scythian bow. */
   bow?: 'self' | 'scythian';
+  // Expansion #2
+  /** A hide cloak with a fur collar over the shoulders (Germanic warriors). */
+  pelt?: boolean;
+  /** The mail shirt's shoulder doubling with its breast hook (the legions of the late Republic). */
+  doubling?: boolean;
+  /** Woad patterns painted on the bare skin (Britons). */
+  woad?: boolean;
+  /** The shield's device instead of the look's (captured Roman shields keep their thunderbolts). */
+  device?: EmblemKind;
 }
 
-/** A look's (or an elite's) override of a kit's foot figure. */
-export type FootLook = Partial<FootKit>;
+/**
+ * A look's (or an elite's) override of a kit's foot figure. `from`: start from that kit's figure for the type and figure
+ * index instead of the look's own kit (the Slave army's Thracians, Gauls and Germans; Germanic auxiliaries in Roman service).
+ */
+export type FootLook = Partial<FootKit> & { from?: Kit };
 
-/** The kit's figure for a foot unit type. The look's and the elite's overrides are applied by `FootFigure`. */
+/** The kit's figure for a foot unit type (see `KITS`). The look's and the elite's overrides are applied by `FootFigure`. */
 export function footKit(type: UnitType, kit: Kit, i: number): FootKit {
-  if (kit === 'macedonian') return { unit: type, ...macedonianKit(type, i) };
-  if (kit === 'persian') return { unit: type, ...persianKit(type, i) };
-  if (kit === 'scythian') return { unit: type, ...scythianKit(type, i) };
-  if (kit === 'indian') return { unit: type, ...indianKit(type, i) };
-  return { unit: type, ...classicKit(type, kit, i) };
-}
-
-function celticWarrior(i: number): FootKit {
-  return {
-    torso: 'bare', skirt: false, legs: 'trousers', helmet: 'none', crest: 'none', hair: i % 2 ? 'wild' : 'long',
-    shield: 'longOval', shieldScale: 0.94, shieldDy: 2.4, weapon: 'sword', tribal: true, moustache: true, torc: true,
-  };
-}
-
-/** The base game's kits: Roman, Punic and Greek. */
-function classicKit(type: UnitType, kit: Kit, i: number): FootKit {
-  const greek = kit === 'greek';
-  const punic = kit === 'punic';
-  switch (type) {
-    case 'LI':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: 'none', crest: 'none',
-        hair: i % 2 ? 'long' : 'short', shield: 'round', weapon: 'javelin', spare: 'javelins', sleeve: true, beard: punic && i % 2 === 1,
-      };
-    case 'LB':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: punic ? 'cap' : 'none', crest: 'none', hair: 'short',
-        shield: 'none', weapon: 'bow', sleeve: true, beard: greek && i % 2 === 0,
-      };
-    case 'LS':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: 'none', crest: 'none', hair: i % 2 ? 'long' : 'short',
-        shield: 'none', weapon: 'sling', sleeve: true, beard: i % 3 === 1,
-      };
-    case 'AX':
-      return {
-        torso: 'leather', skirt: true, legs: 'bare', helmet: greek ? 'pilos' : punic ? 'conical' : 'montefortino',
-        crest: 'knob', hair: 'short', shield: 'oval', shieldScale: 0.84, painted: true, weapon: 'javelin', spare: 'spear', sleeve: true,
-      };
-    case 'WA': {
-      const iberian = punic && i % 2 === 1;
-      if (iberian) {
-        return {
-          torso: 'tunic', skirt: true, legs: 'bare', helmet: 'cap', crest: 'none', hair: 'short', shield: 'longOval', shieldScale: 0.94, shieldDy: 2.4,
-          weapon: 'sword', falcata: true, tribal: true, sleeve: true, moustache: true,
-        };
-      }
-      return celticWarrior(i);
-    }
-    case 'MI':
-      return {
-        torso: 'tunic', skirt: true, legs: greek ? 'greaves' : 'bare', helmet: greek ? 'pilos' : punic ? 'attic' : 'montefortino',
-        crest: 'knob', hair: 'short', shield: greek ? 'aspis' : 'oval', shieldScale: greek ? 0.92 : 1, weapon: 'spear', sleeve: true,
-      };
-    case 'HI':
-    default:
-      if (greek) {
-        return {
-          torso: 'linen', skirt: true, pteruges: true, legs: 'greaves', helmet: 'corinthian', crest: 'tall', hair: 'short',
-          shield: 'aspis', weapon: 'longSpear',
-        };
-      }
-      if (punic) {
-        return {
-          torso: 'linen', skirt: true, pteruges: true, legs: 'greaves', helmet: 'attic', crest: 'horsehair', hair: 'short',
-          shield: 'aspis', weapon: 'longSpear', beard: i % 2 === 0,
-        };
-      }
-      return {
-        torso: 'mail', skirt: true, legs: 'bare', helmet: 'montefortino', crest: 'plumes', hair: 'short', shield: 'scutum',
-        weapon: 'pilum', sleeve: false,
-      };
-  }
-}
-
-/** Macedon and the Successors: kausia-hatted skirmishers, Cretan archers, Thracian peltasts, hypaspists, the phalanx. */
-function macedonianKit(type: UnitType, i: number): FootKit {
-  switch (type) {
-    case 'LI':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: i % 2 ? 'kausia' : 'none', crest: 'none', hair: 'short',
-        shield: 'round', weapon: 'javelin', spare: 'javelins', sleeve: true, beard: i % 2 === 0,
-      };
-    case 'LB':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: i % 2 ? 'none' : 'petasos', crest: 'none', hair: 'short',
-        shield: 'none', weapon: 'bow', sleeve: true, beard: i % 2 === 1,
-      };
-    case 'LS':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: i % 2 ? 'petasos' : 'none', crest: 'none', hair: 'short',
-        shield: 'none', weapon: 'sling', sleeve: true, beard: i % 3 === 1,
-      };
-    case 'AX':
-      return {
-        torso: 'tunic', skirt: true, legs: 'boots', helmet: 'thracian', crest: 'knob', hair: 'short',
-        shield: 'pelta', weapon: 'javelin', spare: 'spear', sleeve: true,
-      };
-    case 'WA':
-      return celticWarrior(i);
-    case 'MI':
-      return {
-        torso: 'linen', skirt: true, legs: 'greaves', helmet: 'phrygian', crest: 'horsehair', hair: 'short',
-        shield: 'aspis', shieldScale: 0.92, weapon: 'spear', sleeve: true,
-      };
-    case 'HI':
-    default:
-      return {
-        torso: 'linen', skirt: true, pteruges: true, legs: 'greaves', helmet: 'phrygian', crest: i % 2 ? 'plume2' : 'horsehair', hair: 'short',
-        shield: 'phalanx', weapon: 'sarissa',
-      };
-  }
-}
-
-/** Achaemenid Persia: hoods, long sleeves and trousers; wicker shields; bows everywhere. */
-function persianKit(type: UnitType, i: number): FootKit {
-  const dress = { torso: 'tunic' as const, skirt: true, legs: 'trousers' as const, helmet: 'tiara' as const, crest: 'none' as const, hair: 'short' as const, sleeve: true, longSleeve: true };
-  switch (type) {
-    case 'LI':
-      return { ...dress, shield: 'round', weapon: 'javelin', spare: 'javelins', beard: i % 2 === 0 };
-    case 'LB':
-      return { ...dress, shield: 'none', weapon: 'bow', beard: i % 2 === 1 };
-    case 'LS':
-      return { ...dress, shield: 'none', weapon: 'sling', beard: i % 2 === 0 };
-    case 'AX':
-      // takabara with the crescent wicker shield
-      return { ...dress, shield: 'pelta', weapon: 'javelin', spare: 'spear', beard: true };
-    case 'WA':
-      // hill tribesmen with axes
-      return { ...dress, shield: 'pelta', weapon: 'axe', beard: true };
-    case 'MI':
-      // sparabara: wicker shield and spear, bow case at the hip
-      return { ...dress, shield: 'spara', weapon: 'spear', back: 'bowcase', beard: true };
-    case 'HI':
-    default:
-      // the King's apple-bearers in scale coats
-      return { ...dress, torso: 'scale', shield: 'spara', weapon: 'spear', butt: 'pomegranate', back: 'bowcase', beard: true };
-  }
-}
-
-/** Scythians: pointed caps, kaftans and trousers, gorytos at the hip. */
-function scythianKit(type: UnitType, i: number): FootKit {
-  const dress = { torso: 'kaftan' as const, skirt: true, legs: 'trousers' as const, helmet: 'scythianCap' as const, crest: 'none' as const, hair: 'long' as const, sleeve: true, longSleeve: true, beard: true };
-  switch (type) {
-    case 'LI':
-      return { ...dress, shield: 'round', weapon: 'javelin', spare: 'javelins', beard: i % 2 === 0 };
-    case 'LB':
-      return { ...dress, shield: 'none', weapon: 'bow', bow: 'scythian', back: 'gorytos' };
-    case 'LS':
-      return { ...dress, shield: 'none', weapon: 'sling', beard: i % 2 === 1 };
-    case 'AX':
-      return { ...dress, shield: 'pelta', weapon: 'axe', spare: 'spear' };
-    case 'WA':
-      return { ...dress, helmet: 'none', hair: 'wild', shield: 'round', weapon: 'axe', moustache: true };
-    case 'MI':
-      return { ...dress, torso: 'scale', shield: 'spara', weapon: 'spear', back: 'gorytos' };
-    case 'HI':
-    default:
-      return { ...dress, torso: 'scale', helmet: 'conical', shield: 'spara', weapon: 'spear', back: 'gorytos' };
-  }
-}
-
-/** India: turbans, white cotton, longbows, long bamboo shields, broadswords. */
-function indianKit(type: UnitType, i: number): FootKit {
-  const dress = { torso: 'cotton' as const, skirt: true, legs: 'bare' as const, helmet: 'turban' as const, crest: 'none' as const, hair: 'short' as const, beard: i % 2 === 0 };
-  switch (type) {
-    case 'LI':
-      return { ...dress, shield: 'round', weapon: 'javelin', spare: 'javelins' };
-    case 'LB':
-      return { ...dress, shield: 'none', weapon: 'longbow' };
-    case 'LS':
-      return { ...dress, shield: 'none', weapon: 'sling' };
-    case 'AX':
-      return { ...dress, shield: 'bamboo', shieldDy: 2.2, weapon: 'javelin', spare: 'spear' };
-    case 'WA':
-      // hill tribesmen
-      return { ...dress, torso: 'bare', helmet: 'none', hair: 'long', shield: 'bamboo', shieldDy: 2.2, weapon: 'greatsword', beard: true };
-    case 'MI':
-      return { ...dress, shield: 'bamboo', shieldDy: 2.2, weapon: 'spear', beard: true };
-    case 'HI':
-    default:
-      return { ...dress, torso: 'scale', shield: 'bamboo', shieldDy: 2.2, weapon: 'greatsword', beard: true };
-  }
+  return { unit: type, ...KITS[kit].foot(type, i) };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -254,6 +86,8 @@ export interface EliteLook {
   /** Replaces the look's per-figure paint variants. */
   variants?: Partial<LookPalette>[];
   foot?: FootLook;
+  /** Shield devices instead of the look's. */
+  emblems?: EmblemKind[];
 }
 
 const robe = (c: string): Partial<LookPalette> => ({ tunic: c, tunicShade: darken(c, 0.34), tunicLight: lighten(c, 0.3) });
@@ -289,6 +123,15 @@ export const ELITE_FOOT: Partial<Record<EliteId, EliteLook>> = {
   },
   // Mauryan bow-armed auxilia: the longbow instead of javelins and shield.
   bowAuxilia: { foot: { weapon: 'longbow', shield: 'none', spare: undefined } },
+  // Caesar's Tenth Legion: the bull of Caesar's legions over the wings, on gold-rimmed crimson scuta; white plumes, greaves.
+  tenthLegion: {
+    palette: {
+      shield: '#7c1424', shieldShade: '#4e0c16', shieldLight: '#a83a44', shieldRim: '#f0c850', shieldEmblem: '#f6d460',
+      crest: '#f4eee0', crestShade: '#c4b99c', crestAlt: '#d42a2e',
+    },
+    emblems: ['bull'],
+    foot: { legs: 'greaves' },
+  },
 };
 
 const figPalettes = new WeakMap<Palette, Map<string, Palette>>();
@@ -300,20 +143,24 @@ export function figurePalette(p: Palette, i: number, elite?: EliteId): Palette {
   const n = variants ? i % variants.length : 0;
   const v = variants?.[n];
   const empty = (o?: object) => !o || Object.keys(o).length === 0;
-  if (empty(el?.palette) && empty(v)) return p;
+  if (empty(el?.palette) && empty(v) && !el?.emblems) return p;
   const key = `${elite ?? ''}/${n}`;
   let m = figPalettes.get(p);
   if (!m) figPalettes.set(p, (m = new Map()));
   let out = m.get(key);
-  if (!out) m.set(key, (out = { ...p, ...el?.palette, ...v }));
+  if (!out) m.set(key, (out = { ...p, ...el?.palette, ...v, ...(el?.emblems ? { style: { ...p.style, emblems: el.emblems } } : {}) }));
   return out;
 }
 
-/** The kit after the look's per-type override and the elite's. */
-function lookKit(kit: FootKit, p: Palette, i: number, elite?: EliteId): FootKit {
+/** The kit after the look's per-type override (perhaps another kit's figure) and the elite's. */
+export function lookKit(kit: FootKit, p: Palette, i: number, elite?: EliteId): FootKit {
   const o = kit.unit ? p.style.foot?.[kit.unit] : undefined;
   const lo = Array.isArray(o) ? o[i % o.length] : o;
   const eo = elite ? ELITE_FOOT[elite]?.foot : undefined;
+  if (lo?.from && kit.unit) {
+    const { from, ...rest } = lo;
+    return { ...footKit(kit.unit, from, i), ...rest, ...eo };
+  }
   return lo || eo ? { ...kit, ...lo, ...eo } : kit;
 }
 
@@ -364,6 +211,58 @@ function BackCloak({ p }: { p: Palette }) {
   );
 }
 
+/** A hide cloak hanging down the back, its hem ragged (drawn behind the body). */
+function FurCloak({ p }: { p: Palette }) {
+  const fur = p.fur ?? p.leather;
+  return (
+    <g>
+      <Shape d="M-3.6 -21.6 C-5.6 -18.4 -6.8 -13.6 -7.2 -8.6 L-6.4 -9.4 L-5.8 -8 L-4.9 -9.2 L-4.1 -7.8 L-3.3 -9 L-2.5 -8.2 C-2.5 -12 -1.6 -16.4 0.2 -21.6 Z" f={fur} />
+      <Paint d="M-7.2 -8.6 L-6.4 -9.4 L-5.8 -8 L-4.9 -9.2 L-4.1 -7.8 C-4.6 -11 -4.2 -14.6 -3 -18 C-5 -15.4 -6.6 -12.2 -7.2 -8.6 Z" f={darken(fur, 0.3)} o={0.8} />
+      <Hi d="M-4.2 -19.2 C-5.2 -16.6 -5.8 -13.6 -6 -10.8 M-2.4 -18.4 C-3 -15.8 -3.2 -13.2 -3.2 -10.6" c={lighten(fur, 0.3)} w={0.4} o={0.7} />
+    </g>
+  );
+}
+
+/** The fur collar of the hide cloak, over the shoulders. */
+function FurCollar({ p }: { p: Palette }) {
+  const fur = p.fur ?? p.leather;
+  return (
+    <g>
+      <Shape d="M-4 -20 C-3.4 -21.9 -1.2 -22.6 0.8 -22.6 C2.8 -22.6 4.2 -21.9 4.7 -20.4 L4 -19.6 L3.4 -20.2 L2.7 -19.2 L1.9 -20 L1.1 -19 L0.3 -19.9 L-0.5 -19 L-1.3 -19.9 L-2.1 -19.1 L-2.8 -19.9 L-3.5 -19.2 Z" f={fur} sw={0.55} />
+      <Hi d="M-2.6 -21.4 C-1 -22 1.4 -22.1 3.2 -21.5" c={lighten(fur, 0.35)} w={0.45} o={0.8} />
+      <circle cx={2.6} cy={-20.6} r={0.55} fill={p.metal} stroke={OL} strokeWidth={0.3} />
+    </g>
+  );
+}
+
+/** The shoulder doubling of a mail shirt, with the bronze breast hook. */
+function MailDoubling({ p }: { p: Palette }) {
+  return (
+    <g>
+      <Shape d="M-4 -20.3 C-3.2 -22 -1.2 -22.5 0.8 -22.5 C2.8 -22.5 4.2 -21.9 4.7 -20.3 L4.6 -18.3 C3.2 -18.9 1.9 -18.6 0.9 -18 C-0.3 -18.7 -2.4 -18.9 -4.1 -18.4 Z" f={p.iron} sw={0.55} />
+      <Hi d="M-3.4 -19.4 C-2 -19.8 -0.4 -19.6 0.8 -19 M1 -19 C2 -19.6 3.2 -19.8 4.2 -19.4" c={p.ironShade} w={0.4} o={0.9} />
+      <Hi d="M-2.4 -21.4 C-0.8 -22 1.8 -22 3.4 -21.4" c={p.ironLight} w={0.45} o={0.9} />
+      <Line2 d="M0.1 -18.6 L1.7 -18.6" w={0.55} c={p.metal} ow={0.3} />
+    </g>
+  );
+}
+
+/** Woad blue, when the look names none. */
+const WOAD = '#3a64b0';
+
+/** The woad colour of a look. */
+export const woadOf = (p: Palette): string => p.woad ?? WOAD;
+
+/** Woad spirals on a bare chest (standing-figure frame). */
+export function WoadBody({ p }: { p: Palette }) {
+  return <Hi d="M-2.6 -19.4 C-1.6 -20.4 -0.2 -20 -0.4 -18.9 C-0.6 -18.1 -1.6 -18.3 -1.4 -19 M1.2 -17.6 C2.2 -18.6 3.6 -18.2 3.4 -17.1 C3.2 -16.3 2.2 -16.5 2.4 -17.2 M-2.8 -16.2 C-1.8 -16.6 -0.6 -16.4 0.2 -15.8" c={p.woad ?? WOAD} w={0.5} o={0.95} />;
+}
+
+/** Woad stripes on the cheek (standing-figure frame). */
+export function WoadFace({ p }: { p: Palette }) {
+  return <Hi d="M2 -25.9 L4 -25.3 M2.2 -24.6 L3.8 -24" c={p.woad ?? WOAD} w={0.45} o={0.95} />;
+}
+
 /** Gold pomegranate on a spear butt. */
 function Pomegranate({ x, y, p }: { x: number; y: number; p: Palette }) {
   return (
@@ -386,6 +285,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
   const lean = LEANS[i % 4];
   const sleeve = kit.sleeve ? (kit.torso === 'leather' || kit.torso === 'linen' ? p.tunic : p.tunic) : kit.torso === 'mail' ? p.iron : undefined;
   const long = !!kit.longSleeve;
+  const woad = kit.woad ? p.woad ?? WOAD : undefined;
   const farShoulder: [number, number] = [-1.6, -20.4];
   const nearShoulder: [number, number] = [2.2, -20.6];
   const w = kit.weapon;
@@ -411,7 +311,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
         bladeW={w === 'pilum' ? 1.1 : 1.6} shank={w === 'pilum' ? 10 : 0} butt={long2} />
     );
     if (pom) behind = <g>{behind}<Pomegranate x={x1} y={y1 - 0.6} p={p} /></g>;
-    farArm = <Arm s={farShoulder} e={[-3.6, -16.4]} h={[hx, -15]} f={f} sleeve={sleeve} long={long} />;
+    farArm = <Arm s={farShoulder} e={[-3.6, -16.4]} h={[hx, -15]} f={f} sleeve={sleeve} long={long} woad={woad} />;
   } else if (w === 'sarissa') {
     // rear ranks hold the pike upright; the front ranks (figures 2 and 3) lower it
     const lowered = i >= 2;
@@ -422,7 +322,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
       const y2 = -43;
       const t = (y1 + 15) / (y1 - y2);
       behind = <Spear x1={x1} y1={y1} x2={x2} y2={y2} f={f} w={1.0} blade={4.8} bladeW={1.3} butt />;
-      farArm = <Arm s={farShoulder} e={[-3.6, -16.4]} h={[x1 + (x2 - x1) * t, -15]} f={f} sleeve={sleeve} />;
+      farArm = <Arm s={farShoulder} e={[-3.6, -16.4]} h={[x1 + (x2 - x1) * t, -15]} f={f} sleeve={sleeve} woad={woad} />;
     } else {
       const x1 = -13.2;
       const y1 = -6.6;
@@ -430,14 +330,14 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
       const y2 = -30.4 - lean * 0.6;
       const at = (x: number) => y1 + ((y2 - y1) * (x - x1)) / (x2 - x1);
       // the near arm is hidden by the shield hung at the shoulder; the pike crosses in front with the hand on it
-      nearArmOverride = <Arm s={nearShoulder} e={[5, -17.4]} h={[8.6, at(8.6)]} f={f} near sleeve={sleeve} />;
+      nearArmOverride = <Arm s={nearShoulder} e={[5, -17.4]} h={[8.6, at(8.6)]} f={f} near sleeve={sleeve} woad={woad} />;
       overShield = (
         <g>
           <Spear x1={x1} y1={y1} x2={x2} y2={y2} f={f} w={1.0} blade={4.8} bladeW={1.3} butt />
           <circle cx={8.6} cy={r2(at(8.6))} r={1.2} fill={f.skin} stroke={OL} strokeWidth={0.6} />
         </g>
       );
-      farArm = <Arm s={farShoulder} e={[-3.4, -16]} h={[-1.2, at(-1.2)]} f={f} sleeve={sleeve} />;
+      farArm = <Arm s={farShoulder} e={[-3.4, -16]} h={[-1.2, at(-1.2)]} f={f} sleeve={sleeve} woad={woad} />;
     }
   } else if (w === 'guardSpear') {
     // spear held upright in front with both hands, butt on the ground
@@ -446,23 +346,23 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
     const x2 = 9.4 + lean * 0.3;
     const y2 = -41;
     const at = (y: number) => x1 + ((x2 - x1) * (y - y1)) / (y2 - y1);
-    farArm = <Arm s={farShoulder} e={[0.2, -16.2]} h={[at(-23.4), -23.4]} f={f} sleeve={sleeve} long={long} />;
+    farArm = <Arm s={farShoulder} e={[0.2, -16.2]} h={[at(-23.4), -23.4]} f={f} sleeve={sleeve} long={long} woad={woad} />;
     overShield = (
       <g>
         <Spear x1={x1} y1={y1} x2={x2} y2={y2} f={f} w={0.95} blade={3.8} bladeW={1.6} />
         <Pomegranate x={x1} y={y1 - 0.9} p={p} />
-        <Arm s={nearShoulder} e={[4.8, -15.8]} h={[at(-17.6), -17.6]} f={f} near sleeve={sleeve} long={long} />
+        <Arm s={nearShoulder} e={[4.8, -15.8]} h={[at(-17.6), -17.6]} f={f} near sleeve={sleeve} long={long} woad={woad} />
       </g>
     );
   } else if (w === 'javelin') {
     behind = <Spear x1={-11 - lean * 0.3} y1={-27 + lean * 0.4} x2={11.2} y2={-34.6 - lean * 0.6} f={f} w={0.75} blade={2.6} bladeW={1.2} />;
-    farArm = <Arm s={farShoulder} e={[-5.2, -24]} h={[-3.4, -29.6]} f={f} sleeve={sleeve} long={long} />;
-  } else if (w === 'sword' || w === 'greatsword' || w === 'axe') {
+    farArm = <Arm s={farShoulder} e={[-5.2, -24]} h={[-3.4, -29.6]} f={f} sleeve={sleeve} long={long} woad={woad} />;
+  } else if (w === 'sword' || w === 'greatsword' || w === 'axe' || w === 'club' || w === 'sica') {
     const fwd = i % 2 === 0;
     const big = w === 'greatsword';
     const hx = fwd ? 0.2 : -2.2;
     const hy = -30.4;
-    const reach = big ? 1.22 : w === 'axe' ? 0.92 : 1;
+    const reach = big ? 1.22 : w === 'axe' || w === 'club' || w === 'sica' ? 0.92 : 1;
     const tx0 = fwd ? 7.8 : -7.2;
     const ty0 = fwd ? -39.8 : -40.6;
     const tx = reach === 1 ? tx0 : hx + (tx0 - hx) * reach;
@@ -487,32 +387,47 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
           <Line2 d={`M${r(bx - ex * 0.4)} ${r(by - ey * 0.4)} L${r(bx - ex * 1.9 - ux * 0.4)} ${r(by - ey * 1.9 - uy * 0.4)}`} w={0.6} c={p.iron} ow={0.4} />
         </g>
       );
+    } else if (w === 'club') {
+      // a knotted club, thickening towards its rounded head
+      const g = (t: number, side: number, wd: number) => `${r(hx + (tx - hx) * t + nx * wd * side)} ${r(hy + (ty - hy) * t + ny * wd * side)}`;
+      const knot = (t: number, side: number) => [hx + (tx - hx) * t + nx * 0.95 * side, hy + (ty - hy) * t + ny * 0.95 * side] as const;
+      behind = (
+        <g>
+          <path d={`M${g(-0.12, 1, 0.5)} L${g(0.9, 1, 1.3)} Q${r(tx + ux * 1.6)} ${r(ty + uy * 1.6)} ${g(0.9, -1, 1.3)} L${g(-0.12, -1, 0.5)} Z`} fill={p.wood} stroke={OL} strokeWidth={0.55} strokeLinejoin="round" />
+          <Hi d={`M${g(0.1, -1, 0.15)} L${g(0.86, -1, 0.5)}`} c={p.woodShade} w={0.45} o={0.9} />
+          <path d={dots([knot(0.62, 1), knot(0.8, -1), knot(0.45, -1)], 0.38)} fill={p.woodShade} />
+        </g>
+      );
     } else {
       const bw = kit.falcata ? 1.1 : big ? 1.3 : 0.85;
       const gx = hx + ux * 1.2;
       const gy = hy + uy * 1.2;
-      const blade = kit.falcata
+      const sica = w === 'sica';
+      const blade = sica
+        // the sica bends back from the hilt and its point hooks forward
+        ? `M${r(gx - nx * 0.8)} ${r(gy - ny * 0.8)} Q${r(gx + ux * 5.6 - nx * 0.6)} ${r(gy + uy * 5.6 - ny * 0.6)} ${r(tx + nx * 2.8 - ux * 0.8)} ${r(ty + ny * 2.8 - uy * 0.8)} Q${r(gx + ux * 4.4 + nx * 2.6)} ${r(gy + uy * 4.4 + ny * 2.6)} ${r(gx + nx * 0.8)} ${r(gy + ny * 0.8)} Z`
+        : kit.falcata
         ? `M${r(gx + nx * bw)} ${r(gy + ny * bw)} Q${r(gx + ux * 6 + nx * 2.2)} ${r(gy + uy * 6 + ny * 2.2)} ${r(tx)} ${r(ty)} Q${r(gx + ux * 5)} ${r(gy + uy * 5)} ${r(gx - nx * bw)} ${r(gy - ny * bw)} Z`
         : `M${r(gx + nx * bw)} ${r(gy + ny * bw)} L${r(tx + nx * 0.35 - ux * 1.2)} ${r(ty + ny * 0.35 - uy * 1.2)} L${r(tx)} ${r(ty)} L${r(tx - nx * 0.35 - ux * 1.2)} ${r(ty - ny * 0.35 - uy * 1.2)} L${r(gx - nx * bw)} ${r(gy - ny * bw)} Z`;
       behind = (
         <g>
           <path d={blade} fill={p.ironLight} stroke={OL} strokeWidth={0.6} strokeLinejoin="round" />
-          <Hi d={`M${r(gx + ux * 1.5)} ${r(gy + uy * 1.5)} L${r(tx - ux * 2)} ${r(ty - uy * 2)}`} c={p.iron} w={0.35} />
+          {!sica && <Hi d={`M${r(gx + ux * 1.5)} ${r(gy + uy * 1.5)} L${r(tx - ux * 2)} ${r(ty - uy * 2)}`} c={p.iron} w={0.35} />}
           <Line2 d={`M${r(gx + nx * 1.7)} ${r(gy + ny * 1.7)} L${r(gx - nx * 1.7)} ${r(gy - ny * 1.7)}`} w={0.7} c={p.metal} ow={0.45} />
         </g>
       );
     }
-    farArm = <Arm s={farShoulder} e={fwd ? [-4.4, -25.2] : [-5.2, -24.6]} h={[hx, hy]} f={f} sleeve={sleeve} long={long} />;
+    farArm = <Arm s={farShoulder} e={fwd ? [-4.4, -25.2] : [-5.2, -24.6]} h={[hx, hy]} f={f} sleeve={sleeve} long={long} woad={woad} />;
   } else if (w === 'bow') {
     const scy = kit.bow === 'scythian';
     behind = kit.back === 'gorytos' ? null : <Quiver p={p} />;
-    farArm = <Arm s={farShoulder} e={[-6, -21.6]} h={[-0.2, -22.6]} f={f} sleeve={sleeve} long={long} />;
+    farArm = <Arm s={farShoulder} e={[-6, -21.6]} h={[-0.2, -22.6]} f={f} sleeve={sleeve} long={long} woad={woad} />;
     front = scy ? (
       <g>
         <path d="M8.8 -29.6 L-0.2 -22.6 L8.8 -13.6" fill="none" stroke={p.linen} strokeWidth={0.4} />
         <Line2 d="M-0.6 -22.6 L13.6 -21.6" w={0.5} c={p.wood} ow={0.35} />
         <path d="M13.6 -21.6 L12.2 -22.5 L12.3 -20.7 Z" fill={p.ironLight} stroke={OL} strokeWidth={0.35} />
-        <Arm s={nearShoulder} e={[6.4, -21]} h={[10.4, -21.5]} f={f} near sleeve={sleeve} long={long} />
+        <Arm s={nearShoulder} e={[6.4, -21]} h={[10.4, -21.5]} f={f} near sleeve={sleeve} long={long} woad={woad} />
         <Line2 d="M8.8 -29.6 C7.8 -27.6 11.8 -26.4 11.2 -23.2 C11 -22.4 10.6 -22 10.6 -21.6 C10.6 -21.2 11 -20.8 11.2 -20 C11.8 -16.8 7.8 -15.6 8.8 -13.6" w={1.0} c={p.wood} ow={0.55} />
         <circle cx={10.6} cy={-21.5} r={1.15} fill={f.skin} stroke={OL} strokeWidth={0.55} />
       </g>
@@ -521,7 +436,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
         <path d="M8.2 -32.4 L-0.2 -22.6 L8.2 -10.8" fill="none" stroke={p.linen} strokeWidth={0.4} />
         <Line2 d="M-0.6 -22.6 L13.6 -21.6" w={0.5} c={p.wood} ow={0.35} />
         <path d="M13.6 -21.6 L12.2 -22.5 L12.3 -20.7 Z" fill={p.ironLight} stroke={OL} strokeWidth={0.35} />
-        <Arm s={nearShoulder} e={[6.4, -21]} h={[10.4, -21.5]} f={f} near sleeve={sleeve} long={long} />
+        <Arm s={nearShoulder} e={[6.4, -21]} h={[10.4, -21.5]} f={f} near sleeve={sleeve} long={long} woad={woad} />
         <Line2 d="M8.2 -32.4 Q13.8 -21.6 8.2 -10.8" w={1.0} c={p.wood} ow={0.55} />
         <circle cx={10.6} cy={-21.5} r={1.15} fill={f.skin} stroke={OL} strokeWidth={0.55} />
       </g>
@@ -529,13 +444,13 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
   } else if (w === 'longbow') {
     // the tall Indian bamboo bow, its lower tip resting on the ground
     behind = <Quiver p={p} />;
-    farArm = <Arm s={farShoulder} e={[-6, -21.6]} h={[-0.2, -22.6]} f={f} sleeve={sleeve} long={long} />;
+    farArm = <Arm s={farShoulder} e={[-6, -21.6]} h={[-0.2, -22.6]} f={f} sleeve={sleeve} long={long} woad={woad} />;
     front = (
       <g>
         <path d="M10.2 -40.6 L-0.2 -22.6 L9.8 -1.2" fill="none" stroke={p.linen} strokeWidth={0.4} />
         <Line2 d="M-0.8 -22.6 L16.4 -21.2" w={0.5} c={p.wood} ow={0.35} />
         <path d="M16.4 -21.2 L15 -22.1 L15.1 -20.3 Z" fill={p.ironLight} stroke={OL} strokeWidth={0.35} />
-        <Arm s={nearShoulder} e={[6.6, -21]} h={[12.4, -21.3]} f={f} near sleeve={sleeve} long={long} />
+        <Arm s={nearShoulder} e={[6.6, -21]} h={[12.4, -21.3]} f={f} near sleeve={sleeve} long={long} woad={woad} />
         <Line2 d="M10.2 -40.6 Q15.6 -21.2 9.8 -1.2" w={1.05} c={p.wood} ow={0.55} />
         <Hi d="M11.6 -36 L12.4 -35.4 M12.6 -30 L13.4 -29.6 M13 -13.4 L13.8 -13.8 M12.4 -7.4 L13.2 -7.8" c={p.woodShade} w={0.4} o={1} />
         <circle cx={12.6} cy={-21.3} r={1.15} fill={f.skin} stroke={OL} strokeWidth={0.55} />
@@ -547,7 +462,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
         <Line2 d="M-3.4 -13.2 L2.6 -21.8" w={0.6} c={p.leatherShade} ow={0.35} />
       </g>
     );
-    farArm = <Arm s={farShoulder} e={[-3.8, -25.8]} h={[-1.2, -31]} f={f} sleeve={sleeve} long={long} />;
+    farArm = <Arm s={farShoulder} e={[-3.8, -25.8]} h={[-1.2, -31]} f={f} sleeve={sleeve} long={long} woad={woad} />;
     const rot = [0, 1, 2, 3][i % 4];
     const sx = [6.4, 5.6, 7, 6][rot];
     const sy = [-35.8, -36.6, -35, -36][rot];
@@ -557,7 +472,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
         <path d={`M${sx - 7} ${sy + 0.6} A7.4 2.6 0 0 1 ${sx} ${sy}`} fill="none" stroke="#fff6dc" strokeWidth={1.3} opacity={0.8} strokeLinecap="round" />
         <path d={`M-1.2 -31 Q2.4 -34.4 ${sx} ${sy}`} fill="none" stroke={OL} strokeWidth={0.5} />
         <circle cx={sx} cy={sy} r={1.05} fill={p.leather} stroke={OL} strokeWidth={0.45} />
-        <Arm s={nearShoulder} e={[4.6, -16.6]} h={[7.2, -15.2]} f={f} near sleeve={sleeve} long={long} />
+        <Arm s={nearShoulder} e={[4.6, -16.6]} h={[7.2, -15.2]} f={f} near sleeve={sleeve} long={long} woad={woad} />
         <Shape d="M-5.4 -13 C-6.4 -11.2 -5.8 -9.2 -4.2 -9 C-2.8 -9.2 -2.4 -11 -3.2 -12.8 Z" f={p.leather} sw={0.55} />
       </g>
     );
@@ -587,7 +502,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
     spare = <Spear x1={1.4} y1={-1.8} x2={9.8 + lean} y2={-38} f={f} w={0.85} blade={3.4} bladeW={1.4} />;
   }
   if (kit.shield === 'round') {
-    nearArm = <Arm s={nearShoulder} e={[4.4, -16.8]} h={[5.6, -15]} f={f} near sleeve={sleeve} long={long} />;
+    nearArm = <Arm s={nearShoulder} e={[4.4, -16.8]} h={[5.6, -15]} f={f} near sleeve={sleeve} long={long} woad={woad} />;
   }
   if (nearArmOverride) nearArm = nearArmOverride;
 
@@ -601,14 +516,19 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
       {behind}
       {farArm}
       {kit.cloak && <BackCloak p={p} />}
+      {kit.pelt && <FurCloak p={p} />}
       <LegsEl f={f} legs={kit.legs} />
       <Body f={f} torso={kit.torso} skirt={kit.skirt} pteruges={kit.pteruges} hips={hips} />
+      {kit.woad && kit.torso === 'bare' && <WoadBody p={p} />}
+      {kit.doubling && <MailDoubling p={p} />}
+      {kit.pelt && <FurCollar p={p} />}
       {hipCase}
       <Head f={f} helmet={kit.helmet} crest={kit.crest} hair={kit.hair} beard={kit.beard} moustache={kit.moustache} torc={kit.torc} />
+      {kit.woad && <WoadFace p={p} />}
       {spare}
       {nearArm}
       {kit.shield !== 'none' && (
-        <Shield kind={kit.shield} f={f} s={sScale} painted={kit.painted} dx={sScale !== 1 ? 4.2 * (1 - sScale) : 0} dy={(sScale !== 1 ? -13.6 * (1 - sScale) : 0) + (kit.shieldDy ?? 0)} />
+        <Shield kind={kit.shield} f={f} s={sScale} painted={kit.painted} device={kit.device} dx={sScale !== 1 ? 4.2 * (1 - sScale) : 0} dy={(sScale !== 1 ? -13.6 * (1 - sScale) : 0) + (kit.shieldDy ?? 0)} />
       )}
       {overShield}
       {front}
@@ -638,28 +558,21 @@ export interface CrewDress {
   moustache?: boolean;
   longSleeve?: boolean;
   legs?: 'bare' | 'trousers';
+  // Expansion #2
+  /** A gold torc at the neck (Celtic crews). */
+  torc?: boolean;
+  /** Woad on the cheek, the arms and a bare chest (British crews). */
+  woad?: boolean;
 }
 
-/** Dress of a crewman of a kit (`i` varies helmets), the same on a war machine as in a tower or a chariot. */
-export function crewDress(kit: Kit, i: number): CrewDress {
-  switch (kit) {
-    case 'roman': return { torso: 'mail', helmet: 'montefortino', crest: i % 2 ? 'plumes' : 'knob' };
-    case 'punic': return { torso: 'linen', helmet: i % 2 ? 'attic' : 'conical', crest: i % 2 ? 'horsehair' : 'knob', beard: i % 2 === 0 };
-    case 'greek': return { torso: 'linen', helmet: i % 2 ? 'corinthian' : 'pilos', crest: i % 2 ? 'tall' : 'knob' };
-    case 'macedonian': return { torso: 'linen', helmet: i % 2 ? 'thracian' : 'phrygian', crest: i % 2 ? 'knob' : 'horsehair' };
-    case 'persian': return { torso: 'tunic', helmet: 'tiara', crest: 'none', longSleeve: true, beard: true, legs: 'trousers' };
-    case 'scythian': return { torso: 'kaftan', helmet: 'scythianCap', crest: 'none', longSleeve: true, hair: 'long', beard: true, legs: 'trousers' };
-    case 'indian': return { torso: 'cotton', helmet: 'turban', crest: 'none', beard: i % 2 === 0 };
-  }
-}
-
-function CrewFigure({ p: armyP, i, pose }: { p: Palette; i: number; pose: CrewPose }) {
+function CrewFigure({ p: armyP, i, pose, dress }: { p: Palette; i: number; pose: CrewPose; dress?: CrewDress }) {
   const p = figurePalette(armyP, i);
   const f = makeFig(p, i);
-  const d = crewDress(p.kit, i);
+  const d = dress ?? KITS[p.kit].crew(i);
   const hands = typeof pose === 'string' ? CREW_HANDS[pose] : pose;
   const sleeve = d.torso === 'mail' ? p.iron : p.tunic;
   const long = !!d.longSleeve;
+  const woad = d.woad ? p.woad ?? WOAD : undefined;
   const elbow = (s: [number, number], h: [number, number], drop: number): [number, number] => [
     Number(((s[0] + h[0]) / 2 - 0.6).toFixed(2)), Number(((s[1] + h[1]) / 2 + drop).toFixed(2)),
   ];
@@ -667,11 +580,13 @@ function CrewFigure({ p: armyP, i, pose }: { p: Palette; i: number; pose: CrewPo
   const ns: [number, number] = [2.2, -20.6];
   return (
     <>
-      <Arm s={fs} e={elbow(fs, hands.far, 2.2)} h={hands.far} f={f} sleeve={sleeve} long={long} />
+      <Arm s={fs} e={elbow(fs, hands.far, 2.2)} h={hands.far} f={f} sleeve={sleeve} long={long} woad={woad} />
       <LegsEl f={f} legs={d.legs ?? 'bare'} />
       <Body f={f} torso={d.torso} skirt />
-      <Head f={f} helmet={d.helmet} crest={d.crest} hair={d.hair} beard={d.beard} moustache={d.moustache} />
-      <Arm s={ns} e={elbow(ns, hands.near, 2.4)} h={hands.near} f={f} near sleeve={sleeve} long={long} />
+      {woad && d.torso === 'bare' && <WoadBody p={p} />}
+      <Head f={f} helmet={d.helmet} crest={d.crest} hair={d.hair} beard={d.beard} moustache={d.moustache} torc={d.torc} />
+      {woad && <WoadFace p={p} />}
+      <Arm s={ns} e={elbow(ns, hands.near, 2.4)} h={hands.near} f={f} near sleeve={sleeve} long={long} woad={woad} />
     </>
   );
 }
@@ -679,8 +594,9 @@ function CrewFigure({ p: armyP, i, pose }: { p: Palette; i: number; pose: CrewPo
 /**
  * A war-machine crewman in his army's dress (for the HWM figure): facing right, feet at (0,0), ~30 units tall, unarmed,
  * hands where `pose` puts them ('crank' at waist height, 'load' at chest height, 'aim' one hand forward at the head, or
- * explicit `{ near, far }` hand points in the figure frame). `i` (0..3) varies the face, headgear and paint.
+ * explicit `{ near, far }` hand points in the figure frame). `i` (0..3) varies the face, headgear and paint. `dress`
+ * replaces the kit's crew dress (a light chariot's driver).
  */
-export function crewFigure(p: Palette, i: number, pose: CrewPose = 'crank'): JSX.Element {
-  return <CrewFigure p={p} i={i} pose={pose} />;
+export function crewFigure(p: Palette, i: number, pose: CrewPose = 'crank', dress?: CrewDress): JSX.Element {
+  return <CrewFigure p={p} i={i} pose={pose} dress={dress} />;
 }

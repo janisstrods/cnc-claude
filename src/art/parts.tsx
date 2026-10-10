@@ -7,7 +7,9 @@
 // about their own axis (`mx`) so the light stays on the screen's upper left for both facings.
 import { createContext, useContext, type ReactNode } from 'react';
 import { darken, lighten } from './color';
+import { KITS } from './kits';
 import type { EmblemKind, Palette } from './palettes';
+import { ArmBands, Exp2Device, Exp2Helm, Exp2Shield, SuebianKnot, isExp2Shield, type Exp2ShieldKind } from './exp2-parts';
 
 export const OL = '#1d140e';
 export const OW = 0.8;
@@ -202,7 +204,7 @@ const SPOKES = Array.from({ length: 8 }, (_, k) => {
   return `M${f2(Math.cos(a) * 0.6)} ${f2(Math.sin(a) * 0.6)} L${f2(Math.cos(a) * 2.4)} ${f2(Math.sin(a) * 2.4)}`;
 }).join(' ');
 const EAGLE_WING = 'M-0.3 -1.2 C-1 -2.4 -2.5 -2.9 -3.3 -2.2 C-2.7 -1.9 -2.4 -1.4 -2.5 -0.8 C-2 -1.1 -1.4 -0.9 -1.1 -0.5 C-1.6 -0.3 -1.9 0.1 -1.8 0.5 C-1.3 0.2 -0.8 0.3 -0.4 0.7 Z';
-const DISC_WING = 'M-1 -0.25 C-1.8 -1.05 -3.3 -1.25 -4.1 -0.65 C-3.5 -0.45 -3.3 -0.2 -3.5 0.1 C-3 0 -2.7 0.1 -2.6 0.4 C-2.1 0.2 -1.6 0.25 -1.1 0.45 Z';
+export const DISC_WING = 'M-1 -0.25 C-1.8 -1.05 -3.3 -1.25 -4.1 -0.65 C-3.5 -0.45 -3.3 -0.2 -3.5 0.1 C-3 0 -2.7 0.1 -2.6 0.4 C-2.1 0.2 -1.6 0.25 -1.1 0.45 Z';
 
 /** The devices of the Expansion #1 armies, in a unit frame (radius ~3). */
 function Device({ kind, col, bg }: { kind: EmblemKind; col: string; bg: string }) {
@@ -375,7 +377,8 @@ function Device({ kind, col, bg }: { kind: EmblemKind; col: string; bg: string }
         </g>
       );
     default:
-      return null;
+      // the Expansion #2 devices
+      return <Exp2Device kind={kind} col={col} bg={bg} />;
   }
 }
 
@@ -389,7 +392,13 @@ function EmblemAt({ kind, at, f, c, bg }: { kind: EmblemKind; at: [number, numbe
 export type ShieldKind =
   | 'scutum' | 'aspis' | 'oval' | 'longOval' | 'round' | 'none'
   // Expansion #1: small embossed phalanx shield, Persian wicker spara, crescent pelta / taka, Indian bamboo, thureos
-  | 'phalanx' | 'spara' | 'pelta' | 'bamboo' | 'thureos';
+  | 'phalanx' | 'spara' | 'pelta' | 'bamboo' | 'thureos'
+  // Expansion #2: the long Celtic oval and the long hexagonal shield (spine, strip boss, painted device), the Germanic
+  // board shield (iron boss), the curved oval scutum of the Marian legions (spine, long boss, winged thunderbolt)
+  | Exp2ShieldKind;
+
+/** Shields painted by default with the army's light-troop / tribal colours (`paint`) rather than its line shields'. */
+const PAINTED_SHIELDS: ReadonlySet<ShieldKind> = new Set<ShieldKind>(['round', 'longOval', 'pelta', 'celtOval', 'hex', 'board']);
 
 /** The device a figure's shield carries (the look's emblems cycle by figure index; painted shields may have their own). */
 function emblemFor(p: Palette, painted: boolean, i: number): EmblemKind {
@@ -413,19 +422,21 @@ const PHALANX_DOTS = dots(Array.from({ length: 12 }, (_, k) => {
   return [4.2 + Math.cos(a) * 4.82, -17 + Math.sin(a) * 5.3] as const;
 }), 0.34);
 
-export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted }: {
+export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted, device }: {
   kind: ShieldKind; f: Fig; dx?: number; dy?: number; s?: number; emblem?: boolean;
+  /** The device instead of the look's emblem for this figure. */
+  device?: EmblemKind;
   /** Use the army's painted (light troops / tribal) shield colours instead of the line-infantry shield. */
   painted?: boolean;
 }) {
   const { p } = f;
-  const kit = p.kit;
-  const pt = painted ?? (kind === 'round' || kind === 'longOval' || kind === 'pelta');
+  const kit = KITS[p.kit];
+  const pt = painted ?? PAINTED_SHIELDS.has(kind);
   const face = pt ? p.paint : p.shield;
   const faceShade = pt ? p.paintShade : p.shieldShade;
   const faceLight = pt ? p.paintLight : p.shieldLight;
   const emb = pt ? p.paintEmblem : p.shieldEmblem;
-  const ek = emblemFor(p, pt, f.i);
+  const ek = device ?? emblemFor(p, pt, f.i);
   let body: ReactNode = null;
   if (kind === 'scutum') {
     body = (
@@ -460,7 +471,7 @@ export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted 
         <ellipse cx={4.3} cy={-13.8} rx={4.4} ry={7.9} fill="none" stroke={p.shieldRim} strokeWidth={0.6} />
         {emblem && <EmblemAt kind={ek} at={OVAL_AT[ek] ?? [4.5, -13.8, 1.05]} f={f} c={emb} bg={face} />}
         <Hi d="M7.4 -19.4 C8.6 -16.6 8.8 -12.4 7.8 -9" c={faceLight} w={0.8} mx={4.3} />
-        {kit === 'roman' && <ellipse cx={4.5} cy={-13.8} rx={1.3} ry={1.8} fill={p.metal} stroke={OL} strokeWidth={0.5} />}
+        {kit.ovalShieldBoss && <ellipse cx={4.5} cy={-13.8} rx={1.3} ry={1.8} fill={p.metal} stroke={OL} strokeWidth={0.5} />}
       </>
     );
   } else if (kind === 'longOval') {
@@ -516,7 +527,7 @@ export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted 
     );
   } else if (kind === 'pelta') {
     // crescent shield (Thracian pelta, Persian taka)
-    const wicker = kit === 'persian' || kit === 'scythian';
+    const wicker = kit.wickerPelta;
     body = (
       <>
         <Shape d="M-0.2 -21.6 C1.2 -18.8 3 -17 5 -17 C7 -17 8.8 -18.8 10.2 -21.6 C11.2 -16.4 9 -10.6 5 -9.8 C1 -10.6 -1.2 -16.4 -0.2 -21.6 Z" f={face} />
@@ -551,6 +562,7 @@ export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted 
       </>
     );
   }
+  if (isExp2Shield(kind)) body = <Exp2Shield kind={kind} f={f} face={face} faceShade={faceShade} faceLight={faceLight} emb={emb} ek={ek} emblem={emblem} />;
   if (!body) return null;
   if (!dx && !dy && s === 1) return <>{body}</>;
   return <g transform={`translate(${dx} ${dy})${s !== 1 ? ` scale(${s})` : ''}`}>{body}</g>;
@@ -565,14 +577,17 @@ export type Helmet =
   | 'phrygian' | 'thracian' | 'boeotian'
   // cloth headgear (colour: palette `cap`): Persian hood, Persian royal tiara, Scythian cap, turban, Macedonian kausia,
   // broad-brimmed petasos, Egyptian headcloth, and a plain fillet (headband)
-  | 'tiara' | 'kidaris' | 'scythianCap' | 'turban' | 'kausia' | 'petasos' | 'nemes' | 'fillet';
+  | 'tiara' | 'kidaris' | 'scythianCap' | 'turban' | 'kausia' | 'petasos' | 'nemes' | 'fillet'
+  // Expansion #2: the Coolus helmet of the late Republic (brow peak, neck guard), the Celtic horned helmet, a laurel wreath
+  // (Caesar) and a gladiator's brimmed helmet with a grille visor
+  | 'coolus' | 'horned' | 'laurel' | 'gladiator';
 /** `plume2`: a pair of tall feathers at the helmet's sides; `horns`: goat horns (Pyrrhus). */
 export type Crest = 'none' | 'plumes' | 'horsehair' | 'knob' | 'tall' | 'plume2' | 'horns';
-/** `locks`: long hair falling from under a helmet to the shoulders (Spartans). */
-export type Hair = 'short' | 'long' | 'wild' | 'bald' | 'locks';
+/** `locks`: long hair falling from under a helmet to the shoulders (Spartans); `knot`: combed back into a Suebian knot. */
+export type Hair = 'short' | 'long' | 'wild' | 'bald' | 'locks' | 'knot';
 
 /** Headgear that leaves the hair showing at the back. */
-const HAIR_SHOWS: ReadonlySet<Helmet> = new Set<Helmet>(['none', 'cap', 'kausia', 'petasos', 'fillet']);
+const HAIR_SHOWS: ReadonlySet<Helmet> = new Set<Helmet>(['none', 'cap', 'kausia', 'petasos', 'fillet', 'laurel']);
 
 const HEAD =
   'M-2.3 -25.2 C-2.3 -27.4 -0.8 -28.5 1.1 -28.5 C3.1 -28.5 4.3 -27.3 4.4 -25.6 L5.1 -24.2 L4.4 -23.9 C4.4 -22.6 3.4 -21.8 2 -21.7 C-0.4 -21.6 -2.3 -22.9 -2.3 -25.2 Z';
@@ -617,6 +632,7 @@ export function Head({ f, helmet, crest, hair: hairKind = 'short', beard = false
       {showHair && (hair === 'long' || hair === 'wild') && (
         <Hi d="M-1.6 -27.4 C-0.4 -28.4 1.2 -28.6 2.6 -28.2 M-1.8 -25.8 C-1.2 -26.8 -0.2 -27.4 0.8 -27.4" c={lighten(f.hair, 0.35)} w={0.45} o={0.9} />
       )}
+      {showHair && hair === 'knot' && <SuebianKnot f={f} />}
       {showHair && <ellipse cx={0.5} cy={-24.7} rx={0.6} ry={0.9} fill={f.skinShade} />}
       <Helm f={f} helmet={helmet} crest={crest} />
     </>
@@ -869,8 +885,9 @@ function NewHelm({ f, helmet, crest, crestEl }: { f: Fig; helmet: Helmet; crest:
       </>
     );
   }
-  return null;
+  return <Exp2Helm f={f} helmet={helmet} crest={crest} crestEl={crestEl} />;
 }
+
 
 function CrestEl({ f, crest, helmet }: { f: Fig; crest: Crest; helmet: Helmet }) {
   const { p } = f;
@@ -914,7 +931,7 @@ function CrestEl({ f, crest, helmet }: { f: Fig; crest: Crest; helmet: Helmet })
     );
   }
   // horsehair: lower fore-and-aft crest
-  const top = helmet === 'montefortino' ? -30 : -29.8;
+  const top = helmet === 'montefortino' || helmet === 'coolus' ? -30 : -29.8;
   return (
     <>
       <Shape d={`M-4.4 -26.4 C-4.6 -31.6 0.6 -${-top + 4.2} 4.8 -31.8 C3.4 -31 2.2 -30.8 1 -30.7 C-1.4 -30.4 -2.8 -29.2 -3.4 -26.2 Z`} f={p.crest} />
@@ -1105,10 +1122,12 @@ export function LegsEl({ f, legs }: { f: Fig; legs: Legs }) {
 }
 
 /** Arm as an outlined stroke (shoulder -> elbow -> hand), optional short sleeve, and a hand. */
-export function Arm({ s, e, h, f, sleeve, near = false, w = 2.1, long = false }: {
+export function Arm({ s, e, h, f, sleeve, near = false, w = 2.1, long = false, woad }: {
   s: [number, number]; e: [number, number]; h: [number, number]; f: Fig; sleeve?: string; near?: boolean; w?: number;
   /** Sleeve down to the wrist (Persian, Scythian and Median dress). */
   long?: boolean;
+  /** Colour of woad bands painted round the bare upper arm and forearm (Britons). */
+  woad?: string;
 }) {
   const c = near ? f.skin : f.skinShade;
   const sx = s[0] + (e[0] - s[0]) * 0.55;
@@ -1120,6 +1139,7 @@ export function Arm({ s, e, h, f, sleeve, near = false, w = 2.1, long = false }:
       <Line2 d={`M${s[0]} ${s[1]} L${e[0]} ${e[1]} L${h[0]} ${h[1]}`} w={w} c={c} />
       {sleeve && !long && <Line2 d={`M${s[0]} ${s[1]} L${sx.toFixed(2)} ${sy.toFixed(2)}`} w={w + 0.6} c={sleeve} ow={0.6} />}
       {sleeve && long && <Line2 d={`M${s[0]} ${s[1]} L${e[0]} ${e[1]} L${wx.toFixed(2)} ${wy.toFixed(2)}`} w={w + 0.6} c={sleeve} ow={0.6} />}
+      {woad && !long && <ArmBands s={s} e={e} h={h} w={w} c={woad} />}
       <circle cx={h[0]} cy={h[1]} r={1.2} fill={c} stroke={OL} strokeWidth={0.6} />
     </>
   );

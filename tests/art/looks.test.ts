@@ -17,6 +17,7 @@ import { LeaderToken, UnitIcon, UnitToken } from '../../src/art';
 import { ELITE_FOOT, FootFigure, crewFigure, figurePalette, footKit } from '../../src/art/foot';
 import { bannerCloth } from '../../src/ui/kit/theme';
 import { SCENARIOS } from '../../src/scenarios';
+import { deltaE, lab } from './delta-e';
 
 const baseline = baselineJson as unknown as {
   FACTION_PALETTES: Record<string, Record<string, unknown>>;
@@ -116,25 +117,8 @@ describe('every base scenario seats its armies in the old colours', () => {
 });
 
 describe('opposing armies are told apart by their colours, not only by the base edge', () => {
-  // CIE76 colour difference: sRGB '#rrggbb' -> linear -> XYZ (D65) -> Lab, then the Euclidean distance. About 2.3 is the
-  // smallest difference the eye notices; 20 or more reads as a different colour at a glance, even at board size.
+  // CIE76 colour difference (tests/art/delta-e.ts): 20 or more reads as a different colour at a glance, even at board size.
   const MIN_DELTA_E = 20;
-  function lab(hex: string): [number, number, number] {
-    const [r, g, b] = [1, 3, 5].map((i) => {
-      const c = parseInt(hex.slice(i, i + 2), 16) / 255;
-      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    });
-    const x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047;
-    const y = 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
-    const z = (0.0193339 * r + 0.119192 * g + 0.9503041 * b) / 1.08883;
-    const f = (t: number) => (t > 216 / 24389 ? Math.cbrt(t) : ((24389 / 27) * t + 16) / 116);
-    return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
-  }
-  const deltaE = (a: string, b: string) => {
-    const [l1, a1, b1] = lab(a);
-    const [l2, a2, b2] = lab(b);
-    return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
-  };
   it('the colour difference matches reference values', () => {
     expect(deltaE('#ffffff', '#ffffff')).toBe(0);
     expect(lab('#ffffff')[0]).toBeCloseTo(100, 1);
@@ -264,6 +248,49 @@ describe("the base game's Sacred Band keeps its look (rendered SVG)", () => {
   });
 });
 
+describe('Expansion #1 armies are drawn exactly as before Expansion #2 (rendered SVG)', () => {
+  // SHA-256 of a react-dom/server render of every UnitToken (all strengths, both facings) and UnitIcon of the 16
+  // Expansion #1 looks (every type but BCH, which gets its own figure in Expansion #2) and their LeaderTokens, of the base
+  // looks' Expansion #1 types (LBC, CAM, HWM), and of the Expansion #1 elites on their armies, computed on the tree before
+  // the Expansion #2 art (and unchanged by the kit table that replaced the kit literals).
+  const BASELINE = '15b5df0029e5ee4479e916b35890f7edeca193908fcbd44610ff4e8684cfa5d9';
+  const EXP1_LOOKS: ArmyLook[] = [
+    'athenian', 'theban', 'spartan', 'phocian', 'macedonian', 'antigonid', 'epirote', 'craterus', 'eumenes', 'antigonus',
+    'seleucid', 'ptolemaic', 'persian', 'scythian', 'indian', 'mauryan',
+  ];
+  const EXP1_ELITES: { elite: EliteId; look: ArmyLook; type: UnitType }[] = [
+    { elite: 'thebanSacredBand', look: 'theban', type: 'MI' }, { elite: 'silverShields', look: 'eumenes', type: 'HI' },
+    { elite: 'companions', look: 'macedonian', type: 'MC' }, { elite: 'immortals', look: 'persian', type: 'MI' },
+    { elite: 'bowAuxilia', look: 'mauryan', type: 'AX' },
+  ];
+  const blocksOf = (look: ArmyLook): Blocks => (['athenian', 'theban', 'spartan', 'phocian'].includes(look) ? 'grk' : 'eas');
+
+  it('every Expansion #1 token, icon, leader and elite renders byte-identically', async () => {
+    const parts: string[] = [];
+    const tokens = (a: { look: ArmyLook; blockColor: Blocks; elite?: EliteId }, type: UnitType) => {
+      for (let blocks = 1; blocks <= MAX[type]; blocks++) {
+        for (const facing of ['left', 'right'] as const) parts.push(svg(h(UnitToken, { type, ...a, blocks, maxBlocks: MAX[type], facing })));
+      }
+      for (const size of [24, 64]) parts.push(svg(h(UnitIcon, { type, ...a, size })));
+    };
+    for (const look of EXP1_LOOKS) {
+      const a = { look, blockColor: blocksOf(look) };
+      for (const type of ALL_TYPES.filter((t) => t !== 'BCH')) tokens(a, type);
+      for (const facing of ['left', 'right'] as const) {
+        for (const attached of [false, true]) parts.push(svg(h(LeaderToken, { ...a, facing, attached, name: 'Alexander', showName: true })));
+      }
+    }
+    for (const a of [{ look: 'roman', blockColor: 'rom' }, { look: 'carthaginian', blockColor: 'car' }, { look: 'syracusan', blockColor: 'grk' }] as const) {
+      for (const type of ['LBC', 'CAM', 'HWM'] as const) tokens(a, type);
+    }
+    for (const { elite, look, type } of EXP1_ELITES) tokens({ look, blockColor: blocksOf(look), elite }, type);
+    expect(parts).toHaveLength(2226);
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(parts.join('')));
+    const hex = [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, '0')).join('');
+    expect(hex).toBe(BASELINE);
+  });
+});
+
 /** The kit of every look (Expansion #1 brief). */
 const KITS: Record<ArmyLook, Kit> = {
   roman: 'roman', carthaginian: 'punic', syracusan: 'greek',
@@ -271,8 +298,9 @@ const KITS: Record<ArmyLook, Kit> = {
   macedonian: 'macedonian', antigonid: 'macedonian', epirote: 'macedonian', craterus: 'macedonian', eumenes: 'macedonian',
   antigonus: 'macedonian', seleucid: 'macedonian', ptolemaic: 'macedonian',
   persian: 'persian', scythian: 'scythian', indian: 'indian', mauryan: 'indian',
-  // Expansion #2 (temporary art: the Barbarian looks draw as Carthaginian, the Marian Romans as Roman)
-  gallic: 'punic', germanic: 'punic', slave: 'punic', belgic: 'punic', briton: 'punic', marian: 'roman',
+  // Expansion #2: the Celtic kit for the Gauls, Belgae, Britons and the Slave army (with Thracian, Germanic and Italian
+  // figures among them), the Germanic kit, the late-Roman kit for the Marian legions
+  gallic: 'celtic', germanic: 'germanic', slave: 'celtic', belgic: 'celtic', briton: 'celtic', marian: 'lateRoman',
 };
 const ALL_LOOKS = Object.keys(KITS) as ArmyLook[];
 

@@ -1,8 +1,10 @@
 // Heavy war machines (HWM): a torsion bolt-thrower (Greek oxybeles, Roman scorpio) on its stand, with two crewmen: one
 // winding the windlass at the rear, one laying the engine from behind. Seen from slightly above, so the bow arms of the
 // two spring frames show (near arm swept back and down, far arm back and up). Facing right, ground at y = 0.
+// Expansion #2: the legions' stone-throwing ballista on a braced trestle, a winder and a man carrying a stone.
 import { darken, lighten } from './color';
 import { crewFigure } from './foot';
+import { KITS } from './kits';
 import type { Palette } from './palettes';
 import { Emblem, Hi, Line2, OL, Paint, Shape, makeFig } from './parts';
 
@@ -28,10 +30,11 @@ function Spring({ x, top, bottom, p, dark }: { x: number; top: number; bottom: n
 
 /** The engine itself (stand, stock, windlass, slider with bolt, spring frame, arms and string). */
 function BoltThrower({ p, i }: { p: Palette; i: number }) {
-  const roman = p.kit === 'roman';
+  // the Roman scorpio: frame in the shield colour and a curved front shield
+  const scorpio = KITS[p.kit].warMachine === 'scorpio';
   const wood = p.wood;
   const woodShade = p.woodShade;
-  const frame = roman ? p.shield : wood;
+  const frame = scorpio ? p.shield : wood;
   const iron = p.iron;
   const f = makeFig(p, i);
   // arm tips (the near arm sweeps back and down, the far arm back and up)
@@ -73,7 +76,7 @@ function BoltThrower({ p, i }: { p: Palette; i: number }) {
       <Line2 d={`M8.6 -18.4 L${near[0]} ${near[1]}`} w={1.5} c={wood} ow={0.6} />
       <circle cx={near[0]} cy={near[1]} r={0.55} fill={p.metal} stroke={OL} strokeWidth={0.35} />
       {/* the Roman scorpio's curved front shield with its sighting window */}
-      {roman ? (
+      {scorpio ? (
         <g>
           <Shape d="M11 -27.6 C12.6 -28.4 13.8 -27.6 13.8 -26 L13.6 -10.8 C12.8 -10.4 11.8 -10.4 11 -10.8 Z" f={p.shield} sw={0.6} />
           <Paint d="M11 -27.6 C11.4 -27.8 11.8 -27.9 12.2 -27.9 L12 -10.6 C11.6 -10.6 11.3 -10.7 11 -10.8 Z" f={p.shieldShade} mx={12.4} />
@@ -88,8 +91,98 @@ function BoltThrower({ p, i }: { p: Palette; i: number }) {
   );
 }
 
-/** One war machine with its two crewmen, facing right, feet at (0,0). */
+// ---------------------------------------------------------------------------------------------
+// Expansion #2: the stone-throwing ballista
+
+/** Colours of the stone shot. */
+const STONE = '#b8ae98';
+const STONE_SHADE = '#7f7765';
+
+/** A round stone with its shade and a highlight. */
+function Stone({ x, y, r }: { x: number; y: number; r: number }) {
+  return (
+    <g>
+      <circle cx={x} cy={y} r={r} fill={STONE} stroke={OL} strokeWidth={0.5} />
+      <Paint d={`M${x - r * 0.75} ${y + r * 0.1} A${r * 0.8} ${r * 0.8} 0 0 0 ${x + r * 0.55} ${y + r * 0.7} A${r} ${r} 0 0 1 ${x - r * 0.75} ${y + r * 0.1} Z`} f={STONE_SHADE} o={0.7} />
+      <circle cx={x - r * 0.35} cy={y - r * 0.35} r={r * 0.28} fill={lighten(STONE, 0.45)} />
+    </g>
+  );
+}
+
+/** Height of the ballista's stock (its top edge) at `x`: it rises gently towards the front. */
+const stockY = (x: number) => -15.6 - (x + 17) * 0.15;
+const f2 = (n: number) => n.toFixed(2);
+
+/**
+ * The stone-thrower: a stock on a braced trestle, a tall frame in the shield colour round the twisted springs, heavy arms,
+ * the string drawn back to the claw with a stone loaded before it, the windlass at the rear and a pile of shot in front.
+ */
+function Ballista({ p }: { p: Palette }) {
+  const wood = p.wood;
+  const woodShade = p.woodShade;
+  const frame = p.shield;
+  const claw: [number, number] = [-11.6, stockY(-11.6) - 0.6];
+  const near: [number, number] = [0.6, -11.4];
+  const far: [number, number] = [-0.8, -28.8];
+  const stock = `M-17.4 ${f2(stockY(-17.4))} L12.4 ${f2(stockY(12.4))} L12.5 ${f2(stockY(12.4) + 2.6)} L-17.3 ${f2(stockY(-17.4) + 2.6)} Z`;
+  return (
+    <g>
+      {/* the trestle: sill on the ground, two posts and their braces */}
+      <Line2 d="M-13.6 -1 L9.6 -1" w={1.4} c={woodShade} ow={0.55} />
+      <Line2 d={`M-8.6 -1.4 L-8.6 ${f2(stockY(-8.6) + 2)} M3.4 -1.4 L3.4 ${f2(stockY(3.4) + 2)}`} w={1.5} c={wood} ow={0.55} />
+      <Line2 d="M-13 -1.2 L-8.6 -8.6 M9.2 -1.2 L3.4 -9.4 M-8.6 -6 L3.4 -6" w={1} c={wood} ow={0.5} />
+      {/* far spring, far arm */}
+      <Spring x={6.6} top={-31.2} bottom={-9.2} p={p} dark />
+      <Line2 d={`M6.6 -20.2 L${far[0]} ${far[1]}`} w={1.6} c={darken(wood, 0.2)} ow={0.55} />
+      {/* the stock with its iron bands and the trough on top */}
+      <Shape d={stock} f={wood} sw={0.7} />
+      <Paint d={`M-17.3 ${f2(stockY(-17.4) + 1.6)} L12.5 ${f2(stockY(12.4) + 1.6)} L12.5 ${f2(stockY(12.4) + 2.6)} L-17.3 ${f2(stockY(-17.4) + 2.6)} Z`} f={woodShade} o={0.8} />
+      <Hi d={`M-17 ${f2(stockY(-17) + 0.4)} L12 ${f2(stockY(12) + 0.4)}`} c={lighten(wood, 0.35)} w={0.45} o={0.8} />
+      <path d={[-12.4, -4.4, 4.2].map((x) => `M${x} ${f2(stockY(x))} L${x + 0.2} ${f2(stockY(x) + 2.6)}`).join(' ')} stroke={p.iron} strokeWidth={0.8} />
+      {/* the windlass: a drum with four handspikes */}
+      <circle cx={-15} cy={stockY(-15) + 2.6} r={2.1} fill={wood} stroke={OL} strokeWidth={0.55} />
+      <Line2 d={`M-15 ${f2(stockY(-15) - 1.4)} L-15 ${f2(stockY(-15) + 6.6)} M-19 ${f2(stockY(-15) + 2.6)} L-11 ${f2(stockY(-15) + 2.6)}`} w={0.7} c={woodShade} ow={0.4} />
+      <circle cx={-15} cy={stockY(-15) + 2.6} r={0.7} fill={p.iron} stroke={OL} strokeWidth={0.35} />
+      {/* the claw holding the string, the stone before it */}
+      <Shape d={`M${claw[0] - 0.8} ${f2(claw[1] - 1.4)} L${claw[0] + 1.2} ${f2(claw[1] - 0.4)} L${claw[0] + 0.4} ${f2(claw[1] + 0.6)} L${claw[0] - 1} ${f2(claw[1] + 0.4)} Z`} f={p.iron} sw={0.45} />
+      {/* the frame: cross-beams and stanchions in the shield colour, round the near spring */}
+      <Shape d="M4.4 -32.6 L12 -33 L12 -30.6 L4.4 -30.2 Z" f={frame} sw={0.6} />
+      <Shape d="M4.4 -9.8 L12 -10.2 L12 -7.8 L4.4 -7.4 Z" f={frame} sw={0.6} />
+      <Line2 d="M5 -30.4 L5 -7.8 M11.4 -30.8 L11.4 -8.2" w={1.4} c={frame} ow={0.55} />
+      <Hi d="M11.8 -32.6 L11.8 -30.8 M11.8 -9.8 L11.8 -8" c={p.metal} w={0.9} o={1} />
+      <Paint d="M4.4 -32.6 L5.4 -32.65 L5.4 -30.25 L4.4 -30.2 Z" f={p.shieldShade} />
+      <Spring x={8.2} top={-30.4} bottom={-8.2} p={p} />
+      {/* the string drawn back, the near arm, the stone on the trough */}
+      <path d={`M${far[0]} ${far[1]} L${claw[0]} ${f2(claw[1])} L${near[0]} ${near[1]}`} fill="none" stroke={p.linen} strokeWidth={0.55} />
+      <Line2 d={`M8.2 -18.6 L${near[0]} ${near[1]}`} w={1.8} c={wood} ow={0.6} />
+      <circle cx={near[0]} cy={near[1]} r={0.6} fill={p.metal} stroke={OL} strokeWidth={0.35} />
+      <Stone x={-9} y={stockY(-9) - 1.7} r={1.8} />
+      {/* shot piled in front */}
+      <Stone x={14.4} y={-1.7} r={1.7} />
+      <Stone x={17.6} y={-1.6} r={1.6} />
+      <Stone x={16} y={-4.3} r={1.6} />
+    </g>
+  );
+}
+
+/** The ballista with its crew: a man behind it carrying a stone up to the trough, a winder at the windlass. */
+function BallistaFigure({ p, i }: { p: Palette; i: number }) {
+  const hands = { near: [7.4, -21.4] as [number, number], far: [5.4, -21.8] as [number, number] };
+  return (
+    <g>
+      <g transform="translate(-4.6 -2.6) scale(0.86)">
+        {crewFigure(p, i + 1, hands)}
+        <Stone x={6.6} y={-23.4} r={2.1} />
+      </g>
+      <g transform="scale(1.15)"><Ballista p={p} /></g>
+      <g transform="translate(-23.4 0)">{crewFigure(p, i, 'crank')}</g>
+    </g>
+  );
+}
+
+/** One war machine with its two crewmen, facing right, feet at (0,0): the kit's machine (`KITS[kit].warMachine`). */
 export function MachineFigure({ p, i }: { p: Palette; i: number }) {
+  if (KITS[p.kit].warMachine === 'ballista') return <BallistaFigure p={p} i={i} />;
   return (
     <g>
       {/* the gunner laying the engine, behind it */}

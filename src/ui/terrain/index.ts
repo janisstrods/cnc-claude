@@ -1,12 +1,43 @@
 // Battlefield / terrain art for Commands & Colors: Ancients (original procedural SVG).
-import type { TerrainType } from '../../engine/types';
+import { COLS, ROWS } from '../../engine/types';
+import type { PaintTerrain } from './hexmath';
 
-export { BoardArt } from './BoardArt';
+export { BoardArt, boardArtPropsEqual } from './BoardArt';
 export type { BoardArtProps } from './BoardArt';
+export type { PaintTerrain } from './hexmath';
+export { ObjectiveMarkers } from './objectives';
+export type { ObjectiveMarkersProps } from './objectives';
 export { TerrainIcon } from './TerrainIcon';
 
-/** Human-readable terrain name ("Hill", "Forest", "Fordable River", ...). `noCap`: a ford without dice limits (§16). */
-export function terrainName(t: TerrainType, ford: boolean, noCap = false): string {
+/** A scenario terrain entry as far as its art goes (`TerrainSetup`, with the optional Expansion #2 `art`). */
+export interface TerrainArtEntry {
+  r: number;
+  c: number;
+  t: string;
+  ford?: unknown;
+  art?: string;
+}
+
+/**
+ * Art of every hex (index r*13+c) where it differs from its terrain, from the scenario setup's terrain list, for
+ * `BoardArt`'s `art` prop: an entry's own `art` (`'coast'` on 217's seacoast), and `'coast'` for a sea hex played as a
+ * ford (`{ t: 'sea', ford: true }`, which the engine stores as a fordable river). Undefined everywhere else.
+ */
+export function terrainArtOf(setup: { terrain: readonly TerrainArtEntry[] }): (string | undefined)[] {
+  const out: (string | undefined)[] = new Array(ROWS * COLS).fill(undefined);
+  for (const e of setup.terrain) {
+    const art = e.art ?? (e.t === 'sea' && e.ford ? 'coast' : undefined);
+    if (art !== undefined) out[e.r * COLS + e.c] = art;
+  }
+  return out;
+}
+
+/**
+ * Human-readable terrain name ("Hill", "Forest", "Fordable River", ...). `noCap`: a ford without dice limits (§16).
+ * `art`: the hex's art (`terrainArtOf`); a fordable river with `'coast'` art is a coast played as a ford (217).
+ */
+export function terrainName(t: PaintTerrain, ford: boolean, noCap = false, art?: string): string {
+  if (art === 'coast' && t === 'river') return 'Coastal Ford';
   switch (t) {
     case 'plain':
       return 'Open Ground';

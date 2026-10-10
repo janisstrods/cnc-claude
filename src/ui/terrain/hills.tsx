@@ -1,9 +1,8 @@
 // Hills (shaded grassy mounds merging into ridges) and steep hills (raised rocky plateaus).
 import { addToGrid, blurGrid, contours, decimate, fillGrid, isoPath, loopArea, makeGrid, polyPath } from './field';
-import { fmt, type PaintCtx, type Pt, type Rect } from './hexmath';
+import { fmt, type PaintCtx, type PaintTerrain, type Pt, type Rect } from './hexmath';
 import { fbm, rng } from './noise';
 import { P } from './palette';
-import type { TerrainType } from '../../engine/types';
 
 function rectAround(ctx: PaintCtx, pts: Pt[], pad: number): Rect {
   const b = ctx.bounds;
@@ -24,7 +23,7 @@ interface ReliefOpts {
   base: number; // outline level
   contours: number[];
   peakJitter: number;
-  /** Slope levels (0..1) whose iso-lines outline exposed rock (steep hills). */
+  /** Slope levels whose iso-lines outline exposed rock (very steep hills), on a slope field broken up by noise. */
   rock?: number[];
 }
 
@@ -88,7 +87,10 @@ function relief(ctx: PaintCtx, hexes: Pt[], o: ReliefOpts): Relief {
         const k = j * g.nx + i;
         const hdx = (g.v[k + 1] - g.v[k - 1]) / (2 * step);
         const hdy = (g.v[k + g.nx] - g.v[k - g.nx]) / (2 * step);
-        slope.v[k] = g.v[k] > o.base ? Math.hypot(hdx, hdy) * o.K : 0;
+        const x = g.x0 + i * step;
+        const y = g.y0 + j * step;
+        // patches, not rings: the steepest ground, broken up by noise
+        slope.v[k] = g.v[k] > o.base ? Math.hypot(hdx, hdy) * o.K + (fbm(x / 11, y / 11, o.seed + 3) - 0.5) * 1.6 : 0;
       }
     }
     blurGrid(slope, 1, 2);
@@ -105,9 +107,14 @@ function relief(ctx: PaintCtx, hexes: Pt[], o: ReliefOpts): Relief {
   };
 }
 
-export function paintHills(ctx: PaintCtx, patternFill?: string, strength = 1): JSX.Element | null {
+/**
+ * Hills. `steep`: the very steep hills of 223 (rule `veryHills`, §18.6), still hills but rockier and darker: a steeper
+ * relief in dark olive, bare rock on the steepest slopes, crags along the crest, boulders and scree.
+ */
+export function paintHills(ctx: PaintCtx, patternFill?: string, strength = 1, steep = false): JSX.Element | null {
   const hills = ctx.hexes.filter((h) => h.t === 'hill');
   if (!hills.length) return null;
+  if (steep) return paintVerySteep(ctx, hills, patternFill, strength);
   const r = relief(ctx, hills, {
     R0: 60,
     K: 34,
@@ -138,7 +145,84 @@ export function paintHills(ctx: PaintCtx, patternFill?: string, strength = 1): J
   );
 }
 
-export function regionGrid(ctx: PaintCtx, t: TerrainType, step = 3, blur = 3, noiseAmp = 0.25, noiseScale = 24, seed = 5) {
+function paintVerySteep(ctx: PaintCtx, hills: Pt[], patternFill: string | undefined, strength: number): JSX.Element {
+  const r = relief(ctx, hills, {
+    R0: 58,
+    K: 52,
+    noise: 0.16,
+    noiseScale: 14,
+    seed: 29,
+    base: 0.16,
+    contours: [0.34, 0.56, 0.8],
+    peakJitter: 6,
+    rock: [1.45, 1.75],
+  });
+  const R = rng(2230 + Math.round(hills[0].x) * 7 + Math.round(hills[0].y));
+  // crags: short jagged strokes about the crest; boulders on the slopes; scree at the foot
+  let crags = '';
+  let cragsLit = '';
+  let scree = '';
+  const bould: { body: string; top: string }[] = [];
+  for (const h of hills) {
+    for (let k = 0; k < 3; k++) {
+      const a = R() * Math.PI * 2;
+      const d = 8 + R() * 14;
+      const x = h.x + Math.cos(a) * d;
+      const y = h.y + Math.sin(a) * d * 0.8;
+      const w = 5 + R() * 5;
+      const seg = `M${fmt(x - w)},${fmt(y + 1.5)}l${fmt(w * 0.4)},${fmt(-2.5 - R() * 2)}l${fmt(w * 0.35)},${fmt(1.8 + R())}l${fmt(w * 0.5)},${fmt(-3 - R() * 2)}l${fmt(w * 0.4)},${fmt(2.4 + R())}`;
+      crags += seg;
+      cragsLit += `M${fmt(x - w * 0.6)},${fmt(y - 0.4)}l${fmt(w * 0.3)},${fmt(-2)}`;
+    }
+    for (let k = 0; k < 3; k++) {
+      const a = Math.PI * (0.1 + R() * 0.8) + (R() < 0.35 ? Math.PI : 0);
+      const d = 24 + R() * 12;
+      bould.push(boulder({ x: h.x + Math.cos(a) * d, y: h.y + Math.sin(a) * d * 0.9 }, 2.6 + R() * 2.4, R));
+    }
+    for (let k = 0; k < 12; k++) {
+      const a = Math.PI * (0.05 + R() * 0.9);
+      const d = 36 + R() * 14;
+      const x = h.x + Math.cos(a) * d;
+      const y = h.y + Math.sin(a) * d;
+      const s = 0.9 + R() * 1.2;
+      scree += `M${fmt(x - s)},${fmt(y)}a${fmt(s)},${fmt(s * 0.75)} 0 1,1 ${fmt(2 * s)},0a${fmt(s)},${fmt(s * 0.75)} 0 1,1 ${fmt(-2 * s)},0`;
+    }
+  }
+  return (
+    <g className="hills very-steep">
+      <path d={r.outline} fill="rgba(40,36,14,0.22)" transform="translate(7 9)" />
+      <path d={r.outline} fill="rgba(40,36,14,0.42)" transform="translate(3 4.5)" />
+      <path d={r.outline} fill="#76793d" />
+      {patternFill && <path d={r.outline} fill={patternFill} opacity={0.35} />}
+      {r.shade.map((d, i) => (
+        <path key={`s${i}`} d={d} fill="#2c3210" opacity={0.2 * strength} />
+      ))}
+      {r.lit.map((d, i) => (
+        <path key={`l${i}`} d={d} fill="#efe2a0" opacity={0.13 * strength} />
+      ))}
+      {r.rock[0] && <path d={r.rock[0]} fill={P.rockShadow} transform="translate(1.2 1.8)" />}
+      {r.rock.map((d, i) => (
+        <path key={`r${i}`} d={d} fill={i ? P.rockMid : P.rock} stroke={P.rockDark} strokeWidth={i ? 0.6 : 0.9} strokeOpacity={i ? 0.5 : 0.8} />
+      ))}
+      {r.rock[1] && <path d={r.rock[1]} fill="none" stroke={P.rockLight} strokeWidth={1} opacity={0.6} transform="translate(-0.7 -0.9)" />}
+      {r.lines.map((d, i) => (
+        <path key={`c${i}`} d={d} fill="none" stroke="rgba(52,46,18,0.55)" strokeWidth={0.9} opacity={0.6} strokeDasharray={i ? undefined : '4 3'} />
+      ))}
+      <path d={scree} fill={P.rockMid} stroke={P.rockDark} strokeWidth={0.5} opacity={0.85} />
+      {bould.map((b, i) => (
+        <g key={`b${i}`}>
+          <path d={b.body} fill="#6d6150" stroke="#2e2519" strokeWidth={0.7} />
+          <path d={b.top} fill="#b3a585" />
+        </g>
+      ))}
+      <path d={crags} fill="none" stroke={P.rockDark} strokeWidth={1.4} strokeLinejoin="round" strokeLinecap="round" />
+      <path d={cragsLit} fill="none" stroke={P.rockLight} strokeWidth={1} strokeLinecap="round" opacity={0.8} />
+      <path d={r.outline} fill="none" stroke="rgba(46,40,14,0.62)" strokeWidth={1.3 * strength} />
+    </g>
+  );
+}
+
+export function regionGrid(ctx: PaintCtx, t: PaintTerrain, step = 3, blur = 3, noiseAmp = 0.25, noiseScale = 24, seed = 5) {
   const hs = ctx.hexes.filter((h) => h.t === t);
   const g = makeGrid(rectAround(ctx, hs, 70), step);
   fillGrid(g, (x, y) => (ctx.terrainAt(x, y) === t ? 1 : 0));

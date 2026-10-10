@@ -1,5 +1,5 @@
 // UnitToken: base plate + miniatures + class badge + strength pips, centred on (0,0) of a pointy-top hex (R = 50).
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
 import { paletteFor, type Palette } from './palettes';
 import { FootFigure, footKit } from './foot';
@@ -8,6 +8,7 @@ import { ElephantFigure } from './elephant';
 import { ChariotFigure } from './chariot';
 import { CamelFigure } from './camel';
 import { MachineFigure } from './machine';
+import { WingPair } from './exp2-parts';
 import { Emblem, FacingRightCtx, OL, makeFig, type Fig } from './parts';
 
 export type Facing = 'left' | 'right';
@@ -68,6 +69,13 @@ const BIG_SLOTS: Record<number, Slot[]> = {
   2: [{ x: -9, y: 6.5, s: 0.94 }, { x: 6, y: 19, s: 1.06 }],
   1: [{ x: 1, y: 18.5, s: 1.1 }],
 };
+// Barbarian chariots (three blocks) are lighter and smaller than the heavy chariots: one behind, two in front, each
+// wheel in sight.
+const LIGHT_CHARIOT_SLOTS: Record<number, Slot[]> = {
+  3: [{ x: 3, y: 4.5, s: 0.8 }, { x: -15, y: 19, s: 0.84 }, { x: 16, y: 18, s: 0.84 }],
+  2: [{ x: -14, y: 19, s: 0.86 }, { x: 15, y: 18, s: 0.86 }],
+  1: [{ x: 1, y: 18.5, s: 0.94 }],
+};
 // War machines are long and low: the rear engine stands further back so its frame and bolt clear the front crew.
 const MACHINE_SLOTS: Record<number, Slot[]> = {
   2: [{ x: -11, y: 4.5, s: 0.92 }, { x: 8, y: 19, s: 1.02 }],
@@ -78,6 +86,7 @@ function slotsFor(type: UnitType, n: number): Slot[] {
   const k = figureKind(type);
   if (k === 'horse' || k === 'camel') return HORSE_SLOTS[Math.max(1, Math.min(3, n))];
   if (k === 'machine') return MACHINE_SLOTS[Math.max(1, Math.min(2, n))];
+  if (type === 'BCH') return LIGHT_CHARIOT_SLOTS[Math.max(1, Math.min(3, n))];
   if (k === 'elephant' || k === 'chariot') return BIG_SLOTS[Math.max(1, Math.min(2, n))];
   const light = type === 'LI' || type === 'LB' || type === 'LS';
   return (light ? LIGHT_SLOTS : FOOT_SLOTS)[Math.max(1, Math.min(4, n))];
@@ -89,7 +98,7 @@ export function Miniature({ type, p, i, elite }: { type: UnitType; p: Palette; i
   if (k === 'horse') return <MountedFigure type={type} p={p} i={i} elite={elite} />;
   if (k === 'camel') return <CamelFigure p={p} i={i} />;
   if (k === 'elephant') return <ElephantFigure p={p} i={i} />;
-  if (k === 'chariot') return <ChariotFigure p={p} i={i} />;
+  if (k === 'chariot') return <ChariotFigure type={type} p={p} i={i} />;
   if (k === 'machine') return <MachineFigure p={p} i={i} />;
   return <FootFigure kit={footKit(type, p.kit, i)} p={p} i={i} elite={elite} />;
 }
@@ -216,7 +225,28 @@ export function Badge({ type, blocks, maxBlocks, elite }: { type: UnitType; bloc
 
 const STANDARD_FIG = new WeakMap<Palette, Fig>();
 
-export function EliteStandard({ p }: { p: Palette }) {
+/** Elites whose gold marker carries an eagle and the numeral X instead of the laurel wreath and the army's device. */
+const EAGLE_ELITES: ReadonlySet<EliteId> = new Set<EliteId>(['tenthLegion']);
+
+/** The marker's frame: the shadow, the pole, the plaque (with `plaque` on it), the cross bar, and `top` above the bar. */
+function MarkerFrame({ plaque, top, p, tag }: { plaque: ReactNode; top: ReactNode; p: Palette; tag?: string }) {
+  return (
+    <g transform="translate(-27.5 8) scale(0.88)" data-marker={tag}>
+      <ellipse cx={1} cy={0.6} rx={3} ry={1.1} fill="#000" opacity={0.3} />
+      <path d="M0 0.4 L0 -37.6" stroke={OL} strokeWidth={2.1} strokeLinecap="round" />
+      <path d="M0 0 L0 -37.6" stroke={p.goldShade} strokeWidth={1} />
+      <path d="M-3.8 -31.5 L5.4 -31.5 L5.4 -20.5 L3.1 -22.2 L0.8 -20.5 L-1.5 -22.2 L-3.8 -20.5 Z" fill={p.gold} stroke={OL} strokeWidth={0.6} strokeLinejoin="round" />
+      <path d="M-3.8 -31.5 L-1.6 -31.5 L-1.6 -21.6 L-3.8 -20.5 Z" fill={p.goldShade} opacity={0.6} />
+      {plaque}
+      <path d="M-4.8 -31.5 L6.4 -31.5" stroke={OL} strokeWidth={1.7} strokeLinecap="round" />
+      <path d="M-4.8 -31.5 L6.4 -31.5" stroke={p.gold} strokeWidth={0.8} strokeLinecap="round" />
+      {top}
+    </g>
+  );
+}
+
+export function EliteStandard({ p, elite }: { p: Palette; elite?: EliteId }) {
+  if (elite && EAGLE_ELITES.has(elite)) return <EagleMarker p={p} />;
   // Laurel leaves along two arcs around (0, -42).
   const leaves: JSX.Element[] = [];
   for (let k = 0; k < 4; k++) {
@@ -231,18 +261,36 @@ export function EliteStandard({ p }: { p: Palette }) {
     }
   }
   return (
-    <g transform="translate(-27.5 8) scale(0.88)">
-      <ellipse cx={1} cy={0.6} rx={3} ry={1.1} fill="#000" opacity={0.3} />
-      <path d="M0 0.4 L0 -37.6" stroke={OL} strokeWidth={2.1} strokeLinecap="round" />
-      <path d="M0 0 L0 -37.6" stroke={p.goldShade} strokeWidth={1} />
-      <path d="M-3.8 -31.5 L5.4 -31.5 L5.4 -20.5 L3.1 -22.2 L0.8 -20.5 L-1.5 -22.2 L-3.8 -20.5 Z" fill={p.gold} stroke={OL} strokeWidth={0.6} strokeLinejoin="round" />
-      <path d="M-3.8 -31.5 L-1.6 -31.5 L-1.6 -21.6 L-3.8 -20.5 Z" fill={p.goldShade} opacity={0.6} />
-      <PlaqueDevice p={p} />
-      <path d="M-4.8 -31.5 L6.4 -31.5" stroke={OL} strokeWidth={1.7} strokeLinecap="round" />
-      <path d="M-4.8 -31.5 L6.4 -31.5" stroke={p.gold} strokeWidth={0.8} strokeLinecap="round" />
-      <g fill={p.gold} stroke={OL} strokeWidth={0.35}>{leaves}</g>
-      <circle cx={0} cy={-42} r={1.5} fill={p.gold} stroke={OL} strokeWidth={0.5} />
-    </g>
+    <MarkerFrame
+      p={p}
+      plaque={<PlaqueDevice p={p} />}
+      top={(
+        <>
+          <g fill={p.gold} stroke={OL} strokeWidth={0.35}>{leaves}</g>
+          <circle cx={0} cy={-42} r={1.5} fill={p.gold} stroke={OL} strokeWidth={0.5} />
+        </>
+      )}
+    />
+  );
+}
+
+/** The Tenth Legion's marker: the gold plaque with its numeral X, an eagle with raised wings on top. */
+function EagleMarker({ p }: { p: Palette }) {
+  return (
+    <MarkerFrame
+      p={p}
+      tag="tenth"
+      plaque={<path d="M-0.8 -29.4 L2.4 -24.4 M2.4 -29.4 L-0.8 -24.4" stroke={p.banner} strokeWidth={1.1} strokeLinecap="round" />}
+      top={(
+        <g transform="translate(0 -38.4)" fill={p.gold} stroke={OL} strokeWidth={0.45} strokeLinejoin="round">
+          <WingPair spread={0.3} y={-1.6} />
+          <ellipse cx={0} cy={-1.8} rx={1.05} ry={1.7} />
+          <circle cx={0.45} cy={-3.9} r={0.8} />
+          <path d="M1.1 -4.2 L2 -3.8 L1.1 -3.4 Z" />
+          <path d="M-2.6 0.2 L2.6 0.2" fill="none" />
+        </g>
+      )}
+    />
   );
 }
 
@@ -271,6 +319,11 @@ export interface UnitTokenProps {
   look: ArmyLook;
   /** The side's block set: base-edge colour (`blocks` below is the unit's remaining strength). */
   blockColor: Blocks;
+  /**
+   * The block set of the unit's own command when it differs from its side's (210: Lentulus' legions in grey within the
+   * red Roman army): only the base edge is drawn in its colour.
+   */
+  edgeBlocks?: Blocks;
   blocks: number;
   maxBlocks: number;
   facing: Facing;
@@ -279,8 +332,9 @@ export interface UnitTokenProps {
   dimmed?: boolean;
 }
 
-function UnitTokenImpl({ type, look, blockColor, blocks, maxBlocks, facing, elite, dimmed }: UnitTokenProps) {
+function UnitTokenImpl({ type, look, blockColor, edgeBlocks, blocks, maxBlocks, facing, elite, dimmed }: UnitTokenProps) {
   const p = paletteFor(look, blockColor);
+  const edge = edgeBlocks ? paletteFor(look, edgeBlocks) : p;
   const n = Math.max(0, Math.min(blocks, maxBlocks));
   const slots = n > 0 ? slotsFor(type, n) : [];
   const flip = facing === 'left' ? -1 : 1;
@@ -289,9 +343,9 @@ function UnitTokenImpl({ type, look, blockColor, blocks, maxBlocks, facing, elit
   return (
     <g>
       <g opacity={dimmed ? 0.6 : undefined} style={dimmed ? { filter: 'saturate(0.3) brightness(0.95)' } : undefined}>
-      <BasePlate p={p} />
+      <BasePlate p={edge} />
       <FacingRightCtx.Provider value={facing === 'right'}>
-      {elite && <EliteStandard p={p} />}
+      {elite && <EliteStandard p={p} elite={elite} />}
       {slots.map((sl, k) => {
         const idx = full.findIndex((q) => q.x === sl.x && q.y === sl.y);
         const i = idx >= 0 ? idx : k;
