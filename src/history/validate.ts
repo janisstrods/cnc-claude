@@ -30,6 +30,8 @@ export function validateHistory(h: BattleHistory): string[] {
   const inField = ([x, y]: Pt, m: number) => x >= -m && x <= MAP_W + m && y >= -m && y <= MAP_H + m;
   const isPt = (p: unknown): p is Pt => Array.isArray(p) && p.length === 2 && p.every((v) => typeof v === 'number' && Number.isFinite(v));
 
+  if (h.date !== undefined && !/^(c\. )?\d{1,4}(\/\d{1,4})? BC$/.test(h.date)) bad(`date "${h.date}" should look like "255 BC", "c. 305 BC" or "353/352 BC"`);
+
   // slide 1
   if (!h.context.war.trim()) bad('context.war is empty');
   if (h.context.text.length < 1 || h.context.text.length > 3) bad('context.text needs 1–3 paragraphs');

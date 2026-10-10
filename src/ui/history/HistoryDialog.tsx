@@ -202,7 +202,7 @@ export function HistoryDialog({ scenario, flipped, onClose }: { scenario: Scenar
     return () => window.removeEventListener('keydown', onKey);
   }, [h, pos]);
   return (
-    <Modal open title={`${scenario.name}, ${scenario.year}`} onClose={onClose} width={940}>
+    <Modal open title={`${scenario.name}, ${h?.date ?? scenario.year}`} onClose={onClose} width={940}>
       {h ? (
         <HistorySlides h={h} scenario={scenario} flipped={flipped} pos={pos} onPos={setPos} onDone={onClose} />
       ) : (

@@ -54,12 +54,14 @@ describe('content', () => {
     bad.map.phases[2].gone = ['nobody'];
     bad.context.text = [Array(200).fill('word').join(' ')];
     bad.map.units.push({ id: 'idle', side: 'top', kind: 'foot' });
+    bad.date = '216';
     const problems = validateHistory(bad).join('\n');
     expect(problems).toMatch(/unknown unit ghost/);
     expect(problems).toMatch(/numid off the field/);
     expect(problems).toMatch(/unknown unit nobody/);
     expect(problems).toMatch(/context.text has 200 words/);
     expect(problems).toMatch(/idle is never placed/);
+    expect(problems).toMatch(/date "216"/);
   });
 
   it('counts words', () => {

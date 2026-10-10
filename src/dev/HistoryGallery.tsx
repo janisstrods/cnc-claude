@@ -46,7 +46,7 @@ function Battle({ sc }: { sc: ScenarioInfo }) {
   return (
     <>
       <div style={sheet}>
-        <h2 style={h2}>{sc.id} {sc.name}, {sc.year}: game board (top: {sc.setup.top.army}, bottom: {sc.setup.bottom.army})</h2>
+        <h2 style={h2}>{sc.id} {sc.name}, {sc.year}{h.date ? ` (history: ${h.date})` : ''}: game board (top: {sc.setup.top.army}, bottom: {sc.setup.bottom.army})</h2>
         <GameBoard sc={sc} />
         {problems.length > 0 && <pre style={{ color: '#a01010', whiteSpace: 'pre-wrap' }}>{problems.join('\n')}</pre>}
       </div>

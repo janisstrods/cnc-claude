@@ -13,6 +13,8 @@ export type Pt = [x: number, y: number];
 export interface BattleHistory {
   /** The scenario id ('007'). */
   id: string;
+  /** The accepted date when it differs from the scenario's year ("255 BC"); the dialog's title shows it. */
+  date?: string;
   /** Slide 1: the war and why the armies met here. */
   context: {
     /** The war or campaign, with dates: "Second Punic War, 218–201 BC". */
