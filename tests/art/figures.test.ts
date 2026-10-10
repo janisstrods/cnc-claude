@@ -103,7 +103,8 @@ describe('Expansion #1 figures', () => {
 
   it('Miniature draws every elite fielded in a scenario with its own figures', () => {
     const elites: { elite: EliteId; look: ArmyLook; type: UnitType }[] = [];
-    for (const sc of SCENARIOS) {
+    // (Expansion #2's Tenth Legion is drawn by the Expansion #2 art, not covered here)
+    for (const sc of SCENARIOS.filter((x) => x.expansion !== 'exp2')) {
       for (const u of sc.setup.units) {
         if (u.elite && !elites.some((e) => e.elite === u.elite)) elites.push({ elite: u.elite, look: sc.setup[u.side].look, type: u.type });
       }

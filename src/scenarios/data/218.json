@@ -1,0 +1,317 @@
+{
+  "id": "218",
+  "name": "River Stour",
+  "year": "54 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Briton",
+    "blocks": "bar",
+    "look": "briton",
+    "commander": "Carvilius",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Julius Caesar",
+    "cards": 6
+  },
+  "first": "top",
+  "banners": 6,
+  "rules": [],
+  "legions": {
+    "bottom": "marius"
+  },
+  "terrain": [
+    {
+      "r": 0,
+      "c": 0,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 1,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 2,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 3,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 4,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 5,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 6,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 7,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 8,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 9,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 10,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 11,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 12,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 1,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 4,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 11,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 0,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 5,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 11,
+      "t": "forest"
+    },
+    {
+      "r": 6,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 7,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 7,
+      "c": 10,
+      "t": "forest"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 5,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 5,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 9
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Carvilius",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "name": "Julius Caesar",
+      "r": 6,
+      "c": 6,
+      "traits": [
+        "ccBonus",
+        "forcedMarch"
+      ]
+    },
+    {
+      "side": "bottom",
+      "name": "Quintus Cicero",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "name": "Laberius",
+      "r": 6,
+      "c": 8
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

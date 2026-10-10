@@ -102,6 +102,74 @@ describe('scenario loader', () => {
     expect(scenarioFromJson({ ...RAW, legions: {} }).setup.legions).toBeUndefined();
   });
 
+  it('passes the Expansion #2 fields through as copies (commands, ambush, rolling fire, breakers, last-row retreat, objectives, coast fords)', () => {
+    const raw: ScenarioJson = JSON.parse(JSON.stringify({
+      ...RAW,
+      expansion: 'exp2',
+      rules: ['magoAmbush', 'veryHills'],
+      options: undefined,
+      objectives: [
+        { kind: 'capture', side: 'bottom', hexes: [[8, 12]], when: 'turnStart', banners: [0, 0, 1], remove: true, text: 'Camp.' },
+        { kind: 'majority', sides: ['top', 'bottom'], hexes: [[2, 2]], banners: 2, when: 'turnEnd' },
+        { kind: 'exit', side: 'top', hexes: [[8, 0], [8, 1]], units: 'foot' },
+        { kind: 'sectionClear', side: 'bottom' },
+      ],
+      placeLeaders: undefined,
+      legions: { bottom: 'marius' },
+      ambush: { trigger: ['orderLight', 'leadershipAny'], afterOwnTurns: 0, text: 'They come from the {section}.' },
+      commands: [{ id: 'a', name: 'Army A', side: 'bottom', blocks: 'gry' }, { id: 'b', name: 'Army B', side: 'bottom' }],
+      rollingFire: 'top',
+      rampartBreakers: 'bottom',
+      lastRowRetreat: 'top',
+      terrain: [
+        { r: 8, c: 1, t: 'sea', ford: true, art: 'coast' },
+        { r: 2, c: 2, t: 'hill' },
+        { r: 8, c: 12, t: 'camp' },
+        { r: 3, c: 3, t: 'rampart', faces: 'top' },
+      ],
+      units: [
+        { side: 'bottom', type: 'MI', r: 6, c: 6, command: 'a' },
+        { side: 'bottom', type: 'MC', r: 6, c: 7, command: 'b' },
+        { side: 'top', type: 'WA', r: 1, c: 5 },
+      ],
+      leaders: [{ side: 'bottom', name: 'Crassus', r: 6, c: 6, command: 'a' }],
+      reserves: [{ side: 'bottom', type: 'LI' }],
+      reserveLeaders: [{ side: 'bottom', name: 'Legate' }],
+    }));
+    const keep: ScenarioJson = JSON.parse(JSON.stringify(raw));
+    const { setup, expansion } = scenarioFromJson(raw);
+    expect(expansion).toBe('exp2');
+    expect(setup.legions).toEqual({ bottom: 'marius' });
+    expect(setup.ambush).toEqual(raw.ambush);
+    expect(setup.commands).toEqual(raw.commands);
+    expect([setup.rollingFire, setup.rampartBreakers, setup.lastRowRetreat]).toEqual(['top', 'bottom', 'top']);
+    expect(setup.terrain[0]).toEqual({ r: 8, c: 1, t: 'sea', ford: true, art: 'coast' });
+    expect(setup.units.map((u) => u.command)).toEqual(['a', 'b', undefined]);
+    expect(setup.leaders[0].command).toBe('a');
+    expect(setup.objectives).toEqual(raw.objectives);
+    // the setup shares nothing with the file
+    setup.legions!.top = 'julian';
+    setup.ambush!.trigger!.push('inspiredL');
+    setup.commands![0].name = 'X';
+    setup.units[0].command = 'b';
+    setup.leaders[0].command = 'b';
+    setup.terrain[0].art = 'x';
+    (setup.objectives![1] as Extract<ObjectiveSetup, { kind: 'majority' }>).sides.push('top');
+    (setup.objectives![2] as Extract<ObjectiveSetup, { kind: 'exit' }>).hexes[0][0] = 7;
+    expect(raw).toEqual(keep);
+    // and the pieces reach the game
+    const s = createGame(scenarioFromJson(raw).setup, 1);
+    expect(s.special.commands.map((c) => [c.id, c.blocks])).toEqual([['a', 'gry'], ['b', undefined]]);
+    expect(s.special.rollingFire).toBe('top');
+    expect(s.special.rampartBreakers).toBe('bottom');
+    expect(s.special.lastRowRetreat).toBe('top');
+    expect(s.special.rules).toEqual(['magoAmbush', 'veryHills']);
+    expect(s.special.ambush?.trigger).toEqual(['orderLight', 'leadershipAny']);
+    expect(s.units.map((u) => [u.type, u.legion, u.command])).toEqual([['MI', 'marius', 'a'], ['MC', undefined, 'b'], ['WA', undefined, undefined]]);
+    expect([s.terrain[H(8, 1)], s.fords[H(8, 1)]]).toEqual(['river', true]);
+    expect(s.special.reserveUnits.map((u) => u.type)).toEqual(['LI']);
+  });
+
   it('an empty options object offers no optional rule', () => {
     const { setup } = scenarioFromJson({ ...RAW, options: {}, rules: [], objectives: undefined, placeLeaders: undefined });
     expect(setup.options).toBeUndefined();

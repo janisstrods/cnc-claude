@@ -1,0 +1,205 @@
+{
+  "id": "203",
+  "name": "Clastidium",
+  "year": "222 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Gallic",
+    "blocks": "bar",
+    "look": "gallic",
+    "commander": "Britomartus",
+    "cards": 4
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "roman",
+    "commander": "Marcus Claudius Marcellus",
+    "cards": 6
+  },
+  "first": "bottom",
+  "banners": 4,
+  "rules": [],
+  "terrain": [
+    {
+      "r": 2,
+      "c": 12,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 12,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 11,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 7,
+      "c": 0,
+      "t": "hill"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 3,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 9
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Britomartus",
+      "r": 3,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "name": "Flaminius",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "name": "Marcellus",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "name": "Furius",
+      "r": 6,
+      "c": 9
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

@@ -1,0 +1,385 @@
+{
+  "id": "208",
+  "name": "Mt Vesuvius",
+  "year": "73 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Slave",
+    "blocks": "bar",
+    "look": "slave",
+    "commander": "Spartacus",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Claudius Glaber",
+    "cards": 4
+  },
+  "first": "top",
+  "banners": 5,
+  "rules": [],
+  "legions": {
+    "bottom": "marius"
+  },
+  "objectives": [
+    {
+      "kind": "capture",
+      "side": "top",
+      "hexes": [
+        [
+          3,
+          4
+        ],
+        [
+          3,
+          7
+        ],
+        [
+          3,
+          8
+        ],
+        [
+          4,
+          6
+        ]
+      ],
+      "when": "turnStart",
+      "remove": true,
+      "text": "The Slaves overrun a Roman camp."
+    }
+  ],
+  "terrain": [
+    {
+      "r": 0,
+      "c": 0,
+      "t": "steep"
+    },
+    {
+      "r": 0,
+      "c": 1,
+      "t": "steep"
+    },
+    {
+      "r": 0,
+      "c": 7,
+      "t": "steep"
+    },
+    {
+      "r": 0,
+      "c": 8,
+      "t": "steep"
+    },
+    {
+      "r": 0,
+      "c": 9,
+      "t": "steep"
+    },
+    {
+      "r": 1,
+      "c": 0,
+      "t": "steep"
+    },
+    {
+      "r": 1,
+      "c": 9,
+      "t": "steep"
+    },
+    {
+      "r": 1,
+      "c": 11,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 0,
+      "t": "steep"
+    },
+    {
+      "r": 2,
+      "c": 1,
+      "t": "steep"
+    },
+    {
+      "r": 2,
+      "c": 2,
+      "t": "steep"
+    },
+    {
+      "r": 2,
+      "c": 4,
+      "t": "rampart",
+      "edges": [
+        "W",
+        "NW",
+        "NE"
+      ]
+    },
+    {
+      "r": 2,
+      "c": 5,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 2,
+      "c": 6,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 2,
+      "c": 7,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 2,
+      "c": 8,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 2,
+      "c": 9,
+      "t": "steep"
+    },
+    {
+      "r": 3,
+      "c": 1,
+      "t": "steep"
+    },
+    {
+      "r": 3,
+      "c": 3,
+      "t": "rampart",
+      "edges": [
+        "W",
+        "NW"
+      ]
+    },
+    {
+      "r": 3,
+      "c": 4,
+      "t": "camp"
+    },
+    {
+      "r": 3,
+      "c": 7,
+      "t": "camp"
+    },
+    {
+      "r": 3,
+      "c": 8,
+      "t": "camp"
+    },
+    {
+      "r": 3,
+      "c": 9,
+      "t": "steep"
+    },
+    {
+      "r": 3,
+      "c": 10,
+      "t": "steep"
+    },
+    {
+      "r": 4,
+      "c": 2,
+      "t": "steep"
+    },
+    {
+      "r": 4,
+      "c": 3,
+      "t": "steep"
+    },
+    {
+      "r": 4,
+      "c": 6,
+      "t": "camp"
+    },
+    {
+      "r": 4,
+      "c": 10,
+      "t": "steep"
+    },
+    {
+      "r": 5,
+      "c": 2,
+      "t": "steep"
+    },
+    {
+      "r": 6,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 6,
+      "c": 6,
+      "t": "forest"
+    },
+    {
+      "r": 6,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 6,
+      "c": 11,
+      "t": "forest"
+    },
+    {
+      "r": 7,
+      "c": 1,
+      "t": "forest"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 0,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 0,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 0,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 3,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 3,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 3,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 4,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 4,
+      "c": 8
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Spartacus",
+      "r": 7,
+      "c": 4,
+      "traits": [
+        "spartacusDice"
+      ]
+    },
+    {
+      "side": "bottom",
+      "name": "Glaber",
+      "r": 3,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "name": "Varinius",
+      "r": 4,
+      "c": 6
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

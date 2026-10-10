@@ -1,0 +1,273 @@
+{
+  "id": "209",
+  "name": "Mt Garganus",
+  "year": "72 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Slave",
+    "blocks": "bar",
+    "look": "slave",
+    "commander": "Crixus",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Gellius",
+    "cards": 6
+  },
+  "first": "bottom",
+  "banners": 6,
+  "rules": [],
+  "legions": {
+    "bottom": "marius"
+  },
+  "terrain": [
+    {
+      "r": 0,
+      "c": 3,
+      "t": "steep"
+    },
+    {
+      "r": 0,
+      "c": 4,
+      "t": "steep"
+    },
+    {
+      "r": 0,
+      "c": 5,
+      "t": "steep"
+    },
+    {
+      "r": 0,
+      "c": 6,
+      "t": "steep"
+    },
+    {
+      "r": 0,
+      "c": 7,
+      "t": "steep"
+    },
+    {
+      "r": 0,
+      "c": 8,
+      "t": "steep"
+    },
+    {
+      "r": 0,
+      "c": 9,
+      "t": "steep"
+    },
+    {
+      "r": 1,
+      "c": 3,
+      "t": "steep"
+    },
+    {
+      "r": 1,
+      "c": 4,
+      "t": "steep"
+    },
+    {
+      "r": 1,
+      "c": 5,
+      "t": "steep"
+    },
+    {
+      "r": 1,
+      "c": 6,
+      "t": "steep"
+    },
+    {
+      "r": 1,
+      "c": 7,
+      "t": "steep"
+    },
+    {
+      "r": 1,
+      "c": 8,
+      "t": "steep"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "HWM",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 10
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Crixus",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "name": "Arrius",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "name": "Gellius",
+      "r": 7,
+      "c": 9
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

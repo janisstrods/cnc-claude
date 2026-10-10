@@ -1,0 +1,285 @@
+{
+  "id": "207",
+  "name": "Vercellae",
+  "year": "101 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Germanic",
+    "blocks": "bar",
+    "look": "germanic",
+    "commander": "Boiorix",
+    "cards": 4
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Marius",
+    "cards": 6
+  },
+  "first": "top",
+  "banners": 8,
+  "rules": [],
+  "legions": {
+    "bottom": "marius"
+  },
+  "terrain": [],
+  "units": [
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 0,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 0,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 3,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 3,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 0
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 1
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Boiorix",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "name": "Lugius",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "name": "Marius",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "name": "Catulus",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "name": "Sulla",
+      "r": 7,
+      "c": 10
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

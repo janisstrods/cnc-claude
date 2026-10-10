@@ -1,0 +1,337 @@
+{
+  "id": "217",
+  "name": "Invasion of Britain",
+  "year": "55 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Briton",
+    "blocks": "bar",
+    "look": "briton",
+    "commander": "Segovax",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Julius Caesar",
+    "cards": 6
+  },
+  "first": "top",
+  "banners": 7,
+  "rules": [],
+  "legions": {
+    "bottom": "marius"
+  },
+  "terrain": [
+    {
+      "r": 3,
+      "c": 2,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 12,
+      "t": "hill"
+    },
+    {
+      "r": 8,
+      "c": 1,
+      "t": "sea",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 2,
+      "t": "sea",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 3,
+      "t": "sea",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 4,
+      "t": "sea",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 5,
+      "t": "sea",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 6,
+      "t": "sea",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 7,
+      "t": "sea",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 8,
+      "t": "sea",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 9,
+      "t": "sea",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 10,
+      "t": "sea",
+      "ford": true
+    },
+    {
+      "r": 8,
+      "c": 11,
+      "t": "sea",
+      "ford": true
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 4,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 4,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 4,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 4,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 4,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 4,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 4,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 4,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 4,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 6,
+      "c": 6,
+      "elite": "tenthLegion"
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 8,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 8,
+      "c": 10
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Segovax",
+      "r": 4,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "name": "Julius Caesar",
+      "r": 7,
+      "c": 6,
+      "traits": [
+        "ccBonus",
+        "forcedMarch"
+      ]
+    },
+    {
+      "side": "bottom",
+      "name": "Volusenus",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "name": "Sulpicius",
+      "r": 7,
+      "c": 8
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

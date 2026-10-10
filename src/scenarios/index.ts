@@ -1,20 +1,21 @@
-// The 15 base-game battles (001-015) and the 24 battles of Expansion #1, Greece & Eastern Kingdoms (101-124). Setups
-// are transcribed data (src/scenarios/data); texts are original summaries (base game below, Expansion #1 in
-// exp1-texts.ts).
+// The 15 base-game battles (001-015), the 24 battles of Expansion #1, Greece & Eastern Kingdoms (101-124), and the 23
+// battles of Expansion #2, Rome & the Barbarians (201-223). Setups are transcribed data (src/scenarios/data); texts are
+// original summaries (base game below, Expansion #1 in exp1-texts.ts, Expansion #2 in exp2-texts.ts).
 import { ELITES } from '../engine/elites';
 import { hexId, inSection, onBoard } from '../engine/hex';
 import type { GameOptions, ObjectiveSetup, ScenarioSetup, SideSetup, TerrainSetup } from '../engine/setup';
 import { COLS, type LeaderTrait, type Side, type SpecialRuleId } from '../engine/types';
 import { EXTRA_EXP1, type ScenarioTexts } from './exp1-texts';
+import { EXTRA_EXP2 } from './exp2-texts';
 
 /** Which box a battle comes from. */
-export type Expansion = 'base' | 'exp1';
+export type Expansion = 'base' | 'exp1' | 'exp2';
 
 /**
  * A scenario file in src/scenarios/data. Base-game files omit `expansion` (and keep their special rules and objectives in
- * `EXTRA` below); Expansion #1 files carry their rules, options, objectives and leaders to place themselves. Other fields
- * of a file (the base files' copied rule text, roster checks) are ignored, except the retired `campCapture` (now an
- * objective), which is an error.
+ * `EXTRA` below); Expansion #1 and #2 files carry their rules, options, objectives, legions, commands and leaders to place
+ * themselves. Other fields of a file (the base files' copied rule text, roster checks) are ignored, except the retired
+ * `campCapture` (now an objective), which is an error.
  */
 export interface ScenarioJson {
   id: string;
@@ -70,7 +71,7 @@ export interface ScenarioInfo {
 
 const files = import.meta.glob<ScenarioJson>('./data/*.json', { eager: true, import: 'default' });
 
-/** Texts and base-game rule data of a base battle (Expansion #1 battles keep their rules in the JSON). */
+/** Texts and base-game rule data of a base battle (Expansion #1 and #2 battles keep their rules in the JSON). */
 interface Extra extends ScenarioTexts {
   rules?: SpecialRuleId[];
   objectives?: ObjectiveSetup[];
@@ -191,7 +192,7 @@ const EXTRA: Record<string, Extra> = {
   },
 };
 
-const EXPANSIONS: Expansion[] = ['base', 'exp1'];
+const EXPANSIONS: Expansion[] = ['base', 'exp1', 'exp2'];
 
 const copyLeader = <T extends { traits?: LeaderTrait[] }>(l: T): T => (l.traits ? { ...l, traits: [...l.traits] } : { ...l });
 
@@ -223,7 +224,7 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   const expansion = j.expansion ?? 'base';
   if (!EXPANSIONS.includes(expansion)) throw new Error(`unknown expansion ${String(j.expansion)} (${j.id})`);
   const ex: Extra | undefined = EXTRA[j.id];
-  const texts: ScenarioTexts | undefined = ex ?? EXTRA_EXP1[j.id];
+  const texts: ScenarioTexts | undefined = ex ?? EXTRA_EXP1[j.id] ?? EXTRA_EXP2[j.id];
   const setup: ScenarioSetup = {
     id: j.id,
     name: j.name,

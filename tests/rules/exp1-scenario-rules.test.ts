@@ -849,9 +849,10 @@ describe('camp capture objective (114 Gabiene, 011 Baecula)', () => {
     }]);
     expect(s.terrain.flatMap((t, h) => (t === 'camp' ? [h] : []))).toEqual([H(1, 4), H(1, 6), H(1, 8)]);
     expect(s.units).toHaveLength(sc.setup.units.length);
-    // no other base scenario has a camp objective (114 Gabiene's is checked in tests/scenarios/exp1.test.ts)
+    // no other base or Expansion #1 scenario has a camp objective (114 Gabiene's is checked in tests/scenarios/exp1.test.ts;
+    // Expansion #2's are in tests/scenarios/exp2.test.ts)
     const captures = (x: (typeof SCENARIOS)[number]) => (x.setup.objectives ?? []).filter((o) => o.kind === 'capture');
-    for (const x of SCENARIOS) if (x.id !== '011' && x.id !== '114') expect([x.id, captures(x)]).toEqual([x.id, []]);
+    for (const x of SCENARIOS) if (x.expansion !== 'exp2' && x.id !== '011' && x.id !== '114') expect([x.id, captures(x)]).toEqual([x.id, []]);
   });
 
   it('the AI values the camp for the capturing side only', () => {

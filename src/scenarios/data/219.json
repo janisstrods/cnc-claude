@@ -1,0 +1,324 @@
+{
+  "id": "219",
+  "name": "Foraging Party",
+  "year": "54 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Briton",
+    "blocks": "bar",
+    "look": "briton",
+    "commander": "Cassivellaunus",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Gaius Trebonius",
+    "cards": 6
+  },
+  "first": "top",
+  "banners": 6,
+  "rules": [],
+  "legions": {
+    "bottom": "marius"
+  },
+  "objectives": [
+    {
+      "kind": "sectionClear",
+      "side": "bottom",
+      "text": "The Romans drive the Britons out of a whole section."
+    }
+  ],
+  "terrain": [
+    {
+      "r": 0,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 7,
+      "c": 2,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 7,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 7,
+      "t": "forest"
+    },
+    {
+      "r": 5,
+      "c": 6,
+      "t": "forest"
+    },
+    {
+      "r": 5,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 6,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 7,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 7,
+      "c": 4,
+      "t": "forest"
+    },
+    {
+      "r": 8,
+      "c": 11,
+      "t": "forest"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 3,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 3,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 4,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 4,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 4,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 4,
+      "c": 12
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 4,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 4,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 4,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 4,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 4,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 8
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Cassivellaunus",
+      "r": 0,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "name": "Cingetorix",
+      "r": 0,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "name": "Trebonius",
+      "r": 4,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "name": "Volusenus",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "name": "Quintus Cicero",
+      "r": 6,
+      "c": 8
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

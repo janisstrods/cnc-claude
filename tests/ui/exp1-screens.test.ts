@@ -48,8 +48,8 @@ describe('battle picker tabs', () => {
     expect(PICKER_TABS.map((t) => [t.id, t.label])).toEqual([['base', 'Punic Wars'], ['exp1', 'Greece & the East']]);
     expect(ids(battlesOf(SCENARIOS, 'base'))).toEqual(range(1, 15));
     expect(ids(battlesOf(SCENARIOS, 'exp1'))).toEqual(range(101, 124));
-    // every battle is in exactly one tab
-    expect(PICKER_TABS.reduce((n, t) => n + battlesOf(SCENARIOS, t.id).length, 0)).toBe(SCENARIOS.length);
+    // every battle is in exactly one tab (Expansion #2 gets its own tab with the new screens)
+    expect(PICKER_TABS.reduce((n, t) => n + battlesOf(SCENARIOS, t.id).length, 0)).toBe(SCENARIOS.filter((s) => s.expansion !== 'exp2').length);
   });
 
   it('remembers the last tab; unknown values and missing storage fall back to the base game', () => {

@@ -1,0 +1,314 @@
+{
+  "id": "211",
+  "name": "Mummius' Defeat",
+  "year": "72 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Slave",
+    "blocks": "bar",
+    "look": "slave",
+    "commander": "Spartacus",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Mummius",
+    "cards": 4
+  },
+  "first": "bottom",
+  "banners": 5,
+  "rules": [],
+  "legions": {
+    "bottom": "marius"
+  },
+  "objectives": [
+    {
+      "kind": "capture",
+      "side": "bottom",
+      "hexes": [
+        [
+          2,
+          5
+        ],
+        [
+          2,
+          6
+        ],
+        [
+          2,
+          7
+        ]
+      ],
+      "when": "turnStart",
+      "together": 2,
+      "remove": true,
+      "text": "The Romans storm the Slave camps."
+    }
+  ],
+  "terrain": [
+    {
+      "r": 0,
+      "c": 4,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 5,
+      "t": "camp"
+    },
+    {
+      "r": 2,
+      "c": 6,
+      "t": "camp"
+    },
+    {
+      "r": 2,
+      "c": 7,
+      "t": "camp"
+    },
+    {
+      "r": 2,
+      "c": 9,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 0,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 9,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 9,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 11,
+      "t": "forest"
+    },
+    {
+      "r": 5,
+      "c": 2,
+      "t": "hill"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 3,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 3,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 4,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 4,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 4,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 4,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 6,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 10
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Spartacus",
+      "r": 3,
+      "c": 2,
+      "traits": [
+        "spartacusDice"
+      ]
+    },
+    {
+      "side": "bottom",
+      "name": "Quinctius",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "name": "Mummius",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "name": "Scrofa",
+      "r": 7,
+      "c": 10
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

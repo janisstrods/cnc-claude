@@ -1,0 +1,472 @@
+{
+  "id": "222",
+  "name": "Angrivarii Rampart",
+  "year": "16 AD",
+  "expansion": "exp2",
+  "top": {
+    "army": "Germanic",
+    "blocks": "bar",
+    "look": "germanic",
+    "commander": "Arminius",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Germanicus",
+    "cards": 6
+  },
+  "first": "bottom",
+  "banners": 6,
+  "rules": [],
+  "legions": {
+    "bottom": "marius"
+  },
+  "objectives": [
+    {
+      "kind": "hold",
+      "side": "bottom",
+      "hexes": [
+        [
+          2,
+          4
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          2,
+          6
+        ],
+        [
+          2,
+          7
+        ],
+        [
+          2,
+          8
+        ],
+        [
+          2,
+          9
+        ],
+        [
+          2,
+          10
+        ]
+      ],
+      "max": 2,
+      "text": "Roman troops hold a stretch of the Angrivarian rampart."
+    }
+  ],
+  "terrain": [
+    {
+      "r": 0,
+      "c": 12,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 1,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 2,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 4,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 5,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 6,
+      "c": 12,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 7,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 8,
+      "c": 12,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 0,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 0,
+      "c": 4,
+      "t": "forest"
+    },
+    {
+      "r": 0,
+      "c": 5,
+      "t": "forest"
+    },
+    {
+      "r": 0,
+      "c": 11,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 0,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 0,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 5,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 5,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 5,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 4,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 2,
+      "c": 5,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 2,
+      "c": 6,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 2,
+      "c": 7,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 2,
+      "c": 8,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 2,
+      "c": 9,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 2,
+      "c": 10,
+      "t": "rampart",
+      "faces": "bottom"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 4,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 4,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 4,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "LB",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "HWM",
+      "r": 7,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "WA",
+      "r": 8,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 8,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 8
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Arminius",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "name": "Inguiomer",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "name": "Germanicus",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "name": "Seius Tubero",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "name": "Stertinius",
+      "r": 8,
+      "c": 2
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

@@ -1,0 +1,468 @@
+{
+  "id": "210",
+  "name": "Picenum",
+  "year": "72 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Slave",
+    "blocks": "bar",
+    "look": "slave",
+    "commander": "Spartacus",
+    "cards": 6
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Gellius",
+    "cards": 5
+  },
+  "first": "bottom",
+  "banners": 8,
+  "rules": [],
+  "legions": {
+    "bottom": "marius"
+  },
+  "objectives": [
+    {
+      "kind": "exit",
+      "side": "top",
+      "hexes": [
+        [
+          8,
+          0
+        ],
+        [
+          8,
+          1
+        ],
+        [
+          8,
+          2
+        ],
+        [
+          8,
+          3
+        ],
+        [
+          8,
+          4
+        ],
+        [
+          8,
+          5
+        ],
+        [
+          8,
+          6
+        ],
+        [
+          8,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          8,
+          9
+        ],
+        [
+          8,
+          10
+        ],
+        [
+          8,
+          11
+        ],
+        [
+          8,
+          12
+        ]
+      ],
+      "text": "Slaves break through and escape past the Roman lines."
+    }
+  ],
+  "commands": [
+    {
+      "id": "lentulus",
+      "name": "Lentulus",
+      "side": "bottom",
+      "blocks": "gry"
+    },
+    {
+      "id": "gellius",
+      "name": "Gellius",
+      "side": "bottom"
+    }
+  ],
+  "rollingFire": "top",
+  "terrain": [
+    {
+      "r": 1,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 2,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 7,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 10,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 11,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 7,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 7,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 8,
+      "c": 6,
+      "t": "hill"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 0,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LS",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 4,
+      "c": 8,
+      "command": "gellius"
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 4,
+      "c": 11,
+      "command": "gellius"
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 1,
+      "command": "lentulus"
+    },
+    {
+      "side": "bottom",
+      "type": "HWM",
+      "r": 5,
+      "c": 2,
+      "command": "lentulus"
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 4,
+      "command": "lentulus"
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 7,
+      "command": "gellius"
+    },
+    {
+      "side": "bottom",
+      "type": "HWM",
+      "r": 5,
+      "c": 9,
+      "command": "gellius"
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 1,
+      "command": "lentulus"
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 2,
+      "command": "lentulus"
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 4,
+      "command": "lentulus"
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 8,
+      "command": "gellius"
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 10,
+      "command": "gellius"
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 11,
+      "command": "gellius"
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 3,
+      "command": "lentulus"
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 8,
+      "command": "gellius"
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 2,
+      "command": "lentulus"
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 7,
+      "command": "gellius"
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 12,
+      "command": "gellius"
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Castus",
+      "r": 0,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "name": "Gannicus",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "name": "Spartacus",
+      "r": 1,
+      "c": 6,
+      "traits": [
+        "spartacusDice"
+      ]
+    },
+    {
+      "side": "bottom",
+      "name": "Gellius",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "name": "Lentulus",
+      "r": 8,
+      "c": 2
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

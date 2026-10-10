@@ -1,0 +1,222 @@
+{
+  "id": "205",
+  "name": "Scirthaea",
+  "year": "103 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Slave",
+    "blocks": "bar",
+    "look": "slave",
+    "commander": "Salvius",
+    "cards": 4
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "roman",
+    "commander": "Lucullus",
+    "cards": 6
+  },
+  "first": "top",
+  "banners": 6,
+  "rules": [],
+  "terrain": [],
+  "units": [
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 8
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Athenion",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "name": "Salvius",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "name": "Servilius",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "name": "Clodius",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "name": "Lucullus",
+      "r": 8,
+      "c": 6
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

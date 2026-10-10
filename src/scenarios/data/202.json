@@ -1,0 +1,431 @@
+{
+  "id": "202",
+  "name": "Telamon",
+  "year": "225 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Gallic",
+    "blocks": "bar",
+    "look": "gallic",
+    "commander": "Aneroestes",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "roman",
+    "commander": "Atilius Regulus",
+    "cards": 6
+  },
+  "first": "bottom",
+  "banners": 8,
+  "rules": [],
+  "objectives": [
+    {
+      "kind": "majority",
+      "sides": [
+        "top",
+        "bottom"
+      ],
+      "hexes": [
+        [
+          1,
+          11
+        ],
+        [
+          2,
+          8
+        ],
+        [
+          2,
+          9
+        ],
+        [
+          2,
+          11
+        ],
+        [
+          3,
+          9
+        ],
+        [
+          3,
+          10
+        ],
+        [
+          3,
+          11
+        ],
+        [
+          4,
+          12
+        ],
+        [
+          5,
+          11
+        ]
+      ],
+      "banners": 2,
+      "when": "turnEnd",
+      "text": "Control of the hills decides the day."
+    }
+  ],
+  "terrain": [
+    {
+      "r": 0,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 0,
+      "c": 1,
+      "t": "sea"
+    },
+    {
+      "r": 0,
+      "c": 2,
+      "t": "sea"
+    },
+    {
+      "r": 1,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 1,
+      "c": 1,
+      "t": "sea"
+    },
+    {
+      "r": 1,
+      "c": 11,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 2,
+      "c": 1,
+      "t": "sea"
+    },
+    {
+      "r": 2,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 11,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 3,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 10,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "hill"
+    },
+    {
+      "r": 4,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 4,
+      "c": 12,
+      "t": "hill"
+    },
+    {
+      "r": 5,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 5,
+      "c": 11,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 7,
+      "c": 0,
+      "t": "sea"
+    },
+    {
+      "r": 8,
+      "c": 0,
+      "t": "sea"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 4,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 4,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 4,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 4,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 4,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 4,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 4,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 4,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 4,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 5,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 5,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 5,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "BCH",
+      "r": 5,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 0,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 0,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 0,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 0,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 0,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 0,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 0,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 8,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 8,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 8
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Aneroestes",
+      "r": 4,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "name": "Concolitanus",
+      "r": 4,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "name": "Regulus",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "name": "Papus",
+      "r": 8,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "name": "Fabius",
+      "r": 8,
+      "c": 8
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

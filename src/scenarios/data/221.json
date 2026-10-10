@@ -1,0 +1,474 @@
+{
+  "id": "221",
+  "name": "Teutoburger Wald P2",
+  "year": "9 AD",
+  "expansion": "exp2",
+  "top": {
+    "army": "Germanic",
+    "blocks": "bar",
+    "look": "germanic",
+    "commander": "Arminius",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Vala",
+    "cards": 4
+  },
+  "first": "top",
+  "banners": 6,
+  "rules": [],
+  "legions": {
+    "bottom": "marius"
+  },
+  "objectives": [
+    {
+      "kind": "capture",
+      "side": "top",
+      "hexes": [
+        [
+          7,
+          6
+        ]
+      ],
+      "when": "turnStart",
+      "banners": [
+        2
+      ],
+      "remove": true,
+      "text": "The Germans overrun the Roman marching camp!"
+    },
+    {
+      "kind": "exit",
+      "side": "bottom",
+      "hexes": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          7
+        ],
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          9
+        ],
+        [
+          0,
+          10
+        ],
+        [
+          0,
+          11
+        ],
+        [
+          0,
+          12
+        ]
+      ],
+      "text": "A Roman unit fights its way out of the forest."
+    }
+  ],
+  "terrain": [
+    {
+      "r": 0,
+      "c": 0,
+      "t": "marsh"
+    },
+    {
+      "r": 1,
+      "c": 0,
+      "t": "marsh"
+    },
+    {
+      "r": 0,
+      "c": 10,
+      "t": "marsh"
+    },
+    {
+      "r": 0,
+      "c": 11,
+      "t": "marsh"
+    },
+    {
+      "r": 7,
+      "c": 0,
+      "t": "marsh"
+    },
+    {
+      "r": 7,
+      "c": 1,
+      "t": "marsh"
+    },
+    {
+      "r": 8,
+      "c": 0,
+      "t": "marsh"
+    },
+    {
+      "r": 8,
+      "c": 1,
+      "t": "marsh"
+    },
+    {
+      "r": 0,
+      "c": 2,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 3,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 4,
+      "t": "forest"
+    },
+    {
+      "r": 1,
+      "c": 7,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 4,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 8,
+      "t": "forest"
+    },
+    {
+      "r": 2,
+      "c": 9,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 8,
+      "t": "forest"
+    },
+    {
+      "r": 3,
+      "c": 10,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 1,
+      "t": "forest"
+    },
+    {
+      "r": 4,
+      "c": 11,
+      "t": "forest"
+    },
+    {
+      "r": 5,
+      "c": 0,
+      "t": "forest"
+    },
+    {
+      "r": 5,
+      "c": 11,
+      "t": "forest"
+    },
+    {
+      "r": 7,
+      "c": 6,
+      "t": "camp"
+    },
+    {
+      "r": 5,
+      "c": 4,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 5,
+      "c": 5,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 5,
+      "c": 6,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 5,
+      "c": 7,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 5,
+      "c": 3,
+      "t": "rampart",
+      "edges": [
+        "W",
+        "NW",
+        "NE"
+      ]
+    },
+    {
+      "r": 5,
+      "c": 8,
+      "t": "rampart",
+      "edges": [
+        "NW",
+        "NE",
+        "E"
+      ]
+    },
+    {
+      "r": 6,
+      "c": 3,
+      "t": "rampart",
+      "edges": [
+        "NW",
+        "W"
+      ]
+    },
+    {
+      "r": 7,
+      "c": 2,
+      "t": "rampart",
+      "edges": [
+        "NW",
+        "W"
+      ]
+    },
+    {
+      "r": 8,
+      "c": 2,
+      "t": "rampart",
+      "edges": [
+        "NW",
+        "W"
+      ]
+    },
+    {
+      "r": 6,
+      "c": 9,
+      "t": "rampart",
+      "edges": [
+        "NE",
+        "E"
+      ]
+    },
+    {
+      "r": 7,
+      "c": 9,
+      "t": "rampart",
+      "edges": [
+        "NE",
+        "E"
+      ]
+    },
+    {
+      "r": 8,
+      "c": 10,
+      "t": "rampart",
+      "edges": [
+        "NE",
+        "E"
+      ]
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 3,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 3,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 4,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 4,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 5,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 5,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 5,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 7,
+      "c": 9
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Arminius",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "name": "Segimer",
+      "r": 4,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "name": "Inguiomer",
+      "r": 4,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "name": "Vala",
+      "r": 6,
+      "c": 6
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

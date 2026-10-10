@@ -1,0 +1,422 @@
+{
+  "id": "214",
+  "name": "Silarus",
+  "year": "71 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Slave",
+    "blocks": "bar",
+    "look": "slave",
+    "commander": "Spartacus",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Crassus",
+    "cards": 6
+  },
+  "first": "top",
+  "banners": 6,
+  "rules": [],
+  "legions": {
+    "bottom": "marius"
+  },
+  "objectives": [
+    {
+      "kind": "hold",
+      "side": "top",
+      "hexes": [
+        [
+          6,
+          9
+        ],
+        [
+          8,
+          10
+        ]
+      ],
+      "max": 1,
+      "text": "A Slave unit holds a Roman camp."
+    }
+  ],
+  "lastRowRetreat": "top",
+  "terrain": [
+    {
+      "r": 1,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 2,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 7,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 2,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 5,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 10,
+      "t": "hill"
+    },
+    {
+      "r": 6,
+      "c": 9,
+      "t": "camp"
+    },
+    {
+      "r": 8,
+      "c": 10,
+      "t": "camp"
+    },
+    {
+      "r": 6,
+      "c": 10,
+      "t": "rampart",
+      "faces": "top"
+    },
+    {
+      "r": 6,
+      "c": 11,
+      "t": "rampart",
+      "faces": "top"
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 0,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "MI",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 4,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 4,
+      "c": 11
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 4,
+      "c": 12
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 5,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 8,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 8,
+      "c": 8
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Spartacus",
+      "r": 2,
+      "c": 4,
+      "traits": [
+        "spartacusDice"
+      ]
+    },
+    {
+      "side": "top",
+      "name": "Publipor",
+      "r": 0,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "name": "Bithus",
+      "r": 0,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "name": "Crassus",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "name": "Scrofa",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "name": "Quinctius",
+      "r": 6,
+      "c": 7
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

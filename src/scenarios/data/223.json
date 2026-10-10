@@ -1,0 +1,444 @@
+{
+  "id": "223",
+  "name": "Cefn Carnedd",
+  "year": "51 AD",
+  "expansion": "exp2",
+  "top": {
+    "army": "Briton",
+    "blocks": "bar",
+    "look": "briton",
+    "commander": "Caratacus",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "marian",
+    "commander": "Publius Ostorius Scapula",
+    "cards": 6
+  },
+  "first": "bottom",
+  "banners": 6,
+  "rules": [
+    "veryHills"
+  ],
+  "legions": {
+    "bottom": "marius"
+  },
+  "rampartBreakers": "bottom",
+  "terrain": [
+    {
+      "r": 5,
+      "c": 0,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 5,
+      "c": 1,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 5,
+      "c": 2,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 5,
+      "c": 3,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 4,
+      "c": 4,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 4,
+      "c": 5,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 4,
+      "c": 6,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 5,
+      "c": 6,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 5,
+      "c": 7,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 5,
+      "c": 8,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 5,
+      "c": 9,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 5,
+      "c": 10,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 4,
+      "c": 11,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 2,
+      "c": 12,
+      "t": "river",
+      "ford": true
+    },
+    {
+      "r": 0,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 1,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 4,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 7,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 10,
+      "t": "hill"
+    },
+    {
+      "r": 1,
+      "c": 11,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 0,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 2,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 3,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 6,
+      "t": "hill"
+    },
+    {
+      "r": 3,
+      "c": 9,
+      "t": "hill"
+    },
+    {
+      "r": 7,
+      "c": 7,
+      "t": "hill"
+    },
+    {
+      "r": 8,
+      "c": 8,
+      "t": "hill"
+    },
+    {
+      "r": 2,
+      "c": 4,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 2,
+      "c": 5,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 3,
+      "c": 1,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 3,
+      "c": 7,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 3,
+      "c": 8,
+      "t": "rampart",
+      "faces": "bottom"
+    },
+    {
+      "r": 2,
+      "c": 10,
+      "t": "rampart",
+      "edges": [
+        "E",
+        "SE"
+      ]
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 3,
+      "c": 0
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 3,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LB",
+      "r": 3,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 3,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 3,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 3,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 5,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 1
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 6,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 7
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Caratacus",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "name": "Arviragus",
+      "r": 3,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "name": "Venutius",
+      "r": 3,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "name": "Scapula",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "name": "Marcus Ostorius",
+      "r": 6,
+      "c": 10
+    },
+    {
+      "side": "bottom",
+      "name": "Manlius Valens",
+      "r": 7,
+      "c": 2
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}

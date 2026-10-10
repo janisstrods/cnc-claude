@@ -1,5 +1,6 @@
 // The 24 Expansion #1 battles (101-124): each setup builds and matches its manifest (tests/scenarios/manifest.ts), and
 // the battle-specific data (ramparts, fords, camp objective, leader placement, optional rules) reaches the game state.
+// Expansion #2 (201-223) is in exp2.test.ts.
 import { describe, expect, it } from 'vitest';
 import {
   COLS, ELITES, GameDriver, HEX_DIRS, OFF_BOARD, createGame, hexId, isImpassable, isLoneLeader, leaderUnit, rowOf,
@@ -7,10 +8,11 @@ import {
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
 import { checksums, fnv1a, terrainTally } from './checksum';
-import { MANIFEST } from './manifest';
+import { MANIFEST, MANIFEST_EXP2 } from './manifest';
 
 const H = (r: number, c: number) => hexId(r, c);
 const EXP1 = Object.keys(MANIFEST).sort();
+const EXP2 = Object.keys(MANIFEST_EXP2).sort();
 const BASE = ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015'];
 const SIDES: Side[] = ['top', 'bottom'];
 const game = (id: string, seed = 1) => createGame(scenarioById(id).setup, seed);
@@ -25,11 +27,13 @@ function unitCounts(s: GameState, side: Side): Partial<Record<UnitType, number>>
 const edgesOf = (s: GameState, h: number): HexDir[] => HEX_DIRS.filter((_, i) => s.rampart[h] & (1 << i));
 
 describe('Expansion #1 battle list', () => {
-  it('the 24 battles 101-124 follow the 15 base battles', () => {
+  it('the 24 battles 101-124 follow the 15 base battles, then the 23 battles 201-223', () => {
     expect(EXP1).toEqual(Array.from({ length: 24 }, (_, i) => String(101 + i)));
-    expect(SCENARIOS.map((s) => s.id)).toEqual([...BASE, ...EXP1]);
+    expect(EXP2).toEqual(Array.from({ length: 23 }, (_, i) => String(201 + i)));
+    expect(SCENARIOS.map((s) => s.id)).toEqual([...BASE, ...EXP1, ...EXP2]);
     expect(SCENARIOS.filter((s) => s.expansion === 'base').map((s) => s.id)).toEqual(BASE);
     expect(SCENARIOS.filter((s) => s.expansion === 'exp1').map((s) => s.id)).toEqual(EXP1);
+    expect(SCENARIOS.filter((s) => s.expansion === 'exp2').map((s) => s.id)).toEqual(EXP2);
   });
 
   it('every battle has a briefing and a hint', () => {
@@ -224,7 +228,8 @@ describe('battle-specific setup', () => {
       text: "Antigonus' troops seize Eumenes' baggage camp!",
     }]);
     expect(s.terrain.flatMap((t, h) => (t === 'camp' ? [h] : []))).toEqual([H(8, 12)]);
-    expect(SCENARIOS.filter((sc) => sc.setup.objectives?.some((o) => o.kind === 'capture')).map((sc) => sc.id)).toEqual(['011', '114']);
+    // (Expansion #2 has capture objectives of its own, checked in exp2.test.ts)
+    expect(SCENARIOS.filter((sc) => sc.expansion !== 'exp2' && sc.setup.objectives?.some((o) => o.kind === 'capture')).map((sc) => sc.id)).toEqual(['011', '114']);
   });
 
   it('117 Asculum: no leader on the board; the 2 Roman leaders are placed first, then the 2 Epirote', () => {

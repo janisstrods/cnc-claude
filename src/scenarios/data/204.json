@@ -1,0 +1,323 @@
+{
+  "id": "204",
+  "name": "Arausio",
+  "year": "105 BC",
+  "expansion": "exp2",
+  "top": {
+    "army": "Germanic",
+    "blocks": "bar",
+    "look": "germanic",
+    "commander": "Boiorix",
+    "cards": 5
+  },
+  "bottom": {
+    "army": "Roman",
+    "blocks": "rom",
+    "look": "roman",
+    "commander": "Quintus Servilius Caepio",
+    "cards": 4
+  },
+  "first": "bottom",
+  "banners": 7,
+  "rules": [],
+  "objectives": [
+    {
+      "kind": "hold",
+      "side": "top",
+      "hexes": [
+        [
+          8,
+          8
+        ],
+        [
+          8,
+          9
+        ]
+      ],
+      "max": 1,
+      "text": "Germanic warriors stand in a Roman camp."
+    }
+  ],
+  "terrain": [
+    {
+      "r": 2,
+      "c": 12,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 3,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 4,
+      "c": 12,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 5,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 6,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 7,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    },
+    {
+      "r": 8,
+      "c": 8,
+      "t": "camp"
+    },
+    {
+      "r": 8,
+      "c": 9,
+      "t": "camp"
+    },
+    {
+      "r": 8,
+      "c": 11,
+      "t": "river",
+      "ford": false
+    }
+  ],
+  "units": [
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 0,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 4
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 6
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "WA",
+      "r": 1,
+      "c": 8
+    },
+    {
+      "side": "top",
+      "type": "MC",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LC",
+      "r": 1,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 1
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 2
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 5
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 7
+    },
+    {
+      "side": "top",
+      "type": "AX",
+      "r": 2,
+      "c": 9
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 10
+    },
+    {
+      "side": "top",
+      "type": "LI",
+      "r": 2,
+      "c": 11
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "LI",
+      "r": 6,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "LC",
+      "r": 7,
+      "c": 2
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 3
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 4
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "type": "MI",
+      "r": 7,
+      "c": 7
+    },
+    {
+      "side": "bottom",
+      "type": "AX",
+      "r": 7,
+      "c": 8
+    },
+    {
+      "side": "bottom",
+      "type": "MC",
+      "r": 7,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 5
+    },
+    {
+      "side": "bottom",
+      "type": "HI",
+      "r": 8,
+      "c": 7
+    }
+  ],
+  "leaders": [
+    {
+      "side": "top",
+      "name": "Boiorix",
+      "r": 0,
+      "c": 3
+    },
+    {
+      "side": "top",
+      "name": "Teutobod",
+      "r": 1,
+      "c": 9
+    },
+    {
+      "side": "bottom",
+      "name": "Caepio",
+      "r": 7,
+      "c": 6
+    },
+    {
+      "side": "bottom",
+      "name": "Mallius",
+      "r": 7,
+      "c": 9
+    }
+  ],
+  "reserves": [],
+  "reserveLeaders": []
+}
