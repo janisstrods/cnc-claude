@@ -35,7 +35,13 @@ for (const sc of SCENARIOS) {
   const sum: Record<string, number> = {};
   for (const r of rs) for (const [k, v] of Object.entries(r.c)) sum[k] = (sum[k] ?? 0) + v;
   for (const [k, v] of Object.entries(sum)) all[k] = (all[k] ?? 0) + v;
-  const notes = Object.entries(sum).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`);
+  const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(2));
+  const notes = Object.entries(sum).filter(([, v]) => v).map(([k, v]) => `${k} ${fmt(v)}`);
+  if (sum.hwmCould) {
+    const pc = (a: number, b: number) => `${Math.round((100 * a) / Math.max(1e-9, b))}%`;
+    notes.push(`machines fired ${pc(sum.hwmCouldFired, sum.hwmCould)} of turns with a target (${pc(sum.hwmFiredEV ?? 0, sum.hwmCouldEV ?? 0)} of the shot value), ` +
+      `ordered ${pc(sum.hwmCouldOrdered, sum.hwmCould)}, fired when ordered ${pc(sum.hwmOrderedFired, sum.hwmCouldOrdered)}`);
+  }
   const sudden = rs.filter((r) => /leaders have fallen/.test(r.reason)).length;
   if (sudden) notes.push(`all-leaders wins ${sudden}`);
   const bot = sc.setup.bottom.army;
@@ -45,7 +51,7 @@ for (const sc of SCENARIOS) {
 }
 const ms = rows.flatMap((r) => [...r.msA, ...r.msB]);
 console.log(`\nGames ${total}; flagged battles ${flagged}; playCard decision avg ${avg(ms).toFixed(0)} ms, max ${Math.max(0, ...ms).toFixed(0)} ms`);
-console.log(`Counters: ${Object.entries(all).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+console.log(`Counters: ${Object.entries(all).filter(([, v]) => v).map(([k, v]) => `${k} ${Number.isInteger(v) ? v : v.toFixed(2)}`).join(', ')}`);
 const kills = rows.flatMap((r) => r.killed ?? []);
 const alex = kills.filter((k) => /alexander/i.test(k)).length;
 console.log(`Leaders killed ${kills.length} (Alexander ${alex})`);

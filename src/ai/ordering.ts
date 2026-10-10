@@ -8,9 +8,9 @@ import { isLoneLeader, leaderUnit, leadersOf, unitsOf } from '../engine/query';
 import { cloneState } from '../engine/setup';
 import { UNIT_STATS } from '../engine/units';
 import type { CardKind, GameState, Leader, SectionName, Side, Unit } from '../engine/types';
-import { Occ, advanceGap, hexDist, supportOcc } from './board';
-import { attackNowValue } from './estimate';
-import { battered, singleUnitRisk } from './evaluate';
+import { Occ, hexDist, isWarMachine, supportOcc } from './board';
+import { attackNowValue, shotValue } from './estimate';
+import { battered, penaltyGap, singleUnitRisk } from './evaluate';
 import { isSacredLeader, type Weights } from './values';
 
 export interface OrderCandidate {
@@ -29,7 +29,8 @@ function nearestEnemy(s: GameState, h: number, side: Side): number {
 function localScore(s: GameState, occ: Occ, u: Unit, W: Weights): number {
   let v = -W.riskSelf * singleUnitRisk(s, occ, u, W);
   const d = nearestEnemy(s, u.hex, u.side);
-  if (!battered(u)) v -= W.adv * Math.min(8, advanceGap(u, d)) * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1) * 1.5;
+  const gap = penaltyGap(u, d);
+  if (gap) v -= W.adv * gap * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1) * 1.5;
   if (d <= 2) {
     const sc = supportOcc(occ, u);
     if (sc >= 2) v += W.support;
@@ -81,7 +82,11 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
         if (v > best) best = v;
       }
     }
-    out.set(u.id, best - base);
+    let ben = best - base;
+    // A war machine that has a target in range and sight shoots where it stands (moving would forbid it): ordered, it
+    // fires, so its shot counts in full rather than discounted like the planned attack of a unit that must move first.
+    if (isWarMachine(u)) ben = Math.max(ben, shotValue(s, occ, u, 0));
+    out.set(u.id, ben);
   }
   for (const l of leadersOf(s, side)) {
     if (!isLoneLeader(s, l)) {

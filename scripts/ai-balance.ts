@@ -6,9 +6,13 @@
 //   war machines abandoned, moved or left adjacent to the enemy; light bow cavalry closing on heavy units; camels
 //   attacking horses; leaders lost in Hellespont; decision times.
 import { writeFileSync } from 'node:fs';
-import { GameDriver, UNIT_STATS, areAdjacent, canFireAt, createGame, randomAnswer, type GameState, type Side, type Unit } from '../src/engine';
+import {
+  GameDriver, UNIT_STATS, areAdjacent, canFireAt, cloneState, createGame, modsFor, randomAnswer, type GameState, type Side, type Unit,
+} from '../src/engine';
 import { SCENARIOS } from '../src/scenarios';
 import { chooseAnswer, newMemory, personalityById, personalityFor, type AiOptions, type Difficulty } from '../src/ai';
+import { Occ } from '../src/ai/board';
+import { shotValue } from '../src/ai/estimate';
 
 function arg(name: string, def: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -32,13 +36,15 @@ interface Counters {
   hwmCould: number; hwmCouldFired: number;
   /** ...of those, turns it was ordered, and fired when ordered. */
   hwmCouldOrdered: number; hwmOrderedFired: number;
+  /** The AI's value (banners) of the best shot those machines had at the start of the turn, and of the ones it fired. */
+  hwmCouldEV: number; hwmFiredEV: number;
   lbcShots: number; lbcClose: number; lbcCloseVsHeavy: number;
   camClose: number; camCloseVsHorse: number;
   leadersKilled: number;
 }
 const zero = (): Counters => ({
   hwmEvade: 0, hwmAbandoned: 0, hwmEliminated: 0, hwmMoves: 0, hwmShots: 0, hwmClose: 0, hwmAdjacentTurns: 0, hwmTurns: 0,
-  hwmCould: 0, hwmCouldFired: 0, hwmCouldOrdered: 0, hwmOrderedFired: 0,
+  hwmCould: 0, hwmCouldFired: 0, hwmCouldOrdered: 0, hwmOrderedFired: 0, hwmCouldEV: 0, hwmFiredEV: 0,
   lbcShots: 0, lbcClose: 0, lbcCloseVsHeavy: 0, camClose: 0, camCloseVsHorse: 0, leadersKilled: 0,
 });
 
@@ -86,27 +92,49 @@ for (const job of mine) {
   let turnSide: Side | null = null;
   let could = new Set<string>();
   const fired = new Set<string>();
+  const couldEV = new Map<string, number>();
   const ordered = new Set<string>();
   const known = new Map<string, Unit>();
   for (const u of d.state.units) known.set(u.id, { ...u });
   const names = new Map(d.state.leaders.map((l) => [l.id, l.name]));
+  /** Close the turn that just ended: machine-turn counters and the fire tally of machines that could shoot. */
+  const closeTurn = () => {
+    if (turnSide) endOfTurn(d.state, turnSide, c);
+    for (const id of could) {
+      if (fired.has(id)) {
+        c.hwmCouldFired++;
+        c.hwmFiredEV += couldEV.get(id) ?? 0;
+      }
+      if (ordered.has(id)) {
+        c.hwmCouldOrdered++;
+        if (fired.has(id)) c.hwmOrderedFired++;
+      }
+    }
+    could = new Set();
+    couldEV.clear();
+  };
   while (!d.over && steps++ < 20000 && d.state.turn.number <= 200) {
     const dec = d.pending!;
     if (dec.kind === 'playCard') {
-      if (turnSide) endOfTurn(d.state, turnSide, c);
-      for (const id of could) {
-        if (fired.has(id)) c.hwmCouldFired++;
-        if (ordered.has(id)) {
-          c.hwmCouldOrdered++;
-          if (fired.has(id)) c.hwmOrderedFired++;
-        }
-      }
+      closeTurn();
       turnSide = dec.side;
       fired.clear();
       ordered.clear();
       could = new Set(d.state.units.filter((u) => u.side === dec.side && u.hex >= 0 && u.type === 'HWM' &&
         d.state.units.some((e) => e.side !== dec.side && e.hex >= 0 && canFireAt(d.state, u, e.hex))).map((u) => u.id));
       c.hwmCould += could.size;
+      if (could.size) {
+        // the machine's best shot as an ordered unit sees it (an ordinary order card's modifiers)
+        const sv = cloneState(d.state);
+        sv.active = dec.side;
+        sv.turn.mods = modsFor('order2C');
+        const occ = new Occ(sv);
+        for (const id of could) {
+          const ev = shotValue(sv, occ, sv.units.find((u) => u.id === id)!, 0);
+          couldEV.set(id, ev);
+          c.hwmCouldEV += ev;
+        }
+      }
     }
     for (const u of d.state.units) known.set(u.id, { ...u });
     const t0 = performance.now();
@@ -153,6 +181,7 @@ for (const job of mine) {
       }
     }
   }
+  closeTurn(); // the last turn (the battle ended in it, or the turn cap) counts too
   const w = d.state.winner;
   const ps = d.state.players;
   const res: GameResult = {
@@ -161,7 +190,7 @@ for (const job of mine) {
   };
   results.push(res);
   const avg = (x: number[]) => (x.length ? x.reduce((a, b) => a + b, 0) / x.length : 0);
-  const nz = Object.entries(c).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(' ');
+  const nz = Object.entries(c).filter(([, v]) => v).map(([k, v]) => `${k}=${Number.isInteger(v) ? v : v.toFixed(2)}`).join(' ');
   console.log(`${job.sc} A(${A})=${job.aSide} winner=${res.winner}${w === job.aSide ? '(A)' : w === bSide ? '(B)' : ''} ` +
     `bottom-top ${res.banners[0]}-${res.banners[1]} turns=${res.turns} msA=${avg(ms[job.aSide]).toFixed(0)} msB=${avg(ms[bSide]).toFixed(0)} ${nz}` +
     `${killed.length ? ` killed=${killed.join('/')}` : ''}${hwmEvades.length ? ` hwmEvades=${hwmEvades.join('/')}` : ''}${/leaders have fallen/.test(res.reason) ? ' (all leaders fell)' : ''}`);

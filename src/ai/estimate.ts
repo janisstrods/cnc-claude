@@ -299,6 +299,16 @@ export function attackNowValue(s: GameState, occ: Occ, u: Unit, moved: number, c
   }
   if (mustBattle) return bestClose === -Infinity ? -0.5 : bestClose;
   if (bestClose > best) best = bestClose;
+  return shotValue(s, occ, u, moved, best);
+}
+
+/**
+ * Best value of a ranged attack by u from its current hex after moving `moved` hexes this turn (all of the card's shots
+ * at the best target), or `floor` when nothing beats it (no target in range and sight, the card forbids fire...).
+ */
+export function shotValue(s: GameState, occ: Occ, u: Unit, moved: number, floor = 0): number {
+  const m = s.turn.mods;
+  let best = floor;
   if (!m.noRanged && canShoot(u) && moved < UNIT_STATS[u.type].noFireAfterMove) {
     const range = rangeOf(u);
     for (const v of s.units) {

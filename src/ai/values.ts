@@ -89,7 +89,11 @@ export function isSacredLeader(s: GameState, l: Leader): boolean {
   return s.special.sacredLeaderId === l.id || leadersToLose(s, l.side) <= 1;
 }
 
-/** Hellespont: a lost leader costs a card and a point of Command for the rest of the battle (`leaderLossCostsCard`). */
+/**
+ * Hellespont: a lost leader costs a card and a point of Command for the rest of the battle (`leaderLossCostsCard`). The
+ * engine charges nothing once Command is down to 1; no battle has enough leaders to get there (112: 2 a side, Command 5
+ * and 6), so the AI prices every loss alike: the stake before a loss and the standing cost after it always agree.
+ */
 const CARD_AND_COMMAND = 0.5;
 /** Hellespont: losing one of two leaders leaves the side one kill from defeat. */
 const SUDDEN_DEATH_STEP = 1;
@@ -98,7 +102,7 @@ const SUDDEN_DEATH_STEP = 1;
 function leaderLossStake(s: GameState, side: Side): number {
   let v = 0;
   const sp = s.special;
-  if (sp.rules.includes('leaderLossCostsCard') && s.players[side].command > 1) v += CARD_AND_COMMAND;
+  if (sp.rules.includes('leaderLossCostsCard')) v += CARD_AND_COMMAND;
   if (leadersToLose(s, side) === 2) v += SUDDEN_DEATH_STEP;
   return v;
 }

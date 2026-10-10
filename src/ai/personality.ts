@@ -57,9 +57,11 @@ const BY_NAME: [RegExp, string][] = [
   [/alexander|pyrrhus|craterus|chandragupta|maurya|decius/i, 'lion'],
   [/epaminondas|seleucus|flamininus|paull?us|callimachus/i, 'strategist'],
   [/eumenes|philip ii\b|satraces/i, 'fox'],
-  [/darius|ptolemy|perseus|pausanias|dentatus/i, 'shield'],
-  [/porus|mardonius|cleombrot|onomarchus|antiochus|philip v\b|laevinus/i, 'bull'],
-  [/datis|hamilcar|gelon|agesilaus|antigonus|mithridates|neoptolemus|alcet/i, 'veteran'],
+  [/ptolemy|perseus|pausanias|dentatus/i, 'shield'],
+  [/mardonius|cleombrot|onomarchus|antiochus|philip v\b|laevinus/i, 'bull'],
+  // Darius III and Porus play the Veteran: as the Shield and the Bull they lost the Alexander battles almost every time
+  // in AI self-play (design/exp1-ai-balance.md)
+  [/datis|hamilcar|gelon|agesilaus|antigonus|mithridates|neoptolemus|alcet|darius|porus/i, 'veteran'],
   // base game (Himilco stays the Shield in 122 Cronium too: same name, and the Akragas Himilco is one)
   [/hannibal|xanthippus|maharbal|mago/i, 'fox'],
   [/varro|flaminius|sempronius|minucius|regulus/i, 'bull'],

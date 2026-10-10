@@ -287,6 +287,8 @@ describe('leader placement (117 Asculum)', () => {
       const d = new GameDriver(build(ASC));
       const mems = { top: newMemory(), bottom: newMemory() };
       const placed: Record<string, HexId> = {};
+      const order: Side[] = [];
+      const joined: Record<string, string> = {};
       while (d.pending?.kind === 'placeLeader') {
         const p = d.pending;
         const { answer } = chooseAnswer(d.state, p, opts(p.side), mems[p.side]);
@@ -294,16 +296,29 @@ describe('leader placement (117 Asculum)', () => {
         const hex = (answer as { hex: HexId }).hex;
         const unit = d.state.units.find((x) => x.hex === hex);
         expect(unit?.side, 'never an empty hex').toBe(p.side);
-        placed[d.state.leaders.find((l) => l.id === p.leader)!.name] = hex;
+        const name = d.state.leaders.find((l) => l.id === p.leader)!.name;
+        placed[name] = hex;
+        order.push(p.side);
+        joined[name] = unit!.type;
         must(d, answer);
       }
       expect(d.pending?.kind).toBe('playCard');
-      return placed;
+      // Romans first; every leader with one of his own units (never alone)
+      expect(order).toEqual(['bottom', 'bottom', 'top', 'top']);
+      for (const name of Object.keys(placed)) {
+        const l = byName(d.state, name);
+        expect(isLoneLeader(d.state, l), name).toBe(false);
+        expect(leaderUnit(d.state, l)?.side, name).toBe(l.side);
+      }
+      return { placed, joined };
     };
-    const a = run();
-    // heavy, then medium infantry, in the centre and nearest the own baseline; then the next best unit
-    expect(a).toEqual({ Decius: H(6, 6), Sulpicius: H(6, 4), Pyrrhus: H(2, 8), Leonnatus: H(2, 5) });
-    expect(run()).toEqual(a);
+    const { placed: a, joined } = run();
+    // medium/heavy units first, by unit strength and the cards in hand: the Romans take their free MI and HI (with an
+    // Inspired Left Leadership card in hand the MI on the left/centre line goes first); Pyrrhus the free MI (Milo has
+    // the HI, and elephants gain nothing from a leader); Leonnatus then joins the light infantry rather than the elephants
+    expect(joined).toEqual({ Decius: 'MI', Sulpicius: 'HI', Pyrrhus: 'MI', Leonnatus: 'LI' });
+    expect(a).toEqual({ Decius: H(6, 4), Sulpicius: H(6, 6), Pyrrhus: H(2, 8), Leonnatus: H(1, 3) });
+    expect(run().placed).toEqual(a);
   });
 
   it('without the rule there is no placement: the first decision is the first card', () => {

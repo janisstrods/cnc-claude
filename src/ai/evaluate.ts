@@ -12,7 +12,7 @@ import { UNIT_STATS, canEvadeType, elephantDiceVs } from '../engine/units';
 import type { GameState, Leader, Side, Unit } from '../engine/types';
 import {
   Occ, advanceGap, approachable, attachedLeaderOcc, canEvadeOcc, canFireOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, helmetsOcc,
-  hexDist, ignorableOcc, isRangedLight, reachOf, retreatRoom, supportOcc,
+  hexDist, ignorableOcc, isRangedLight, isWarMachine, reachOf, retreatRoom, supportOcc,
 } from './board';
 import { binom, pAnyHelmet } from './dice';
 import {
@@ -200,7 +200,8 @@ function threatsAgainst(
     };
     const range = rangeOf(e);
     const mounted = UNIT_STATS[e.type].mounted;
-    const footSkirmisher = isRangedLight(e) && !mounted;
+    // foot skirmishers rarely close (they shoot and evade); a war machine next to its target cannot shoot: it battles
+    const footSkirmisher = isRangedLight(e) && !mounted && !isWarMachine(e);
     for (let j = 0; j < victims.length; j++) {
       const u = victims[j];
       const d = hexDist(e.hex, u.hex);
@@ -436,19 +437,32 @@ function isCamel(u: Unit): boolean {
   return st.vsMountedIgnoreHit !== null && !st.elephantTable;
 }
 
+/**
+ * The advance penalty's gap for unit u at distance d from the nearest enemy (advanceGap, capped at 8). A battered unit
+ * is not pushed forward, but a war machine is still told off for standing next to the enemy (it cannot shoot there).
+ */
+export function penaltyGap(u: Unit, d: number): number {
+  if (battered(u)) return isWarMachine(u) && d <= 1 ? advanceGap(u, d) : 0;
+  return Math.min(8, advanceGap(u, d));
+}
+
+/** penaltyGap against these enemies; a camel measures to the enemy horse when that is not much further away. */
+function unitGap(u: Unit, enemies: Unit[]): number {
+  const d = nearestDist(u, enemies);
+  if (isCamel(u) && !battered(u)) {
+    // camels seek out the enemy horse when it is not much further away than the nearest enemy
+    const dh = nearestHorse(u, enemies);
+    if (dh <= d + CAMEL_HORSE_PULL) return penaltyGap(u, dh);
+  }
+  return penaltyGap(u, d);
+}
+
 function advancePenalty(units: Unit[], enemies: Unit[], W: Weights): number {
   if (!enemies.length) return 0;
   let pen = 0;
   for (const u of units) {
-    if (battered(u)) continue;
-    const d = nearestDist(u, enemies);
-    let gap = Math.min(8, advanceGap(u, d));
-    if (isCamel(u)) {
-      // camels seek out the enemy horse when it is not much further away than the nearest enemy
-      const dh = nearestHorse(u, enemies);
-      if (dh <= d + CAMEL_HORSE_PULL) gap = Math.min(8, advanceGap(u, dh));
-    }
-    pen += gap * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1);
+    const gap = unitGap(u, enemies);
+    if (gap) pen += gap * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1);
   }
   return pen * W.adv;
 }
@@ -603,11 +617,7 @@ export function rawFeatures(s: GameState, me: Side, next: Side, W: Weights): Rec
       } else if (friendlyUnitsAdjacent(occ, l.hex, side) === 0) lonely++;
     }
     let gap = 0;
-    for (const u of units) {
-      if (battered(u)) continue;
-      const d = nearestDist(u, enemies);
-      gap += Math.min(8, advanceGap(u, d));
-    }
+    for (const u of units) gap += unitGap(u, enemies);
     return { support, isolated, stray, front, lonely, gap };
   };
   const a = counts(mine, theirs, me);

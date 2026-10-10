@@ -3,17 +3,18 @@
 // deterministic (tribune in deterministic mode, fixed seeds, constructed positions).
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  CARD_LIST, GameDriver, UNIT_TYPES, createGame, distance, forceDice, hexId, type ArmyLook, type Blocks, type Decision, type EliteId,
-  type GameEvent, type GameState, type LeaderTrait, type ScenarioSetup, type Side, type SpecialRuleId, type TerrainSetup, type UnitType,
+  CARD_LIST, GameDriver, OFF_BOARD, UNIT_STATS, UNIT_TYPES, cloneState, createGame, distance, forceDice, hexId, sectionsOf, type ArmyLook,
+  type Blocks, type Decision, type EliteId, type GameEvent, type GameState, type LeaderTrait, type ScenarioSetup, type Side,
+  type SpecialRuleId, type TerrainSetup, type UnitType,
 } from '../../src/engine';
 import { SCENARIOS } from '../../src/scenarios';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
 import { Occ } from '../../src/ai/board';
-import { singleUnitRisk } from '../../src/ai/evaluate';
+import { evaluate, rawFeatures, singleUnitRisk, type EvalBreakdown } from '../../src/ai/evaluate';
 import { closeAttackEV, evadeEV } from '../../src/ai/estimate';
 import { orderCandidates } from '../../src/ai/ordering';
 import { defendChoice, greedyBattle } from '../../src/ai/policies';
-import { NEUTRAL_W, isSacredLeader, leaderVal, leaderWorth, setViewer, unitWeight } from '../../src/ai/values';
+import { NEUTRAL_W, isSacredLeader, leaderLossCost, leaderVal, leaderWorth, setViewer, unitWeight } from '../../src/ai/values';
 import { troopName } from '../../src/ai/voice';
 
 const H = (r: number, c: number) => hexId(r, c);
@@ -68,6 +69,20 @@ function setHand(s: GameState, side: Side, kinds: string[]) {
   while (s.players[other].hand.length < 5) s.players[other].hand.push(s.deck.shift()!);
 }
 
+/**
+ * The bottom side's advance gap (hexes its sound units still have to close) as the evaluation sees it: the raw feature,
+ * and the evaluation's advance penalty divided back by its weights (both must agree).
+ */
+function bottomGap(units: Pos['units'], extra: Partial<Pos> = {}): { raw: number; eval: number } {
+  const s = position({ units, ...extra });
+  const raw = rawFeatures(s, 'bottom', 'bottom', NEUTRAL_W).gapMe;
+  const bd = {} as EvalBreakdown;
+  evaluate(s, 'bottom', 'bottom', NEUTRAL_W, bd);
+  const own = s.units.filter((u) => u.side === 'bottom');
+  const mounted = own.length > 0 && own.every((u) => UNIT_STATS[u.type].mounted);
+  return { raw, eval: -bd.advance / (NEUTRAL_W.adv * (mounted ? NEUTRAL_W.mountedAdv : 1)) };
+}
+
 const detOpts = (side: Side, seed: number, extra: Partial<AiOptions> = {}): AiOptions => ({
   side, difficulty: 'tribune', personality: PERSONALITIES[5], seed, deterministic: true, budgetScale: 0.3, ...extra,
 });
@@ -120,6 +135,35 @@ describe('heavy war machines', () => {
   it('evades when standing would very likely lose it (and its banner) anyway', () => {
     expect(defend('HI', 1)).toBe('evade');
     expect(defend('MI', 1)).toBe('evade');
+  });
+
+  it('wants to be within its range 6 but never adjacent, battered or not (advance gap)', () => {
+    // 5 hexes off: in range, nothing to close (as a foot skirmisher it would still owe 3 hexes)
+    expect(distance(H(8, 6), H(3, 6))).toBe(5);
+    const far = bottomGap([{ side: 'bottom', type: 'HWM', at: [8, 6] }, { side: 'top', type: 'MI', at: [3, 6] }]);
+    expect(far.raw).toBe(0);
+    expect(far.eval).toBeCloseTo(0, 9);
+    // 8 hexes off: 2 hexes short of range
+    expect(bottomGap([{ side: 'bottom', type: 'HWM', at: [8, 6] }, { side: 'top', type: 'MI', at: [0, 6] }]).raw).toBe(2);
+    // adjacent it cannot shoot: penalised like a unit 2 hexes short (a skirmisher would be content at 0)
+    expect(distance(H(6, 6), H(5, 6))).toBe(1);
+    const adj = bottomGap([{ side: 'bottom', type: 'HWM', at: [6, 6] }, { side: 'top', type: 'MI', at: [5, 6] }]);
+    expect(adj.raw).toBe(2);
+    expect(adj.eval).toBeCloseTo(2, 9);
+    // a battered machine is not pushed forward, but it is still told off for standing next to the enemy
+    const bat = bottomGap([{ side: 'bottom', type: 'HWM', at: [6, 6], blocks: 1 }, { side: 'top', type: 'MI', at: [5, 6] }]);
+    expect(bat.raw).toBe(2);
+    expect(bat.eval).toBeCloseTo(2, 9);
+    expect(bottomGap([{ side: 'bottom', type: 'HWM', at: [8, 6], blocks: 1 }, { side: 'top', type: 'MI', at: [0, 6] }]).raw).toBe(0);
+  });
+
+  it('an adjacent machine threatens a full close combat (it cannot shoot there), unlike a foot skirmisher', () => {
+    // both roll 2 dice without swords against a medium infantry unit that cannot evade
+    const risk = (t: UnitType) => {
+      const s = position({ units: [{ side: 'bottom', type: 'MI', at: [6, 6] }, { side: 'top', type: t, at: [5, 6] }] });
+      return singleUnitRisk(s, new Occ(s), s.units[0], NEUTRAL_W);
+    };
+    expect(risk('HWM')).toBeGreaterThan(1.5 * risk('LI'));
   });
 
   it('holds its ground at long range over several turns against a passive enemy, shooting when ordered', () => {
@@ -191,6 +235,15 @@ describe('heavy war machines', () => {
 // ---------------------------------------------------------------------------------------------------------------------
 
 describe('light bow cavalry', () => {
+  it('stands off at its bow range 3 (advance gap), light cavalry at 2', () => {
+    expect(distance(H(6, 6), H(3, 6))).toBe(3);
+    const lbc = bottomGap([{ side: 'bottom', type: 'LBC', at: [6, 6] }, { side: 'top', type: 'HI', at: [3, 6] }]);
+    expect(lbc.raw).toBe(0);
+    expect(lbc.eval).toBeCloseTo(0, 9);
+    expect(bottomGap([{ side: 'bottom', type: 'LBC', at: [6, 6] }, { side: 'top', type: 'HI', at: [2, 6] }]).raw).toBe(1);
+    expect(bottomGap([{ side: 'bottom', type: 'LC', at: [6, 6] }, { side: 'top', type: 'HI', at: [3, 6] }]).raw).toBe(1);
+  });
+
   it('shoots from range instead of closing with heavy infantry (several seeds)', () => {
     for (const seed of [1, 2, 3, 4]) {
       const s = position({
@@ -221,6 +274,23 @@ describe('light bow cavalry', () => {
 
 describe('camels', () => {
   const ASIA: Army = { army: 'Seleucid', blocks: 'grk', look: 'seleucid', commander: 'Antiochus' };
+
+  it('measure their advance to the enemy horse when it is at most 2 hexes further than the nearest enemy', () => {
+    expect([distance(H(6, 6), H(4, 6)), distance(H(6, 6), H(2, 6)), distance(H(6, 6), H(1, 6))]).toEqual([2, 4, 5]);
+    // infantry 2 hexes off, horse 4 hexes off: the camel still has 3 hexes to close, to the horse
+    const toHorse = bottomGap(
+      [{ side: 'bottom', type: 'CAM', at: [6, 6] }, { side: 'top', type: 'MI', at: [4, 6] }, { side: 'top', type: 'MC', at: [2, 6] }],
+      { bottom: ASIA, top: ROMAN },
+    );
+    expect(toHorse.raw).toBe(3);
+    expect(toHorse.eval).toBeCloseTo(3, 9);
+    // the horse 5 hexes off is too far out of the way: the nearest enemy counts
+    expect(bottomGap(
+      [{ side: 'bottom', type: 'CAM', at: [6, 6] }, { side: 'top', type: 'MI', at: [4, 6] }, { side: 'top', type: 'MC', at: [1, 6] }],
+      { bottom: ASIA, top: ROMAN },
+    ).raw).toBe(1);
+  });
+
 
   it('attack the enemy horse rather than the infantry beside it', () => {
     const s = position({
@@ -324,6 +394,27 @@ describe('Hellespont leaders', () => {
     expect(leaderVal(plain, plain.leaders[0])).toBeLessThan(0.5);
   });
 
+  it('a leader\'s stake is exactly the standing cost his loss adds, whatever the Command left', () => {
+    for (const command of [5, 1]) {
+      const s = position({
+        rules: HELL, top: CRATERUS, bottom: EUMENES,
+        units: [{ side: 'bottom', type: 'MI', at: [6, 6] }, { side: 'top', type: 'MI', at: [2, 6] }, { side: 'top', type: 'MI', at: [2, 8] }],
+        leaders: [
+          { side: 'bottom', name: 'Eumenes', at: [6, 6] },
+          { side: 'top', name: 'Craterus', at: [2, 6] }, { side: 'top', name: 'Neoptolemus', at: [2, 8] },
+        ],
+      });
+      s.players.top.command = command;
+      const craterus = s.leaders[1];
+      const after = cloneState(s);
+      after.leaders[1].hex = OFF_BOARD;
+      after.special.leadersEliminated.top++;
+      const stake = leaderVal(s, craterus) - leaderWorth(craterus);
+      expect(stake, `Command ${command}`).toBeGreaterThan(0);
+      expect(leaderLossCost(after, 'top') - leaderLossCost(s, 'top'), `Command ${command}`).toBeCloseTo(stake, 9);
+    }
+  });
+
   it('keeps its last leader out of contact (constructed position, several seeds)', () => {
     // the last leader rides a 2-block unit; weakened enemies two hexes away tempt a Double Time charge with him
     for (const seed of [1, 2, 3, 4, 5, 6]) {
@@ -390,6 +481,27 @@ describe('Asculum leader placement', () => {
       expect(place(seed)).toEqual(order);
     }
   });
+
+  it('follows the cards in hand: the first Roman leader joins a unit in the section the hand can order', () => {
+    const cases: [string[], 'left' | 'right'][] = [
+      [['order2L', 'order3L', 'order4L', 'inspiredL'], 'left'],
+      [['order2R', 'order3R', 'order4R', 'inspiredR'], 'right'],
+    ];
+    for (const [kinds, sec] of cases) {
+      const s = createGame(asculum.setup, 3);
+      setHand(s, 'bottom', kinds);
+      const d = new GameDriver(s);
+      const p = d.pending!;
+      expect(p.kind === 'placeLeader' && p.side).toBe('bottom');
+      const { answer } = chooseAnswer(d.state, p, { ...detOpts('bottom', 3), personality: personalityFor('Decius', 'Roman') }, newMemory());
+      expect(isLegal(d.state, p, answer)).toBe(true);
+      const hex = (answer as { hex: number }).hex;
+      const u = d.state.units.find((x) => x.hex === hex);
+      expect(u?.side, `${sec}: on an own unit`).toBe('bottom');
+      expect(UNIT_STATS[u!.type].cls, `${sec}: not a light unit`).not.toBe('light');
+      expect(sectionsOf(hex, 'bottom'), `${sec} hand`).toContain(sec);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -440,8 +552,8 @@ describe('Expansion #1 commanders', () => {
   it('map to the six temperaments', () => {
     const want: Record<string, string> = {
       Alexander: 'lion', Pyrrhus: 'lion', Craterus: 'lion', Maurya: 'lion', Epaminondas: 'strategist', Seleucus: 'strategist',
-      Flamininus: 'strategist', Paullus: 'strategist', Eumenes: 'fox', 'Philip II': 'fox', Satraces: 'fox', 'Darius III': 'shield',
-      Ptolemy: 'shield', Perseus: 'shield', Pausanias: 'shield', Dentatus: 'shield', Porus: 'bull', Mardonius: 'bull',
+      Flamininus: 'strategist', Paullus: 'strategist', Eumenes: 'fox', 'Philip II': 'fox', Satraces: 'fox', 'Darius III': 'veteran',
+      Ptolemy: 'shield', Perseus: 'shield', Pausanias: 'shield', Dentatus: 'shield', Porus: 'veteran', Mardonius: 'bull',
       Cleombrotos: 'bull', Onomarchus: 'bull', Antiochus: 'bull', 'Philip V': 'bull', 'Valerius Laevinus': 'bull', Datis: 'veteran',
       Hamilcar: 'veteran', Gelon: 'veteran', Agesilaus: 'veteran', Antigonus: 'veteran', Mithridates: 'veteran', Dionysius: 'veteran',
       // base-game names keep their temperament

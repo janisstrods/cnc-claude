@@ -126,32 +126,38 @@ export function choosePlacement(s: GameState, d: D<'placeLeader'>, W: Weights): 
   const from2 = second?.hex ?? OFF_BOARD;
   let best = cands[0].hex;
   let bestV = -Infinity;
-  for (const c of cands.slice(0, PLACE_CANDIDATES)) {
-    l.hex = c.hex;
-    let v = c.pre;
-    let h2: HexId | null = null;
-    if (second) {
-      // his best follow-up (the pair scores the same whichever leader takes which hex; ties go to the better first hex)
-      let b2 = -Infinity;
-      for (const c2 of placeCands(s, side, d.options.filter((h) => h !== c.hex))) {
-        const v2 = c2.pre + spread(side, c.hex, c2.hex);
-        if (v2 > b2) {
-          b2 = v2;
-          h2 = c2.hex;
+  // the leaders are tried on the hexes in place (on the live state): always put them back, even if a scorer throws
+  try {
+    for (const c of cands.slice(0, PLACE_CANDIDATES)) {
+      l.hex = c.hex;
+      let v = c.pre;
+      let h2: HexId | null = null;
+      if (second) {
+        // his best follow-up (the pair scores the same whichever leader takes which hex; ties go to the better first hex)
+        let b2 = -Infinity;
+        for (const c2 of placeCands(s, side, d.options.filter((h) => h !== c.hex))) {
+          const v2 = c2.pre + spread(side, c.hex, c2.hex);
+          if (v2 > b2) {
+            b2 = v2;
+            h2 = c2.hex;
+          }
+        }
+        if (h2 !== null) {
+          second.hex = h2;
+          v += b2;
         }
       }
-      if (h2 !== null) {
-        second.hex = h2;
-        v += b2;
+      v += evaluate(s, side, s.active, W);
+      if (second) second.hex = from2;
+      l.hex = from;
+      if (v > bestV) {
+        bestV = v;
+        best = c.hex;
       }
     }
-    v += evaluate(s, side, s.active, W);
-    if (second) second.hex = from2;
+  } finally {
     l.hex = from;
-    if (v > bestV) {
-      bestV = v;
-      best = c.hex;
-    }
+    if (second) second.hex = from2;
   }
   return best;
 }
