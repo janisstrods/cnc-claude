@@ -831,11 +831,38 @@ function lateRomanFoot(type: UnitType, i: number): FootKit {
   }
 }
 
-/** Allied light horse with javelins; Gallic, German and Roman horsemen in mail with oval shields and spears. */
+/**
+ * The cavalry of the late Republic was mostly allied, one people to a figure. The light horse: a Numidian, bareback and
+ * without a bridle; a German on his pony with a board shield; a Spaniard in a felt cap with his small round caetra. The
+ * medium horse: a Gallic noble in mail with his long shield and sword, a German, bareback, and a Roman officer in mail
+ * and a Boeotian helmet with a round parma (the icon's figure); the Gaul and the Roman on the four-horned saddle, the
+ * harness hung with phalerae.
+ */
 function lateRomanMount(type: UnitType, i: number): MountKit {
-  if (type === 'LC') return { rider: { torso: 'tunic', helmet: 'none', crest: 'none', shield: 'round', weapon: 'javelin', legs: 'bare', spare: true, hair: i % 2 ? 'long' : 'short' }, cloth: 'plain' };
+  const german = { helmet: 'none' as const, crest: 'none' as const, legs: 'trousers' as const, hair: 'knot' as const, beard: true };
+  if (type === 'LC') {
+    const javelins = { weapon: 'javelin' as const, spare: true };
+    if (i % 3 === 0) return { rider: { torso: 'tunic', helmet: 'none', crest: 'none', shield: 'round', ...javelins, legs: 'bare', beard: true }, cloth: 'none', bridle: false, pony: true };
+    if (i % 3 === 1) return { rider: { ...german, torso: 'bare', shield: 'board', ...javelins }, cloth: 'none', pony: true };
+    return { rider: { torso: 'tunic', helmet: 'cap', crest: 'none', shield: 'round', ...javelins, legs: 'bare', cloak: true }, cloth: 'plain' };
+  }
   if (type === 'HC') return { rider: { torso: 'mail', helmet: 'montefortino', crest: 'horsehair', shield: 'none', weapon: 'lance', legs: 'bare' }, cloth: 'plain' };
-  return { rider: { torso: 'mail', helmet: i % 2 ? 'montefortino' : 'coolus', crest: 'knob', shield: 'oval', weapon: 'spear', legs: 'bare' }, cloth: 'plain' };
+  if (i % 3 === 2) {
+    return {
+      rider: { torso: 'mail', helmet: 'boeotian', crest: 'horsehair', shield: 'round', weapon: 'spear', legs: 'bare', cloak: true },
+      cloth: 'horned', phalerae: true,
+    };
+  }
+  if (i % 3 === 0) {
+    return {
+      rider: {
+        torso: 'mail', helmet: 'coolus', crest: 'knob', shield: 'celtOval', weapon: 'spear', legs: 'trousers', hair: 'long', moustache: true,
+        torc: true, sword: true,
+      },
+      cloth: 'horned', phalerae: true,
+    };
+  }
+  return { rider: { ...german, torso: 'tunic', shield: 'board', weapon: 'spear', cloak: true }, cloth: 'none', pony: true };
 }
 
 const LATE_ROMAN: KitDef = {

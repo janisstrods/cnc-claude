@@ -234,6 +234,35 @@ describe('Barbarian cavalry', () => {
   });
 });
 
+describe('Marian cavalry', () => {
+  const p = paletteFor('marian', 'rom');
+  const mounts = (type: UnitType) => [0, 1, 2].map((i) => lookMount(type, p, i));
+
+  it("is Caesar's allied horse, one people to a figure: Numidian, German and Spanish light horse", () => {
+    const [numidian, german, spaniard] = mounts('LC');
+    expect(numidian).toMatchObject({ cloth: 'none', bridle: false, pony: true, rider: { weapon: 'javelin', shield: 'round' } });
+    expect(german).toMatchObject({ cloth: 'none', pony: true, rider: { hair: 'knot', shield: 'board' } });
+    expect(spaniard).toMatchObject({ cloth: 'plain', rider: { helmet: 'cap', shield: 'round' } });
+  });
+
+  it('a Gallic noble, a German and a Roman officer in a Boeotian helmet on the medium horse', () => {
+    const [gaul, german, roman] = mounts('MC');
+    expect(gaul).toMatchObject({ cloth: 'horned', phalerae: true, rider: { torso: 'mail', shield: 'celtOval', moustache: true, sword: true } });
+    expect(german).toMatchObject({ cloth: 'none', pony: true, rider: { hair: 'knot', shield: 'board' } });
+    expect(roman).toMatchObject({ cloth: 'horned', phalerae: true, rider: { torso: 'mail', helmet: 'boeotian', shield: 'round' } });
+  });
+
+  it("differs from the base Roman look's cavalry in every figure, even in the same paint", () => {
+    const roman = paletteFor('roman', 'rom');
+    const marianShapes: Palette = { ...roman, kit: 'lateRoman', style: { ...roman.style, mounted: p.style.mounted } };
+    for (const type of ['LC', 'MC'] as UnitType[]) {
+      for (let i = 0; i < 3; i++) {
+        expect(svg(h(Miniature, { type, p: marianShapes, i })), `${type} ${i}`).not.toBe(svg(h(Miniature, { type, p: roman, i })));
+      }
+    }
+  });
+});
+
 describe('Barbarian light chariots (BCH)', () => {
   const figure = (look: ArmyLook, type: UnitType, i: number) => svg(h(Miniature, { type, p: paletteFor(look, blocksOf(look)), i }));
   const inner = (markup: string) => markup.replace(/^<svg>|<\/svg>$/g, '');
