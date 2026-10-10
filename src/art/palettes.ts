@@ -146,7 +146,7 @@ export interface LookStyle {
    * Overrides of the kit's mounts per unit type (horse archers, and the cavalry of kits not drawn as the base game's):
    * one, or one per figure index (cycled; `{}` keeps the kit's mount).
    */
-  mounted?: Partial<Record<UnitType, Partial<MountKit> | Partial<MountKit>[]>>;
+  mounted?: Partial<Record<UnitType, MountLook | MountLook[]>>;
   /** The look's elephants instead of the kit's. */
   elephant?: ElephantDef;
   /** Changes to the dress of the kit's scythed-chariot driver. */
@@ -156,6 +156,12 @@ export interface LookStyle {
   /** The general: colours (cloak, saddle cloth), horse, and helmet / crest instead of the kit's. */
   general?: Partial<LookPalette> & { horse?: { coat: string; shade: string; mane: string }; helmet?: Helmet; crest?: Crest };
 }
+
+/**
+ * A look's change to one of its kit's mounts: `rider` replaces the kit's rider, `dress` changes some of its fields (the
+ * Britons' woad, the Belgae's hexagonal shields).
+ */
+export type MountLook = Partial<MountKit> & { dress?: Partial<RiderKit> };
 
 /**
  * Paint scheme of one army as drawn: its look's swatches, the side colours of its blocks and the kit it is built from.
@@ -916,6 +922,7 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
       ],
       // the hexagonal shields of the northern Belgae
       foot: { LI: { shield: 'hex' }, AX: { shield: 'hex' }, WA: { shield: 'hex' }, MI: { shield: 'hex' } },
+      mounted: { LC: [{}, { dress: { shield: 'hex' } }, { dress: { shield: 'hex' } }], MC: { dress: { shield: 'hex' } } },
     },
   },
   briton: {
@@ -936,6 +943,11 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
         AX: [{ woad: true, helmet: 'none' }, { woad: true, helmet: 'none', torso: 'bare', skirt: false, sleeve: false }],
         WA: [{ woad: true }, { woad: true, torso: 'bare', skirt: false, sleeve: false, helmet: 'none', crest: 'none', hair: 'wild' }],
         MI: { woad: true },
+      },
+      // woad on the horsemen too; fewer helmets among the nobles
+      mounted: {
+        LC: { dress: { woad: true } },
+        MC: [{ dress: { woad: true } }, { dress: { woad: true, helmet: 'none', crest: 'none', hair: 'wild' } }],
       },
       // the chariots of Cassivellaunus: woad on both men, no helmets, the warriors bare-chested but one
       lightChariot: {
@@ -984,6 +996,12 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
       },
       mounted: {
         LC: [{ rider: { torso: 'tunic', helmet: 'thracian', crest: 'none', shield: 'none', weapon: 'javelin', legs: 'trousers', spare: true, cloak: true, beard: true } }, {}],
+        // horses taken from the herds of Lucania: a Thracian, a Gallic noble, a rider with captured Roman arms
+        MC: [
+          { dress: { helmet: 'thracian', crest: 'horsehair', torso: 'tunic', hair: 'short', beard: true, moustache: false, torc: false, sword: false } },
+          {},
+          { dress: { helmet: 'montefortino', crest: 'knob', shield: 'legionOval', device: 'wingedBolt', hair: 'short', beard: true, moustache: false, torc: false, sword: false } },
+        ],
       },
     },
   },

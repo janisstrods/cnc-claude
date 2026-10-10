@@ -11,6 +11,7 @@ import { ELITE_FOOT, FootFigure, figurePalette, footKit, lookKit, type FootKit }
 import { Shield, makeFig, type ShieldKind } from '../../src/art/parts';
 import { EliteStandard, Miniature } from '../../src/art/token';
 import { lightChariotCrew } from '../../src/art/chariot';
+import { lookMount } from '../../src/art/mounted';
 import { deltaE } from './delta-e';
 
 const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
@@ -183,6 +184,53 @@ describe('Expansion #2 looks', () => {
         expect(out, `${kind} ${device}`).not.toMatch(/NaN|undefined/);
       }
     }
+  });
+});
+
+describe('Barbarian cavalry', () => {
+  const mounts = (look: ArmyLook, type: UnitType) => [0, 1, 2].map((i) => lookMount(type, paletteFor(look, blocksOf(look)), i));
+
+  it('Celtic nobles (MC) ride in mail and helmets with torcs and long swords, on the four-horned saddle with harness discs', () => {
+    for (const look of ['gallic', 'belgic'] as ArmyLook[]) {
+      const mc = mounts(look, 'MC');
+      expect(mc.every((m) => m.rider.torso === 'mail' && m.rider.helmet !== 'none' && m.rider.torc && m.rider.sword), look).toBe(true);
+      expect(mc.every((m) => m.cloth === 'horned' && m.phalerae && ['hex', 'celtOval'].includes(m.rider.shield)), look).toBe(true);
+      expect(new Set(mc.map((m) => m.rider.helmet)).size, look).toBe(3);
+    }
+    // the Belgae carry hexagonal shields
+    expect(mounts('belgic', 'MC').every((m) => m.rider.shield === 'hex')).toBe(true);
+    // the light horse: unarmoured, javelins, round or long shields, on a cloth or bareback
+    const lc = mounts('gallic', 'LC');
+    expect(lc.every((m) => m.rider.weapon === 'javelin' && m.rider.helmet === 'none' && m.rider.torso !== 'mail')).toBe(true);
+    expect(new Set(lc.map((m) => m.cloth))).toEqual(new Set(['plain', 'none']));
+    expect(new Set(lc.map((m) => m.rider.shield))).toEqual(new Set(['round', 'celtOval']));
+  });
+
+  it('the Germans ride bareback on ponies, unarmoured but for a chief, with frameae and board shields', () => {
+    for (const type of ['LC', 'MC'] as UnitType[]) {
+      const m = mounts('germanic', type);
+      expect(m.every((x) => x.cloth === 'none' && x.pony && x.rider.helmet === 'none'), type).toBe(true);
+      expect(m.some((x) => x.rider.shield === 'board'), type).toBe(true);
+      expect(m.filter((x) => x.rider.torso === 'mail').length, type).toBeLessThanOrEqual(1);
+    }
+    // the pony is drawn smaller than the Gauls' horses under the same rider
+    const horse = (look: ArmyLook) => token('LC', look).match(/<g transform="scale\(([\d.]+)\)"><path d="M-12.8 -14.6/)?.[1];
+    expect(Number(horse('germanic'))).toBeLessThan(Number(horse('gallic')));
+  });
+
+  it("the Britons' horsemen wear woad, fewer helmets; the Slave army's MC mixes a Thracian, a Gaul and captured Roman arms", () => {
+    const woad = paletteFor('briton', 'bar').woad ?? '';
+    for (const type of ['LC', 'MC'] as UnitType[]) {
+      expect(mounts('briton', type).every((m) => m.rider.woad), type).toBe(true);
+      expect(token(type, 'briton'), type).toContain(woad);
+    }
+    expect(mounts('briton', 'MC').filter((m) => m.rider.helmet !== 'none').length)
+      .toBeLessThan(mounts('gallic', 'MC').filter((m) => m.rider.helmet !== 'none').length);
+    // a look's dress changes only the fields it names
+    expect(mounts('briton', 'MC')[1].rider).toEqual({ ...mounts('gallic', 'MC')[1].rider, woad: true, helmet: 'none', crest: 'none', hair: 'wild' });
+    const slave = mounts('slave', 'MC');
+    expect(slave.map((m) => m.rider.helmet)).toEqual(['thracian', 'coolus', 'montefortino']);
+    expect(slave[2].rider).toMatchObject({ shield: 'legionOval', device: 'wingedBolt' });
   });
 });
 

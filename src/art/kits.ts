@@ -21,6 +21,13 @@ export interface MountKit {
   barding?: boolean;
   /** Scale trapper over body and neck (cataphracts). */
   cataphract?: boolean;
+  // Expansion #2
+  /** Without a bridle (Numidians; default with one). */
+  bridle?: boolean;
+  /** A small, rough horse: the rider sits lower, his feet below its belly (Germanic and Numidian horses). */
+  pony?: boolean;
+  /** Bronze discs (phalerae) on the breast strap and the crupper. */
+  phalerae?: boolean;
 }
 
 /** LC, MC and HC of a kit. */
@@ -655,12 +662,36 @@ function celticFoot(type: UnitType, i: number): FootKit {
   }
 }
 
-/** Celtic horsemen: javelins and round shields on the light horse, mail, helmets, oval shields and spears on the nobles. */
+/** The helmets of Celtic noble horsemen, by figure: a Montefortino with horsehair, a Coolus, a horned helmet. */
+const CELTIC_NOBLE_HELMETS: { helmet: Helmet; crest: Crest }[] = [
+  { helmet: 'montefortino', crest: 'horsehair' }, { helmet: 'coolus', crest: 'knob' }, { helmet: 'horned', crest: 'none' },
+];
+
+/**
+ * Celtic horsemen. The light horse: unarmoured, javelins, a small round or a long shield, on a cloth or bareback. The
+ * nobles (MC): mail, helmets, torcs and cloaks, long hexagonal or oval shields, spears and long swords, on the
+ * four-horned saddle, the harness hung with bronze discs.
+ */
 function celticMount(type: UnitType, i: number): MountKit {
   const dress = { crest: 'none' as const, legs: 'trousers' as const, moustache: true, hair: 'long' as const };
-  if (type === 'LC') return { rider: { ...dress, torso: i % 2 ? 'bare' : 'tunic', helmet: 'none', shield: 'round', weapon: 'javelin', spare: true }, cloth: 'plain' };
+  if (type === 'LC') {
+    const bare = i % 3 === 1;
+    return {
+      rider: {
+        ...dress, torso: bare ? 'bare' : 'tunic', torc: bare, hair: bare ? 'wild' : 'long', helmet: 'none', shield: i % 3 === 0 ? 'round' : 'celtOval',
+        weapon: 'javelin', spare: true, cloak: i % 3 === 2,
+      },
+      cloth: bare ? 'none' : 'plain',
+    };
+  }
   if (type === 'HC') return { rider: { ...dress, torso: 'mail', helmet: 'montefortino', crest: 'horsehair', shield: 'none', weapon: 'lance' }, cloth: 'plain' };
-  return { rider: { ...dress, torso: 'mail', helmet: i % 2 ? 'montefortino' : 'coolus', crest: i % 2 ? 'horsehair' : 'knob', shield: 'oval', weapon: 'spear' }, cloth: 'plain' };
+  return {
+    rider: {
+      ...dress, torso: 'mail', ...CELTIC_NOBLE_HELMETS[i % 3], shield: i % 2 ? 'celtOval' : 'hex', weapon: 'spear', torc: true, sword: true,
+      cloak: i % 3 === 0,
+    },
+    cloth: 'horned', phalerae: true,
+  };
 }
 
 /**
@@ -731,12 +762,18 @@ function germanicFoot(type: UnitType, i: number): FootKit {
   }
 }
 
-/** Germanic horsemen ride small horses, bareback or on a plain cloth, with javelins or a spear and a round shield. */
+/**
+ * Germanic horsemen ride small, rough horses bareback (Caesar found the horses ugly, and the Germans thought saddles
+ * unmanly, Gallic War 4.2): unarmoured, frameae and javelins, board shields; a chief in mail and a cloak among the MC.
+ */
 function germanicMount(type: UnitType, i: number): MountKit {
   const dress = { helmet: 'none' as const, crest: 'none' as const, legs: 'trousers' as const, hair: i % 2 ? 'long' as const : 'knot' as const, beard: i % 2 === 1 };
-  if (type === 'LC') return { rider: { ...dress, torso: 'bare', shield: 'round', weapon: 'javelin', spare: true }, cloth: 'none' };
+  if (type === 'LC') return { rider: { ...dress, torso: 'bare', shield: i % 3 === 2 ? 'round' : 'board', weapon: 'javelin', spare: true }, cloth: 'none', pony: true };
   if (type === 'HC') return { rider: { ...dress, torso: 'mail', shield: 'none', weapon: 'lance' }, cloth: 'plain' };
-  return { rider: { ...dress, torso: 'tunic', shield: 'round', weapon: 'spear' }, cloth: 'plain' };
+  return {
+    rider: { ...dress, torso: i % 3 === 1 ? 'mail' : 'tunic', cloak: i % 3 === 1, shield: i % 3 === 2 ? 'round' : 'board', weapon: 'spear' },
+    cloth: 'none', pony: true,
+  };
 }
 
 const GERMANIC: KitDef = {
@@ -749,8 +786,8 @@ const GERMANIC: KitDef = {
   },
   bust: { helmet: 'none', crest: 'none', beard: true, hair: 'knot', chest: 'mail' },
   iconBox: {
-    MI: [-40, 1.8, -8.2, 10.2], HI: [-40, 1.8, -6.1, 10.2], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31],
-    HWM: [-33.2, 0.4, -28.1, 21.9], BCH: [-38, 1.4, -27.8, 29.3],
+    MI: [-40, 1.8, -8.2, 10.2], HI: [-40, 1.8, -6.1, 10.2], LC: [-34, 0.4, -16.1, 17.1], MC: [-50.3, 0.6, -17.4, 18.5],
+    HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31], HWM: [-33.2, 0.4, -28.1, 21.9], BCH: [-38, 1.4, -27.8, 29.3],
   },
 };
 

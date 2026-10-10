@@ -250,13 +250,16 @@ function MailDoubling({ p }: { p: Palette }) {
 /** Woad blue, when the look names none. */
 const WOAD = '#3a64b0';
 
-/** Woad spirals on a bare chest. */
-function WoadBody({ p }: { p: Palette }) {
+/** The woad colour of a look. */
+export const woadOf = (p: Palette): string => p.woad ?? WOAD;
+
+/** Woad spirals on a bare chest (standing-figure frame). */
+export function WoadBody({ p }: { p: Palette }) {
   return <Hi d="M-2.6 -19.4 C-1.6 -20.4 -0.2 -20 -0.4 -18.9 C-0.6 -18.1 -1.6 -18.3 -1.4 -19 M1.2 -17.6 C2.2 -18.6 3.6 -18.2 3.4 -17.1 C3.2 -16.3 2.2 -16.5 2.4 -17.2 M-2.8 -16.2 C-1.8 -16.6 -0.6 -16.4 0.2 -15.8" c={p.woad ?? WOAD} w={0.5} o={0.95} />;
 }
 
-/** Woad stripes on the cheek. */
-function WoadFace({ p }: { p: Palette }) {
+/** Woad stripes on the cheek (standing-figure frame). */
+export function WoadFace({ p }: { p: Palette }) {
   return <Hi d="M2 -25.9 L4 -25.3 M2.2 -24.6 L3.8 -24" c={p.woad ?? WOAD} w={0.45} o={0.95} />;
 }
 
