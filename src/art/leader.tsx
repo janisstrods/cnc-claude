@@ -4,6 +4,7 @@ import type { ArmyLook, Blocks } from '../engine/types';
 import { darken, lighten } from './color';
 import { KITS } from './kits';
 import { leaderLook, paletteFor, type Finial, type LeaderLook, type Palette } from './palettes';
+import { WingPair } from './exp2-parts';
 import { Emblem, FacingRightCtx, Head, Hi, Line2, OL, Paint, Shape, makeFig, type Fig } from './parts';
 import { HORSE_GEOM, Horse, Rider } from './mounted';
 import { BasePlate } from './token';
@@ -98,7 +99,6 @@ function Carnyx({ p, x1, y1, x2, y2 }: { p: Palette; x1: number; y1: number; x2:
 
 /** Jupiter's thunderbolt of the aquila, under the eagle's talons. */
 const AQUILA_BOLT = 'M-2.8 0.4 L2.8 0.4 M-2.2 0.4 L-1.6 1.4 L-1 0.4 M1 0.4 L1.6 1.4 L2.2 0.4';
-const AQUILA_WING = 'M-0.4 -2.4 C-1.9 -3.6 -3.6 -6 -3.8 -8.6 C-2.8 -7.6 -1.8 -7 -0.8 -6.8 C-1.2 -6 -1 -5 -0.5 -4.2 Z';
 
 /** The legion's eagle: a gold eagle with raised wings on a thunderbolt, a gold wreath, and a vexillum in the side colour. */
 function Aquila({ p, x1, y1, x2, y2 }: { p: Palette; x1: number; y1: number; x2: number; y2: number }) {
@@ -125,8 +125,7 @@ function Aquila({ p, x1, y1, x2, y2 }: { p: Palette; x1: number; y1: number; x2:
         <path d={AQUILA_BOLT} fill="none" stroke={OL} strokeWidth={1.1} strokeLinecap="round" strokeLinejoin="round" />
         <path d={AQUILA_BOLT} fill="none" stroke={p.gold} strokeWidth={0.5} strokeLinecap="round" strokeLinejoin="round" />
         <g fill={p.gold} stroke={OL} strokeWidth={0.4} strokeLinejoin="round">
-          <path d={AQUILA_WING} />
-          <path d={AQUILA_WING} transform="scale(-1 1)" />
+          <WingPair spread={0.4} y={-2.4} s={1.2} />
           <path d="M-0.7 -0.6 L0 0.6 L0.7 -0.6 Z" />
           <ellipse cx={0} cy={-2.5} rx={1.15} ry={2} />
           <circle cx={0.5} cy={-4.9} r={0.85} />

@@ -490,6 +490,27 @@ function IconRows({ looks }: { looks: ArmyLook[] }) {
   );
 }
 
+/** The leaders with their own figure (LEADER_LOOKS, matched by name) next to an ordinary general of their look, alone and attached. */
+function NamedLeaders({ scale }: { scale: number }) {
+  return (
+    <Row title="Named leaders" note="Caesar (laurel wreath, scarlet cloak, white horse) and Spartacus (Thracian helmet, sica), each beside an ordinary general of his look.">
+      {NAMED_LEADERS.flatMap(({ name, look, other }) => {
+        const art = { look, blockColor: blocksOf(look) };
+        return [name, other].map((n) => (
+          <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Hex scale={scale} label={`${n} (${LOOK_LABEL[look]})`}>
+              <LeaderToken {...art} facing="right" attached={false} name={n} showName />
+            </Hex>
+            <svg width={scale * 60} height={scale * 60} viewBox="-14 -14 28 28" style={{ background: GRASS, borderRadius: 4 }}>
+              <LeaderToken {...art} facing="right" attached name={n} />
+            </svg>
+          </div>
+        ));
+      })}
+    </Row>
+  );
+}
+
 /** The Expansion #2 art only: #/gallery/art/exp2. */
 function Exp2Gallery() {
   return (
@@ -507,21 +528,7 @@ function Exp2Gallery() {
         <Hex label="Tenth Legion"><Token type="HI" look="marian" blockColor="rom" elite="tenthLegion" /></Hex>
         <Hex label="Tenth Legion 2/4, left"><Token type="HI" look="marian" blockColor="rom" elite="tenthLegion" blocks={2} facing="left" /></Hex>
       </Row>
-      <Row title="Named leaders" note="Caesar and Spartacus (LEADER_LOOKS, matched by name) next to an ordinary general of their look.">
-        {NAMED_LEADERS.flatMap(({ name, look, other }) => {
-          const art = { look, blockColor: blocksOf(look) };
-          return [name, other].map((n) => (
-            <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Hex scale={2} label={`${n} (${LOOK_LABEL[look]})`}>
-                <LeaderToken {...art} facing="right" attached={false} name={n} showName />
-              </Hex>
-              <svg width={120} height={120} viewBox="-14 -14 28 28" style={{ background: GRASS, borderRadius: 4 }}>
-                <LeaderToken {...art} facing="right" attached name={n} />
-              </svg>
-            </div>
-          ));
-        })}
-      </Row>
+      <NamedLeaders scale={2} />
       <Row title="Unit icons (UnitIcon, size 64 and 32)">
         <IconRows looks={EXP2_LOOKS} />
       </Row>
@@ -622,21 +629,7 @@ export default function ArtGallery() {
         <CrewRow />
       </Row>
 
-      <Row title="Named leaders" note="Leaders with their own figure (LEADER_LOOKS, matched by name) next to an ordinary general of their look: Caesar (laurel wreath, scarlet cloak, white horse) and Spartacus (Thracian helmet, sica).">
-        {NAMED_LEADERS.flatMap(({ name, look, other }) => {
-          const art = { look, blockColor: blocksOf(look) };
-          return [name, other].map((n) => (
-            <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Hex scale={1.6} label={`${n} (${LOOK_LABEL[look]})`}>
-                <LeaderToken {...art} facing="right" attached={false} name={n} showName />
-              </Hex>
-              <svg width={96} height={96} viewBox="-14 -14 28 28" style={{ background: GRASS, borderRadius: 4 }}>
-                <LeaderToken {...art} facing="right" attached name={n} />
-              </svg>
-            </div>
-          ));
-        })}
-      </Row>
+      <NamedLeaders scale={1.6} />
 
       <Row title="Leaders of every look" note="Alone (mounted general with the army's standard) and attached (portrait medallion).">
         {LOOK_ORDER.map((look) => {

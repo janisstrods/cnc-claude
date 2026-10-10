@@ -5,18 +5,23 @@ import { describe, expect, it } from 'vitest';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { BLOCKS, type Blocks } from '../../src/engine/types';
-import { BLOCK_COLORS, LeaderToken, UnitToken } from '../../src/art';
+import { BASE_TOP, BLOCK_COLORS, LeaderToken, UnitToken } from '../../src/art';
 import { P } from '../../src/ui/terrain/palette';
 import { deltaE } from './delta-e';
 
 const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
 
-/** What a base edge is seen against on the board: grass, hills, woods, water, camps and the token's own flocked top. */
-const BOARD: Record<string, string> = {
-  grass: P.grass, grassDark: P.grassDark, grassOchre: P.grassOchre, hillLow: P.hill[0], hillHigh: P.hill[3],
-  forestFloor: P.forestFloor, leafMid: P.leafMid, leafDark: P.leafDark, water: P.water, earth: P.earth, canvas: P.canvas,
-  baseTop: '#6e6a3c',
-};
+/**
+ * What a base edge is seen against: every solid colour of the terrain paint palette (grass, hills, rock, woods, water, sea,
+ * marsh, camps, walls ...) and the token's own flocked top. The semi-transparent overlays (rgba shadows and glints) are not
+ * colours of their own, so they are left out; nothing else is.
+ */
+const SOLID = /^#[0-9a-f]{6}$/i;
+const BOARD: Record<string, string> = { baseTop: BASE_TOP };
+for (const [name, value] of Object.entries(P)) {
+  if (Array.isArray(value)) value.forEach((c, i) => SOLID.test(c) && (BOARD[`${name}[${i}]`] = c));
+  else if (SOLID.test(value)) BOARD[name] = value;
+}
 
 describe('the Expansion #2 block colours', () => {
   const NEW: Blocks[] = ['bar', 'gry'];
@@ -38,7 +43,14 @@ describe('the Expansion #2 block colours', () => {
     expect(close).toEqual([]);
   });
 
-  it('their base edges stand out from the board (grass, hills, woods, water, camps) by dE >= 25', () => {
+  it('the board list covers the whole paint palette', () => {
+    const solid = Object.values(P).flat().filter((c) => SOLID.test(c));
+    expect(Object.values(BOARD)).toEqual(expect.arrayContaining(solid));
+    expect(Object.keys(BOARD).length).toBe(solid.length + 1);
+    expect(Object.keys(BOARD)).toEqual(expect.arrayContaining(['stone', 'rock', 'rockMid', 'waterShallow', 'seaShallow', 'pool', 'poolLight', 'leafLight']));
+  });
+
+  it('their base edges stand out from every colour of the board (terrain paint palette and the flocked top) by dE >= 25', () => {
     const close: string[] = [];
     for (const b of NEW) {
       for (const [name, c] of Object.entries(BOARD)) {

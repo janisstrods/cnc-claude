@@ -7,8 +7,9 @@ import type { ArmyLook, Blocks, UnitType } from '../../src/engine/types';
 import { LEADER_LOOKS, LOOKS, leaderLook, paletteFor, type ArtEliteId, type EmblemKind, type Palette } from '../../src/art/palettes';
 import { KITS } from '../../src/art/kits';
 import { LeaderToken, UnitIcon, UnitToken } from '../../src/art';
-import { ELITE_FOOT, FootFigure, figurePalette, footKit, type FootKit } from '../../src/art/foot';
+import { ELITE_FOOT, FootFigure, figurePalette, footKit, lookKit, type FootKit } from '../../src/art/foot';
 import { Shield, makeFig, type ShieldKind } from '../../src/art/parts';
+import { EliteStandard, Miniature } from '../../src/art/token';
 import { deltaE } from './delta-e';
 
 const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
@@ -23,12 +24,16 @@ const token = (type: UnitType, look: ArmyLook, extra: { elite?: ArtEliteId; faci
 /** The foot figure of a look as drawn: the kit's, then the look's override for the type and figure (perhaps another kit's). */
 function drawnKit(look: ArmyLook, type: UnitType, i: number): FootKit {
   const p = paletteFor(look, blocksOf(look));
-  const base = footKit(type, p.kit, i);
-  const o = p.style.foot?.[type];
-  const lo = Array.isArray(o) ? o[i % o.length] : o;
-  if (!lo) return base;
-  const { from, ...rest } = lo;
-  return { ...(from ? footKit(type, from, i) : base), ...rest };
+  return lookKit(footKit(type, p.kit, i), p, i);
+}
+
+/** The base Romans' colours: the figures of the Expansion #2 looks are compared on them, so only their shapes differ. */
+const NEUTRAL = paletteFor('roman', 'rom');
+/** What a look draws once its paint is taken out: its kit's figures and the look's exceptions to them, in neutral colours. */
+function shapesOf(look: ArmyLook, type: UnitType): string {
+  const { kit, style } = paletteFor(look, blocksOf(look));
+  const p: Palette = { ...NEUTRAL, kit, style: { ...NEUTRAL.style, foot: style.foot, mounted: style.mounted } };
+  return [0, 1, 2, 3].map((i) => svg(h(Miniature, { type, p, i }))).join('');
 }
 
 describe('Expansion #2 kits', () => {
@@ -81,10 +86,27 @@ describe('Expansion #2 looks', () => {
     }
   });
 
-  it('the six looks differ in every foot type and in their cavalry', () => {
+  it('the figures differ by shape, not just by paint: the three kits in every type, and the looks of a kit where they have exceptions', () => {
+    // The fewest different figures (shapes only: helmets, shields, weapons, hair, dress) the six looks draw in each type. Looks
+    // of one kit share a type's figures unless the look has an exception for it: the Belgae (hexagonal shields) and the
+    // Britons (woad, no helmets) differ from the Gauls in LI, AX, WA and MI, the Britons also in LB and LS, and the Slaves
+    // (four peoples) in LI, LS, AX, WA, MI and LC. HI and MC are fielded by the Marians only, so the other looks share them.
+    const FEWEST: Partial<Record<UnitType, number>> = { LI: 6, LB: 4, LS: 5, AX: 6, WA: 6, MI: 6, HI: 3, LC: 4, MC: 3 };
+    for (const [type, fewest] of Object.entries(FEWEST) as [UnitType, number][]) {
+      const groups = new Map<string, ArmyLook[]>();
+      for (const look of EXP2) {
+        const shape = shapesOf(look, type);
+        groups.set(shape, [...(groups.get(shape) ?? []), look]);
+      }
+      expect(groups.size, `${type}: ${[...groups.values()].map((g) => g.join('+')).join(' / ')}`).toBeGreaterThanOrEqual(fewest);
+      // whatever the exceptions, a Gaul, a German and a Marian never share a figure
+      expect(new Set((['gallic', 'germanic', 'marian'] as const).map((look) => shapesOf(look, type))).size, type).toBe(3);
+    }
+  });
+
+  it('the paint tells the rest apart: every look draws its own token in every type', () => {
     for (const type of [...FOOT, 'LC', 'MC'] as UnitType[]) {
-      const drawn = new Set(EXP2.map((look) => token(type, look)));
-      expect(drawn.size, type).toBe(EXP2.length);
+      expect(new Set(EXP2.map((look) => token(type, look))).size, type).toBe(EXP2.length);
     }
   });
 
@@ -177,11 +199,29 @@ describe('the Tenth Legion', () => {
   });
 
   it('its marker carries the eagle and the numeral X instead of the wreath', () => {
-    const plain = token('HI', 'marian', { elite: 'tenthLegion' });
-    // the other elites' marker has the laurel leaves (ellipses rotated round the boss); the Tenth's has none
-    expect(plain).not.toMatch(/rotate\(-20 /);
-    const sacred = svg(h(UnitToken, { type: 'HI', look: 'carthaginian', blockColor: 'car', blocks: 4, maxBlocks: 4, facing: 'right', elite: 'carthSacredBand' }));
-    expect(sacred).toMatch(/rotate\(-20 /);
+    const p = paletteFor('marian', 'rom');
+    const marker = svg(h(EliteStandard, { p, elite: 'tenthLegion' }));
+    expect(marker.match(/data-marker="tenth"/g)).toHaveLength(1);
+    // the numeral X, in the side colour, on the gold plaque
+    expect(marker).toContain(`<path d="M-0.8 -29.4 L2.4 -24.4 M2.4 -29.4 L-0.8 -24.4" stroke="${p.banner}"`);
+    expect(marker).toContain(`fill="${p.gold}" stroke="#1d140e" stroke-width="0.6"`);
+    // the eagle: a gold group of two mirrored wings, a body, a head and a beak, on top of the pole
+    const eagle = marker.match(/<g transform="translate\(0 -38\.4\)" fill="([^"]+)"[^>]*>(.*?)<\/g>/);
+    expect(eagle?.[1]).toBe(p.gold);
+    const wings = [...(eagle?.[2] ?? '').matchAll(/<path d="M0 0 C[^"]*" transform="translate\(([-\d.]+) ([-\d.]+)\) scale\(([-\d.]+) ([-\d.]+)\)"/g)];
+    expect(wings.map((m) => m.slice(1).map(Number))).toEqual([[-0.3, -1.6, 1, 1], [0.3, -1.6, -1, 1]]);
+    expect(eagle?.[2].match(/<ellipse /g)).toHaveLength(1);
+    expect(eagle?.[2].match(/<circle /g)).toHaveLength(1);
+    // no laurel wreath (its eight leaves are ellipses rotated round the pole top) and no army device on the plaque
+    expect(marker).not.toMatch(/rotate\(/);
+    expect(marker).not.toContain(`fill="${p.banner}"`);
+    // the other elites keep the wreath, and only the Tenth's marker is tagged
+    const sacred = svg(h(EliteStandard, { p: paletteFor('carthaginian', 'car'), elite: 'carthSacredBand' }));
+    expect(sacred.match(/rotate\(/g)).toHaveLength(8);
+    expect(sacred).not.toContain('data-marker');
+    // in the token it stands once, and not on a plain Marian HI
+    expect(token('HI', 'marian', { elite: 'tenthLegion' }).match(/data-marker="tenth"/g)).toHaveLength(1);
+    expect(token('HI', 'marian')).not.toContain('data-marker');
     expect(svg(h(UnitIcon, { type: 'HI', look: 'marian', blockColor: 'rom', size: 64, elite: 'tenthLegion' }))).not.toMatch(/NaN/);
   });
 });

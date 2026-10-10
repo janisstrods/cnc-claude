@@ -1,5 +1,5 @@
 // UnitToken: base plate + miniatures + class badge + strength pips, centred on (0,0) of a pointy-top hex (R = 50).
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import type { ArmyLook, Blocks, UnitType } from '../engine/types';
 import { paletteFor, type ArtEliteId, type Palette } from './palettes';
 import { FootFigure, footKit } from './foot';
@@ -8,6 +8,7 @@ import { ElephantFigure } from './elephant';
 import { ChariotFigure } from './chariot';
 import { CamelFigure } from './camel';
 import { MachineFigure } from './machine';
+import { WingPair } from './exp2-parts';
 import { Emblem, FacingRightCtx, OL, makeFig, type Fig } from './parts';
 
 export type Facing = 'left' | 'right';
@@ -216,15 +217,28 @@ export function Badge({ type, blocks, maxBlocks, elite }: { type: UnitType; bloc
 
 const STANDARD_FIG = new WeakMap<Palette, Fig>();
 
-/** Elites whose gold marker differs: the Tenth Legion's carries an eagle instead of the wreath, and its numeral. */
-const ELITE_MARKERS: Partial<Record<ArtEliteId, { top: 'eagle'; plaque: 'X' }>> = { tenthLegion: { top: 'eagle', plaque: 'X' } };
+/** Elites whose gold marker carries an eagle and the numeral X instead of the laurel wreath and the army's device. */
+const EAGLE_ELITES: ReadonlySet<ArtEliteId> = new Set<ArtEliteId>(['tenthLegion']);
 
-/** A small gold eagle with raised wings, at the top of an elite marker. */
-const MARKER_WING = 'M-0.3 -1.6 C-1.6 -2.6 -3 -4.6 -3.1 -6.8 C-2.3 -6 -1.5 -5.6 -0.6 -5.4 C-0.9 -4.7 -0.8 -3.9 -0.4 -3.3 Z';
+/** The marker's frame: the shadow, the pole, the plaque (with `plaque` on it), the cross bar, and `top` above the bar. */
+function MarkerFrame({ plaque, top, p, tag }: { plaque: ReactNode; top: ReactNode; p: Palette; tag?: string }) {
+  return (
+    <g transform="translate(-27.5 8) scale(0.88)" data-marker={tag}>
+      <ellipse cx={1} cy={0.6} rx={3} ry={1.1} fill="#000" opacity={0.3} />
+      <path d="M0 0.4 L0 -37.6" stroke={OL} strokeWidth={2.1} strokeLinecap="round" />
+      <path d="M0 0 L0 -37.6" stroke={p.goldShade} strokeWidth={1} />
+      <path d="M-3.8 -31.5 L5.4 -31.5 L5.4 -20.5 L3.1 -22.2 L0.8 -20.5 L-1.5 -22.2 L-3.8 -20.5 Z" fill={p.gold} stroke={OL} strokeWidth={0.6} strokeLinejoin="round" />
+      <path d="M-3.8 -31.5 L-1.6 -31.5 L-1.6 -21.6 L-3.8 -20.5 Z" fill={p.goldShade} opacity={0.6} />
+      {plaque}
+      <path d="M-4.8 -31.5 L6.4 -31.5" stroke={OL} strokeWidth={1.7} strokeLinecap="round" />
+      <path d="M-4.8 -31.5 L6.4 -31.5" stroke={p.gold} strokeWidth={0.8} strokeLinecap="round" />
+      {top}
+    </g>
+  );
+}
 
 export function EliteStandard({ p, elite }: { p: Palette; elite?: ArtEliteId }) {
-  const marker = elite ? ELITE_MARKERS[elite] : undefined;
-  if (marker) return <EagleMarker p={p} />;
+  if (elite && EAGLE_ELITES.has(elite)) return <EagleMarker p={p} />;
   // Laurel leaves along two arcs around (0, -42).
   const leaves: JSX.Element[] = [];
   for (let k = 0; k < 4; k++) {
@@ -239,42 +253,36 @@ export function EliteStandard({ p, elite }: { p: Palette; elite?: ArtEliteId }) 
     }
   }
   return (
-    <g transform="translate(-27.5 8) scale(0.88)">
-      <ellipse cx={1} cy={0.6} rx={3} ry={1.1} fill="#000" opacity={0.3} />
-      <path d="M0 0.4 L0 -37.6" stroke={OL} strokeWidth={2.1} strokeLinecap="round" />
-      <path d="M0 0 L0 -37.6" stroke={p.goldShade} strokeWidth={1} />
-      <path d="M-3.8 -31.5 L5.4 -31.5 L5.4 -20.5 L3.1 -22.2 L0.8 -20.5 L-1.5 -22.2 L-3.8 -20.5 Z" fill={p.gold} stroke={OL} strokeWidth={0.6} strokeLinejoin="round" />
-      <path d="M-3.8 -31.5 L-1.6 -31.5 L-1.6 -21.6 L-3.8 -20.5 Z" fill={p.goldShade} opacity={0.6} />
-      <PlaqueDevice p={p} />
-      <path d="M-4.8 -31.5 L6.4 -31.5" stroke={OL} strokeWidth={1.7} strokeLinecap="round" />
-      <path d="M-4.8 -31.5 L6.4 -31.5" stroke={p.gold} strokeWidth={0.8} strokeLinecap="round" />
-      <g fill={p.gold} stroke={OL} strokeWidth={0.35}>{leaves}</g>
-      <circle cx={0} cy={-42} r={1.5} fill={p.gold} stroke={OL} strokeWidth={0.5} />
-    </g>
+    <MarkerFrame
+      p={p}
+      plaque={<PlaqueDevice p={p} />}
+      top={(
+        <>
+          <g fill={p.gold} stroke={OL} strokeWidth={0.35}>{leaves}</g>
+          <circle cx={0} cy={-42} r={1.5} fill={p.gold} stroke={OL} strokeWidth={0.5} />
+        </>
+      )}
+    />
   );
 }
 
 /** The Tenth Legion's marker: the gold plaque with its numeral X, an eagle with raised wings on top. */
 function EagleMarker({ p }: { p: Palette }) {
   return (
-    <g transform="translate(-27.5 8) scale(0.88)">
-      <ellipse cx={1} cy={0.6} rx={3} ry={1.1} fill="#000" opacity={0.3} />
-      <path d="M0 0.4 L0 -37.6" stroke={OL} strokeWidth={2.1} strokeLinecap="round" />
-      <path d="M0 0 L0 -37.6" stroke={p.goldShade} strokeWidth={1} />
-      <path d="M-3.8 -31.5 L5.4 -31.5 L5.4 -20.5 L3.1 -22.2 L0.8 -20.5 L-1.5 -22.2 L-3.8 -20.5 Z" fill={p.gold} stroke={OL} strokeWidth={0.6} strokeLinejoin="round" />
-      <path d="M-3.8 -31.5 L-1.6 -31.5 L-1.6 -21.6 L-3.8 -20.5 Z" fill={p.goldShade} opacity={0.6} />
-      <path d="M-0.8 -29.4 L2.4 -24.4 M2.4 -29.4 L-0.8 -24.4" stroke={p.banner} strokeWidth={1.1} strokeLinecap="round" />
-      <path d="M-4.8 -31.5 L6.4 -31.5" stroke={OL} strokeWidth={1.7} strokeLinecap="round" />
-      <path d="M-4.8 -31.5 L6.4 -31.5" stroke={p.gold} strokeWidth={0.8} strokeLinecap="round" />
-      <g transform="translate(0 -38.4)" fill={p.gold} stroke={OL} strokeWidth={0.45} strokeLinejoin="round">
-        <path d={MARKER_WING} />
-        <path d={MARKER_WING} transform="scale(-1 1)" />
-        <ellipse cx={0} cy={-1.8} rx={1.05} ry={1.7} />
-        <circle cx={0.45} cy={-3.9} r={0.8} />
-        <path d="M1.1 -4.2 L2 -3.8 L1.1 -3.4 Z" />
-        <path d="M-2.6 0.2 L2.6 0.2" fill="none" />
-      </g>
-    </g>
+    <MarkerFrame
+      p={p}
+      tag="tenth"
+      plaque={<path d="M-0.8 -29.4 L2.4 -24.4 M2.4 -29.4 L-0.8 -24.4" stroke={p.banner} strokeWidth={1.1} strokeLinecap="round" />}
+      top={(
+        <g transform="translate(0 -38.4)" fill={p.gold} stroke={OL} strokeWidth={0.45} strokeLinejoin="round">
+          <WingPair spread={0.3} y={-1.6} />
+          <ellipse cx={0} cy={-1.8} rx={1.05} ry={1.7} />
+          <circle cx={0.45} cy={-3.9} r={0.8} />
+          <path d="M1.1 -4.2 L2 -3.8 L1.1 -3.4 Z" />
+          <path d="M-2.6 0.2 L2.6 0.2" fill="none" />
+        </g>
+      )}
+    />
   );
 }
 

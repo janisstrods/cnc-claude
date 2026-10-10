@@ -172,6 +172,9 @@ export interface Palette extends LookPalette {
   bannerShade: string;
 }
 
+/** The flocked top of every miniature's base (the board contrast tests check block edges against it). */
+export const BASE_TOP = '#6e6a3c';
+
 const common = {
   outline: '#1d140e',
   iron: '#8f949a',
@@ -182,7 +185,7 @@ const common = {
   wood: '#9a6a3a',
   woodShade: '#5e3c1c',
   ivory: '#f1e6c8',
-  baseTop: '#6e6a3c',
+  baseTop: BASE_TOP,
   baseTopShade: '#4f4c2a',
   gold: '#e9bf4f',
   goldShade: '#a87a22',
@@ -683,15 +686,16 @@ export const BLOCK_COLORS: Record<Blocks, SideColors> = {
     cloth: { main: '#a8741e', light: '#d4a24a', dark: '#5e3e0c' },
   },
   // Expansion #2: the Barbarian blocks in emerald green (bluer and stronger than the board's grass and woods), and the grey
-  // Roman blocks of a command drawn apart from its red army (210 Lentulus) in a cool mid grey. Both are checked for contrast
-  // against the other sets, each other and the board (tests/art/blocks.test.ts).
+  // Roman blocks of a command drawn apart from its red army (210 Lentulus) in a pale cool slate grey. Both are checked for
+  // contrast against the other sets, each other and every colour of the board's paint palette (tests/art/blocks.test.ts).
+  // The board's stones, pools and shallows fill the neutral grey range, so the edge sits lighter and bluer than a true grey.
   bar: {
     edge: '#17985a', edgeShade: '#0b4a2c', edgeLight: '#62c792', banner: '#14864f', bannerShade: '#0a4429',
     cloth: { main: '#137a48', light: '#45ab78', dark: '#082e1b' },
   },
   gry: {
-    edge: '#9aa0a8', edgeShade: '#5f656d', edgeLight: '#cdd1d6', banner: '#8a9098', bannerShade: '#5c6168',
-    cloth: { main: '#80868e', light: '#aeb3b9', dark: '#4f545a' },
+    edge: '#b9c6e8', edgeShade: '#6f7da6', edgeLight: '#e4eaf9', banner: '#8e99b6', bannerShade: '#5a6482',
+    cloth: { main: '#838daa', light: '#b0b8d0', dark: '#4b5470' },
   },
 };
 

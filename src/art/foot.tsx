@@ -153,7 +153,7 @@ export function figurePalette(p: Palette, i: number, elite?: ArtEliteId): Palett
 }
 
 /** The kit after the look's per-type override (perhaps another kit's figure) and the elite's. */
-function lookKit(kit: FootKit, p: Palette, i: number, elite?: ArtEliteId): FootKit {
+export function lookKit(kit: FootKit, p: Palette, i: number, elite?: ArtEliteId): FootKit {
   const o = kit.unit ? p.style.foot?.[kit.unit] : undefined;
   const lo = Array.isArray(o) ? o[i % o.length] : o;
   const eo = elite ? ELITE_FOOT[elite]?.foot : undefined;
