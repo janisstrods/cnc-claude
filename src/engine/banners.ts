@@ -1,15 +1,10 @@
 // Banners and victory (rules-reference §13, §18.4). A side's banner total is its permanent banners
-// (`PlayerState.banners`) plus the banners its objectives give it right now (held banners, `ObjectiveState.held`).
+// (`PlayerState.banners`) plus the banners its objectives give it right now (held banners, held.ts). Held banners are
+// brought up to date before any banner is scored, so a total never counts a held banner already lost.
 import { drawCard } from './cards';
-import { isRomanArmy } from './query';
+import { heldBanners, heldSnapshot, refreshHeld } from './held';
+import { isRomanArmy, other } from './query';
 import type { FlowCtx, GameState, Side } from './types';
-
-/** Banners `side` holds right now through its objectives (hold, majority, section clear); lost again when they lapse. */
-export function heldBanners(s: GameState, side: Side): number {
-  let n = 0;
-  for (const o of s.special.objState) n += o.held[side];
-  return n;
-}
 
 /** A side's banner total: its permanent banners plus its held banners. */
 export function bannerTotal(s: GameState, side: Side): number {
@@ -31,10 +26,35 @@ export function bannerVictory(s: GameState, ctx: FlowCtx, side: Side): boolean {
 }
 
 /**
- * `side` scores a permanent banner (`reason` goes in the `banner` event, whose `total` is the banner total). A total
- * reaching the battle's target wins it. 2nd Beneventum: the Romans grow to 6 cards on their 3rd banner.
+ * Bring the held banners up to date (held.ts): after units moved, left the board or were eliminated, and before any
+ * banner is scored. `change` (the turn-end rules, `turnEndObjectives`) is applied first, inside the same comparison.
+ * Emits `held` for each side whose held banners changed (losses first, then the active side; reason = the text of the
+ * first objective that changed for it), then the victory check for each side whose total rose. Emits nothing when
+ * nothing changed (always in battles without hold, majority or section clear objectives) or once the battle is over.
+ */
+export function updateHeld(s: GameState, ctx: FlowCtx, change?: (s: GameState) => void): void {
+  const { objectives, objState } = s.special;
+  if (!objectives.length || s.winner) return;
+  const before = heldSnapshot(s);
+  change?.(s);
+  refreshHeld(s);
+  const delta = (side: Side) => objState.reduce((n, st, i) => n + st.held[side] - before[i][side], 0);
+  const sides = [s.active, other(s.active)].filter((side) => delta(side) !== 0)
+    .sort((a, b) => Math.sign(delta(a)) - Math.sign(delta(b)));
+  for (const side of sides) {
+    const i = objState.findIndex((st, k) => st.held[side] !== before[k][side]);
+    ctx.emit({ t: 'held', side, held: heldBanners(s, side), total: bannerTotal(s, side), reason: objectives[i].text });
+  }
+  for (const side of sides) if (delta(side) > 0 && bannerVictory(s, ctx, side)) return;
+}
+
+/**
+ * `side` scores a permanent banner (`reason` goes in the `banner` event, whose `total` is the banner total). The held
+ * banners are brought up to date first (`updateHeld`, which may end the battle). A total reaching the battle's target
+ * wins it. 2nd Beneventum: the Romans grow to 6 cards on their 3rd banner.
  */
 export function gainBanner(s: GameState, ctx: FlowCtx, side: Side, reason: string) {
+  updateHeld(s, ctx);
   if (s.winner) return;
   const p = s.players[side];
   p.banners++;

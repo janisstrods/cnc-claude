@@ -540,6 +540,120 @@ describe('Expansion #2 objectives', () => {
     expect(u(d, 'u1')).toBeUndefined();
   });
 
+  it('a permanent banner never counts a held banner already lost (a unit leaves a hold hex for a capture camp)', () => {
+    // 2 permanent + 1 held of 4: moving off the held hex onto the camp makes 3, not a (false) win with 4
+    const s = build({
+      banners: 4,
+      objectives: [
+        { kind: 'hold', side: 'bottom', hexes: [[3, 5]], text: 'The hill is held.' },
+        { kind: 'capture', side: 'bottom', hexes: [[2, 5]], text: 'Camp!' },
+      ],
+      terrain: [{ at: [2, 5], t: 'camp' }],
+      units: [{ side: 'bottom', type: 'MI', at: [3, 5] }],
+    });
+    s.players.bottom.banners = 2;
+    const d = play(s, 'order2C', ['u1']);
+    expect(helds(ev(d))).toEqual([{ t: 'held', side: 'bottom', held: 1, total: 3, reason: 'The hill is held.' }]);
+    must(d, { kind: 'move', piece: 'u1', to: H(2, 5) });
+    const es = ev(d);
+    expect(es.slice(0, 4)).toEqual([
+      { t: 'move', id: 'u1', path: [H(3, 5), H(2, 5)] },
+      { t: 'log', text: 'Camp!', side: 'bottom' },
+      { t: 'held', side: 'bottom', held: 0, total: 2, reason: 'The hill is held.' },
+      { t: 'banner', side: 'bottom', total: 3, reason: 'camp captured' },
+    ]);
+    expect(es.filter((e) => e.t === 'victory')).toEqual([]);
+    expect(d.state.winner).toBeNull();
+  });
+
+  it("a leader lost in a marsh: the enemy's banner never counts a held banner already lost", () => {
+    // the top side holds 1 for its cleared left section (the bottom side's right); the Roman unit entering it (a marsh)
+    // takes that banner away before its leader's death scores: 1 + 1 = 2 of 3, not a (false) win with 3
+    const TEXT = 'The Roman right is clear.';
+    const s = build({
+      banners: 3,
+      objectives: [{ kind: 'sectionClear', side: 'top', text: TEXT }],
+      terrain: [{ at: [5, 8], t: 'marsh' }],
+      units: [{ side: 'bottom', type: 'MI', at: [5, 7] }],
+      leaders: [{ side: 'bottom', name: 'Marius', at: [5, 7] }],
+    });
+    s.players.top.banners = 1;
+    s.special.objState[0].sections = ['left'];
+    s.special.objState[0].held.top = 1;
+    const d = play(s, 'order2C', ['u1']);
+    expect(helds(ev(d))).toEqual([]);
+    forceDice(['medium', 'leader', 'leader']); // marsh check: 1 block lost; the leader check kills Marius
+    must(d, { kind: 'move', piece: 'u1', to: H(5, 8) });
+    const es = ev(d).filter((e) => e.t === 'leaderKilled' || e.t === 'held' || e.t === 'banner' || e.t === 'victory');
+    expect(es).toEqual([
+      { t: 'leaderKilled', id: 'L2' },
+      { t: 'held', side: 'top', held: 0, total: 1, reason: TEXT },
+      { t: 'banner', side: 'top', total: 2, reason: 'leader killed' },
+    ]);
+    expect(d.state.winner).toBeNull();
+  });
+
+  it("a unit that stops on a 'turnStart' camp and advances off it before its side's next turn takes nothing", () => {
+    const s = build({
+      objectives: [{ kind: 'capture', side: 'bottom', hexes: [[2, 6]], when: 'turnStart', text: 'Camp!' }],
+      terrain: [{ at: [2, 6], t: 'camp' }],
+      units: [{ side: 'bottom', type: 'MI', at: [3, 6] }, { side: 'top', type: 'MI', at: [1, 6], blocks: 1 }],
+    });
+    const d = play(s, 'order2C', ['u1']);
+    must(d, { kind: 'move', piece: 'u1', to: H(2, 6) });
+    forceDice(['medium', 'medium', 'medium', 'medium']);
+    must(d, { kind: 'attack', unit: 'u1', target: H(1, 6) });
+    expect(u(d, 'u2')).toBeUndefined();
+    must(d, { kind: 'yesno', yes: true }); // momentum: off the camp
+    expect(u(d, 'u1')?.hex).toBe(H(1, 6));
+    endTurn(d);
+    passTurn(d); // top
+    const es = fromTurnStart(ev(d), 'bottom');
+    expect(logs(es)).toEqual([]);
+    expect(d.state.special.objState[0].taken).toEqual([]);
+  });
+
+  it("'majority' 'always': a tie, a gain and a loss happen during movement", () => {
+    const TEXT = 'The ridge';
+    const hexes: [number, number][] = [[4, 4], [4, 5], [4, 6]];
+    const s = build({
+      objectives: [{ kind: 'majority', sides: ['top', 'bottom'], hexes, banners: 1, when: 'always', text: TEXT }],
+      terrain: hexes.map((at) => ({ at, t: 'hill' as const })),
+      units: [{ side: 'top', type: 'MI', at: [4, 6] }, { side: 'bottom', type: 'MI', at: [5, 4] }, { side: 'bottom', type: 'MI', at: [5, 5] }],
+    });
+    const d = play(s, 'order2C', ['u2', 'u3']);
+    expect(helds(ev(d))).toEqual([{ t: 'held', side: 'top', held: 1, total: 1, reason: TEXT }]); // 1 against 0
+    must(d, { kind: 'move', piece: 'u2', to: H(4, 4) }); // 1 against 1: nobody
+    expect(helds(ev(d))).toEqual([{ t: 'held', side: 'top', held: 0, total: 0, reason: TEXT }]);
+    must(d, { kind: 'move', piece: 'u3', to: H(4, 5) }); // 2 against 1: the ridge has passed to the bottom side
+    expect(helds(ev(d))).toEqual([{ t: 'held', side: 'bottom', held: 1, total: 1, reason: TEXT }]);
+    endTurn(d);
+    passTurn(d); // top
+    ev(d);
+    turn(d, 'order2C', ['u2']);
+    must(d, { kind: 'move', piece: 'u2', to: H(5, 4) }); // 1 against 1 again: lost
+    expect(helds(ev(d))).toEqual([{ t: 'held', side: 'bottom', held: 0, total: 0, reason: TEXT }]);
+  });
+
+  it('an exit: the held banner the unit had is lost before its exit banner counts', () => {
+    const s = build({
+      objectives: [
+        { kind: 'exit', side: 'bottom', hexes: [[0, 6], [0, 7]] },
+        { kind: 'hold', side: 'bottom', hexes: [[0, 6]], text: 'The gate is held.' },
+      ],
+      units: [{ side: 'bottom', type: 'MI', at: [0, 6] }],
+    });
+    const d = play(s, 'order2C', ['u1']);
+    expect(helds(ev(d))).toEqual([{ t: 'held', side: 'bottom', held: 1, total: 1, reason: 'The gate is held.' }]);
+    must(d, { kind: 'move', piece: 'u1', to: OFF_BOARD });
+    expect(ev(d).slice(0, 4)).toEqual([
+      { t: 'move', id: 'u1', path: [H(0, 6), OFF_BOARD] },
+      { t: 'log', text: 'Roman Medium Infantry breaks through and exits the battlefield!', side: 'bottom' },
+      { t: 'held', side: 'bottom', held: 0, total: 0, reason: 'The gate is held.' },
+      { t: 'banner', side: 'bottom', total: 1, reason: 'unit exited' },
+    ]);
+  });
+
   it('setup validates the Expansion #2 objectives', () => {
     const game = (p: Pos) => () => createGame(setupOf({ ...CAMPS, ...p }), 1);
     const ok = (p: Pos) => createGame(setupOf({ ...CAMPS, ...p }), 1).special.objectives;

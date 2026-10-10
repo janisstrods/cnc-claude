@@ -4,18 +4,20 @@
 // banners.ts. Only `exit.leadersScore` (Expansion #3) is typed but still rejected by `resolveObjectives`.
 //
 // Hooks (flow.ts): `turnStartObjectives` before the card is played, `turnEndObjectives` before the draw, `captureOnStop`
-// where a unit ends its move or its close-combat sequence, and `updateHeld` after every change of unit positions (moves,
-// momentum advances, retreats, evades, eliminations, removals, exits) and after every battle action.
-import { bannerTotal, bannerVictory, gainBanner, heldBanners } from './banners';
-import { hexId, onBoard, sectionsOf } from './hex';
+// where a unit ends its move or its close-combat sequence, and `updateHeld` (banners.ts; held banners, held.ts) after
+// every change of unit positions (moves, momentum advances, retreats, evades, removals) and after every battle action.
+// Every banner scored goes through `gainBanner`, which brings the held banners up to date first.
+import { gainBanner, updateHeld } from './banners';
+import { turnEndHeld } from './held';
+import { hexId, onBoard } from './hex';
 import { attachedLeader, other, unitAt } from './query';
 import type { ObjectiveSetup, ScenarioSetup } from './setup';
 import { setTerrain } from './terrain';
 import { UNIT_STATS } from './units';
 import {
   ROWS,
-  type FlowCtx, type GameState, type HexId, type ObjectiveDef, type ObjectiveOf, type ObjectiveState, type SectionName,
-  type Side, type TerrainType, type Unit,
+  type FlowCtx, type GameState, type HexId, type ObjectiveDef, type ObjectiveOf, type ObjectiveState, type Side,
+  type TerrainType, type Unit,
 } from './types';
 
 // ---------------------------------------------------------------------------
@@ -146,38 +148,9 @@ export function newObjectiveState(): ObjectiveState {
   return { taken: [], held: { top: 0, bottom: 0 }, sections: [] };
 }
 
-// ---------------------------------------------------------------------------
-// board queries (only units count, never lone leaders)
-// ---------------------------------------------------------------------------
-
-const SIDES: readonly Side[] = ['top', 'bottom'];
-const SECTIONS: readonly SectionName[] = ['left', 'center', 'right'];
-
+/** Is there a unit (not a lone leader) of `side` on hex `h`? */
 function unitOfSide(s: GameState, h: HexId, side: Side): boolean {
   return unitAt(s, h)?.side === side;
-}
-
-function unitsOn(s: GameState, hexes: HexId[], side: Side): number {
-  let n = 0;
-  for (const h of hexes) if (unitOfSide(s, h, side)) n++;
-  return n;
-}
-
-/** Is there a unit of `side`'s enemy in section `sec` (from `side`'s point of view; a boundary hex is in both)? */
-function enemyIn(s: GameState, side: Side, sec: SectionName): boolean {
-  return s.units.some((u) => u.side !== side && u.hex >= 0 && sectionsOf(u.hex, side).includes(sec));
-}
-
-/** The side of `o.sides` with strictly more units on the hexes, or null (a tie, or the leader is not in `sides`). */
-function majorityHolder(s: GameState, o: ObjectiveOf<'majority'>): Side | null {
-  const top = unitsOn(s, o.hexes, 'top');
-  const bottom = unitsOn(s, o.hexes, 'bottom');
-  const lead: Side | null = top > bottom ? 'top' : bottom > top ? 'bottom' : null;
-  return lead && o.sides.includes(lead) ? lead : null;
-}
-
-function setMajority(st: ObjectiveState, o: ObjectiveOf<'majority'>, holder: Side | null) {
-  for (const side of SIDES) st.held[side] = side === holder ? o.banners : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -237,11 +210,12 @@ export function captureOnStop(s: GameState, ctx: FlowCtx, u: Unit) {
 /**
  * The start of `side`'s turn, before its card (X2 Q9d): each 'turnStart' capture objective of `side` takes every untaken
  * listed hex holding one of its units, one capture per hex in hex order. With `together: n` nothing happens until n
- * untaken listed hexes are occupied at once; then one capture (`banners[0]`) takes every untaken listed hex. Then the
- * held banners are brought up to date. The battle may end here.
+ * untaken listed hexes are occupied at once; then one capture (`banners[0]`) takes every untaken listed hex. The held
+ * banners are brought up to date before and after. The battle may end here.
  */
 export function turnStartObjectives(s: GameState, ctx: FlowCtx, side: Side): void {
   const { objectives, objState } = s.special;
+  updateHeld(s, ctx);
   for (let i = 0; i < objectives.length; i++) {
     const o = objectives[i];
     if (o.kind !== 'capture' || o.when !== 'turnStart' || o.side !== side) continue;
@@ -257,74 +231,16 @@ export function turnStartObjectives(s: GameState, ctx: FlowCtx, side: Side): voi
 }
 
 // ---------------------------------------------------------------------------
-// held banners
+// turn end
 // ---------------------------------------------------------------------------
-
-/** Held banners of every objective, per side (to compare after a change). */
-function heldSnapshot(s: GameState): Record<Side, number>[] {
-  return s.special.objState.map((st) => ({ ...st.held }));
-}
-
-/** The objectives decided by positions alone: hold, majority 'always', and the loss of cleared sections. */
-function refreshHeld(s: GameState) {
-  const { objectives, objState } = s.special;
-  for (let i = 0; i < objectives.length; i++) {
-    const o = objectives[i];
-    const st = objState[i];
-    if (o.kind === 'hold') st.held[o.side] = Math.min(o.max, unitsOn(s, o.hexes, o.side));
-    else if (o.kind === 'majority' && o.when === 'always') setMajority(st, o, majorityHolder(s, o));
-    else if (o.kind === 'sectionClear') {
-      st.sections = st.sections.filter((sec) => !enemyIn(s, o.side, sec));
-      st.held[o.side] = st.sections.length;
-    }
-  }
-}
-
-/**
- * Emit a `held` event for each side whose held banners differ from `before` (losses first, then the active side; reason
- * = the text of the first objective that changed for it), then the victory check for each side whose total rose.
- */
-function settleHeld(s: GameState, ctx: FlowCtx, before: Record<Side, number>[]) {
-  const { objectives, objState } = s.special;
-  const delta = (side: Side) => objState.reduce((n, st, i) => n + st.held[side] - before[i][side], 0);
-  const sides = [s.active, other(s.active)].filter((side) => delta(side) !== 0)
-    .sort((a, b) => Math.sign(delta(a)) - Math.sign(delta(b)));
-  for (const side of sides) {
-    const i = objState.findIndex((st, k) => st.held[side] !== before[k][side]);
-    ctx.emit({ t: 'held', side, held: heldBanners(s, side), total: bannerTotal(s, side), reason: objectives[i].text });
-  }
-  for (const side of sides) if (delta(side) > 0 && bannerVictory(s, ctx, side)) return;
-}
-
-/**
- * Bring the held banners up to date after units moved, left the board or were eliminated (X2 Q9a–c): `hold` (1 per
- * listed hex a unit of the side stands on, at most `max`), `majority` 'always', and `sectionClear` sections lost to an
- * enemy unit. Emits `held` for each side whose held banners changed and checks victory for each side whose total rose.
- * Emits nothing when nothing changed (always in battles without such objectives) or once the battle is over.
- */
-export function updateHeld(s: GameState, ctx: FlowCtx): void {
-  if (!s.special.objectives.length || s.winner) return;
-  const before = heldSnapshot(s);
-  refreshHeld(s);
-  settleHeld(s, ctx, before);
-}
 
 /**
  * The end of `side`'s turn, before the draw (X2 Q9b–c): every `majority` 'turnEnd' objective goes to the side with more
  * units on its hexes (a tie: nobody), and each `sectionClear` objective of `side` scores every section without an enemy
- * unit. Then `held` events and the victory check, as `updateHeld`.
+ * unit (`turnEndHeld`). Then `held` events and the victory check, as `updateHeld`.
  */
 export function turnEndObjectives(s: GameState, ctx: FlowCtx, side: Side): void {
-  if (!s.special.objectives.length || s.winner) return;
-  const { objectives, objState } = s.special;
-  const before = heldSnapshot(s);
-  for (let i = 0; i < objectives.length; i++) {
-    const o = objectives[i];
-    if (o.kind === 'majority' && o.when === 'turnEnd') setMajority(objState[i], o, majorityHolder(s, o));
-    else if (o.kind === 'sectionClear' && o.side === side) objState[i].sections = SECTIONS.filter((sec) => !enemyIn(s, side, sec));
-  }
-  refreshHeld(s);
-  settleHeld(s, ctx, before);
+  updateHeld(s, ctx, (st) => turnEndHeld(st, side));
 }
 
 // ---------------------------------------------------------------------------
@@ -357,6 +273,5 @@ export function exitUnit(s: GameState, ctx: FlowCtx, u: Unit) {
   s.units = s.units.filter((x) => x.id !== u.id);
   if (l) s.leaders = s.leaders.filter((x) => x.id !== l.id);
   ctx.emit({ t: 'log', text: o.text.replaceAll('{unit}', UNIT_STATS[u.type].name), side: u.side });
-  updateHeld(s, ctx); // the unit is gone before its banner counts
-  gainBanner(s, ctx, u.side, 'unit exited');
+  gainBanner(s, ctx, u.side, 'unit exited'); // the held banners count the unit gone first
 }

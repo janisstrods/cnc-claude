@@ -6,8 +6,8 @@ import {
 } from './combat';
 import { ALL_HEXES, areAdjacent, neighbours, rowOf } from './hex';
 import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './movement';
-import { bannerTotal, gainBanner } from './banners';
-import { captureOnStop, exitUnit, turnEndObjectives, turnStartObjectives, updateHeld } from './objectives';
+import { bannerTotal, gainBanner, updateHeld } from './banners';
+import { captureOnStop, exitUnit, turnEndObjectives, turnStartObjectives } from './objectives';
 import {
   autoOrders, orderMode, rallyCandidates, spartacusDiceCount, validateOrders, validateRally, validateSpartacus,
 } from './orders';
@@ -98,6 +98,10 @@ function leaderLost(s: GameState, ctx: FlowCtx, l: Leader, reason: string, text:
  * banners one by one, then the Hellespont rules for each leader lost in the batch (banners resolve first, §17.4).
  */
 function settleBanners(s: GameState, ctx: FlowCtx, b: BannerBatch, reason: string, drawReason: string) {
+  // held banners are brought up to date first; only a win produced by that update ends the step here
+  const decided = s.winner !== null;
+  updateHeld(s, ctx);
+  if (!decided && s.winner) return;
   const before = { top: bannerTotal(s, 'top'), bottom: bannerTotal(s, 'bottom') };
   const add = { top: b.gains.filter((x) => x === 'top').length, bottom: b.gains.filter((x) => x === 'bottom').length };
   const winTop = before.top + add.top >= s.bannersToWin && add.top > 0;
@@ -164,8 +168,7 @@ function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: stri
     s.units = s.units.filter((x) => x.id !== u.id);
     ctx.emit({ t: 'eliminated', id: u.id });
     log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} eliminated.`, u.side);
-    updateHeld(s, ctx); // objective banners the unit held go before the enemy's banner counts
-    gainBanner(s, ctx, other(u.side), 'unit eliminated');
+    gainBanner(s, ctx, other(u.side), 'unit eliminated'); // held banners first: the unit no longer holds anything
     return true;
   }
   return false;
@@ -376,9 +379,7 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
       if (l) orphans.push(l);
     } else if (l) survivorsWithLeader.push(l);
   }
-  // held banners of the crushed units go first; then the banners together, then the Hellespont rules for the leaders
-  updateHeld(s, ctx);
-  if (s.winner) return;
+  // banners together, then the Hellespont rules for the crushed leaders
   settleBanners(s, ctx, batch, 'crushed by elephants', 'elephant retreat');
   if (s.winner) return;
   for (const l of survivorsWithLeader) if (leaderById(s, l.id)) leaderCheck(s, ctx, l, 2);
