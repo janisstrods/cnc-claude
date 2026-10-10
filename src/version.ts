@@ -3,6 +3,7 @@
  * suits what it brought (no fixed order, never reused). Bump for every publish, together with package.json's version.
  */
 export const RELEASES = [
+  { number: '1.4.1', name: 'Clastidium', notes: 'History of every Expansion #2 battle: the road to battle, an animated battle map and the outcome' },
   { number: '1.4.0', name: 'Vercellae', notes: 'Expansion #2, Rome & the Barbarians (battles 201–223): Gauls, Germans, Spartacus and the Britons against the legions' },
   { number: '1.3.0', name: 'Marathon', notes: 'History of every battle: the road to battle, an animated battle map and the outcome, in three slides' },
   { number: '1.2.1', name: 'Ilipa', notes: 'End-of-battle dialog redrawn: banner scoreboard, tidy rematch buttons' },
