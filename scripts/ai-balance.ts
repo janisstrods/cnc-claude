@@ -1,13 +1,17 @@
-// AI-vs-AI balance runs with behaviour counters for the Expansion #1 units and rules.
-// Usage: npx vite-node scripts/ai-balance.ts -- [--scenarios 101,110] [--games 2] [--a tribune] [--b tribune]
-//        [--scale 0.5] [--shard 0/4] [--seedOffset 0] [--json out.json] [--persTop veteran] [--persBottom veteran]
+// AI-vs-AI balance runs with behaviour counters for the Expansion #1 and #2 units and rules.
+// Usage: npx vite-node scripts/ai-balance.ts -- [--scenarios 101,110 | --expansion exp2] [--games 2] [--a tribune]
+//        [--b tribune] [--scale 0.5] [--shard 0/4] [--seedOffset 0] [--json out.json] [--persTop veteran] [--persBottom veteran]
 //   Each game is played once per side assignment (A as bottom, then A as top), so with --a = --b the win rates
-//   measure the battle's balance; with --a tribune --b recruit they measure strength. The counters flag silly play:
-//   war machines abandoned, moved or left adjacent to the enemy; light bow cavalry closing on heavy units; camels
-//   attacking horses; leaders lost in Hellespont; decision times.
+//   measure the battle's balance; with --a tribune --b recruit they measure strength. Without --scenarios every battle of
+//   --expansion (default exp1) is played. The counters flag silly play: war machines abandoned, moved or left adjacent
+//   to the enemy; light bow cavalry closing on heavy units; camels attacking horses; leaders lost in Hellespont; decision
+//   times. Expansion #2 battles add their own counters (`X2`, below): Rolling Fire, exits, camps captured, held
+//   banners, pilum throws, Caesar's forced marches, commands named, ambush entries, last-row losses, ramparts broken.
+//   Banners are banner totals (permanent + held; the same as permanent banners outside Expansion #2).
 import { writeFileSync } from 'node:fs';
 import {
-  GameDriver, UNIT_STATS, areAdjacent, canFireAt, cloneState, createGame, modsFor, randomAnswer, type GameState, type Side, type Unit,
+  GameDriver, OFF_BOARD, UNIT_STATS, areAdjacent, bannerTotal, canFireAt, cloneState, createGame, hasPilum, heldBanners, leaderHas,
+  modsFor, randomAnswer, type GameEvent, type GameState, type Side, type Unit,
 } from '../src/engine';
 import { SCENARIOS } from '../src/scenarios';
 import { chooseAnswer, newMemory, personalityById, personalityFor, type AiOptions, type Difficulty } from '../src/ai';
@@ -22,7 +26,8 @@ const A = arg('a', 'tribune') as Difficulty;
 const B = arg('b', 'tribune') as Difficulty;
 const games = Number(arg('games', '1'));
 const scale = Number(arg('scale', '0.5'));
-const scen = arg('scenarios', SCENARIOS.filter((s) => Number(s.id) > 100).map((s) => s.id).join(',')).split(',');
+const expansion = arg('expansion', 'exp1');
+const scen = arg('scenarios', SCENARIOS.filter((s) => s.expansion === expansion).map((s) => s.id).join(',')).split(',');
 const [shard, shards] = arg('shard', '0/1').split('/').map(Number);
 const seedOffset = Number(arg('seedOffset', '0'));
 const jsonOut = arg('json', '');
@@ -48,9 +53,25 @@ const zero = (): Counters => ({
   lbcShots: 0, lbcClose: 0, lbcCloseVsHeavy: 0, camClose: 0, camCloseVsHorse: 0, leadersKilled: 0,
 });
 
+/**
+ * Expansion #2 counters (added to a game's counters in Expansion #2 battles only, so Expansion #1 output is unchanged).
+ * Rolling Fire: uses, rolls against enemy and own units; exits; turn-start / stop captures; held banners summed over the
+ * turn ends (top, bottom) and wins whose total included held banners; pilum throws; Caesar's 2-hex forced marches and
+ * the Tenth Legion's 2-hex marches; commands named; ambush entries; units lost to last-row retreat; ramparts broken.
+ */
+interface X2 {
+  rollingFire: number; rollingFireVsEnemy: number; rollingFireVsOwn: number; exits: number; camps: number;
+  heldTop: number; heldBottom: number; heldWins: number; pilumShots: number; caesarMarches: number; marches: number;
+  chooseCommand: number; ambush: number; lastRow: number; ramparts: number;
+}
+const zeroX2 = (): X2 => ({
+  rollingFire: 0, rollingFireVsEnemy: 0, rollingFireVsOwn: 0, exits: 0, camps: 0, heldTop: 0, heldBottom: 0, heldWins: 0,
+  pilumShots: 0, caesarMarches: 0, marches: 0, chooseCommand: 0, ambush: 0, lastRow: 0, ramparts: 0,
+});
+
 interface GameResult {
   sc: string; aSide: Side; seed: number; winner: string; banners: [number, number]; turns: number; reason: string;
-  msA: number[]; msB: number[]; c: Counters;
+  msA: number[]; msB: number[]; c: Counters & Partial<X2>;
   /** Leaders killed, by name (Alexander's fate, Hellespont). */
   killed: string[];
   /** War machine evades: attacker type and the machine's blocks. */
@@ -70,6 +91,29 @@ function endOfTurn(s: GameState, side: Side, c: Counters) {
   }
 }
 
+/** Count one engine event for the Expansion #2 counters (`terrainBefore`: the terrain before the answer). */
+function countX2(x: X2, s: GameState, e: GameEvent, known: Map<string, Unit>, terrainBefore: GameState['terrain']) {
+  if (e.t === 'combat') {
+    const a = known.get(e.attacker);
+    const t = known.get(e.target);
+    if (e.purpose === 'rollingFire' && a && t) {
+      if (t.side === a.side) x.rollingFireVsOwn++;
+      else x.rollingFireVsEnemy++;
+    } else if (e.purpose === 'ranged' && a && hasPilum(a) && UNIT_STATS[a.type].range === 0) x.pilumShots++;
+  } else if (e.t === 'move' && known.has(e.id)) {
+    const u = known.get(e.id)!;
+    if (e.path[e.path.length - 1] === OFF_BOARD) x.exits++;
+    else if (e.path.length === 3 && UNIT_STATS[u.type].infantry) {
+      const end = e.path[2];
+      if (s.leaders.some((l) => l.hex === end && l.side === u.side && leaderHas(l, 'forcedMarch'))) x.caesarMarches++;
+      else if (u.elite === 'tenthLegion' || u.legion === 'julian') x.marches++;
+    }
+  } else if (e.t === 'reserveEnter') x.ambush++;
+  else if (e.t === 'log' && /no ground left to retreat/.test(e.text)) x.lastRow++;
+  else if (e.t === 'terrainChanged' && terrainBefore[e.hex] === 'rampart' && e.terrain === 'plain' &&
+    !s.special.objectives.some((o) => o.kind === 'capture' && o.hexes.includes(e.hex))) x.ramparts++;
+}
+
 const results: GameResult[] = [];
 for (const job of mine) {
   const info = SCENARIOS.find((x) => x.id === job.sc)!;
@@ -83,6 +127,9 @@ for (const job of mine) {
   const opt = { [job.aSide]: mk(job.aSide, A), [bSide]: mk(bSide, B) } as Record<Side, AiOptions>;
   const mem = { top: newMemory(), bottom: newMemory() };
   const c = zero();
+  const x2 = info.expansion === 'exp2' ? zeroX2() : null;
+  const takenNow = () => d.state.special.objState.reduce((n, st) => n + st.taken.length, 0);
+  let taken = takenNow();
   const killed: string[] = [];
   const hwmEvades: string[] = [];
   const ms: Record<Side, number[]> = { top: [], bottom: [] };
@@ -100,6 +147,10 @@ for (const job of mine) {
   /** Close the turn that just ended: machine-turn counters and the fire tally of machines that could shoot. */
   const closeTurn = () => {
     if (turnSide) endOfTurn(d.state, turnSide, c);
+    if (x2 && turnSide) {
+      x2.heldTop += heldBanners(d.state, 'top');
+      x2.heldBottom += heldBanners(d.state, 'bottom');
+    }
     for (const id of could) {
       if (fired.has(id)) {
         c.hwmCouldFired++;
@@ -137,9 +188,17 @@ for (const job of mine) {
       }
     }
     for (const u of d.state.units) known.set(u.id, { ...u });
+    if (x2) {
+      const now = takenNow();
+      if (now > taken) x2.camps += now - taken;
+      taken = now;
+    }
     const t0 = performance.now();
     const ans = chooseAnswer(d.state, dec, opt[dec.side], mem[dec.side]).answer;
     if (dec.kind === 'playCard') ms[dec.side].push(performance.now() - t0);
+    if (x2 && ans.kind === 'rollingFire') x2.rollingFire++;
+    if (x2 && dec.kind === 'chooseCommand') x2.chooseCommand++;
+    const terrainBefore = d.state.terrain;
     if (dec.kind === 'defend' && ans.kind === 'defend' && ans.choice === 'evade' && known.get(dec.target)?.type === 'HWM') {
       c.hwmEvade++;
       hwmEvades.push(`${known.get(dec.attacker)?.type}>${known.get(dec.target)?.blocks}`);
@@ -149,6 +208,7 @@ for (const job of mine) {
       d.answer(randomAnswer(d.state, d.pending!, rnd));
     }
     for (const { e } of d.drainEvents()) {
+      if (x2) countX2(x2, d.state, e, known, terrainBefore);
       if (e.t === 'removed' && known.get(e.id)?.type === 'HWM') c.hwmAbandoned++;
       else if (e.t === 'eliminated' && known.get(e.id)?.type === 'HWM') c.hwmEliminated++;
       else if (e.t === 'move' && e.path.length >= 2 && known.get(e.id)?.type === 'HWM') c.hwmMoves++;
@@ -182,15 +242,18 @@ for (const job of mine) {
     }
   }
   closeTurn(); // the last turn (the battle ended in it, or the turn cap) counts too
+  if (x2) x2.camps += takenNow() - taken; // a capture that ended the battle
   const w = d.state.winner;
   const ps = d.state.players;
+  if (x2 && (w === 'top' || w === 'bottom') && heldBanners(d.state, w) > 0) x2.heldWins++;
   const res: GameResult = {
-    sc: job.sc, aSide: job.aSide, seed, winner: w === null ? 'none' : String(w), banners: [ps.bottom.banners, ps.top.banners],
-    turns: d.state.turn.number, reason: d.state.winReason, msA: ms[job.aSide], msB: ms[bSide], c, killed, hwmEvades,
+    sc: job.sc, aSide: job.aSide, seed, winner: w === null ? 'none' : String(w),
+    banners: [bannerTotal(d.state, 'bottom'), bannerTotal(d.state, 'top')],
+    turns: d.state.turn.number, reason: d.state.winReason, msA: ms[job.aSide], msB: ms[bSide], c: x2 ? { ...c, ...x2 } : c, killed, hwmEvades,
   };
   results.push(res);
   const avg = (x: number[]) => (x.length ? x.reduce((a, b) => a + b, 0) / x.length : 0);
-  const nz = Object.entries(c).filter(([, v]) => v).map(([k, v]) => `${k}=${Number.isInteger(v) ? v : v.toFixed(2)}`).join(' ');
+  const nz = Object.entries(res.c).filter(([, v]) => v).map(([k, v]) => `${k}=${Number.isInteger(v) ? v : v.toFixed(2)}`).join(' ');
   console.log(`${job.sc} A(${A})=${job.aSide} winner=${res.winner}${w === job.aSide ? '(A)' : w === bSide ? '(B)' : ''} ` +
     `bottom-top ${res.banners[0]}-${res.banners[1]} turns=${res.turns} msA=${avg(ms[job.aSide]).toFixed(0)} msB=${avg(ms[bSide]).toFixed(0)} ${nz}` +
     `${killed.length ? ` killed=${killed.join('/')}` : ''}${hwmEvades.length ? ` hwmEvades=${hwmEvades.join('/')}` : ''}${/leaders have fallen/.test(res.reason) ? ' (all leaders fell)' : ''}`);
