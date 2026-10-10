@@ -1,8 +1,8 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { GameOptions, Side } from '../engine';
 import {
-  GameController, clearSaved, devRouteConfig, loadSaved, newSessionConfig, rematchConfig, type Difficulty, type SavedGame,
-  type SessionConfig,
+  GameController, clearSaved, devRouteConfig, legResult, loadSaved, newSessionConfig, rematchConfig, type Difficulty,
+  type SavedGame, type SessionConfig,
 } from './game/controller';
 import { GameScreen } from './game/GameScreen';
 import { makeOpponent } from './game/makeOpponent';
@@ -66,7 +66,9 @@ export function App() {
 
   if (screen.kind === 'game') {
     const rematch = (switchSides: boolean) => {
-      const cfg = rematchConfig(screen.controller.config, switchSides);
+      const { config } = screen.controller;
+      const { over, display } = screen.controller.getView();
+      const cfg = rematchConfig(config, switchSides, over ? legResult(display, config.humanSide, over.winner) : undefined);
       screen.controller.dispose();
       clearSaved();
       setScreen({ kind: 'game', controller: startController(cfg) });

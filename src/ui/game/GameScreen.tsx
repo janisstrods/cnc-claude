@@ -703,7 +703,9 @@ export function GameScreen({ controller, onExit, onRematch }: {
       </Modal>
 
       <Modal open={!!view.over} title={view.over ? (view.over.winner === human ? 'Victory!' : view.over.winner === 'draw' ? 'A Draw' : 'Defeat') : ''}>
-        {view.over && <BattleResult state={s} human={human} over={view.over} onExit={onExit} onRematch={onRematch} />}
+        {view.over && <BattleResult
+          state={s} human={human} over={view.over} onExit={onExit} onRematch={onRematch} firstLeg={controller.config.firstLeg}
+        />}
       </Modal>
     </div>
   );

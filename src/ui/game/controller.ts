@@ -1,7 +1,7 @@
 // Game session controller: owns the engine driver, runs the AI, and turns engine events into paced animations.
 import {
-  CARD_DEFS, CARD_LIST, GameDriver, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, cardKind, cloneState, createGame, freshSeed, heldBanners, leaderById,
-  other, randomAnswer, rallyCandidates, unitById,
+  CARD_DEFS, CARD_LIST, GameDriver, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, bannerTotal, cardKind, cloneState, createGame, freshSeed,
+  heldBanners, leaderById, other, randomAnswer, rallyCandidates, unitById,
   type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameOptions, type GameState, type HexId, type QueuedEvent,
   type RollPurpose, type Side,
 } from '../../engine';
@@ -22,6 +22,22 @@ export interface SessionConfig {
   devCards?: CardKind[];
   /** Optional rules chosen in the briefing (Tactical Flexibility, §17.3); absent = the scenario's defaults. */
   options?: GameOptions;
+  /** The second battle of a both-sides match (started with Switch sides): how the first one ended. */
+  firstLeg?: LegResult;
+}
+
+/** How a finished battle ended, kept to sum up a both-sides match. */
+export interface LegResult {
+  /** The army the human commanded. */
+  humanSide: Side;
+  /** Banners each side had won (objective banners included). */
+  banners: Record<Side, number>;
+  winner: Side | 'draw';
+}
+
+export function legResult(state: GameState, humanSide: Side, winner: Side | 'draw'): LegResult {
+  const won = (side: Side) => Math.max(0, bannerTotal(state, side));
+  return { humanSide, banners: { top: won('top'), bottom: won('bottom') }, winner };
 }
 
 export interface SavedGame {
@@ -790,14 +806,17 @@ export function newSessionConfig(scenarioId: string, humanSide: Side, difficulty
 }
 
 /**
- * The session for a rematch of a finished battle: same battle, difficulty and optional rules, a fresh seed. With
+ * The session for playing a finished battle again: same battle, difficulty and optional rules, a fresh seed. With
  * `switchSides` the human takes the other army and the computer uses its new general's default personality (a
  * personality picked in the briefing was for the old enemy general); dev opening hands are not carried over.
+ * Switching sides after a single battle makes the two a match: `finished` goes along, so that the second battle's end
+ * can sum up both. A match is two battles, so switching again after the second starts a new one.
  */
-export function rematchConfig(config: SessionConfig, switchSides: boolean): SessionConfig {
+export function rematchConfig(config: SessionConfig, switchSides: boolean, finished?: LegResult): SessionConfig {
   const side = switchSides ? other(config.humanSide) : config.humanSide;
   const cfg = newSessionConfig(config.scenarioId, side, config.difficulty, config.options);
   if (cfg.seed === config.seed) cfg.seed = (config.seed + 1) >>> 0;
   if (!switchSides && config.personality) cfg.personality = config.personality;
+  if (switchSides && finished && !config.firstLeg) cfg.firstLeg = finished;
   return cfg;
 }
