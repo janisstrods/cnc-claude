@@ -565,6 +565,16 @@ export const BLOCK_COLORS: Record<Blocks, SideColors> = {
     edge: '#c88a22', edgeShade: '#7c5212', edgeLight: '#ecbc5e', banner: '#b8801e', bannerShade: '#74500f',
     cloth: { main: '#a8741e', light: '#d4a24a', dark: '#5e3e0c' },
   },
+  // Expansion #2 (temporary colours until the art track): barbarian blocks in a mid green, the grey Roman blocks (210 Lentulus'
+  // command) in a mid grey. Shades follow the other sets: edge shade/light -0.17/+0.18 lightness, banner -0.04, cloth main -0.07.
+  bar: {
+    edge: '#2f7d3a', edgeShade: '#173e1d', edgeLight: '#52b660', banner: '#296e33', bannerShade: '#173e1d',
+    cloth: { main: '#25632e', light: '#3b9e4a', dark: '#0f2812' },
+  },
+  gry: {
+    edge: '#7d8288', edgeShade: '#53575b', edgeLight: '#adb0b4', banner: '#73787e', bannerShade: '#53575b',
+    cloth: { main: '#6c7076', light: '#95999e', dark: '#45484b' },
+  },
 };
 
 export interface LookDef {
@@ -579,10 +589,13 @@ const PELTAST: FootLook = { shield: 'pelta', helmet: 'thracian', crest: 'none', 
 /** Skirmishers who always wear a cap: the cue that sets the Epirote and Antigonid light troops apart from the bare-headed Roman velites. */
 const CAPPED_LIGHTS: Partial<Record<UnitType, FootLook>> = { LI: { helmet: 'kausia' }, LB: { helmet: 'petasos' }, LS: { helmet: 'petasos' } };
 
+const ROMAN_LOOK: LookDef = { kit: 'roman', palette: ROMAN, style: { emblems: ['rome'], device: 'wreath', finial: 'eagle' } };
+const CARTHAGINIAN_LOOK: LookDef = { kit: 'punic', palette: CARTHAGINIAN, style: { emblems: ['carthage'], device: 'carthage', finial: 'crescent' } };
+
 /** Every army look: its kit, swatches and style. */
 export const LOOKS: Record<ArmyLook, LookDef> = {
-  roman: { kit: 'roman', palette: ROMAN, style: { emblems: ['rome'], device: 'wreath', finial: 'eagle' } },
-  carthaginian: { kit: 'punic', palette: CARTHAGINIAN, style: { emblems: ['carthage'], device: 'carthage', finial: 'crescent' } },
+  roman: ROMAN_LOOK,
+  carthaginian: CARTHAGINIAN_LOOK,
   syracusan: { kit: 'greek', palette: SYRACUSAN, style: { emblems: ['syracuse'], device: 'syracuse', finial: 'lozenge' } },
   athenian: {
     kit: 'greek', palette: ATHENIAN,
@@ -717,6 +730,13 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
       general: { horse: { coat: '#ece6da', shade: '#b0a690', mane: '#8a7e6a' } },
     },
   },
+  // Expansion #2 (temporary until the art track): the Barbarian looks draw as the Carthaginian look, Marian Romans as the Roman.
+  gallic: CARTHAGINIAN_LOOK,
+  germanic: CARTHAGINIAN_LOOK,
+  slave: CARTHAGINIAN_LOOK,
+  belgic: CARTHAGINIAN_LOOK,
+  briton: CARTHAGINIAN_LOOK,
+  marian: ROMAN_LOOK,
 };
 
 /** The art of a look; throws when the look has none (so a missing look fails loudly instead of drawing wrong). */

@@ -26,6 +26,7 @@ const BOX: Record<UnitType, Box> = {
   LBC: [-33.7, 0.4, -18.2, 19.3],
   CAM: [-45.9, 0.3, -20, 24.3],
   HWM: [-36.6, 0.4, -28.1, 21.9],
+  BCH: [-43.3, 0.8, -27.8, 31], // the Heavy Chariots figure until the art track
 };
 
 // The Expansion #1 kits where a figure's extent differs from the base box by more than 1.5 units (union over the kit's looks).

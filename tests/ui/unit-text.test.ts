@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ELITES, UNIT_STATS, UNIT_TYPES, type Leader, type LeaderTrait, type Unit, type UnitStats, type UnitType } from '../../src/engine';
 import { leaderTraitLines, unitCardLines, unitSummary } from '../../src/ui/game/uiModel';
-import { EXP1_UNIT_TYPES, Expansion, Units } from '../../src/ui/screens/RulesReference';
+import { EXP1_UNIT_TYPES, EXP2_UNIT_TYPES, Expansion, Units } from '../../src/ui/screens/RulesReference';
 
 const unit = (t: UnitType, extra: Partial<Unit> = {}): Unit =>
   ({ id: 'u1', side: 'top', type: t, hex: 0, blocks: UNIT_STATS[t].blocks, maxBlocks: UNIT_STATS[t].blocks, ...extra }) as Unit;
@@ -21,9 +21,10 @@ const TOOLTIP: Record<UnitType, string[]> = {
   LC: ['Move 4 · Retreat 4/flag', 'Close combat 2 dice, swords miss', 'Missiles: range 2, 2 dice (1 after moving)', 'Can evade'],
   MC: ['Move 3 · Retreat 3/flag', 'Close combat 3 dice', 'Can evade foot & heavy mounted'],
   HC: ['Move 2 · Retreat 2/flag', 'Close combat 4 dice', 'Can evade foot & elephants'],
+  // The elephant's dice note also lists Expansion #2's Barbarian chariots (fixed 2 dice, whatever their strength).
   EL: [
     'Move 2 · Retreat 1/flag',
-    'Close combat: same dice as the enemy unit (3 vs elephants, warriors, chariots)',
+    'Close combat: same dice as the enemy unit (3 vs elephants, warriors, chariots; 2 vs Barbarian chariots)',
     'Cannot evade',
     'Ignores sword hits · rampages when it retreats',
   ],
@@ -43,6 +44,8 @@ const TOOLTIP: Record<UnitType, string[]> = {
     'Can evade',
     'Abandoned after evading (no banner) · no momentum advance · cannot enter broken ground or marsh',
   ],
+  // Expansion #2 (§18)
+  BCH: ['Move 3 · Retreat 3/flag', 'Close combat 2 dice (+1 at full strength)', 'Can evade', 'Ignores 1 sword hit'],
 };
 
 /** Base-game rules-reference unit cards (stats line, notes line), captured the same way. */
@@ -71,6 +74,7 @@ const REFERENCE: Record<UnitType, [string, string]> = {
     '2 blocks · move 1 (no battle after moving) · close combat 2 · range 6 · retreat 1',
     'Evades any attack. Swords do not score hits. Abandoned after evading (no banner), no momentum advance, cannot enter broken ground or marsh.',
   ],
+  BCH: ['3 blocks · move 3 · close combat 2 · retreat 3', 'Evades any attack. +1 die and ignores a flag at full strength. Ignores one sword hit.'],
 };
 
 describe('unit tooltip (unitSummary)', () => {
@@ -189,7 +193,7 @@ describe('rules reference unit cards', () => {
   };
 
   it('the Units tab keeps the base-game types and their hand-written lines', () => {
-    const base = UNIT_TYPES.filter((t) => !EXP1_UNIT_TYPES.includes(t));
+    const base = UNIT_TYPES.filter((t) => !EXP1_UNIT_TYPES.includes(t) && !EXP2_UNIT_TYPES.includes(t));
     expect(base).toEqual(['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI', 'LC', 'MC', 'HC', 'EL', 'HCH']);
     expect(cardsOf(Units)).toEqual(base.map((t) => REFERENCE[t]));
   });
@@ -197,6 +201,11 @@ describe('rules reference unit cards', () => {
   it('the Expansion #1 tab shows the three new types, generated the same way', () => {
     expect([...EXP1_UNIT_TYPES].sort()).toEqual(['CAM', 'HWM', 'LBC']);
     expect(cardsOf(Expansion)).toEqual(EXP1_UNIT_TYPES.map((t) => REFERENCE[t]));
+  });
+
+  it('Expansion #2 types (the Barbarian light chariot) have generated cards but are not in the base Units tab', () => {
+    expect([...EXP2_UNIT_TYPES]).toEqual(['BCH']);
+    for (const t of EXP2_UNIT_TYPES) expect(unitCardLines(t), t).toEqual(REFERENCE[t]);
   });
 
   it('the Expansion #1 tab lists every elite preset and both leader traits', () => {

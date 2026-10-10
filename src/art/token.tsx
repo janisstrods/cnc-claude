@@ -15,7 +15,7 @@ export type Facing = 'left' | 'right';
 export type UnitClassName = 'light' | 'medium' | 'heavy';
 
 export const UNIT_CLASS: Record<UnitType, UnitClassName> = {
-  LI: 'light', LB: 'light', LS: 'light', AX: 'light', LC: 'light', LBC: 'light',
+  LI: 'light', LB: 'light', LS: 'light', AX: 'light', LC: 'light', LBC: 'light', BCH: 'light',
   WA: 'medium', MI: 'medium', MC: 'medium', CAM: 'medium',
   HI: 'heavy', HC: 'heavy', EL: 'heavy', HCH: 'heavy', HWM: 'heavy',
 };
@@ -23,7 +23,7 @@ export const UNIT_CLASS: Record<UnitType, UnitClassName> = {
 const NAMES: Record<UnitType, string> = {
   LI: 'Light Infantry', LB: 'Light Bow', LS: 'Light Sling', AX: 'Auxilia', WA: 'Warriors', MI: 'Medium Infantry',
   HI: 'Heavy Infantry', LC: 'Light Cavalry', MC: 'Medium Cavalry', HC: 'Heavy Cavalry', EL: 'Elephants',
-  HCH: 'Heavy Chariots', LBC: 'Light Bow Cavalry', CAM: 'Camels', HWM: 'Heavy War Machines',
+  HCH: 'Heavy Chariots', LBC: 'Light Bow Cavalry', CAM: 'Camels', HWM: 'Heavy War Machines', BCH: 'Barbarian Chariots',
 };
 
 export function unitTypeName(t: UnitType): string {
@@ -37,7 +37,7 @@ export function figureKind(t: UnitType): Kind {
   if (t === 'LC' || t === 'MC' || t === 'HC' || t === 'LBC') return 'horse';
   if (t === 'CAM') return 'camel';
   if (t === 'EL') return 'elephant';
-  if (t === 'HCH') return 'chariot';
+  if (t === 'HCH' || t === 'BCH') return 'chariot';
   if (t === 'HWM') return 'machine';
   return 'foot';
 }
@@ -174,7 +174,7 @@ export function ClassSymbol({ cls, white, x, y, s = 1 }: { cls: UnitClassName; w
 /** Class symbol, type and strength pips under the figures; `elite`: gold rim. */
 export function Badge({ type, blocks, maxBlocks, elite }: { type: UnitType; blocks: number; maxBlocks: number; elite?: boolean }) {
   const cls = UNIT_CLASS[type];
-  const white = type === 'AX' || type === 'WA';
+  const white = type === 'AX' || type === 'WA' || type === 'BCH';
   // the wide letters of CAM and HWM need a tighter label to clear the pips
   const compact = type === 'CAM' || type === 'HWM';
   const cyB = 30.8;

@@ -12,7 +12,7 @@ import type { Kit } from '../../src/art/palettes';
 import { SCENARIOS } from '../../src/scenarios';
 
 const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
-const MAX: Record<UnitType, number> = { LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HC: 3, EL: 2, HCH: 2, LBC: 3, CAM: 3, HWM: 2 };
+const MAX: Record<UnitType, number> = { LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HC: 3, EL: 2, HCH: 2, LBC: 3, CAM: 3, HWM: 2, BCH: 3 };
 const ALL_TYPES = Object.keys(MAX) as UnitType[];
 const ALL_LOOKS = Object.keys(LOOKS) as ArmyLook[];
 const KIT_LOOKS: ArmyLook[] = ['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian'];
@@ -29,7 +29,7 @@ describe('Expansion #1 figures', () => {
     expect(ALL_TYPES.map((t) => [t, figureKind(t)])).toEqual([
       ['LI', 'foot'], ['LB', 'foot'], ['LS', 'foot'], ['AX', 'foot'], ['WA', 'foot'], ['MI', 'foot'], ['HI', 'foot'],
       ['LC', 'horse'], ['MC', 'horse'], ['HC', 'horse'], ['EL', 'elephant'], ['HCH', 'chariot'],
-      ['LBC', 'horse'], ['CAM', 'camel'], ['HWM', 'machine'],
+      ['LBC', 'horse'], ['CAM', 'camel'], ['HWM', 'machine'], ['BCH', 'chariot'],
     ]);
   });
 

@@ -4,7 +4,7 @@
 
 export type Side = 'top' | 'bottom';
 
-export type UnitType = 'LI' | 'LB' | 'LS' | 'AX' | 'WA' | 'MI' | 'HI' | 'LC' | 'MC' | 'HC' | 'EL' | 'HCH' | 'LBC' | 'CAM' | 'HWM';
+export type UnitType = 'LI' | 'LB' | 'LS' | 'AX' | 'WA' | 'MI' | 'HI' | 'LC' | 'MC' | 'HC' | 'EL' | 'HCH' | 'LBC' | 'CAM' | 'HWM' | 'BCH';
 export type UnitClass = 'light' | 'medium' | 'heavy';
 
 /** Elite unit presets (see elites.ts). A unit with `elite` set gets that preset's abilities on top of its type's. */
@@ -22,7 +22,7 @@ export type TerrainType =
 export type HexDir = 'E' | 'NE' | 'NW' | 'W' | 'SW' | 'SE';
 
 /** Every block set (scenario data is validated against it). */
-export const BLOCKS = ['rom', 'car', 'grk', 'eas'] as const;
+export const BLOCKS = ['rom', 'car', 'grk', 'eas', 'bar', 'gry'] as const; // gry: grey Roman (210 Lentulus' command)
 /** Which block set a side plays: decides base-edge and banner colour (i.e. which side a piece belongs to). */
 export type Blocks = (typeof BLOCKS)[number];
 
@@ -31,6 +31,7 @@ export const ARMY_LOOKS = [
   'roman', 'carthaginian', 'syracusan',
   'athenian', 'theban', 'spartan', 'phocian', 'macedonian', 'antigonid', 'epirote',
   'craterus', 'eumenes', 'antigonus', 'seleucid', 'ptolemaic', 'persian', 'scythian', 'indian', 'mauryan',
+  'gallic', 'germanic', 'slave', 'belgic', 'briton', 'marian',
 ] as const;
 /** Army look: the figure kit and palette an army is drawn with (see src/art/palettes.ts). */
 export type ArmyLook = (typeof ARMY_LOOKS)[number];

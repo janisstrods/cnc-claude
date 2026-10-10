@@ -38,7 +38,7 @@ export interface UnitStats {
   elephantDiceAgainst: number;
   /** Ignores every sword hit in close combat (and swords against it are not re-rolled by elephants). */
   ignoreAllSwords: boolean;
-  /** Sword hits ignored in close combat (HCH 1). */
+  /** Sword hits ignored in close combat (HCH and BCH 1). */
   swordIgnore: number;
   /** Strikers of these types make this unit retreat +1 hex per flag (elephants and camels scare cavalry and chariots). */
   frightenedBy: UnitType[];
@@ -50,7 +50,7 @@ export interface UnitStats {
   vsMountedIgnoreFlag: boolean;
   /** After an initial successful close combat: momentum advance plus 1 more hex. */
   momentumExtraHex: boolean;
-  /** +1 die and may ignore 1 flag at full strength (warriors). */
+  /** +1 die and may ignore 1 flag at full strength (warriors, Barbarian chariots). */
   fullStrengthBonus: boolean;
   /** Moves 1, or 2 if it then close combats; also eligible for the bonus close combat after momentum, like mounted units (warriors). */
   chargeMove: boolean;
@@ -144,6 +144,10 @@ export const UNIT_STATS: Record<UnitType, UnitStats> = {
   // after moving; evade only along a legal path, then abandoned (no banner).
   HWM: U({ type: 'HWM', name: 'Heavy War Machines', cls: 'heavy', whiteBorder: false, foot: true, infantry: false, mounted: false, cavalry: false, chariot: false, blocks: 2, move: 1, moveBattle: 0, cc: 2, ccBack: 2, range: 6, retreat: 1, swordHits: false, evade: 'always',
     elephantDiceAgainst: 2, noFireAfterMove: 1, forbiddenTerrain: ['broken', 'marsh'], noMomentum: true, evadeRemoves: true }),
+  // Expansion #2 (§18). Barbarian light chariots: a light chariot (not cavalry, so no extra momentum hex) with the warrior
+  // bonus (+1 die and 1 flag ignored at full strength), 1 sword ignored like all chariots, no rally.
+  BCH: U({ type: 'BCH', name: 'Barbarian Chariots', cls: 'light', whiteBorder: true, foot: false, infantry: false, mounted: true, cavalry: false, chariot: true, blocks: 3, move: 3, moveBattle: 3, cc: 2, ccBack: 2, range: 0, retreat: 3, swordHits: true, evade: 'always',
+    elephantDiceAgainst: 2, swordIgnore: 1, fullStrengthBonus: true, frightenedBy: ['EL', 'CAM'], noRally: true }),
 };
 
 export const UNIT_TYPES = Object.keys(UNIT_STATS) as UnitType[];

@@ -56,6 +56,7 @@ const EXPECTED: Record<UnitType, Abilities> = {
   LBC: { ...NONE, elephantDiceAgainst: 2, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true },
   CAM: { ...NONE, elephantDiceAgainst: 3, vsMountedIgnoreHit: 'medium', vsMountedIgnoreFlag: false },
   HWM: { ...NONE, elephantDiceAgainst: 2, noFireAfterMove: 1, forbiddenTerrain: ['broken', 'marsh'], noMomentum: true, evadeRemoves: true },
+  BCH: { ...NONE, elephantDiceAgainst: 2, swordIgnore: 1, fullStrengthBonus: true, frightenedBy: ['EL', 'CAM'], noRally: true },
 };
 
 /** Base stats of the Expansion #1 rows (§15). */
@@ -141,7 +142,7 @@ describe('unit ability helpers', () => {
   it('frightens: elephants and camels frighten cavalry and chariots only', () => {
     for (const s of ['EL', 'CAM'] as const) {
       const frightened = UNIT_TYPES.filter((t) => frightens(unit(s), unit(t)));
-      expect(frightened.sort(), s).toEqual(['HC', 'HCH', 'LBC', 'LC', 'MC']);
+      expect(frightened.sort(), s).toEqual(['BCH', 'HC', 'HCH', 'LBC', 'LC', 'MC']);
     }
     for (const t of UNIT_TYPES) {
       if (t !== 'EL' && t !== 'CAM') expect(UNIT_TYPES.some((v) => frightens(unit(t), unit(v))), t).toBe(false);

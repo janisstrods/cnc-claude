@@ -209,7 +209,7 @@ describe('opposing armies are told apart by their colours, not only by the base 
 });
 
 const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
-const MAX: Record<UnitType, number> = { LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HC: 3, EL: 2, HCH: 2, LBC: 3, CAM: 3, HWM: 2 };
+const MAX: Record<UnitType, number> = { LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HC: 3, EL: 2, HCH: 2, LBC: 3, CAM: 3, HWM: 2, BCH: 3 };
 const ALL_TYPES = Object.keys(MAX) as UnitType[];
 const BASE_TYPES: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI', 'LC', 'MC', 'HC', 'EL', 'HCH'];
 
@@ -271,6 +271,8 @@ const KITS: Record<ArmyLook, Kit> = {
   macedonian: 'macedonian', antigonid: 'macedonian', epirote: 'macedonian', craterus: 'macedonian', eumenes: 'macedonian',
   antigonus: 'macedonian', seleucid: 'macedonian', ptolemaic: 'macedonian',
   persian: 'persian', scythian: 'scythian', indian: 'indian', mauryan: 'indian',
+  // Expansion #2 (temporary art: the Barbarian looks draw as Carthaginian, the Marian Romans as Roman)
+  gallic: 'punic', germanic: 'punic', slave: 'punic', belgic: 'punic', briton: 'punic', marian: 'roman',
 };
 const ALL_LOOKS = Object.keys(KITS) as ArmyLook[];
 
@@ -289,8 +291,8 @@ describe('army looks of Expansion #1', () => {
     expect(LOOKS.syracusan.style).toEqual({ emblems: ['syracuse'], device: 'syracuse', finial: 'lozenge' });
   });
 
-  it('block colours exist for all four block sets; Eastern blocks are ochre-tan', () => {
-    expect(Object.keys(BLOCK_COLORS).sort()).toEqual(['car', 'eas', 'grk', 'rom']);
+  it('block colours exist for all block sets; Eastern blocks are ochre-tan', () => {
+    expect(Object.keys(BLOCK_COLORS).sort()).toEqual(['bar', 'car', 'eas', 'grk', 'gry', 'rom']);
     expect(blockColors('grk').edge).toBe('#1f4fb4');
     expect(blockColors('eas')).toEqual({
       edge: '#c88a22', edgeShade: '#7c5212', edgeLight: '#ecbc5e', banner: '#b8801e', bannerShade: '#74500f',

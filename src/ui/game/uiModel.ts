@@ -207,6 +207,12 @@ function unitNoun(t: UnitType): string {
   return words[words.length - 1].toLowerCase();
 }
 
+/** Plural noun with its qualifier, for when the bare noun is ambiguous ("Barbarian Chariots" → "Barbarian chariots"). */
+function qualifiedNoun(t: UnitType): string {
+  const [first, ...rest] = UNIT_STATS[t].name.split(' ');
+  return [first, ...rest.map((w) => w.toLowerCase())].join(' ');
+}
+
 /** Capitalise the first letter. */
 function cap(x: string): string {
   return x.charAt(0).toUpperCase() + x.slice(1);
@@ -248,9 +254,9 @@ function missileText(st: UnitStats, range: number): string {
 }
 
 /**
- * Where elephants' dice differ from what the enemy would roll: "3 vs elephants, warriors, chariots" (elephants first,
- * then units whose base attacking dice the elephant does not copy, or whose dice vary with strength). Camels roll 3
- * attacking and 2 battling back; the elephant's 3 matches their attack, so they are not listed.
+ * Where elephants' dice differ from what the enemy would roll: "3 vs elephants, warriors, chariots; 2 vs Barbarian chariots"
+ * (elephants first, then units whose base attacking dice the elephant does not copy, or whose dice vary with strength).
+ * Camels roll 3 attacking and 2 battling back; the elephant's 3 matches their attack, so they are not listed.
  */
 function elephantDiceNote(): string {
   const odd = UNIT_TYPES.filter((t) => {
@@ -260,7 +266,9 @@ function elephantDiceNote(): string {
   const byDice = new Map<number, string[]>();
   for (const t of odd) {
     const n = UNIT_STATS[t].elephantDiceAgainst;
-    byDice.set(n, [...(byDice.get(n) ?? []), unitNoun(t)]);
+    // a second type with the same noun (Barbarian chariots after the heavy ones) keeps its qualifier
+    const taken = odd.some((o) => o !== t && unitNoun(o) === unitNoun(t) && UNIT_TYPES.indexOf(o) < UNIT_TYPES.indexOf(t));
+    byDice.set(n, [...(byDice.get(n) ?? []), taken ? qualifiedNoun(t) : unitNoun(t)]);
   }
   return [...byDice].map(([n, names]) => `${n} vs ${names.join(', ')}`).join('; ');
 }

@@ -138,7 +138,7 @@ const LINES: Record<Moment, Lines> = {
 const DEFAULT_TROOPS: Record<UnitType, string> = {
   LI: 'skirmishers', LB: 'archers', LS: 'slingers', AX: 'auxiliaries', WA: 'warriors', MI: 'spearmen', HI: 'heavy infantry',
   LC: 'light horse', MC: 'cavalry', HC: 'heavy cavalry', EL: 'war elephants', HCH: 'chariots', LBC: 'horse archers',
-  CAM: 'camel riders', HWM: 'war machines',
+  CAM: 'camel riders', HWM: 'war machines', BCH: 'chariots',
 };
 
 /** The Greek city armies of the Persian and Theban wars (hoplite phalanx, peltasts, psiloi). */

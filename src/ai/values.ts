@@ -11,6 +11,8 @@ export const TYPE_WEIGHT: Record<UnitType, number> = {
   LC: 0.55, MC: 0.72, HC: 0.85, EL: 0.8, HCH: 0.7,
   // Expansion #1: light bow cavalry ~ LC with a longer bow; camels ~ MC; war machines shoot far but are fragile (2 blocks)
   LBC: 0.6, CAM: 0.72, HWM: 0.55,
+  // Expansion #2: Barbarian light chariots (3 blocks, 3 dice at full strength, evade) ~ a little below medium cavalry
+  BCH: 0.62,
 };
 
 /** Multiplier on the weight of a unit carrying this elite preset. */

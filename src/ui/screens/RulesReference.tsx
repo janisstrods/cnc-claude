@@ -10,7 +10,9 @@ type Tab = 'basics' | 'units' | 'combat' | 'terrain' | 'cards' | 'exp1';
 
 /** Unit types new in Expansion #1 (§15): described in the Expansion #1 tab, not in the base Units list. */
 export const EXP1_UNIT_TYPES: readonly UnitType[] = ['LBC', 'CAM', 'HWM'];
-const BASE_UNIT_TYPES = UNIT_TYPES.filter((t) => !EXP1_UNIT_TYPES.includes(t));
+/** Unit types new in Expansion #2 (§18): not in the base Units list either (their own tab comes with the Expansion #2 rules text). */
+export const EXP2_UNIT_TYPES: readonly UnitType[] = ['BCH'];
+const BASE_UNIT_TYPES = UNIT_TYPES.filter((t) => !EXP1_UNIT_TYPES.includes(t) && !EXP2_UNIT_TYPES.includes(t));
 /** Figure look of each Expansion #1 unit card (an army that fields it). */
 const EXP1_LOOK: Partial<Record<UnitType, [ArmyLook, Blocks]>> = { LBC: ['scythian', 'eas'], CAM: ['seleucid', 'grk'], HWM: ['macedonian', 'grk'] };
 
