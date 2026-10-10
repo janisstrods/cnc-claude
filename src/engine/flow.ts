@@ -8,7 +8,7 @@ import { ALL_HEXES, areAdjacent, neighbours, rowOf } from './hex';
 import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './movement';
 import { bannerTotal, captureOnStop, exitUnit, gainBanner } from './objectives';
 import {
-  autoOrders, orderMode, rallyCandidates, validateOrders, validateRally, validateSpartacus,
+  autoOrders, orderMode, rallyCandidates, spartacusDiceCount, validateOrders, validateRally, validateSpartacus,
 } from './orders';
 import {
   attachedLeader, isEmptyHex, isLeaderId, isRomanArmy, leaderAt, leaderById, leaderUnit, other, unitAt, unitById,
@@ -774,7 +774,7 @@ function* rallyStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
 
 function* spartacusStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
   s.turn.reshuffleAfter = true;
-  const faces = rollDice(s, s.players[side].command);
+  const faces = rollDice(s, spartacusDiceCount(s, side));
   emitRoll(ctx, 'spartacus', faces, faces.map((f) => f !== 'flag' && f !== 'swords'), null, null);
   if (faces.every((f) => f === 'flag' || f === 'swords')) return [];
   const a = yield* ask(ctx, { kind: 'spartacus', side, faces }, (a) => (a.kind === 'assign' ? validateSpartacus(s, side, faces, a.ids) : 'Choose the pieces to order.'));

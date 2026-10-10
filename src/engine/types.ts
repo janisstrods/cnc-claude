@@ -69,11 +69,12 @@ export interface Unit {
 }
 
 /**
- * Leader traits (Expansion #1, rules-reference §17.2). `ccBonus` (Alexander): the unit he is attached to rolls +1 close
+ * Leader traits (rules-reference §17.2, §18.3). `ccBonus` (Alexander, Caesar): the unit he is attached to rolls +1 close
  * combat die. `attachedOnly` (the Persian satraps): his helmets count and a Leadership card played on him orders only for
- * his own unit.
+ * his own unit. `forcedMarch` (Caesar): an infantry unit that has him attached when it begins its move may move 2 hexes and
+ * still battle. `spartacusDice` (Spartacus): his side's I Am Spartacus roll has 2 more dice while he is on the board.
  */
-export type LeaderTrait = 'ccBonus' | 'attachedOnly';
+export type LeaderTrait = 'ccBonus' | 'attachedOnly' | 'forcedMarch' | 'spartacusDice';
 
 export interface Leader {
   id: string; // "L<n>"

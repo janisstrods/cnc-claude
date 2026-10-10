@@ -243,3 +243,11 @@ describe('pilum and march wording (§18.2)', () => {
     expect(unitSummary(unit('MI', { elite: 'immortals', legion: 'marius' }))[2]).toBe('Missiles: range 3, 2 dice (1 after moving)');
   });
 });
+
+describe('Caesar and Spartacus wording (§18.3)', () => {
+  const leader = (traits: LeaderTrait[]): Leader => ({ id: 'L1', side: 'bottom', name: 'X', hex: 0, traits });
+  it('lists the forced march and the extra Spartacus dice next to the +1 die', () => {
+    expect(leaderTraitLines(leader(['ccBonus', 'forcedMarch']))).toEqual(['+1 close combat die to his unit', 'his infantry unit may move 2 hexes and still battle']);
+    expect(leaderTraitLines(leader(['spartacusDice']))).toEqual(['I Am Spartacus rolls 2 more dice']);
+  });
+});

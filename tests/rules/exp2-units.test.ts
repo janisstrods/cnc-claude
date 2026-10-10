@@ -2,11 +2,14 @@
 // march and the Tenth Legion (Q2, Q3), Caesar and Spartacus (Q4, Q5).
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  ARMY_LOOKS, BLOCKS, ELITES, UNIT_STATS, UNIT_TYPES, autoOrders, baseSwordIgnores, battleTargets, canEvadeType, canMarch, canShoot, createGame,
-  eliteHas, escapeDice, fireMoveLimit, hasPilum, ignorableFlags, pieceMoves, rangeOf, rangedBaseDice, retreatPerFlag, scoreClose, validateOrders,
-  type CardKind, type DieFace, type Unit, type UnitType,
+  ARMY_LOOKS, BLOCKS, ELITES, GameDriver, OFF_BOARD, UNIT_STATS, UNIT_TYPES, autoOrders, baseSwordIgnores, battleTargets, canEvadeType, canFireAt,
+  canMarch, canShoot, createGame, eliteHas, escapeDice, fireMoveLimit, hasPilum, ignorableFlags, pieceMoves, rangeOf, rangedBaseDice, retreatPerFlag,
+  scoreClose, validateOrders,
+  type CardKind, type DieFace, type LeaderTrait, type Side, type Unit, type UnitType,
 } from '../../src/engine';
-import { H, build, combatDice, ev, forceDice, forcedDiceLeft, must, n, play, setupOf, toBattle, u, type Pos } from './helpers';
+import {
+  H, build, combatDice, ev, forceDice, forcedDiceLeft, giveCard, leaderId, must, n, noFirstStrike, play, rolls, setupOf, toBattle, u, type Pos,
+} from './helpers';
 
 beforeEach(() => forceDice([]));
 
@@ -528,6 +531,221 @@ describe('pilum and march', () => {
       const moves = pieceMoves(d.state, 'u1');
       expect(Math.max(...moves.map((m) => m.dist))).toBe(2);
       expect(moves.every((m) => m.canBattle)).toBe(true);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Caesar (forcedMarch) and Spartacus (spartacusDice) (§18.3; rulings Q4, Q5)
+
+describe('Caesar and Spartacus', () => {
+  type PosUnit = NonNullable<Pos['units']>[number];
+  const bottom = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}): PosUnit => ({ side: 'bottom', type, at, ...extra });
+  const top = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}): PosUnit => ({ side: 'top', type, at, ...extra });
+  const CAESAR: LeaderTrait[] = ['ccBonus', 'forcedMarch'];
+  const caesar = (at: [number, number]): NonNullable<Pos['leaders']>[number] => ({ side: 'bottom', name: 'Caesar', at, traits: CAESAR });
+  const dists = (moves: { dist: number }[]) => Math.max(...moves.map((m) => m.dist));
+
+  describe('Caesar: forced march', () => {
+    it('the traits are accepted at setup, with an unknown trait still rejected', () => {
+      const s = build({ leaders: [{ side: 'bottom', at: [6, 6], traits: ['forcedMarch', 'spartacusDice'] }] });
+      expect(s.leaders[0].traits).toEqual(['forcedMarch', 'spartacusDice']);
+      expect(() => build({ leaders: [{ side: 'bottom', at: [6, 6], traits: ['forcedMarsh' as LeaderTrait] }] })).toThrow(/unknown leader trait/);
+    });
+    it('an MI with Caesar attached moves 2 hexes and may still battle', () => {
+      const d = play(build({ units: [bottom('MI', [6, 6]), top('HI', [3, 6])], leaders: [caesar([6, 6])] }), 'orderMedium', ['u1']);
+      const moves = pieceMoves(d.state, 'u1');
+      expect(dists(moves)).toBe(2);
+      expect(moves.every((m) => m.canBattle)).toBe(true);
+      must(d, { kind: 'move', piece: 'u1', to: H(4, 6) });
+      expect(d.state.leaders[0].hex).toBe(H(4, 6)); // Caesar goes with his unit
+      expect(battleTargets(d.state, 'u1')).toEqual([{ hex: H(3, 6), kind: 'close' }]);
+    });
+    it('without Caesar the same MI moves 1 hex', () => {
+      const d = play(build({ units: [bottom('MI', [6, 6]), top('HI', [3, 6])], leaders: [{ side: 'bottom', at: [6, 6] }] }), 'orderMedium', ['u1']);
+      expect(dists(pieceMoves(d.state, 'u1'))).toBe(1);
+    });
+    it('an HI, LI and AX with Caesar: HI and AX gain the 2-hex move with battle, LI (already 2) is unchanged', () => {
+      const hi = play(build({ units: [bottom('HI', [6, 6])], leaders: [caesar([6, 6])] }), 'orderHeavy', ['u1']);
+      expect(dists(pieceMoves(hi.state, 'u1'))).toBe(2);
+      expect(pieceMoves(hi.state, 'u1').every((m) => m.canBattle)).toBe(true);
+      const ax = (leaders: Pos['leaders']) => pieceMoves(play(build({ units: [bottom('AX', [6, 6])], leaders }), 'orderLight', ['u1']).state, 'u1');
+      expect(ax([{ side: 'bottom', at: [6, 6] }]).filter((m) => m.dist === 2).every((m) => !m.canBattle)).toBe(true); // auxilia: 2 only without battle
+      expect(ax([caesar([6, 6])]).every((m) => m.canBattle)).toBe(true);
+      const li = (leaders: Pos['leaders']) => pieceMoves(play(build({ units: [bottom('LI', [6, 6])], leaders }), 'orderLight', ['u1']).state, 'u1');
+      expect(li([caesar([6, 6])])).toEqual(li([]));
+    });
+    it('attacks with 4 + 1 = 5 dice and battles back with 5 (an MI otherwise rolls 4)', () => {
+      const atk = toBattle(build({ units: [bottom('MI', [5, 6]), top('HI', [4, 6])], leaders: [caesar([5, 6])] }), 'orderMedium', ['u1']);
+      ev(atk);
+      forceDice(n('light', 10));
+      must(atk, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+      expect(combatDice(ev(atk), 'close')).toBe(5);
+      const def = toBattle(build({ first: 'top', units: [top('HI', [4, 6]), bottom('MI', [5, 6])], leaders: [caesar([5, 6])] }), 'orderHeavy', ['u1']);
+      ev(def);
+      forceDice(n('light', 10));
+      must(def, { kind: 'attack', unit: 'u1', target: H(5, 6) });
+      expect(combatDice(ev(def), 'battleBack')).toBe(5);
+    });
+    it('a hill-capped attack of 2 becomes 3 (the bonus comes after the caps)', () => {
+      const d = toBattle(build({ units: [bottom('MI', [5, 6]), top('HI', [4, 6])], leaders: [caesar([5, 6])], terrain: [{ at: [4, 6], t: 'hill' }] }), 'orderMedium', ['u1']);
+      ev(d);
+      forceDice(n('light', 10));
+      must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+      expect(combatDice(ev(d), 'close')).toBe(3);
+    });
+    it('a heavy war machine with Caesar attached gets no extra move (it is not infantry)', () => {
+      const d = play(build({ units: [bottom('HWM', [6, 6])], leaders: [caesar([6, 6])] }), 'orderHeavy', ['u1']);
+      const moves = pieceMoves(d.state, 'u1');
+      expect(dists(moves)).toBe(1);
+      expect(moves.every((m) => !m.canBattle)).toBe(true);
+    });
+    it('a medium cavalry unit with Caesar attached is unchanged (it moves 3 anyway)', () => {
+      const of = (leaders: Pos['leaders']) => pieceMoves(play(build({ units: [bottom('MC', [6, 6])], leaders }), 'orderMounted', ['u1']).state, 'u1');
+      expect(dists(of([caesar([6, 6])]))).toBe(3);
+      expect(of([caesar([6, 6])])).toEqual(of([{ side: 'bottom', at: [6, 6] }]));
+    });
+    it('a unit that moves onto Caesar gets nothing that turn: its limits are computed without him', () => {
+      // a second pair elsewhere keeps the turn open after u1 has moved
+      const elsewhere = [bottom('MI', [8, 10]), top('MI', [7, 10])];
+      // an MI 2 hexes away cannot reach him in one move
+      const far = play(build({ units: [bottom('MI', [8, 6]), ...elsewhere], leaders: [caesar([6, 6])] }), 'orderMedium', ['u1', 'u2']);
+      const farMoves = pieceMoves(far.state, 'u1');
+      expect(dists(farMoves)).toBe(1);
+      expect(farMoves.some((m) => m.hex === H(6, 6))).toBe(false);
+      // an MI 1 hex away joins him as an ordinary 1-hex mover: it may battle, but it stops there and cannot move on
+      const near = play(build({ units: [bottom('MI', [7, 6]), ...elsewhere], leaders: [caesar([6, 6])] }), 'orderMedium', ['u1', 'u2']);
+      const join = pieceMoves(near.state, 'u1').find((m) => m.hex === H(6, 6))!;
+      expect(join).toMatchObject({ dist: 1, canBattle: true, attachesTo: leaderId(near.state, 0) });
+      must(near, { kind: 'move', piece: 'u1', to: H(6, 6) });
+      expect(near.state.turn.ordered.u1).toMatchObject({ moved: 1, moveDone: true, canBattle: true });
+      expect(pieceMoves(near.state, 'u1')).toEqual([]);
+    });
+    it('a unit that Caesar joins this turn does not move on either', () => {
+      // I Am Spartacus: a helmet orders Caesar, who may detach and move alone; the enemy keeps the battle phase open
+      const s = build({ units: [bottom('MI', [7, 6]), top('HI', [7, 7])], leaders: [caesar([6, 6])] });
+      forceDice(['leader', 'medium', 'flag', 'flag', 'flag']);
+      const d = play(s, 'spartacus');
+      must(d, { kind: 'assign', ids: [leaderId(s, 0), 'u1', null, null, null] });
+      expect(dists(pieceMoves(d.state, 'u1'))).toBe(1); // not yet joined: no march for u1 either
+      must(d, { kind: 'move', piece: leaderId(d.state, 0), to: H(7, 6) });
+      expect(d.state.turn.ordered.u1.attachedThisTurn).toBe(true);
+      expect(pieceMoves(d.state, 'u1')).toEqual([]);
+    });
+    it('Line Command still limits the unit to 1 hex, which it may battle after', () => {
+      const d = play(build({ units: [bottom('MI', [6, 6])], leaders: [caesar([6, 6])] }), 'lineCommand', ['u1']);
+      const moves = pieceMoves(d.state, 'u1');
+      expect(dists(moves)).toBe(1);
+      expect(moves.every((m) => m.canBattle)).toBe(true);
+    });
+    it('Double Time: an MI with Caesar moves 2 and battles, never 3', () => {
+      const d = play(build({ units: [bottom('MI', [6, 6])], leaders: [caesar([6, 6])] }), 'doubleTime', ['u1']);
+      const moves = pieceMoves(d.state, 'u1');
+      expect(dists(moves)).toBe(2);
+      expect(moves.every((m) => m.canBattle)).toBe(true);
+    });
+    it('terrain still applies: forests stop the march and bar MI battle; a marsh start hex limits it to 1', () => {
+      const forest: Pos['terrain'] = [{ at: [5, 5], t: 'forest' }, { at: [5, 6], t: 'forest' }];
+      const d = play(build({ units: [bottom('MI', [6, 6])], leaders: [caesar([6, 6])], terrain: forest }), 'orderMedium', ['u1']);
+      const inForest = (h: number) => h === H(5, 5) || h === H(5, 6);
+      const moves = pieceMoves(d.state, 'u1');
+      expect(moves.filter((m) => inForest(m.hex)).every((m) => !m.canBattle && m.dist === 1)).toBe(true);
+      expect(moves.every((m) => m.path.slice(1, -1).every((h) => !inForest(h)))).toBe(true);
+      const marsh = play(build({ units: [bottom('MI', [6, 6])], leaders: [caesar([6, 6])], terrain: [{ at: [6, 6], t: 'marsh' }] }), 'orderMedium', ['u1']);
+      expect(dists(pieceMoves(marsh.state, 'u1'))).toBe(1);
+    });
+    it('a pilum unit with Caesar can move 2 and close combat, but cannot fire after moving 2', () => {
+      // (a second pair elsewhere keeps the turn open: u3 is ordered with u1)
+      const p = (from: [number, number]): Pos => ({
+        legions: { bottom: 'marius' }, units: [bottom('MI', from), top('HI', [2, 6]), bottom('MI', [8, 10]), top('MI', [7, 10])], leaders: [caesar(from)],
+      });
+      const far = play(build(p([6, 6])), 'orderMedium', ['u1', 'u3']);
+      must(far, { kind: 'move', piece: 'u1', to: H(4, 6) });
+      expect(far.state.turn.ordered.u1.moved).toBe(2);
+      expect(canFireAt(far.state, far.state.units[0], H(2, 6))).toBe(true); // in range and in sight
+      expect(battleTargets(far.state, 'u1')).toEqual([]);
+      // moved 1 hex only: the same position fires
+      const near = play(build(p([5, 6])), 'orderMedium', ['u1', 'u3']);
+      must(near, { kind: 'move', piece: 'u1', to: H(4, 6) });
+      expect(near.state.turn.ordered.u1.moved).toBe(1);
+      expect(battleTargets(near.state, 'u1')).toEqual([{ hex: H(2, 6), kind: 'ranged' }]);
+      // moved 2 hexes, it can close combat when an enemy is adjacent
+      const close = play(build({ ...p([6, 6]), units: [bottom('MI', [6, 6]), top('HI', [3, 6]), bottom('MI', [8, 10]), top('MI', [7, 10])] }), 'orderMedium', ['u1', 'u3']);
+      must(close, { kind: 'move', piece: 'u1', to: H(4, 6) });
+      expect(battleTargets(close.state, 'u1')).toEqual([{ hex: H(3, 6), kind: 'close' }]);
+    });
+  });
+
+  describe('Spartacus: I Am Spartacus rolls Command + 2 dice', () => {
+    const SPARTA: LeaderTrait[] = ['spartacusDice'];
+    const sparta = (side: Side = 'bottom'): NonNullable<Pos['leaders']>[number] => ({ side, name: 'Spartacus', at: side === 'bottom' ? [6, 6] : [2, 6], traits: SPARTA });
+    const army = (extra: Partial<Pos> = {}): Pos => ({ units: [bottom('MI', [6, 6]), top('HI', [2, 6])], leaders: [sparta()], ...extra });
+    /** The active side plays I Am Spartacus; every die is a flag, so nothing is ordered and no decision follows. Dice rolled. */
+    function diceOf(s: ReturnType<typeof build>): number {
+      forceDice(n('flag', 20));
+      const d = play(s, 'spartacus');
+      const r = rolls(ev(d), 'spartacus');
+      expect(r).toHaveLength(1);
+      return r[0].length;
+    }
+
+    it('with Spartacus on the board his side rolls Command + 2', () => {
+      expect(diceOf(build(army()))).toBe(7);
+      expect(diceOf(build(army({ cards: 6 })))).toBe(8);
+      expect(diceOf(build(army({ cards: 4 })))).toBe(6);
+    });
+    it('without Spartacus (an ordinary leader, no leader) it rolls Command', () => {
+      expect(diceOf(build(army({ leaders: [{ side: 'bottom', at: [6, 6] }] })))).toBe(5);
+      expect(diceOf(build(army({ leaders: [] })))).toBe(5);
+    });
+    it('after Spartacus is eliminated, or while he is not on the board, it rolls Command', () => {
+      const dead = build(army());
+      dead.leaders = dead.leaders.filter((l) => l.name !== 'Spartacus');
+      expect(diceOf(dead)).toBe(5);
+      const off = build(army());
+      off.leaders[0].hex = OFF_BOARD;
+      expect(diceOf(off)).toBe(5);
+    });
+    it('a Spartacus of the other side gives nothing: the Romans roll Command', () => {
+      expect(diceOf(build(army({ first: 'top' })))).toBe(5);
+      expect(diceOf(build(army({ first: 'top', leaders: [sparta('top')] })))).toBe(7);
+    });
+    it('the card is otherwise unchanged: each class symbol orders one unit of that class, +1 die on battle', () => {
+      const s = build(army({ units: [bottom('MI', [5, 6]), bottom('LI', [6, 2]), top('HI', [4, 6])] }));
+      forceDice(['medium', 'light', 'flag', 'flag', 'flag', 'flag', 'flag']);
+      const d = play(s, 'spartacus');
+      expect(d.pending).toMatchObject({ kind: 'spartacus', side: 'bottom' });
+      expect((d.pending as { faces: DieFace[] }).faces).toHaveLength(7);
+      must(d, { kind: 'assign', ids: ['u1', 'u2', null, null, null, null, null] });
+      if (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
+      ev(d);
+      forceDice(n('light', 10));
+      must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+      expect(combatDice(ev(d), 'close')).toBe(5);
+    });
+
+    /** `first` plays I Am Spartacus, then the other side answers with Counter Attack; the dice each of them rolled. */
+    function counter(p: Pos, first: Side): [number, number] {
+      const s = build({ ...p, first });
+      noFirstStrike(s);
+      const second: Side = first === 'bottom' ? 'top' : 'bottom';
+      const c1 = giveCard(s, first, 'spartacus');
+      const c2 = giveCard(s, second, 'counterAttack');
+      forceDice(n('flag', 30));
+      const d = new GameDriver(s);
+      must(d, { kind: 'playCard', card: c1 });
+      const a = rolls(ev(d), 'spartacus');
+      expect(d.pending).toMatchObject({ kind: 'playCard', side: second });
+      must(d, { kind: 'playCard', card: c2 });
+      const b = rolls(ev(d), 'spartacus');
+      expect([a.length, b.length]).toEqual([1, 1]);
+      return [a[0].length, b[0].length];
+    }
+    it('a Counter Attack copying I Am Spartacus counts as the card: Command + 2 for the side with Spartacus', () => {
+      // the Romans (no Spartacus) play it, the Slaves counter attack with Spartacus on the board
+      expect(counter(army({ leaders: [sparta('top')] }), 'bottom')).toEqual([5, 7]);
+      // the Slaves play it with Spartacus, the Romans copy it with no bonus
+      expect(counter(army({ leaders: [sparta('bottom')] }), 'bottom')).toEqual([7, 5]);
     });
   });
 });

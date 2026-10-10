@@ -375,6 +375,8 @@ export function unitSummary(u: Unit): string[] {
 const LEADER_TRAIT_TEXT: Record<LeaderTrait, string> = {
   ccBonus: '+1 close combat die to his unit',
   attachedOnly: 'Satrap: commands only his own unit; his helmets help only that unit',
+  forcedMarch: 'his infantry unit may move 2 hexes and still battle',
+  spartacusDice: 'I Am Spartacus rolls 2 more dice',
 };
 
 /** Tooltip lines for a leader's traits (none for an ordinary leader). */

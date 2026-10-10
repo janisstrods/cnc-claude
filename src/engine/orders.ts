@@ -62,6 +62,18 @@ export function leadershipChain(l: Leader, chain: number): number {
   return leaderHas(l, 'attachedOnly') ? 0 : chain;
 }
 
+/** Extra dice Spartacus gives his side's I Am Spartacus roll (§18.3). */
+const SPARTACUS_EXTRA_DICE = 2;
+
+/**
+ * Dice `side` rolls for I Am Spartacus (§18.3): its Command, and 2 more while a leader of the side with `spartacusDice` is
+ * on the board (not once he is eliminated, nor while he waits off the board). Never the other side's Spartacus.
+ */
+export function spartacusDiceCount(s: GameState, side: Side): number {
+  const bonus = leadersOf(s, side).some((l) => leaderHas(l, 'spartacusDice')) ? SPARTACUS_EXTRA_DICE : 0;
+  return s.players[side].command + bonus;
+}
+
 /** Pieces ordered automatically by Clash of Shields / Darken the Sky. */
 export function autoOrders(s: GameState, side: Side, kind: CardKind): string[] {
   const units = unitsOf(s, side);

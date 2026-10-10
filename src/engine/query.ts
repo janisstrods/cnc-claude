@@ -53,8 +53,8 @@ export function leaderUnit(s: GameState, l: Leader): Unit | undefined {
   return undefined;
 }
 
-/** Every leader trait (§17.2), for validating scenario data. */
-export const LEADER_TRAITS: readonly LeaderTrait[] = ['ccBonus', 'attachedOnly'];
+/** Every leader trait (§17.2, §18.3), for validating scenario data. */
+export const LEADER_TRAITS: readonly LeaderTrait[] = ['ccBonus', 'attachedOnly', 'forcedMarch', 'spartacusDice'];
 
 /** Does the leader have trait `t`? Ordinary leaders have none. */
 export function leaderHas(l: Leader, t: LeaderTrait): boolean {
