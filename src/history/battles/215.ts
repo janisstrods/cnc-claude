@@ -1,0 +1,163 @@
+// 215 River Sabis, 57 BC. Top: Belgic army (Boduognatus); bottom: Romans (Julius Caesar).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '215',
+  context: {
+    war: "Caesar's Gallic War, 58–50 BC: the Belgic campaign of 57 BC",
+    text: [
+      'In 58 BC Caesar had defeated the Helvetii and Ariovistus and wintered his legions in Gaul. Fearing they would be next, the Belgic peoples of the north joined in a league against Rome. Caesar raised two new legions and marched north in 57 BC. The Belgic host broke up after a failed attack across the Axona, and the Suessiones, Bellovaci and Ambiani submitted one by one.',
+      'The Nervii, reckoned the fiercest of the Belgae, refused all terms. With the Atrebates and Viromandui they waited in the woods beyond the river Sabis, told by Gauls travelling with the Romans that baggage separated each legion on the march. But near an enemy Caesar led with six legions and put the baggage behind them. The Sabis was long taken for the Sambre; many now place the battle on the Selle, near Saulzoir.',
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Nervii, Atrebates and Viromandui',
+      commanders: ['Boduognatus (Nervii; supreme command)'],
+      strength: "Pledges of up to 75,000 by Caesar's figures; the Nervii later claimed 60,000. Modern estimates are far lower",
+      forces: 'Belgic foot; the Nervii had almost no cavalry. Their allies the Aduatuci were still on the march and missed the battle.',
+    },
+    bottom: {
+      name: 'Romans and allies',
+      commanders: ['Gaius Julius Caesar (proconsul)', 'Titus Labienus (legate, with the left)', 'Publius Sextius Baculus (chief centurion, XII)'],
+      strength: 'Eight legions with cavalry and light troops; perhaps 30,000–45,000 men (modern estimates)',
+      forces: 'Six legions in front, the two raised that year guarding the baggage; Gallic horse including Treveri; Numidians, slingers and archers.',
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'woods', points: [[120, -40], [812, -40], [818, 60], [792, 150], [640, 166], [480, 160], [330, 170], [220, 176], [150, 148], [136, 60]] },
+      { kind: 'hills', points: [[220, 640], [236, 520], [330, 476], [680, 470], [800, 510], [830, 640]] },
+      { kind: 'river', points: [[86, 640], [118, 520], [172, 420], [212, 320], [268, 252], [400, 238], [600, 240], [740, 230], [790, 200], [815, 150], [826, 96], [832, 40], [836, 0], [838, -40]], width: 18, label: 'Sabis' },
+      { kind: 'camp', at: [62, 92], size: 30, label: 'Belgic camp' },
+      { kind: 'camp', at: [500, 534], size: 40, label: 'Roman camp' },
+    ],
+    units: [
+      { id: 'atreb', side: 'top', kind: 'warband', label: 'Atrebates', w: 106, h: 30 },
+      { id: 'virom', side: 'top', kind: 'warband', label: 'Viromandui', w: 106, h: 30 },
+      { id: 'nerv1', side: 'top', kind: 'warband', label: 'Nervii', w: 106, h: 30 },
+      { id: 'nerv2', side: 'top', kind: 'warband', w: 106, h: 30 },
+      { id: 'nerv3', side: 'top', kind: 'warband', w: 106, h: 30 },
+      { id: 'bhorse', side: 'top', kind: 'horse', label: 'Belgic horse', w: 52, h: 18 },
+      { id: 'rcav', side: 'bottom', kind: 'horse', label: 'Cavalry', w: 60, h: 20 },
+      { id: 'rlight', side: 'bottom', kind: 'light', label: 'Slingers & archers', w: 64, h: 14 },
+      { id: 'l9', side: 'bottom', kind: 'foot', label: 'IX', w: 86, h: 26 },
+      { id: 'l10', side: 'bottom', kind: 'foot', label: 'X', w: 86, h: 26 },
+      { id: 'l11', side: 'bottom', kind: 'foot', label: 'XI', w: 86, h: 26 },
+      { id: 'l8', side: 'bottom', kind: 'foot', label: 'VIII', w: 86, h: 26 },
+      { id: 'l12', side: 'bottom', kind: 'foot', label: 'XII', w: 86, h: 26 },
+      { id: 'l7', side: 'bottom', kind: 'foot', label: 'VII', w: 86, h: 26 },
+      { id: 'rear', side: 'bottom', kind: 'foot', label: 'Rearguard legions', w: 100, h: 26 },
+    ],
+    phases: [
+      {
+        title: 'Making camp',
+        caption: 'Roman cavalry, slingers and archers ford the shallow Sabis and skirmish with Belgic horsemen, who keep falling back into the woods. Six legions begin to dig the camp; the baggage and the two newest legions are still on the road.',
+        at: {
+          atreb: [300, 100],
+          virom: [470, 96],
+          nerv1: [620, 82],
+          nerv3: [732, 92],
+          nerv2: [672, 128],
+          bhorse: [470, 196],
+          rcav: [372, 202],
+          rlight: [168, 238],
+          l9: [236, 466],
+          l10: [338, 462],
+          l11: [446, 458],
+          l8: [554, 458],
+          l12: [662, 462],
+          l7: [764, 466],
+        },
+        arrows: [
+          { side: 'bottom', points: [[330, 330], [346, 280], [360, 230]] },
+        ],
+      },
+      {
+        title: 'Out of the woods',
+        caption: 'When the baggage comes into sight, the whole Belgic host bursts from the woods, sweeps the cavalry aside, fords the river and charges uphill. There is no time to put on helmets; men fall in under the nearest standard.',
+        at: {
+          atreb: [300, 318],
+          virom: [500, 314],
+          nerv1: [664, 300],
+          nerv3: [776, 304],
+          nerv2: [720, 262],
+          bhorse: [400, 274],
+          rcav: [126, 400],
+          rlight: [104, 330],
+          l9: [236, 410],
+          l10: [338, 406],
+          l11: [446, 402],
+          l8: [554, 402],
+          l12: [662, 410],
+          l7: [764, 414],
+        },
+        broken: ['rcav', 'rlight'],
+        arrows: [
+          { side: 'top', points: [[300, 120], [300, 200], [300, 290]] },
+          { side: 'top', points: [[480, 116], [490, 200], [498, 286]] },
+          { side: 'top', points: [[690, 150], [700, 200], [712, 236]] },
+          { side: 'bottom', points: [[350, 214], [240, 300], [150, 382]], style: 'rout' },
+        ],
+      },
+      {
+        title: 'The right wing engulfed',
+        caption: 'The IX and X throw the Atrebates back over the river and take the Belgic camp; the XI and VIII rout the Viromandui. Boduognatus leads the Nervii round the XII and VII and up into the camp. Cavalry and servants flee.',
+        at: {
+          l9: [150, 176],
+          l10: [262, 200],
+          l11: [446, 290],
+          l8: [554, 290],
+          virom: [500, 186],
+          nerv1: [712, 346],
+          nerv3: [870, 392, -70],
+          nerv2: [560, 520],
+          l12: [670, 428],
+          l7: [770, 434],
+        },
+        broken: ['virom'],
+        gone: ['atreb', 'bhorse', 'rcav', 'rlight'],
+        arrows: [
+          { side: 'bottom', points: [[236, 390], [200, 300], [166, 210]] },
+          { side: 'bottom', points: [[338, 386], [310, 300], [276, 230]] },
+          { side: 'top', points: [[320, 300], [336, 180], [360, 30]], style: 'rout' },
+          { side: 'top', points: [[720, 280], [630, 380], [584, 484]] },
+          { side: 'top', points: [[800, 318], [846, 322], [862, 340]] },
+          { side: 'bottom', points: [[110, 420], [80, 520], [50, 610]], style: 'rout' },
+        ],
+      },
+      {
+        title: 'Caesar and the Tenth',
+        caption: 'Caesar takes a shield and goes to the front of the XII; the XII and VII close up so they cannot be taken in the rear. The rearguard arrives, Labienus sends the X back, and the trapped Nervii fight to the last.',
+        at: {
+          l12: [692, 428],
+          l7: [782, 434],
+          l10: [410, 462],
+          rear: [700, 566],
+        },
+        broken: ['nerv1', 'nerv2', 'nerv3'],
+        arrows: [
+          { side: 'bottom', points: [[262, 220], [324, 336], [384, 434]] },
+          { side: 'bottom', points: [[900, 610], [820, 590], [762, 572]] },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'bottom',
+    result: 'Decisive Roman victory',
+    losses: "Nervii: by their elders' own count only 500 of 60,000 men could still bear arms and 3 of 600 senators survived, surely an exaggeration. Roman losses unrecorded, but heavy in the XII.",
+    text: [
+      'Caesar spared the surviving Nervii and ordered their neighbours to leave them in peace. The Aduatuci, who had been coming to help, fell back to a single stronghold; after a treacherous night sortie Caesar sold its 53,000 people into slavery. Meanwhile Publius Crassus with one legion won the submission of the coastal peoples of Armorica.',
+      "In Rome the Senate decreed fifteen days of thanksgiving, more than for any earlier victory. Yet the Nervii were far from finished: in 54 BC they rose again and besieged Quintus Cicero's winter camp.",
+    ],
+  },
+  sources: [
+    'Caesar, Gallic War 2.15–28',
+    'Plutarch, Life of Caesar 20',
+    'Cassius Dio, Roman History 39.3',
+    'Adrian Goldsworthy, Caesar: Life of a Colossus (2006)',
+  ],
+};
+
+export default history;

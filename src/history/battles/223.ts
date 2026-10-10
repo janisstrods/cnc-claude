@@ -1,0 +1,157 @@
+// 223 Cefn Carnedd, 51 AD. Top: Britons (Caratacus); bottom: Romans (Publius Ostorius Scapula).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '223',
+  context: {
+    war: 'Roman conquest of Britain: the war with Caratacus, AD 43–51',
+    text: [
+      'Caratacus, a son of the Catuvellaunian king Cunobelinus, had fought the Roman invasion from its start in AD 43. Driven west, he became the war leader of the Silures of south Wales. In about AD 47 Publius Ostorius Scapula arrived as governor. He disarmed suspect tribes, crushed a rising of the Iceni, settled veterans at Camulodunum and turned on the Silures.',
+      'Caratacus moved the war north into the land of the Ordovices and chose ground for a decisive battle: steep hills, with rough stone walls across the gentler slopes and a river with uncertain fords in front. The site is unknown. The game places it at Cefn Carnedd, a hillfort above the Severn near Caersws proposed by J. K. St Joseph; Caer Caradoc in Shropshire, the Breiddin and Llanymynech are among the other candidates. The year is AD 51, or perhaps 50.',
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Silures, Ordovices and other Britons',
+      commanders: ['Caratacus', "Caratacus' brothers (unnamed)", 'tribal chiefs (unnamed)'],
+      strength: 'Not recorded',
+      forces: 'Tribal warriors with neither breastplates nor helmets, sworn by oath not to yield, fighting from behind stone walls with missiles.',
+    },
+    bottom: {
+      name: 'Romans and auxiliaries',
+      commanders: ['Publius Ostorius Scapula (governor)'],
+      strength: 'Not recorded',
+      forces: 'Legionaries and auxiliary cohorts, among them light-armed missile troops; the prefects and tribunes urged the men on.',
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'hills', points: [[-60, -60], [1060, -60], [1060, 120], [900, 146], [800, 120], [700, 156], [640, 196], [520, 198], [460, 150], [300, 136], [200, 186], [100, 196], [-60, 186]] },
+      { kind: 'hills', points: [[40, -60], [960, -60], [940, 34], [700, 50], [500, 48], [300, 56], [100, 40]] },
+      { kind: 'label', at: [900, 84], text: 'Steep hills' },
+      { kind: 'label', at: [640, 24], text: 'Summits' },
+      { kind: 'hills', points: [[50, 222], [180, 216], [182, 236], [52, 242]] },
+      { kind: 'hills', points: [[280, 162], [440, 158], [442, 178], [282, 182]] },
+      { kind: 'hills', points: [[500, 230], [660, 226], [662, 246], [502, 250]] },
+      { kind: 'hills', points: [[716, 196], [790, 152], [804, 166], [730, 212]] },
+      { kind: 'label', at: [232, 254], text: 'Stone walls' },
+      { kind: 'river', points: [[-40, 374], [40, 373], [100, 372], [150, 372], [210, 368], [260, 362], [330, 306], [460, 302], [500, 356], [640, 374], [760, 370], [815, 300], [832, 236], [890, 170], [1040, 120]], width: 22, label: 'River' },
+      { kind: 'hills', points: [[520, 500], [600, 490], [644, 540], [604, 600], [516, 590]] },
+    ],
+    units: [
+      { id: 'bw3', side: 'top', kind: 'warband', w: 96, h: 26 },
+      { id: 'bw1', side: 'top', kind: 'warband', label: 'Caratacus', w: 100, h: 28 },
+      { id: 'bw2', side: 'top', kind: 'warband', w: 100, h: 28 },
+      { id: 'bw4', side: 'top', kind: 'warband', w: 90, h: 26 },
+      { id: 'bf1', side: 'top', kind: 'warband', label: 'Forward bands', w: 90, h: 24 },
+      { id: 'bf2', side: 'top', kind: 'warband', w: 90, h: 24 },
+      { id: 'bs', side: 'top', kind: 'warband', w: 100, h: 26 },
+      { id: 'aux1', side: 'bottom', kind: 'light', label: 'Auxiliaries', w: 80, h: 14 },
+      { id: 'leg1', side: 'bottom', kind: 'foot', w: 100, h: 26 },
+      { id: 'leg2', side: 'bottom', kind: 'foot', label: 'Legionaries', w: 100, h: 26 },
+      { id: 'leg3', side: 'bottom', kind: 'foot', w: 100, h: 26 },
+      { id: 'aux2', side: 'bottom', kind: 'light', w: 80, h: 14 },
+    ],
+    phases: [
+      {
+        title: "Caratacus' hill",
+        caption: 'The Britons hold steep hills behind the river, with walls of piled stones where the slopes are gentler and armed bands in front of them. Ostorius, daunted at first, studies where the position can be forced.',
+        at: {
+          bw3: [116, 198],
+          bw1: [360, 134],
+          bw2: [580, 206],
+          bw4: [724, 136],
+          bf1: [360, 238],
+          bf2: [580, 296],
+          bs: [490, 30],
+          aux1: [170, 450],
+          leg1: [340, 450],
+          leg2: [500, 460],
+          leg3: [660, 450],
+          aux2: [830, 440],
+        },
+      },
+      {
+        title: 'Across the river',
+        caption: 'Pressed by his eager troops, Ostorius fords the river without much trouble. At the walls, while the fight is still with missiles, the Romans take more wounds and losses than they inflict.',
+        at: {
+          bf1: [240, 120],
+          bf2: [620, 150],
+          aux1: [116, 286],
+          leg1: [360, 214],
+          leg2: [580, 282],
+          leg3: [770, 242],
+          aux2: [700, 306],
+        },
+        arrows: [
+          { side: 'bottom', points: [[170, 430], [140, 360], [122, 310]] },
+          { side: 'bottom', points: [[340, 424], [352, 330], [358, 246]] },
+          { side: 'bottom', points: [[500, 434], [560, 380], [576, 314]] },
+          { side: 'bottom', points: [[660, 424], [730, 340], [762, 274]] },
+          { side: 'top', points: [[340, 224], [280, 170], [252, 140]], style: 'retreat' },
+          { side: 'top', points: [[600, 282], [636, 220], [626, 172]], style: 'retreat' },
+        ],
+      },
+      {
+        title: 'The walls come down',
+        caption: 'The Romans lock shields into a testudo and tear down the rough stone walls. In the hand-to-hand fight that follows, the Britons give way and fall back to the summits.',
+        at: {
+          bw3: [120, 56],
+          bf1: [240, 90],
+          bw1: [360, 60],
+          bs: [480, 30],
+          bw2: [600, 56],
+          bf2: [700, 96],
+          bw4: [800, 60],
+          aux1: [116, 228],
+          leg1: [360, 170],
+          leg2: [580, 238],
+          leg3: [760, 182],
+          aux2: [470, 198],
+        },
+        arrows: [
+          { side: 'top', points: [[360, 120], [360, 88]], style: 'retreat' },
+          { side: 'top', points: [[590, 190], [596, 84]], style: 'retreat' },
+          { side: 'top', points: [[116, 184], [118, 84]], style: 'retreat' },
+          { side: 'bottom', points: [[680, 300], [530, 304], [480, 222]] },
+        ],
+      },
+      {
+        title: 'Storming the summits',
+        caption: 'Light troops with missiles and legionaries in close order follow them up. Without armour, the Britons are cut down whichever enemy they face. Caratacus escapes, but his wife and daughter are taken and his brothers surrender.',
+        at: {
+          aux1: [170, 130],
+          leg1: [360, 116],
+          aux2: [480, 130],
+          leg2: [600, 120],
+          leg3: [790, 124],
+        },
+        broken: ['bw3', 'bw2', 'bw4', 'bf1', 'bf2', 'bs'],
+        gone: ['bw1'],
+        arrows: [
+          { side: 'bottom', points: [[116, 214], [150, 150]] },
+          { side: 'bottom', points: [[580, 222], [596, 142]] },
+          { side: 'bottom', points: [[470, 190], [476, 148]] },
+          { side: 'top', points: [[330, 40], [250, 16], [160, 12]], style: 'rout' },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'bottom',
+    result: 'Decisive Roman victory',
+    losses: 'Not recorded. Caratacus escaped, but his wife and daughter were captured and his brothers surrendered.',
+    text: [
+      'Caratacus fled to the Brigantes, but their queen Cartimandua, an ally of Rome, had him chained and handed over, in the ninth year of the war. Paraded in Rome, he spoke before Claudius with such dignity, says Tacitus, that the emperor pardoned him and his family.',
+      'Ostorius received triumphal honours, but the war was far from over. The Silures fell on cohorts building forts in their country, cut up foraging parties and cut off two auxiliary cohorts, and Ostorius died worn out, probably in AD 52. The Silures were finally subdued only in the 70s, under Julius Frontinus.',
+    ],
+  },
+  sources: [
+    'Tacitus, Annals 12.31–40',
+    'Tacitus, Agricola 17',
+    'Cassius Dio, Roman History 60.20–21',
+    'Graham Webster, Rome against Caratacus (1981)',
+  ],
+};
+
+export default history;

@@ -1,0 +1,119 @@
+// 212 Bruttium, 71 BC. Top: Slaves (Spartacus); bottom: Romans (Crassus).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '212',
+  context: {
+    war: 'Third Servile War (the war of Spartacus), 73–71 BC',
+    text: [
+      "Late in 72 BC Crassus drove Spartacus south through Lucania to the toe of Italy. There, Plutarch says, Spartacus hired Cilician pirates to ferry 2,000 men to Sicily and revive the island's old slave wars, but they took his gifts and sailed off without them. Florus adds that an attempt to cross the strait on rafts failed.",
+      "Crassus then shut the rebels into the peninsula of Rhegium with a ditch from sea to sea, by Plutarch's figures 300 stades (some 55 km) long and fifteen feet wide and deep, with a wall behind it. Its line is uncertain; in 2024 archaeologists suggested that a ditch and wall in the Aspromonte hills belonged to it. As winter set in, the rebels' food ran short.",
+    ],
+  },
+  sides: {
+    top: {
+      name: "Spartacus' rebel army",
+      commanders: ['Spartacus'],
+      strength: 'Not recorded; still tens of thousands',
+      forces: 'Runaway slaves and poor herdsmen, hungry and hemmed in, with some cavalry; Appian says Spartacus was waiting for more horsemen to join him.',
+    },
+    bottom: {
+      name: 'Romans and Italian allies',
+      commanders: ['Marcus Licinius Crassus (praetor)'],
+      strength: 'Eight legions (Appian) with auxiliaries; perhaps some 40,000 men',
+      forces: "Legions hardened by Crassus' harsh discipline, holding the ditch and wall and the camps behind it.",
+    },
+  },
+  map: {
+    north: 180,
+    terrain: [
+      { kind: 'woods', points: [[-60, 250], [110, 238], [262, 268], [282, 330], [248, 420], [286, 520], [258, 650], [-60, 650]] },
+      { kind: 'hills', points: [[272, 306], [500, 304], [760, 306], [1060, 304], [1060, 334], [760, 332], [500, 334], [272, 332]], label: "Crassus' wall" },
+      { kind: 'road', points: [[284, 290], [1060, 290]], label: 'Ditch' },
+      { kind: 'camp', at: [420, 490], size: 44 },
+      { kind: 'camp', at: [620, 490], size: 44 },
+      { kind: 'camp', at: [820, 490], size: 44 },
+    ],
+    units: [
+      { id: 's2', side: 'top', kind: 'warband' },
+      { id: 's1', side: 'top', kind: 'warband', label: 'Spartacus' },
+      { id: 's3', side: 'top', kind: 'warband' },
+      { id: 's4', side: 'top', kind: 'warband' },
+      { id: 's5', side: 'top', kind: 'warband' },
+      { id: 'g1', side: 'bottom', kind: 'light' },
+      { id: 'g2', side: 'bottom', kind: 'light', label: 'Wall guards' },
+      { id: 'g3', side: 'bottom', kind: 'light' },
+      { id: 'l2', side: 'bottom', kind: 'foot', w: 96 },
+      { id: 'l1', side: 'bottom', kind: 'foot', label: 'Crassus', w: 96 },
+      { id: 'l3', side: 'bottom', kind: 'foot', w: 96 },
+    ],
+    phases: [
+      {
+        title: "Crassus' line",
+        caption: "The ditch and wall cut off the toe of Italy. Appian says one day's fighting at the works cost the rebels 12,000 dead against three Romans killed, a figure hard to credit. The map is a reconstruction.",
+        at: {
+          s2: [180, 165],
+          s1: [330, 185],
+          s3: [490, 165],
+          s4: [650, 185],
+          s5: [810, 165],
+          g1: [440, 356],
+          g2: [660, 356],
+          g3: [880, 356],
+          l2: [420, 490],
+          l1: [620, 490],
+          l3: [820, 490],
+        },
+      },
+      {
+        title: 'A snowy night',
+        caption: 'Spartacus waits for a night of snow and storm, fills part of the ditch with earth, timber and branches, and leads his men across. Frontinus says he used the bodies of prisoners and cattle.',
+        at: {
+          s1: [345, 420],
+          s2: [230, 470],
+        },
+        arrows: [
+          { side: 'top', points: [[335, 205], [345, 395]] },
+          { side: 'top', points: [[190, 185], [268, 240], [310, 300], [304, 380], [270, 446]] },
+        ],
+      },
+      {
+        title: 'Loose again',
+        caption: "Plutarch says a third of the army crossed; Appian says the whole army broke out once Spartacus' awaited cavalry arrived. The rebels head north into Lucania, and Crassus hurries after them.",
+        at: {
+          s1: [310, 568],
+          s2: [150, 560],
+          s3: [345, 420],
+          s4: [230, 470],
+          s5: [345, 225],
+          l1: [530, 572],
+        },
+        arrows: [
+          { side: 'top', points: [[345, 440], [330, 492], [316, 544]] },
+          { side: 'top', points: [[222, 490], [192, 514], [166, 540]] },
+          { side: 'top', points: [[490, 190], [390, 258], [350, 395]] },
+          { side: 'top', points: [[650, 205], [470, 236], [408, 266], [306, 318], [258, 444]] },
+          { side: 'bottom', points: [[628, 516], [612, 540], [596, 558]] },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'top',
+    result: "Slave breakout: Crassus' blockade fails",
+    losses: 'Not recorded for the breakout. Appian says the earlier attempt cost the rebels 12,000 dead against three Romans killed and seven wounded.',
+    text: [
+      'Crassus, who had asked the Senate to call in Pompey from Spain and now regretted it, feared that Spartacus would march on Rome. But the rebels quarrelled, and a breakaway band of Gauls and Germans under Castus and Gannicus was destroyed by Crassus in Lucania, at Camalatrum.',
+      'In spring 71 BC Crassus brought Spartacus himself to battle by the river Silarus, where the rebel leader died fighting. Some 6,000 prisoners were crucified along the road from Capua to Rome, and Pompey, who cut down some 5,000 fugitives on his way back from Spain, claimed a share of the credit.',
+    ],
+  },
+  sources: [
+    'Plutarch, Life of Crassus 10–11; Life of Pompey 21',
+    'Appian, Civil Wars 1.118–120',
+    'Frontinus, Stratagems 1.5.20',
+    'Florus, Epitome 2.8',
+    'Barry Strauss, The Spartacus War (2009)',
+  ],
+};
+
+export default history;
