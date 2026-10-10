@@ -51,5 +51,14 @@ These parts of the UI kit are original CSS/SVG made for this project:
 
 No third-party assets are used for them.
 
-*Commands & Colors: Ancients* is a board game by Richard Borg, published by GMT Games. This is an unofficial
-fan implementation. The card texts are paraphrased summaries.
+## Scenarios
+
+The 15 base-game battles follow the scenario setups documented by the community at
+[commandsandcolors.net](https://www.commandsandcolors.net). The 24 battles of Expansion #1, *Greece & Eastern Kingdoms*
+(101–124), were transcribed hex by hex from the official scenario maps published at commandsandcolors.net, and for
+122–124 from GMT's Bonus Pack #2. The setups are data; the rules are paraphrased (`design/rules-reference.md`), the
+battle summaries are original, and all army and terrain art is original.
+
+*Commands & Colors: Ancients* is a board game by Richard Borg, published by GMT Games; Expansion #1, *Greece & Eastern
+Kingdoms*, is also a GMT Games product. This is an unofficial fan implementation. The card texts are paraphrased
+summaries.
