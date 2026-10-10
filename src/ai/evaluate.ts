@@ -400,7 +400,8 @@ export function singleUnitRisk(s: GameState, occ: Occ, u: Unit, W: Weights): num
   return unitRisk(s, occ, u, info[0], per[0], bm);
 }
 
-function nearestDist(u: Unit, enemies: Unit[]): number {
+/** Distance from u to the nearest of `enemies` (99 if none). */
+export function nearestDist(u: Unit, enemies: readonly Unit[]): number {
   let best = 99;
   for (const e of enemies) {
     const d = hexDist(u.hex, e.hex);
@@ -469,7 +470,7 @@ function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side
 }
 
 /** Distance to the nearest enemy cavalry or chariot (a camel's favourite prey: it ignores a hit and scares horses). */
-function nearestHorse(u: Unit, enemies: Unit[]): number {
+function nearestHorse(u: Unit, enemies: readonly Unit[]): number {
   let best = 99;
   for (const e of enemies) {
     const st = UNIT_STATS[e.type];
@@ -490,16 +491,20 @@ function isCamel(u: Unit): boolean {
  * The advance penalty's gap for unit u at distance d from the nearest enemy (advanceGap, capped at 8). A battered unit
  * is not pushed forward, but a war machine is still told off for standing next to the enemy (it cannot shoot there).
  */
-export function penaltyGap(u: Unit, d: number): number {
+function penaltyGap(u: Unit, d: number): number {
   if (battered(u)) return isWarMachine(u) && d <= 1 ? advanceGap(u, d) : 0;
   return Math.min(8, advanceGap(u, d));
 }
 
-/** penaltyGap against these enemies; a camel measures to the enemy horse when that is not much further away. */
-function unitGap(u: Unit, enemies: Unit[]): number {
+/**
+ * penaltyGap against these enemies; a camel measures to the enemy horse when that is not much further away. `d`: the
+ * distance to the nearest enemy (nearestDist), when the caller has it already. Used by the evaluation and by the quick
+ * local scoring of order candidates, so both see the same gap.
+ */
+export function unitGap(u: Unit, enemies: readonly Unit[], d?: number): number {
   // a battered unit other than a war machine has no gap wherever the enemy is (penaltyGap): skip the distance scan
   if (battered(u) && !isWarMachine(u)) return 0;
-  const d = nearestDist(u, enemies);
+  d ??= nearestDist(u, enemies);
   if (isCamel(u) && !battered(u)) {
     // camels seek out the enemy horse when it is not much further away than the nearest enemy
     const dh = nearestHorse(u, enemies);

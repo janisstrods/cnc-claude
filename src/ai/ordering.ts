@@ -10,7 +10,7 @@ import { UNIT_STATS } from '../engine/units';
 import type { CardKind, GameState, Leader, SectionName, Side, Unit } from '../engine/types';
 import { Occ, hexDist, isWarMachine, supportOcc } from './board';
 import { attackNowValue, shotValue } from './estimate';
-import { battered, penaltyGap, singleUnitRisk } from './evaluate';
+import { battered, nearestDist, singleUnitRisk, unitGap } from './evaluate';
 import { isSacredLeader, type Weights } from './values';
 
 export interface OrderCandidate {
@@ -25,11 +25,14 @@ function nearestEnemy(s: GameState, h: number, side: Side): number {
   return best;
 }
 
-/** Cheap local score of unit u where it stands (no attack). */
-function localScore(s: GameState, occ: Occ, u: Unit, W: Weights): number {
+/**
+ * Cheap local score of unit u where it stands (no attack). `enemies`: the enemy units on the board; the advance gap is
+ * the evaluation's (unitGap: a camel measures to the enemy horse).
+ */
+function localScore(s: GameState, occ: Occ, u: Unit, enemies: readonly Unit[], W: Weights): number {
   let v = -W.riskSelf * singleUnitRisk(s, occ, u, W);
-  const d = nearestEnemy(s, u.hex, u.side);
-  const gap = penaltyGap(u, d);
+  const d = nearestDist(u, enemies);
+  const gap = unitGap(u, enemies, d);
   if (gap) v -= W.adv * gap * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1) * 1.5;
   if (d <= 2) {
     const sc = supportOcc(occ, u);
@@ -50,8 +53,10 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
   const occ = new Occ(s);
   const out = new Map<string, number>();
   const m = s.turn.mods;
+  // only own pieces move (temporarily) below
+  const enemies = s.units.filter((x) => x.side !== side && x.hex >= 0);
   for (const u of unitsOf(s, side)) {
-    const base = localScore(s, occ, u, W);
+    const base = localScore(s, occ, u, enemies, W);
     let best = base + W.attackNow * attackNowValue(s, occ, u, 0, true, false, W);
     if (!m.noMove) {
       const from = u.hex;
@@ -70,7 +75,7 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
           l.hex = t.hex;
         }
         u.hex = t.hex;
-        const v = localScore(s, occ, u, W) + W.attackNow * attackNowValue(s, occ, u, t.dist, t.canBattle, t.mustBattle, W);
+        const v = localScore(s, occ, u, enemies, W) + W.attackNow * attackNowValue(s, occ, u, t.dist, t.canBattle, t.mustBattle, W);
         u.hex = from;
         occ.unit[t.hex] = null;
         occ.unit[from] = u;

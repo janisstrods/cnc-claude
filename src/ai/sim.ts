@@ -3,7 +3,7 @@ import { CARD_LIST } from '../engine/cards';
 import { turnFlow, type Gen } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
 import { other } from '../engine/query';
-import type { Answer, Decision, FlowCtx, GameState, Side } from '../engine/types';
+import type { Answer, Decision, FlowCtx, GameState, HexId, Side } from '../engine/types';
 import type { Rng } from './rand';
 
 export type Policy = (s: GameState, d: Decision) => Answer;
@@ -23,6 +23,12 @@ export function determinize(s: GameState, me: Side, rng: Rng): void {
   s.rng = rng.u32();
 }
 
+/** Fallback leader placement (117): an offered hex with an own unit and no leader yet, else the first offered hex. */
+export function safePlacement(s: GameState, d: Extract<Decision, { kind: 'placeLeader' }>): HexId {
+  const free = d.options.find((h) => s.units.some((u) => u.hex === h && u.side === d.side) && !s.leaders.some((l) => l.hex === h));
+  return free ?? d.options[0];
+}
+
 /** A safe answer used when a policy answer was rejected. */
 export function safeAnswer(s: GameState, d: Decision, rng: Rng, attempt: number): Answer {
   if (attempt <= 1) {
@@ -40,7 +46,7 @@ export function safeAnswer(s: GameState, d: Decision, rng: Rng, attempt: number)
       case 'bonusCombat': return { kind: 'hex', hex: null };
       case 'rally':
       case 'spartacus': return { kind: 'assign', ids: d.faces.map(() => null) };
-      case 'placeLeader': return { kind: 'hex', hex: d.options[0] };
+      case 'placeLeader': return { kind: 'hex', hex: safePlacement(s, d) };
     }
   }
   return randomAnswer(s, d, () => rng.next());
