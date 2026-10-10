@@ -6,7 +6,7 @@
 // from the AI's private RNG), evaluated statically and compared, minus the value of keeping the card for later.
 // Battles use rollouts per candidate attack; reactive decisions use fast expected-value heuristics.
 import { CARD_DEFS, cardKind, modsFor, sectionOrders } from '../engine/cards';
-import { ambushAvailable, ambushSections, battleTargets, pieceMoves } from '../engine/flow';
+import { ambushAvailable, ambushSections, battleTargets, isRollingFirePath, pieceMoves } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
 import { validateOrders, validateRally, validateSpartacus } from '../engine/orders';
 import { other, unitById } from '../engine/query';
@@ -141,6 +141,7 @@ export function isLegal(s: GameState, d: Decision, a: Answer): boolean {
       return a.kind === 'move' && !!s.turn.ordered[a.piece] && pieceMoves(s, a.piece, d.stage).some((m) => m.hex === a.to);
     case 'battle': {
       if (a.kind === 'endBattle') return !pendingMustBattle(s);
+      if (a.kind === 'rollingFire') return isRollingFirePath(s, a.unit, a.path); // never chosen by the AI yet, only by fallbacks
       if (a.kind !== 'attack') return false;
       const t = battleTargets(s, a.unit).find((x) => x.hex === a.target);
       if (!t) return false;

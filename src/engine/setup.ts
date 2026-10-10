@@ -57,6 +57,11 @@ export interface ScenarioSetup {
    * command's base edges (art only).
    */
   commands?: CommandDef[];
+  /**
+   * Rolling Fire (210 Picenum, §18.5): infantry of this side standing on a hill may roll burning logs down a path toward
+   * the enemy edge instead of their normal battle. Left out: no Rolling Fire.
+   */
+  rollingFire?: Side;
   /** Castulo: name of the leader whose loss ends the game. */
   sacredLeader?: { side: Side; name: string };
   /** Starting Command for a side when different from `cards` (Trasimenus Romans start with 2). */
@@ -220,6 +225,8 @@ function checkIds(setup: ScenarioSetup) {
   }
   for (const r of setup.rules) if (!known(SPECIAL_RULE_IDS, r)) throw new Error(`unknown special rule ${String(r)}`);
   checkLegions(setup.legions);
+  const rf: unknown = setup.rollingFire;
+  if (rf !== undefined && rf !== 'top' && rf !== 'bottom') throw new Error(`rollingFire: unknown side ${String(rf)}`);
   for (const t of setup.terrain) {
     // 'void' marks the hexes off the board: it is not scenario terrain
     if (!has(TERRAIN_NAMES, t.t) || t.t === 'void') throw new Error(`unknown terrain ${String(t.t)} at ${t.r},${t.c}`);
@@ -421,6 +428,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     special: {
       rules,
       commands,
+      rollingFire: setup.rollingFire ?? null,
       ambush,
       reserveUnits,
       reserveLeaders,

@@ -261,6 +261,8 @@ export interface ScenarioSpecial {
   rules: SpecialRuleId[];
   /** Separate commands (§18.5), in data order; empty in most battles. Never changed during play: `cloneState` shares the array. */
   commands: CommandDef[];
+  /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs; null in most battles. */
+  rollingFire: Side | null;
   /** Ambush trigger data: set exactly when the rule `magoAmbush` is on, else null. Never changed during play. */
   ambush: AmbushDef | null;
   /** Off-board reserve force (Trebbia: Mago's ambush). */
@@ -368,6 +370,8 @@ export type Answer =
   | { kind: 'move'; piece: string; to: HexId } // to = OFF_BOARD only for exit objectives (010 Castulo)
   | { kind: 'endMove' }
   | { kind: 'attack'; unit: string; target: HexId }
+  /** Battle decision: `unit` rolls burning logs down `path`, one of `rollingFirePaths(s, unit)` (210 Picenum, §18.5). */
+  | { kind: 'rollingFire'; unit: string; path: HexId[] }
   | { kind: 'endBattle' }
   | { kind: 'defend'; choice: 'stand' | 'evade' | 'firstStrike' }
   | { kind: 'ignoreFlags'; count: number }
@@ -383,7 +387,9 @@ export type Answer =
 
 export type RollPurpose =
   | 'ranged' | 'close' | 'battleBack' | 'firstStrike' | 'bonus' | 'evade'
-  | 'leaderCheck' | 'escape' | 'rampage' | 'marsh' | 'rally' | 'spartacus';
+  | 'leaderCheck' | 'escape' | 'rampage' | 'marsh' | 'rally' | 'spartacus'
+  /** 2 dice against each unit in a Rolling Fire path (§18.5). */
+  | 'rollingFire';
 
 export type GameEvent =
   | { t: 'turnStart'; side: Side; turn: number }

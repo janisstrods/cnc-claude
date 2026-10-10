@@ -36,6 +36,8 @@ export interface ScenarioJson {
   legions?: ScenarioSetup['legions'];
   /** Separate commands (210 Picenum, §18.5); units and leaders name theirs with `command`. */
   commands?: ScenarioSetup['commands'];
+  /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs. */
+  rollingFire?: ScenarioSetup['rollingFire'];
   /** `ford: 'nocap'` = fordable without dice caps; a rampart lists `faces` and/or `edges`. */
   terrain: TerrainSetup[];
   units: ScenarioSetup['units'];
@@ -235,6 +237,7 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   if (j.options && Object.keys(j.options).length) setup.options = { ...j.options };
   if (j.legions && Object.keys(j.legions).length) setup.legions = { ...j.legions };
   if (j.commands !== undefined) setup.commands = Array.isArray(j.commands) ? j.commands.map((c) => ({ ...c })) : j.commands; // the engine rejects a non-list
+  if (j.rollingFire !== undefined) setup.rollingFire = j.rollingFire; // the engine rejects an unknown side
   if (j.placeLeaders?.length) setup.placeLeaders = j.placeLeaders.map(copyLeader);
   // Trasimenus: the Roman column starts with 4 cards eventually; War Council lists 2 initially.
   if (j.id === '006') setup.bottom.cards = 4;

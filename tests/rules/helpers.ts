@@ -34,6 +34,8 @@ export interface Pos {
   legions?: ScenarioSetup['legions'];
   /** Separate commands of a side's army (210 Picenum, §18.5): one card orders units of one command. */
   commands?: ScenarioSetup['commands'];
+  /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs. */
+  rollingFire?: ScenarioSetup['rollingFire'];
 }
 
 export const H = (r: number, c: number) => hexId(r, c);
@@ -64,6 +66,7 @@ export function setupOf(p: Pos): ScenarioSetup {
     ambush: p.ambush,
     legions: p.legions,
     commands: p.commands,
+    ...(p.rollingFire !== undefined ? { rollingFire: p.rollingFire } : {}),
   };
 }
 

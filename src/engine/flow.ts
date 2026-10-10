@@ -4,7 +4,7 @@ import {
   canFireAt, closeCombatDice, helmetsCount, ignorableFlags, rangedDice, retreatPerFlag, scoreClassOnly, scoreClose,
   swordIgnores, vsMountedIgnores, type StrikeRole,
 } from './combat';
-import { ALL_HEXES, areAdjacent, neighbours, rowOf } from './hex';
+import { ALL_HEXES, areAdjacent, neighbours, rearHexes, rowOf } from './hex';
 import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './movement';
 import { bannerTotal, gainBanner, updateHeld } from './banners';
 import { captureOnStop, exitUnit, turnEndObjectives, turnStartObjectives } from './objectives';
@@ -17,7 +17,7 @@ import {
 import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption } from './retreat';
 import { randInt, rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
-import { isFord, isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
+import { isFord, isHill, isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
 import { canShoot, fireMoveLimit } from './elites';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forbidsTerrain, forestFighter } from './units';
 import {
@@ -421,16 +421,19 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
   return { eliminated: false, vacated: u.hex !== start };
 }
 
-/** Apply hits and flags to a unit (shared by ranged and close combat). */
+/**
+ * Apply hits and flags to a unit (shared by ranged and close combat). `noFlagIgnore`: no flag may be ignored for any
+ * reason (Rolling Fire, §18.5); `reason` names the block loss (default: missile fire or close combat).
+ */
 function* applyHits(
   s: GameState, ctx: FlowCtx, target: Unit, hits: number, flags: number,
-  info: { kind: 'close' | 'ranged'; striker: Unit | null; fullAtStart: boolean; role?: StrikeRole },
+  info: { kind: 'close' | 'ranged'; striker: Unit | null; fullAtStart: boolean; role?: StrikeRole; noFlagIgnore?: boolean; reason?: string },
 ): Gen<HitOutcome> {
   const l = attachedLeader(s, target);
   let leaderAlive = !!l;
   const checked = { done: false };
   if (hits > 0) {
-    if (loseBlocks(s, ctx, target, hits, info.kind === 'ranged' ? 'missile fire' : 'close combat')) {
+    if (loseBlocks(s, ctx, target, hits, info.reason ?? (info.kind === 'ranged' ? 'missile fire' : 'close combat'))) {
       if (l) yield* leaderOrphaned(s, ctx, l);
       return { eliminated: true, vacated: true };
     }
@@ -441,7 +444,9 @@ function* applyHits(
     if (s.winner) return { eliminated: false, vacated: false };
   }
   if (flags <= 0) return { eliminated: false, vacated: false };
-  const max = Math.min(flags, ignorableFlags(s, target, { kind: info.kind, striker: info.striker, leaderAlive, fullAtStart: info.fullAtStart, role: info.role }));
+  const max = info.noFlagIgnore
+    ? 0
+    : Math.min(flags, ignorableFlags(s, target, { kind: info.kind, striker: info.striker, leaderAlive, fullAtStart: info.fullAtStart, role: info.role }));
   let ignored = 0;
   if (max > 0) {
     const a = yield* ask(ctx, { kind: 'ignoreFlags', side: target.side, unit: target.id, flags, max }, (a) =>
@@ -495,6 +500,25 @@ function* attackLoneLeader(s: GameState, ctx: FlowCtx, striker: Unit, l: Leader,
   else yield* leaderEvade(s, ctx, l);
 }
 
+/**
+ * A ranged roll of `dice` dice by `by` against a unit (missile fire, and each target of Rolling Fire, §18.5): the `combat`
+ * and `roll` events (`purpose`), only the target's class symbol and flags score, then `applyHits` (hits, the leader
+ * casualty check, flags and the retreat; there is no battle back). `noFlagIgnore` and `reason` go to `applyHits`.
+ */
+function* rangedRoll(
+  s: GameState, ctx: FlowCtx, by: Unit, target: Unit, dice: number,
+  opts: { purpose: 'ranged' | 'rollingFire'; noFlagIgnore?: boolean; reason?: string },
+): Gen<HitOutcome> {
+  ctx.emit({ t: 'combat', purpose: opts.purpose, attacker: by.id, target: target.id, dice });
+  if (dice <= 0) return { eliminated: false, vacated: false };
+  const faces = rollDice(s, dice);
+  const sc = scoreClassOnly(target, faces, true);
+  emitRoll(ctx, opts.purpose, faces, sc.scoring, by.id, target.id);
+  return yield* applyHits(s, ctx, target, sc.hits, sc.flags, {
+    kind: 'ranged', striker: by, fullAtStart: target.blocks === target.maxBlocks, noFlagIgnore: opts.noFlagIgnore, reason: opts.reason,
+  });
+}
+
 function* rangedAttack(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId): Gen {
   const op = s.turn.ordered[u.id];
   const dice = rangedDice(s, u, hex, op?.moved ?? 0, !!op);
@@ -504,12 +528,80 @@ function* rangedAttack(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId): Gen {
     if (l) yield* attackLoneLeader(s, ctx, u, l, 'ranged', dice);
     return;
   }
-  ctx.emit({ t: 'combat', purpose: 'ranged', attacker: u.id, target: tu.id, dice });
-  if (dice <= 0) return;
-  const faces = rollDice(s, dice);
-  const sc = scoreClassOnly(tu, faces, true);
-  emitRoll(ctx, 'ranged', faces, sc.scoring, u.id, tu.id);
-  yield* applyHits(s, ctx, tu, sc.hits, sc.flags, { kind: 'ranged', striker: u, fullAtStart: tu.blocks === tu.maxBlocks });
+  yield* rangedRoll(s, ctx, u, tu, dice, { purpose: 'ranged' });
+}
+
+/** Rolling Fire (§18.5): hexes a path may run, and dice rolled against each unit in it. */
+const ROLLING_FIRE_HEXES = 3;
+const ROLLING_FIRE_DICE = 2;
+
+/**
+ * Legal Rolling Fire paths of an ordered unit right now (empty when it may not use it; §18.5, rulings Exp2 Q6).
+ * The unit: infantry of the battle's `special.rollingFire` side, on a hill, ordered by a card that is not a Tactic card (a
+ * Counter Attack counts as the card it copies), not moved, its battle unused; adjacent enemies do not matter.
+ * A path: from the unit's hex, each step goes to one of the two neighbours one row nearer the enemy baseline, never into
+ * a hill, void or impassable hex. It ends after the first hex that is not open ground (that hex included), else after 3
+ * hexes; it is shorter only where no forward hex can be entered. Units and leaders do not stop it. At least 1 hex; paths
+ * in search order (neighbour order: SW before SE for the top side).
+ */
+export function rollingFirePaths(s: GameState, unitId: string): HexId[][] {
+  const side = s.special.rollingFire;
+  if (!side) return [];
+  const u = unitById(s, unitId);
+  const op = s.turn.ordered[unitId];
+  if (!u || !op || op.isLeader || u.side !== side || u.hex < 0) return [];
+  if (!UNIT_STATS[u.type].infantry || !isHill(s, u.hex)) return [];
+  if (op.moved > 0 || op.battlesLeft <= 0 || !op.canBattle) return [];
+  const kind = s.turn.effective;
+  if (!kind || CARD_DEFS[kind].group === 'tactic') return [];
+  const foe = other(side);
+  const open = (h: HexId) => !isHill(s, h) && !isImpassable(s, h);
+  const out: HexId[][] = [];
+  const walk = (path: HexId[]) => {
+    const last = path[path.length - 1];
+    const next = path.length < ROLLING_FIRE_HEXES && terrainAt(s, last) === 'plain' ? rearHexes(last, foe).filter(open) : [];
+    if (!next.length) out.push(path);
+    for (const h of next) walk([...path, h]);
+  };
+  for (const h of rearHexes(u.hex, foe).filter(open)) walk([h]);
+  return out;
+}
+
+/** Is `path` one of `unitId`'s legal Rolling Fire paths right now (same hexes, same order)? */
+export function isRollingFirePath(s: GameState, unitId: string, path: unknown): boolean {
+  if (!Array.isArray(path)) return false;
+  return rollingFirePaths(s, unitId).some((p) => p.length === path.length && p.every((h, i) => h === path[i]));
+}
+
+/**
+ * Rolling Fire (§18.5, rulings Exp2 Q6): `u` uses its battle to roll burning logs down `path` (a legal path). The targets
+ * are fixed now and resolved nearest first, each completely before the next: one that has left its hex is skipped, and a
+ * piece that arrives in a later path hex is not a target. Every unit, friend or foe, is rolled 2 dice: only its class
+ * symbol hits and no flag may be ignored; no battle back. A lone leader is not rolled: he evades at once toward his own
+ * side. Then the rolling unit loses 1 block (casualty check for its leader; a banner for the enemy if it is eliminated).
+ */
+function* rollingFire(s: GameState, ctx: FlowCtx, u: Unit, path: HexId[]): Gen {
+  s.turn.ordered[u.id].battlesLeft = 0;
+  log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} rolls burning logs down the hill!`, u.side);
+  const targets = path.map((hex) => ({ hex, id: (unitAt(s, hex) ?? leaderAt(s, hex))?.id }));
+  for (const t of targets) {
+    if (s.winner) return;
+    if (!t.id) continue;
+    if (isLeaderId(t.id)) {
+      const l = leaderById(s, t.id);
+      if (l && l.hex === t.hex && !leaderUnit(s, l)) yield* leaderEvade(s, ctx, l);
+      continue;
+    }
+    const v = unitById(s, t.id);
+    if (v && v.hex === t.hex) {
+      yield* rangedRoll(s, ctx, u, v, ROLLING_FIRE_DICE, { purpose: 'rollingFire', noFlagIgnore: true, reason: 'burning logs' });
+    }
+  }
+  if (s.winner || !unitById(s, u.id)) return;
+  const l = attachedLeader(s, u);
+  if (loseBlocks(s, ctx, u, 1, 'rolling fire')) {
+    if (l) yield* leaderOrphaned(s, ctx, l);
+  } else if (l) leaderCheck(s, ctx, l, 2);
 }
 
 function holdsFirstStrike(s: GameState, side: Side): number | null {
@@ -967,8 +1059,9 @@ function* movePhase(s: GameState, ctx: FlowCtx, stage: 1 | 2): Gen {
 // battle
 // ---------------------------------------------------------------------------
 
+/** Ordered units that can battle now: a target to attack, or a Rolling Fire path (§18.5). */
 export function battleReady(s: GameState): string[] {
-  return Object.keys(s.turn.ordered).filter((id) => battleTargets(s, id).length > 0);
+  return Object.keys(s.turn.ordered).filter((id) => battleTargets(s, id).length > 0 || rollingFirePaths(s, id).length > 0);
 }
 
 function pendingMustBattle(s: GameState): string | null {
@@ -985,6 +1078,10 @@ function validateBattle(s: GameState, a: Answer): string | null {
   if (a.kind === 'endBattle') {
     return pendingMustBattle(s) ? 'Warriors that charged must close combat.' : null;
   }
+  if (a.kind === 'rollingFire') {
+    if (!rollingFirePaths(s, a.unit).length) return 'This unit cannot use Rolling Fire.';
+    return isRollingFirePath(s, a.unit, a.path) ? null : 'Not a legal Rolling Fire path.';
+  }
   if (a.kind !== 'attack') return 'Attack or end the battle phase.';
   const targets = battleTargets(s, a.unit);
   const t = targets.find((x) => x.hex === a.target);
@@ -1000,21 +1097,24 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
     if (!battleReady(s).length) break;
     const a = yield* ask(ctx, { kind: 'battle', side: s.active }, (a) => validateBattle(s, a));
     if (a.kind === 'endBattle') break;
-    if (a.kind !== 'attack') continue;
-    const u = unitById(s, a.unit)!;
-    const op = s.turn.ordered[a.unit];
-    const kind = battleTargets(s, a.unit).find((x) => x.hex === a.target)!.kind;
-    if (kind === 'ranged') {
-      op.battlesLeft--;
-      yield* rangedAttack(s, ctx, u, a.target);
-    } else {
-      op.battlesLeft = 0;
-      op.mustBattle = false;
-      yield* closeCombat(s, ctx, u, a.target, 'attack');
-      // Capture objectives: a camp counts only where the attacking unit finally stops.
-      if (!s.winner && unitById(s, u.id)) captureOnStop(s, ctx, u);
-    }
-    // held banners after the whole sequence (retreats, advances, bonus combat; any battle action)
+    if (a.kind === 'rollingFire') {
+      yield* rollingFire(s, ctx, unitById(s, a.unit)!, a.path);
+    } else if (a.kind === 'attack') {
+      const u = unitById(s, a.unit)!;
+      const op = s.turn.ordered[a.unit];
+      const kind = battleTargets(s, a.unit).find((x) => x.hex === a.target)!.kind;
+      if (kind === 'ranged') {
+        op.battlesLeft--;
+        yield* rangedAttack(s, ctx, u, a.target);
+      } else {
+        op.battlesLeft = 0;
+        op.mustBattle = false;
+        yield* closeCombat(s, ctx, u, a.target, 'attack');
+        // Capture objectives: a camp counts only where the attacking unit finally stops.
+        if (!s.winner && unitById(s, u.id)) captureOnStop(s, ctx, u);
+      }
+    } else continue;
+    // held banners after the whole sequence (retreats, advances, bonus combat, Rolling Fire; any battle action)
     updateHeld(s, ctx);
   }
 }

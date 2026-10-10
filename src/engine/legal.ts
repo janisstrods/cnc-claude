@@ -1,5 +1,5 @@
 // Legal-answer helpers: enumerate simple answers and produce random legal answers (used by tests and AI).
-import { ambushAvailable, ambushSections, battleTargets, movablePieces, pieceMoves } from './flow';
+import { ambushAvailable, ambushSections, battleTargets, movablePieces, pieceMoves, rollingFirePaths } from './flow';
 import { eligiblePieces, orderMode, rallyCandidates, validateOrders, validateRally, validateSpartacus } from './orders';
 import { leaderById, unitById, unitsOf, leadersOf } from './query';
 import { UNIT_STATS } from './units';
@@ -68,6 +68,12 @@ export function randomAnswer(s: GameState, d: Decision, rnd: Rand): Answer {
       if (must.length) {
         const id = must[0];
         return { kind: 'attack', unit: id, target: battleTargets(s, id).find((t) => t.kind === 'close')!.hex };
+      }
+      // Rolling Fire (§18.5): no random draw at all where nobody may use it, so other battles play exactly as before
+      const fire = Object.keys(s.turn.ordered).filter((id) => rollingFirePaths(s, id).length);
+      if (fire.length && rnd() < 0.3) {
+        const id = pick(fire, rnd);
+        return { kind: 'rollingFire', unit: id, path: pick(rollingFirePaths(s, id), rnd) };
       }
       if (!ids.length || rnd() < 0.05) return { kind: 'endBattle' };
       const id = pick(ids, rnd);

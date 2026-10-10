@@ -522,7 +522,7 @@ export class GameController {
         const to = this.hexOf(e.target, after);
         const verb: Record<string, string> = {
           close: 'attacks', ranged: 'fires on', battleBack: 'battles back against', firstStrike: 'strikes first at', bonus: 'presses on into',
-          evade: 'attacks', escape: 'tries to catch', rampage: 'tramples',
+          evade: 'attacks', escape: 'tries to catch', rampage: 'tramples', rollingFire: 'rolls burning logs onto',
         };
         if (e.purpose === 'close' || e.purpose === 'bonus' || e.purpose === 'battleBack' || e.purpose === 'firstStrike') sfx.clash();
         if (e.purpose !== 'evade') {
@@ -681,6 +681,7 @@ export class GameController {
       case 'marsh': return `${t} — marsh check`;
       case 'rally': return 'Rally';
       case 'spartacus': return 'I Am Spartacus';
+      case 'rollingFire': return `Burning logs roll onto ${t}`;
     }
   }
 

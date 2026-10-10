@@ -642,6 +642,11 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
     ignored** for any reason; no battle back. An attached leader makes the usual casualty check. A lone leader in the
     path evades at once toward his own side.
   * Then the rolling unit loses 1 block (casualty check for its leader; the Romans score a banner if it is eliminated).
+  * Engine: `rollingFire` in the scenario data names the side. The battle answer `rollingFire` gives the unit and its
+    path, one of `rollingFirePaths` (the battle step is offered while an ordered unit has a target or a path). A path
+    ends after its first hex that is not plain. Targets are fixed when the path is chosen: a unit that has left its hex
+    by its turn is skipped, and one that arrives in a later path hex is not rolled. Dice and events use the purpose
+    `rollingFire`. Battles without it are unchanged.
 * **Last-row retreat** (214, the Slaves): a unit of that side whose retreat ends on its own baseline row with retreat
   hexes it could not take is eliminated instead of losing blocks (enemy banner). Evades and a retreat that ends by
   joining a leader are not affected (X2 Q10).
