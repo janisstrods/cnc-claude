@@ -1,0 +1,155 @@
+// 124 Pydna, 168 BC. Top: Macedonians (Perseus); bottom: Romans (Aemilius Paullus).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '124',
+  context: {
+    war: 'Third Macedonian War, 171–168 BC',
+    text: [
+      "Perseus succeeded his father Philip V in 179 BC and rebuilt Macedon's strength and its standing in Greece. Rome, urged on by Eumenes of Pergamum, declared war in 171 BC. Perseus won the opening cavalry battle at Callinicus, and for three years the Roman commanders made little headway.",
+      'In 168 BC the consul Lucius Aemilius Paullus, son of the Paullus who fell at Cannae, found Perseus entrenched behind the river Elpeus below Mount Olympus. He sent Scipio Nasica with a picked force over the mountain passes behind the Macedonian lines, and Perseus fell back to the plain before Pydna. Paullus followed but would not send his tired men into battle; that night an eclipse of the moon, foretold by a Roman officer, dismayed the Macedonians. The armies met the next day, 22 June.',
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Macedonians and allies',
+      commanders: ['Perseus, king of Macedon', 'Cotys, king of the Odrysian Thracians'],
+      strength: 'c. 40,000 foot and 4,000 horse (Plutarch)',
+      forces: 'A phalanx of Bronze Shields and White Shields, a picked guard of 3,000, Thracians, mercenaries and cavalry.',
+    },
+    bottom: {
+      name: 'Romans and Italian allies',
+      commanders: ['Lucius Aemilius Paullus (consul)', 'Publius Cornelius Scipio Nasica', 'Lucius Postumius Albinus (second legion)'],
+      strength: 'Perhaps 30,000–38,000 (modern estimates), fewer than the Macedonians',
+      forces: 'Two legions of 6,000, Italian allies such as the Paeligni and Marrucini, Ligurians and other auxiliaries, and war elephants.',
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'hills', points: [[215, 278], [300, 270], [356, 286], [350, 326], [280, 336], [218, 322]] },
+      { kind: 'hills', points: [[362, 212], [426, 206], [442, 250], [400, 262], [360, 250]] },
+      { kind: 'hills', points: [[505, 206], [640, 212], [652, 256], [578, 268], [572, 330], [506, 332], [494, 262]] },
+      { kind: 'hills', points: [[360, 346], [430, 342], [440, 390], [366, 396]] },
+      { kind: 'river', points: [[1040, 300], [900, 314], [760, 302], [600, 316], [420, 306], [250, 320], [80, 310], [-40, 320]], width: 10, label: 'Leucus' },
+      { kind: 'label', at: [578, 240], text: 'Uneven ground' },
+      { kind: 'hills', points: [[-60, 545], [90, 534], [200, 560], [262, 640], [-60, 640]], label: 'Mt Olocrus' },
+      { kind: 'camp', at: [500, 50], size: 26, label: 'Macedonian camp' },
+      { kind: 'camp', at: [640, 548], size: 24, label: 'Roman camp' },
+    ],
+    units: [
+      { id: 'mHorse', side: 'top', kind: 'horse', label: "Perseus' horse", w: 70, h: 24 },
+      { id: 'mBronze', side: 'top', kind: 'foot', label: 'Bronze Shields', w: 150, h: 40 },
+      { id: 'mWhite', side: 'top', kind: 'foot', label: 'White Shields', w: 150, h: 40 },
+      { id: 'mGuard', side: 'top', kind: 'foot', label: 'Guard (3,000)', w: 90, h: 30 },
+      { id: 'mMerc', side: 'top', kind: 'foot', label: 'Mercenaries', w: 80, h: 26 },
+      { id: 'mThr', side: 'top', kind: 'warband', label: 'Thracians', w: 90, h: 28 },
+      { id: 'rPael', side: 'bottom', kind: 'foot', label: 'Paeligni & Marrucini', w: 110, h: 30 },
+      { id: 'rLeg2', side: 'bottom', kind: 'foot', label: "Albinus' 2nd legion", w: 120, h: 32 },
+      { id: 'rLeg1', side: 'bottom', kind: 'foot', label: "Paullus' 1st legion", w: 120, h: 32 },
+      { id: 'rAllies', side: 'bottom', kind: 'foot', label: 'Latin allies', w: 100, h: 30 },
+      { id: 'rEle', side: 'bottom', kind: 'elephants', label: 'Elephants', w: 70, h: 24 },
+      { id: 'rLight', side: 'bottom', kind: 'light', label: 'Light troops', w: 80, h: 14 },
+    ],
+    phases: [
+      {
+        title: 'Skirmish at the stream',
+        caption: 'Neither general means to fight that day. In the afternoon a loose pack animal sparks a fight at the stream between the camps; Thracians and Romans pile in, and both armies are drawn into battle.',
+        at: {
+          mHorse: [80, 190],
+          mWhite: [235, 195],
+          mBronze: [405, 195],
+          mGuard: [565, 190],
+          mMerc: [680, 190],
+          mThr: [830, 255],
+          rLeg2: [235, 450],
+          rLeg1: [405, 450],
+          rPael: [565, 448],
+          rAllies: [722, 450],
+          rEle: [835, 400],
+          rLight: [860, 350],
+        },
+      },
+      {
+        title: 'The phalanx advances',
+        caption: 'The phalanx levels its pikes and advances. The Paeligni hurl themselves at the guard and are cut down, and the legions fall back towards the hills. On the right the elephants and Latin allies charge the Macedonian left.',
+        at: {
+          mWhite: [235, 352],
+          mBronze: [405, 360],
+          mGuard: [565, 335],
+          rPael: [565, 400],
+          rLeg2: [235, 500],
+          rLeg1: [405, 500],
+          rEle: [835, 300],
+          rAllies: [730, 345],
+          mThr: [830, 232],
+        },
+        broken: ['rPael'],
+        gone: ['rLight'],
+        arrows: [
+          { side: 'top', points: [[235, 216], [235, 326]] },
+          { side: 'top', points: [[405, 216], [405, 334]] },
+          { side: 'bottom', points: [[235, 438], [235, 478]], style: 'retreat' },
+          { side: 'bottom', points: [[405, 438], [405, 478]], style: 'retreat' },
+          { side: 'bottom', points: [[835, 388], [835, 330]] },
+          { side: 'bottom', points: [[722, 434], [728, 372]] },
+        ],
+      },
+      {
+        title: 'Gaps in the line',
+        caption: 'On the uneven ground gaps open in the phalanx. Paullus sends maniples into them to strike the pikemen in the flank, Albinus leads the second legion against the White Shields, and the Macedonian left breaks. Perseus rides away.',
+        at: {
+          mWhite: [210, 362],
+          mBronze: [455, 372],
+          mGuard: [650, 340],
+          rLeg2: [332, 405, -90],
+          rLeg1: [568, 400, -90],
+          mThr: [835, 150],
+          mMerc: [705, 160],
+          rEle: [835, 228],
+          rAllies: [735, 262],
+        },
+        broken: ['mThr', 'mMerc'],
+        gone: ['mHorse', 'rPael'],
+        arrows: [
+          { side: 'bottom', points: [[250, 500], [295, 492], [322, 476]] },
+          { side: 'bottom', points: [[430, 500], [505, 492], [552, 472]] },
+          { side: 'bottom', points: [[835, 286], [835, 252]] },
+          { side: 'top', points: [[80, 172], [60, 90], [40, 12]], style: 'rout' },
+        ],
+      },
+      {
+        title: 'The phalanx destroyed',
+        caption: 'Broken into fragments, the pikemen cannot match Roman swordsmen at close quarters. The 3,000 picked men die where they stand; the rest flee, and the pursuit goes on until dark.',
+        at: {
+          rLeg2: [332, 375, -90],
+          rLeg1: [565, 380, -90],
+          rAllies: [752, 340],
+        },
+        broken: ['mBronze', 'mWhite', 'mGuard'],
+        gone: ['mThr', 'mMerc'],
+        arrows: [
+          { side: 'top', points: [[200, 340], [180, 200], [160, 20]], style: 'rout' },
+          { side: 'top', points: [[470, 350], [480, 200], [490, 90]], style: 'rout' },
+          { side: 'bottom', points: [[738, 276], [748, 318]] },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'bottom',
+    result: 'Decisive Roman victory',
+    losses: 'Macedonians: c. 20,000 killed and 11,000 captured (Livy); Plutarch says over 25,000 killed. Romans: about 100 killed, mostly Paeligni.',
+    text: [
+      "The battle was decided in about an hour. Perseus fled by way of Pella and Amphipolis to Samothrace, where he surrendered; he walked in Paullus' triumph in 167 BC and died a captive in Italy. Macedonia submitted within days.",
+      "Rome abolished the monarchy and split Macedonia into four tribute-paying republics, annexing it after a revolt in 149–148 BC. The plunder was so great that Roman citizens stopped paying direct tax. Among a thousand Achaean hostages taken to Italy was Polybius, who would write the history of Rome's rise.",
+    ],
+  },
+  sources: [
+    'Livy, History of Rome 44.36–46',
+    'Plutarch, Life of Aemilius Paullus 16–24',
+    'Polybius, Histories 29.14–18 (fragments)',
+    'N. G. L. Hammond, "The Battle of Pydna", Journal of Hellenic Studies 104 (1984)',
+  ],
+};
+
+export default history;

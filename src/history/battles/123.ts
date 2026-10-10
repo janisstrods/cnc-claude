@@ -1,0 +1,142 @@
+// 123 Indus, 306 BC. Top: Seleucids (Seleucus I); bottom: Indians (Chandragupta Maurya).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '123',
+  date: 'c. 305 BC',
+  context: {
+    war: "Seleucus I's war with Chandragupta Maurya, c. 305–303 BC",
+    text: [
+      "After Alexander's death in 323 BC his Indian conquests slipped away. Porus was murdered c. 317 BC by Eudamus, a Macedonian general, who then marched west with his troops. Chandragupta Maurya, who overthrew the Nanda kings of Magadha, built an empire across northern India and took over the Punjab; Justin credits him with ending Macedonian rule there.",
+      "Seleucus, one of Alexander's officers, won back Babylon in 311 BC and then brought the eastern satrapies under his control. Around 305 BC he crossed the Indus to recover Alexander's Indian provinces and met Chandragupta. Only a few lines survive about this war, and none describes a battle: the clash in this scenario is imagined.",
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Seleucid army',
+      commanders: ['Seleucus I Nicator'],
+      strength: 'Unknown; no figures survive for the campaign',
+      forces: 'Probably a Macedonian-style phalanx with Greek mercenaries, Iranian cavalry and light troops from the eastern satrapies.',
+    },
+    bottom: {
+      name: 'Maurya empire (Indians)',
+      commanders: ['Chandragupta Maurya', 'Chanakya (his minister, in later Indian tradition)'],
+      strength: 'Unknown; Plutarch credits Chandragupta with an army of 600,000, probably exaggerated',
+      forces: 'The four traditional arms of an Indian army: foot with tall bows, cavalry, chariots and war elephants.',
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'woods', points: [[150, 70], [270, 60], [295, 150], [275, 255], [175, 250], [140, 160]], label: 'Woods' },
+      { kind: 'hills', points: [[740, 70], [840, 60], [960, 110], [985, 260], [960, 440], [890, 470], [850, 380], [770, 300], [735, 190]] },
+      { kind: 'label', at: [900, 135], text: 'Hills' },
+      { kind: 'river', points: [[-40, 285], [30, 305], [55, 370], [110, 428], [250, 434], [318, 450], [334, 520], [322, 640]], width: 18, label: 'Stream' },
+      { kind: 'label', at: [870, 585], text: 'Site unknown' },
+    ],
+    units: [
+      { id: 'shorse', side: 'top', kind: 'horse', label: 'Seleucid horse', w: 80, h: 24 },
+      { id: 'linf', side: 'top', kind: 'light', label: 'Light infantry', w: 80, h: 14 },
+      { id: 'arch', side: 'top', kind: 'light', label: 'Archers', w: 120, h: 14 },
+      { id: 'phal', side: 'top', kind: 'foot', label: 'Phalanx', w: 210, h: 32 },
+      { id: 'skt', side: 'top', kind: 'light', label: 'Skirmishers', w: 70, h: 14 },
+      { id: 'el500', side: 'top', kind: 'elephants', label: '500 elephants', w: 70, h: 26 },
+      { id: 'bows', side: 'bottom', kind: 'light', label: 'Longbowmen', w: 130, h: 16 },
+      { id: 'ih1', side: 'bottom', kind: 'lighthorse', label: 'Indian horse', w: 64, h: 18 },
+      { id: 'ch1', side: 'bottom', kind: 'chariots', label: 'Chariots', w: 60, h: 22 },
+      { id: 'ch2', side: 'bottom', kind: 'chariots', w: 60, h: 22 },
+      { id: 'el1', side: 'bottom', kind: 'elephants', label: 'War elephants', w: 60, h: 24 },
+      { id: 'el2', side: 'bottom', kind: 'elephants', w: 60, h: 24 },
+      { id: 'ih2', side: 'bottom', kind: 'lighthorse', w: 64, h: 18 },
+      { id: 'sk', side: 'bottom', kind: 'light', label: 'Skirmishers', w: 70, h: 14 },
+      { id: 'inf', side: 'bottom', kind: 'foot', label: 'Indian foot', w: 220, h: 26 },
+      { id: 'cav', side: 'bottom', kind: 'horse', label: 'Indian cavalry', w: 76, h: 22 },
+    ],
+    phases: [
+      {
+        title: 'An imagined battlefield',
+        caption: "No ancient writer describes a battle; this map only follows the clash the scenario imagines. Seleucus' phalanx, archers and horse face the four arms of an Indian army: foot, horse, chariots and elephants.",
+        at: {
+          shorse: [95, 170],
+          linf: [370, 200],
+          arch: [530, 125],
+          phal: [530, 185],
+          skt: [800, 250],
+          bows: [190, 550],
+          ih1: [420, 395],
+          ch1: [470, 455],
+          ch2: [545, 455],
+          el1: [630, 460],
+          el2: [705, 460],
+          ih2: [650, 395],
+          sk: [830, 420],
+          inf: [560, 520],
+          cav: [700, 572],
+        },
+      },
+      {
+        title: 'Chariots and elephants charge',
+        caption: 'In this hypothetical clash, chariots and elephants drive at the phalanx while longbowmen shoot from behind the stream and the horse skirmish on the wings. Nothing of it is recorded.',
+        at: {
+          shorse: [150, 300],
+          phal: [530, 200],
+          ch1: [470, 300],
+          ch2: [545, 300],
+          el1: [630, 305],
+          el2: [705, 305],
+          ih1: [300, 340],
+          ih2: [800, 340],
+        },
+        arrows: [
+          { side: 'bottom', points: [[508, 440], [508, 322]] },
+          { side: 'bottom', points: [[668, 445], [668, 328]] },
+          { side: 'bottom', points: [[405, 392], [342, 343]] },
+          { side: 'bottom', points: [[665, 385], [772, 350]] },
+          { side: 'top', points: [[100, 190], [138, 280]] },
+        ],
+      },
+      {
+        title: 'Elephants for land',
+        caption: 'What the sources do record is the peace. Seleucus gives up the Indus lands and more in return for 500 war elephants, and both armies withdraw; the elephants march west with him.',
+        at: {
+          shorse: [100, 120],
+          linf: [370, 130],
+          arch: [530, 60],
+          phal: [530, 120],
+          skt: [800, 170],
+          ch1: [470, 455],
+          ch2: [545, 455],
+          el1: [630, 460],
+          el2: [705, 460],
+          ih1: [420, 395],
+          ih2: [650, 395],
+          el500: [720, 220],
+        },
+        arrows: [
+          { side: 'top', points: [[530, 182], [530, 144]], style: 'retreat' },
+          { side: 'top', points: [[148, 285], [108, 140]], style: 'retreat' },
+          { side: 'bottom', points: [[508, 315], [508, 432]], style: 'retreat' },
+          { side: 'bottom', points: [[668, 320], [668, 436]], style: 'retreat' },
+          { side: 'top', points: [[760, 440], [740, 330], [724, 246]] },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'bottom',
+    result: 'No recorded battle; a treaty ceding the Indus lands to Chandragupta',
+    losses: 'Unknown: no ancient source records a battle, let alone its losses.',
+    text: [
+      'Appian says only that Seleucus fought Chandragupta until the two reached an understanding and a marriage alliance of unknown form. Strabo and Plutarch give the price: Seleucus handed over the lands along the Indus, probably with parts of Arachosia and the Paropamisadae, and received 500 war elephants. His envoy Megasthenes visited the Mauryan capital, Pataliputra, and wrote the fullest Greek account of India.',
+      "Both kings gained. Chandragupta's empire now reached into Afghanistan, where his grandson Ashoka later set up Greek and Aramaic inscriptions at Kandahar. Seleucus turned west, and his elephants helped decide the Battle of Ipsus in 301 BC, where Antigonus was killed.",
+    ],
+  },
+  sources: [
+    'Appian, Syrian Wars 55',
+    'Strabo, Geography 15.2.9',
+    'Plutarch, Life of Alexander 62',
+    'Justin, Epitome of Trogus 15.4',
+    'Paul J. Kosmin, The Land of the Elephant Kings (2014)',
+  ],
+};
+
+export default history;

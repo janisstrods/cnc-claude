@@ -1,0 +1,157 @@
+// 108 Issus, 333 BC. Top: Macedonians (Alexander); bottom: Persians (Darius III).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '108',
+  context: {
+    war: "Alexander's conquest of the Persian Empire, 334–330 BC",
+    text: [
+      'After the Granicus, Alexander spent a year taking over Asia Minor while Darius III gathered the royal army in Mesopotamia. In 333 BC Alexander passed the Cilician Gates, lay ill for a time at Tarsus, then marched down the coast toward Syria.',
+      'Darius, instead of waiting on the open Syrian plain, crossed the Amanus mountains by a northern pass and came down behind Alexander at Issus, where he killed or maimed the Macedonian sick left there. Alexander turned back and found him in November 333 BC behind the river Pinarus, on a narrow plain between the mountains and the sea where the Persian numbers could not be used.',
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Macedonians and Greek allies',
+      commanders: ['Alexander III (right wing)', 'Parmenio (left wing)', 'Craterus (left-wing foot)', 'Nicanor (hypaspists)'],
+      strength: 'Perhaps 30,000–40,000 men, including some 5,000 horse (modern estimates)',
+      forces: 'Companion and Thessalian cavalry, hypaspists and phalanx, allied Greek horse, Agrianians, archers and Thracians, with Greek mercenaries in reserve.',
+    },
+    bottom: {
+      name: 'Persians and Greek mercenaries',
+      commanders: ['Darius III (centre)', 'Nabarzanes (right-wing cavalry)', 'Thymondas (Greek mercenaries)'],
+      strength: 'Arrian: 600,000, including 30,000 Greek mercenaries; modern estimates vary widely but are far lower',
+      forces: "Greek mercenary hoplites, Persian Kardakes, a mass of cavalry, and archers and levies from across the empire around the king's guard.",
+    },
+  },
+  map: {
+    north: 180,
+    terrain: [
+      { kind: 'hills', points: [[-60, -60], [95, -60], [112, 60], [150, 150], [112, 230], [150, 300], [118, 370], [150, 440], [112, 510], [150, 590], [140, 660], [-60, 660]] },
+      { kind: 'label', at: [62, 34], text: 'Amanus' },
+      { kind: 'sea', points: [[1060, 40], [970, 80], [915, 180], [895, 300], [872, 390], [885, 480], [866, 570], [876, 660], [1060, 660]], label: 'Gulf of Issus' },
+      { kind: 'river', points: [[50, 378], [150, 368], [260, 364], [600, 376], [760, 362], [840, 370], [880, 365], [905, 362]], width: 22, label: 'Pinarus' },
+    ],
+    units: [
+      { id: 'agr', side: 'top', kind: 'light', label: 'Agrianians', w: 70, h: 14 },
+      { id: 'thess', side: 'top', kind: 'horse', label: 'Thessalians', w: 80, h: 24 },
+      { id: 'comp', side: 'top', kind: 'horse', label: 'Companions', w: 90, h: 26 },
+      { id: 'hyp', side: 'top', kind: 'foot', label: 'Hypaspists', w: 90, h: 30 },
+      { id: 'ph1', side: 'top', kind: 'foot', label: 'Phalanx', w: 100, h: 34 },
+      { id: 'ph2', side: 'top', kind: 'foot', w: 100, h: 34 },
+      { id: 'ph3', side: 'top', kind: 'foot', w: 100, h: 34 },
+      { id: 'ally', side: 'top', kind: 'horse', label: 'Allied horse', w: 64, h: 22 },
+      { id: 'hillF', side: 'bottom', kind: 'light', label: 'Hill troops', w: 80, h: 16 },
+      { id: 'kard1', side: 'bottom', kind: 'foot', label: 'Kardakes', w: 110, h: 30 },
+      { id: 'merc1', side: 'bottom', kind: 'foot', label: 'Greek mercenaries', w: 110, h: 34 },
+      { id: 'merc2', side: 'bottom', kind: 'foot', w: 110, h: 34 },
+      { id: 'kard2', side: 'bottom', kind: 'foot', w: 100, h: 30 },
+      { id: 'pcav', side: 'bottom', kind: 'horse', label: 'Persian cavalry', w: 120, h: 40 },
+      { id: 'dar', side: 'bottom', kind: 'chariots', label: 'Darius', w: 60, h: 22 },
+      { id: 'levies', side: 'bottom', kind: 'foot', label: 'Massed levies', w: 320, h: 30 },
+    ],
+    phases: [
+      {
+        title: 'Deployment',
+        caption: "Darius holds the far bank of the Pinarus: Greek mercenaries in the centre, Kardakes on either side, cavalry massed by the sea and troops on the foothills overlapping Alexander's right. Parmenio is told to keep close to the sea.",
+        at: {
+          agr: [160, 180, 90],
+          thess: [250, 135],
+          comp: [250, 180],
+          hyp: [355, 180],
+          ph1: [465, 180],
+          ph2: [575, 180],
+          ph3: [680, 180],
+          ally: [800, 175],
+          hillF: [100, 290, 90],
+          kard1: [260, 432],
+          merc1: [420, 430],
+          merc2: [535, 430],
+          kard2: [650, 432],
+          pcav: [790, 430],
+          dar: [477, 492],
+          levies: [477, 556],
+        },
+      },
+      {
+        title: 'Alexander adjusts his line',
+        caption: "Alexander sends the Thessalians behind his line to Parmenio's wing by the sea, has Agrianians and archers drive the troops on the hills up the slope, and advances slowly to the river.",
+        at: {
+          thess: [855, 245],
+          comp: [250, 280],
+          hyp: [355, 285],
+          ph1: [465, 285],
+          ph2: [575, 285],
+          ph3: [680, 285],
+          ally: [765, 282],
+          agr: [160, 280, 90],
+          hillF: [40, 190, 90],
+        },
+        arrows: [
+          { side: 'top', points: [[250, 122], [520, 128], [780, 210], [808, 232]] },
+          { side: 'top', points: [[250, 196], [250, 244]] },
+          { side: 'top', points: [[575, 198], [575, 244]] },
+          { side: 'bottom', points: [[100, 256], [82, 236], [62, 218]], style: 'retreat' },
+        ],
+      },
+      {
+        title: "Alexander's charge",
+        caption: 'Alexander leads the right across at a run and shatters the Persian left. Slowed by the steep banks, the phalanx centre falls behind and the Greek mercenaries push into the gap; by the sea the Persian horse charges the Thessalians.',
+        at: {
+          comp: [255, 420],
+          hyp: [340, 390],
+          ph1: [465, 330],
+          ph2: [575, 320],
+          ph3: [680, 320],
+          thess: [842, 296],
+          kard1: [230, 500],
+          merc1: [445, 385],
+          pcav: [820, 344],
+        },
+        broken: ['kard1'],
+        arrows: [
+          { side: 'top', points: [[250, 296], [252, 340], [254, 382]] },
+          { side: 'top', points: [[355, 302], [348, 330], [343, 350]] },
+          { side: 'bottom', points: [[260, 448], [248, 464], [236, 478]], style: 'retreat' },
+          { side: 'bottom', points: [[800, 412], [810, 398], [818, 388]] },
+        ],
+      },
+      {
+        title: 'Darius flees',
+        caption: "Darius flees in his chariot as his left gives way. Alexander's right wheels into the flank of the Greek mercenaries, and the cavalry by the sea breaks when it sees the king gone. The rout chokes the ravines with dead.",
+        at: {
+          comp: [395, 474],
+          ph1: [465, 340],
+          thess: [830, 432],
+        },
+        broken: ['merc1', 'merc2', 'kard2'],
+        gone: ['dar', 'kard1', 'pcav', 'levies'],
+        arrows: [
+          { side: 'top', points: [[255, 436], [290, 470], [328, 476]] },
+          { side: 'top', points: [[842, 312], [838, 360], [834, 394]] },
+          { side: 'bottom', points: [[477, 504], [500, 560], [520, 610]], style: 'rout' },
+          { side: 'bottom', points: [[230, 516], [200, 570], [180, 610]], style: 'rout' },
+          { side: 'bottom', points: [[790, 366], [772, 470], [760, 610]], style: 'rout' },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'top',
+    result: 'Decisive Macedonian victory',
+    losses: 'Persians: 100,000 or more by Arrian and Diodorus, surely exaggerated; some 8,000 mercenaries escaped. Macedonians: c. 180–450 dead in the ancient counts.',
+    text: [
+      'Darius escaped, but his mother, wife and children were taken in his camp, and Parmenio soon seized his treasure and baggage at Damascus. Alexander treated the royal women with honour. When Darius wrote offering ransom and friendship, Alexander demanded to be addressed as lord of Asia.',
+      'Instead of chasing Darius inland, Alexander secured the coast to deny the Persian fleet its bases. Phoenicia submitted except Tyre, which fell after a seven-month siege in 332 BC, and Egypt opened its gates. Darius used the respite to raise a new army in the east.',
+    ],
+  },
+  sources: [
+    'Arrian, Anabasis of Alexander 2.6–14',
+    'Quintus Curtius Rufus, History of Alexander 3.8–12',
+    'Diodorus Siculus, Library 17.33–37',
+    'Polybius, Histories 12.17–22',
+    'A. B. Bosworth, Conquest and Empire (1988)',
+  ],
+};
+
+export default history;
