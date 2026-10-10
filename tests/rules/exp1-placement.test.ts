@@ -237,7 +237,7 @@ describe('leader placement (117 Asculum)', () => {
     const initial = build(ASC);
     const d = new GameDriver(initial);
     placeAll(d);
-    expect(d.canUndo()).toBe(false); // placement is not movement: no undo
+    expect(d.canUndo()).toBe(false); // the last placement was the Epirote side's: the Romans cannot take it back
     const r = GameDriver.replay(initial, d.answers);
     expect(r.state.leaders).toEqual(d.state.leaders);
     expect(r.state.special.unplaced).toEqual([]);
@@ -249,6 +249,41 @@ describe('leader placement (117 Asculum)', () => {
     expect(p.side).toBe('top');
     expect(p.leader).toBe(byName(half.state, 'Pyrrhus').id);
     expect(sorted(p.options)).toEqual(expectedOptions(half.state, 'top'));
+  });
+
+  it("a placement can be taken back by the side that made it while it is still that side's decision", () => {
+    const initial = build(ASC);
+    const d = new GameDriver(initial);
+    expect(d.canUndo()).toBe(false); // nothing placed yet
+    must(d, { kind: 'hex', hex: H(6, 6) }); // Decius joins the Roman HI
+    expect(placing(d).side).toBe('bottom'); // Sulpicius next: still the Romans' decision
+    expect(d.canUndo()).toBe(true);
+    const u = d.undo();
+    const p = placing(u);
+    expect(p.leader).toBe(byName(u.state, 'Decius').id);
+    expect(byName(u.state, 'Decius').hex).toBe(OFF_BOARD);
+    expect(leaderUnit(u.state, byName(u.state, 'Decius'))).toBeUndefined();
+    expect(u.answers).toEqual([]);
+    expect(sorted(p.options)).toEqual(expectedOptions(u.state, 'bottom'));
+    // placed elsewhere instead
+    must(u, { kind: 'hex', hex: H(6, 4) });
+    expect(leaderUnit(u.state, byName(u.state, 'Decius'))?.id).toBe('u2');
+    // the second Roman placement hands the decision to the Epirotes: no undo for either side
+    must(u, { kind: 'hex', hex: H(5, 6) });
+    expect(placing(u).side).toBe('top');
+    expect(u.canUndo()).toBe(false);
+    // the Epirotes may take back their first placement, not the Romans' ones
+    must(u, { kind: 'hex', hex: H(2, 5) });
+    expect(u.canUndo()).toBe(true);
+    expect(placing(u.undo()).leader).toBe(byName(u.state, 'Pyrrhus').id);
+  });
+
+  it('a placement cannot be undone once dice have been rolled since', () => {
+    const d = new GameDriver(build(ASC));
+    must(d, { kind: 'hex', hex: H(6, 6) });
+    expect(d.canUndo()).toBe(true);
+    d.state.rngCalls++; // constructed: a die rolled after the placement
+    expect(d.canUndo()).toBe(false);
   });
 
   it('randomAnswer always gives a legal placement', () => {

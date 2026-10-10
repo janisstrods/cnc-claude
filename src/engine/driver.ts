@@ -21,6 +21,8 @@ export class GameDriver {
   private rngBefore: number[] = [];
   /** Side that gave each recorded answer. */
   private sides: Side[] = [];
+  /** Decision each recorded answer answered. */
+  private kinds: Decision['kind'][] = [];
   pending: Decision | null = null;
   lastError: string | null = null;
   private gen: Gen;
@@ -50,13 +52,14 @@ export class GameDriver {
     if (!this.pending) throw new Error('No decision is pending.');
     this.lastError = null;
     const before = this.state.rngCalls;
-    const side = this.pending.side;
+    const { side, kind } = this.pending;
     const r = this.gen.next(a);
     this.pending = r.done ? null : r.value;
     if (this.lastError) return false;
     this.answers.push(a);
     this.rngBefore.push(before);
     this.sides.push(side);
+    this.kinds.push(kind);
     if (this.state.winner) this.pending = null;
     return true;
   }
@@ -67,13 +70,15 @@ export class GameDriver {
     return q;
   }
 
-  /** The last answer can be taken back only if it was a movement and no dice have been rolled since. */
+  /**
+   * The last answer can be taken back only if it was a movement or a leader placement (Asculum) and no dice have been
+   * rolled since.
+   */
   canUndo(): boolean {
     const n = this.answers.length;
     if (!n) return false;
-    const last = this.answers[n - 1];
-    if (last.kind !== 'move') return false;
-    // only a side's own last movement can be taken back, by that side, while it is still deciding
+    if (this.answers[n - 1].kind !== 'move' && this.kinds[n - 1] !== 'placeLeader') return false;
+    // only a side's own last movement or placement can be taken back, by that side, while it is still deciding
     if (!this.pending || this.sides[n - 1] !== this.pending.side) return false;
     return this.rngBefore[n - 1] === this.state.rngCalls;
   }
