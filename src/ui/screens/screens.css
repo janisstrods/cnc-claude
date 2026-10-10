@@ -119,6 +119,8 @@
 
 .select-detail { display: grid; grid-template-rows: auto 1fr auto; gap: 10px; min-height: 0; }
 .brief { color: var(--kit-ink); }
+.brief-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.brief-history.kit-btn { flex: none; padding: 4px 14px; font-size: 13px; margin-top: 2px; }
 .brief-title { font-family: var(--kit-font-title); font-size: 26px; color: #6e1a14; letter-spacing: .04em; }
 .brief-title span { font-size: 16px; color: var(--kit-ink-soft); font-style: italic; font-family: var(--kit-font-body); }
 .brief-blurb { font-size: 16.5px; line-height: 1.4; margin: 4px 0 8px; }

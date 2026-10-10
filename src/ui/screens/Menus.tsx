@@ -8,6 +8,7 @@ import { BOARD_H, BOARD_W, hexCenterId } from '../geometry';
 import type { Difficulty, SavedGame } from '../game/controller';
 import { PERSONALITIES, personalityFor } from '../../ai';
 import { RulesReference } from './RulesReference';
+import { HistoryButton } from '../history/HistoryDialog';
 import {
   OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue, saveOptionChoice,
   savePickerTab, tabForKey, type OptionId,
@@ -215,7 +216,10 @@ export function ScenarioSelect(p: {
       </div>
       <div className="select-detail">
         <Panel variant="parchment" className="brief">
-          <div className="brief-title">{sel.name} <span>{sel.year}</span></div>
+          <div className="brief-head">
+            <div className="brief-title">{sel.name} <span>{sel.year}</span></div>
+            <HistoryButton scenario={sel} flipped={side === 'top'} variant="secondary" className="brief-history" />
+          </div>
           <p className="brief-blurb">{sel.blurb}</p>
           <div className="brief-facts">
             <span>{sel.setup.banners} banners to win</span>

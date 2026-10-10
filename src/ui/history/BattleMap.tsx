@@ -221,9 +221,9 @@ function placeUnit(f: UnitFrame, flipped: boolean): Placed {
   return { f, x, y, r, ex: (w * c + h * s) / 2, ey: (w * s + h * c) / 2 };
 }
 
-/** Estimated size of a unit label (17-unit EB Garamond semibold). */
-const LABEL_H = 17;
-const labelW = (text: string) => text.length * 8 + 6;
+/** Estimated size of a unit label (18-unit EB Garamond semibold). */
+const LABEL_H = 18;
+const labelW = (text: string) => text.length * 8.6 + 6;
 
 interface Box {
   x0: number;

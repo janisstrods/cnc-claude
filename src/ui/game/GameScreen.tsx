@@ -16,6 +16,7 @@ import {
   type UiSel,
 } from './uiModel';
 import { RulesReference } from '../screens/RulesReference';
+import { HistoryButton } from '../history/HistoryDialog';
 import { isMuted, setMuted } from '../sound';
 import { opponentPersonality } from './makeOpponent';
 import './game.css';
@@ -465,6 +466,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
             </select>
           </label>
           <Button variant="ghost" onClick={() => { setMuted(!mutedState); setMutedState(!mutedState); }} title="Sound effects">{mutedState ? 'Sound: off' : 'Sound: on'}</Button>
+          <HistoryButton scenario={controller.scenario} flipped={flipped} />
           <Button variant="ghost" onClick={() => setShowRules(true)}>Rules</Button>
           <Button variant="ghost" onClick={() => setConfirmExit(true)}>Menu</Button>
         </div>

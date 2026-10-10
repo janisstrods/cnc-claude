@@ -45,6 +45,16 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
   scenario transcription notes (`exp1-scenario-notes.md`) and AI calibration and balance log (`exp1-ai-balance.md`).
 - `design/superpowers/` holds the original design spec and implementation plan.
 
+## Battle histories
+
+- The History dialog (briefing and in-game header) shows three slides per battle from `src/history/battles/<id>.ts`:
+  context and armies, a schematic map in 1–4 phases, outcome and consequences. Format: `src/history/types.ts`;
+  worked example: `battles/007.ts`; spec: `design/superpowers/specs/2026-10-10-battle-history-design.md`.
+- A battle without a file simply has no History button, so new expansions add their `2xx`/`3xx` files when ready.
+- Check one: `npx vite-node scripts/history-check.ts -- 007` (validator and word counts); look at it with
+  `scripts/history-shot.sh 007 <dir>` against a running dev server (`#/gallery/history/007`), reading every tile.
+- Texts are original prose in British spelling, hedged where the sources are uncertain, with ancient sources cited.
+
 ## Golden fixtures
 
 - `tests/golden` replays recorded games (random-play games of the base battles plus a few AI games) and checks every
