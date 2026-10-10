@@ -10,7 +10,7 @@ import { UNIT_STATS, forbidsTerrain } from './units';
 import {
   ARMY_LOOKS, BLOCKS, COLS, LEGIONS, OFF_BOARD, ROWS, SPECIAL_RULE_IDS,
   type AmbushDef, type ArmyLook, type Blocks, type CommandDef, type EliteId, type GameState, type HandGrowth, type HexDir, type HexId, type Leader, type LeaderTrait,
-  type Legion, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
+  type Legion, type ObjectiveMarker, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
 export interface SideSetup {
@@ -96,12 +96,13 @@ export interface ScenarioSetup {
  * `together: 0` (off; needs `when: 'turnStart'`), `remove: false`, `text` "The <army> army captures a <enemy army>
  * camp!"; `hold` — `max` the number of hexes, `text` "The <army> army holds an objective."; `majority` — `text`
  * "Control of the objective hexes."; `sectionClear` — `text` "The <army> army has cleared a section of the enemy.";
- * `exit` — `units: 'any'`, `leadersScore: false` (true is not supported yet: Expansion #3), `text` "<army> {unit} breaks
- * through and exits the battlefield!".
+ * `exit` — `units: 'any'`, `leadersScore: false`, `text` "<army> {unit} breaks through and exits the battlefield!".
+ * `capture` with `marker: 'ship'` (313): `hexes` are required and may be any passable terrain, `remove` must stay false and
+ * the default `text` is "The <army> army seizes a ship.".
  */
 export type ObjectiveSetup =
   | { kind: 'capture'; side: Side; hexes?: [number, number][]; when?: 'stop' | 'turnStart'; banners?: number[];
-      together?: number; remove?: boolean; text?: string }
+      together?: number; remove?: boolean; marker?: ObjectiveMarker; text?: string }
   | { kind: 'hold'; side: Side; hexes: [number, number][]; max?: number; text?: string }
   | { kind: 'majority'; sides: Side[]; hexes: [number, number][]; banners: number; when: 'turnEnd' | 'always'; text?: string }
   | { kind: 'sectionClear'; side: Side; text?: string }
@@ -380,12 +381,14 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   const fords: boolean[] = [];
   const noCap: boolean[] = [];
   const rampart: number[] = [];
+  const hillUnder: boolean[] = [];
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       terrain.push(onBoard(r, c) ? 'plain' : 'void');
       fords.push(false);
       noCap.push(false);
       rampart.push(0);
+      hillUnder.push(false);
     }
   }
   for (const t of setup.terrain) {
@@ -452,6 +455,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     fords,
     noCap,
     rampart,
+    hillUnder,
     units,
     leaders,
     players: {
@@ -500,7 +504,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     nextId,
   };
   checkPositions(setup, s);
-  s.special.objectives = resolveObjectives(setup, terrain, s.players);
+  s.special.objectives = resolveObjectives(setup, terrain, fords, s.players);
   s.special.objState = s.special.objectives.map(newObjectiveState);
   for (const side of [setup.first, setup.first === 'top' ? 'bottom' : 'top'] as Side[]) {
     const p = s.players[side];
@@ -510,8 +514,8 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
 }
 
 /**
- * Fast deep copy of a game state (plain data). The board arrays (terrain, fords, noCap, rampart) and the objective
- * definitions are shared: they never change in place (`setTerrain` replaces the arrays).
+ * Fast deep copy of a game state (plain data). The board arrays (terrain, fords, noCap, rampart, hillUnder) and the
+ * objective definitions are shared: they never change in place (`setTerrain` replaces the arrays).
  */
 export function cloneState(s: GameState): GameState {
   const ordered: TurnState['ordered'] = {};
@@ -522,6 +526,7 @@ export function cloneState(s: GameState): GameState {
     fords: s.fords,
     noCap: s.noCap,
     rampart: s.rampart,
+    hillUnder: s.hillUnder,
     units: s.units.map((u) => ({ ...u })),
     leaders: s.leaders.map((l) => ({ ...l })),
     players: {

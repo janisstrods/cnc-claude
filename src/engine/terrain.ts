@@ -22,6 +22,14 @@ export function setTerrain(s: GameState, ctx: FlowCtx, h: HexId, t: TerrainType)
   ctx.emit({ t: 'terrainChanged', hex: h, terrain: t });
 }
 
+/**
+ * The ground a removed camp or wall leaves (§18.4, §18.7): hill when a hill lies under the hex (`GameState.hillUnder`),
+ * otherwise open ground.
+ */
+export function groundUnder(s: GameState, h: HexId): TerrainType {
+  return s.hillUnder[h] ? 'hill' : 'plain';
+}
+
 export function isFord(s: GameState, h: HexId): boolean {
   return s.terrain[h] === 'river' && !!s.fords[h];
 }
@@ -31,11 +39,15 @@ function cappedFord(s: GameState, h: HexId): boolean {
   return isFord(s, h) && !s.noCap[h];
 }
 
+/** Is a hex of terrain `t` impassable (`ford`: a river hex that is fordable)? Sea follows the lake rules (§16). */
+export function impassableTerrain(t: TerrainType | undefined, ford: boolean): boolean {
+  if (t === 'river') return !ford;
+  return t === 'lake' || t === 'sea' || t === 'steep' || t === 'void' || t === undefined;
+}
+
 /** Impassable for movement, retreat, evade (leaders too). Sea follows the lake rules (§16). */
 export function isImpassable(s: GameState, h: HexId): boolean {
-  const t = s.terrain[h];
-  if (t === 'river') return !s.fords[h];
-  return t === 'lake' || t === 'sea' || t === 'steep' || t === 'void' || t === undefined;
+  return impassableTerrain(s.terrain[h], !!s.fords[h]);
 }
 
 /** Entering this hex ends movement for every unit and lone leader (forest, marsh, ford, ditch). */

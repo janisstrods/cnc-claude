@@ -672,8 +672,8 @@ describe('Expansion #2 objectives', () => {
   it('setup validates the Expansion #2 objectives', () => {
     const game = (p: Pos) => () => createGame(setupOf({ ...CAMPS, ...p }), 1);
     const ok = (p: Pos) => createGame(setupOf({ ...CAMPS, ...p }), 1).special.objectives;
-    expect(game({ objectives: [{ kind: 'exit', side: 'bottom', hexes: [[0, 6]], leadersScore: true }] }))
-      .toThrow(/^exit objective: leadersScore is not supported yet \(qa\)$/);
+    // `leadersScore` (Expansion #3, 317) was not supported in Expansion #2; it is now (tests/rules/exp3-objectives.test.ts)
+    expect(ok({ objectives: [{ kind: 'exit', side: 'bottom', hexes: [[0, 6]], leadersScore: true }] })[0]).toMatchObject({ kind: 'exit', leadersScore: true });
     expect(game({ objectives: [{ kind: 'bogus' } as never] })).toThrow(/^unknown objective kind bogus \(qa\)$/);
     expect(game({ objectives: [{ kind: 'capture', side: 'bottom', together: 2 }] })).toThrow(/together needs when 'turnStart'/);
     expect(game({ objectives: [{ kind: 'capture', side: 'bottom', when: 'turnStart', together: 3 }] })).toThrow(/together/);

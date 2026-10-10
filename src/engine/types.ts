@@ -201,6 +201,10 @@ export const SPECIAL_RULE_IDS = [
 /** A scenario special rule (see SPECIAL_RULE_IDS). */
 export type SpecialRuleId = (typeof SPECIAL_RULE_IDS)[number];
 
+/** What a `capture` objective takes besides a camp: the ship markers of 313 Brindisi Raid (§18.4). */
+export const OBJECTIVE_MARKERS = ['ship'] as const;
+export type ObjectiveMarker = (typeof OBJECTIVE_MARKERS)[number];
+
 /**
  * A battle objective (§18.4), resolved from scenario data (`ObjectiveSetup` in setup.ts) with every default filled in.
  * Objectives give banners on top of eliminated units and leaders; only units count, never lone leaders.
@@ -209,19 +213,23 @@ export type SpecialRuleId = (typeof SPECIAL_RULE_IDS)[number];
  *   turn, before its card. The n-th capture scores `banners[n - 1]` permanent banners (the last value repeats);
  *   `together: n` ('turnStart' only; 0 = off) = nothing until n untaken listed hexes are occupied at once, then a single
  *   capture scores `banners[0]` (1 by default) once and takes every listed hex; `remove` = a taken hex becomes open ground
- *   (`setTerrain`; every listed hex with `together`). `hexes` ascending.
+ *   (`setTerrain`; every listed hex with `together`), or hill when it has a hill under it (`hillUnder`, §18.7).
+ *   `marker: 'ship'` (313, Expansion #3): the hexes are any passable terrain with a ship marker on them, nothing is removed
+ *   (the marker is just taken); the field is absent otherwise. `hexes` ascending.
  * - `hold`: 1 held banner per listed hex a unit of `side` stands on, at most `max`.
  * - `majority`: the side of `sides` with strictly more units on `hexes` holds `banners`, nobody on a tie (`turnEnd`:
  *   decided at the end of every player turn; `always`: at once).
  * - `sectionClear`: at the end of `side`'s turn each section (from `side`'s point of view) without an enemy unit scores
  *   1 held banner, lost as soon as an enemy unit stands in it (a unit on a boundary hex is in both sections).
  * - `exit`: a unit of `side` (`units` filter) on one of `hexes` (board-edge hexes) may move off the board as one more
- *   hex: 1 banner, the unit and its attached leader are removed (not eliminated). In `text`, `{unit}` is the unit's name.
+ *   hex: 1 banner, the unit and its attached leader are removed (not eliminated). With `leadersScore` (317) every leader
+ *   scores too: a lone leader of `side` on one of `hexes` may exit as part of his move (1 banner), and a unit exiting
+ *   with its attached leader scores 2. In `text`, `{unit}` is the unit's name (the leader's name for a leader).
  * `text` is the log line (the `held` event reason for held banners).
  */
 export type ObjectiveDef =
   | { kind: 'capture'; side: Side; hexes: HexId[]; when: 'stop' | 'turnStart'; banners: number[]; together: number;
-      remove: boolean; text: string }
+      remove: boolean; marker?: ObjectiveMarker; text: string }
   | { kind: 'hold'; side: Side; hexes: HexId[]; max: number; text: string }
   | { kind: 'majority'; sides: Side[]; hexes: HexId[]; banners: number; when: 'turnEnd' | 'always'; text: string }
   | { kind: 'sectionClear'; side: Side; text: string }
@@ -335,6 +343,12 @@ export interface GameState {
   noCap: boolean[];
   /** Protected hexsides of each rampart hex: bit i = neighbour direction i (E, NE, NW, W, SW, SE); 0 elsewhere. */
   rampart: number[];
+  /**
+   * A hill lies under the hex (Expansion #3, §18.7: camps and walls on a hill); length ROWS*COLS, all false in the
+   * battles without such a hex. A removed camp or wall leaves a hill instead of open ground there. Never changed during play:
+   * `cloneState` shares it.
+   */
+  hillUnder: boolean[];
   units: Unit[];
   leaders: Leader[];
   players: Record<Side, PlayerState>;

@@ -63,7 +63,7 @@ export function leaderHas(l: Leader, t: LeaderTrait): boolean {
 
 /**
  * Is `side` the Roman army (decided by army name, not block colour)? Used by Fright at First Sight, Tactical Flexibility
- * and the Roman hand rules of Trasimenus and Beneventum.
+ * and the Roman hand rule of Beneventum.
  */
 export function isRomanArmy(s: GameState, side: Side): boolean {
   return s.players[side].army === 'Roman';

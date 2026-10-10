@@ -1,7 +1,7 @@
 // Movement: reachable hexes for ordered units and leaders (rules-reference §7).
 import { canMarch } from './elites';
 import { inSection, neighbours } from './hex';
-import { exitHexes } from './objectives';
+import { exitHexes, leaderExitHexes } from './objectives';
 import { attachedLeader, enemyPieceAdjacent, leaderAt, leaderById, leaderHas, unitAt, unitById } from './query';
 import { isImpassable, steepClimb, stopsAll, stopsMounted, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain, forestFighter, isLightFoot } from './units';
@@ -201,7 +201,11 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   return [...results.values()].filter((t) => !(t as MoveTarget & { invalid?: boolean }).invalid);
 }
 
-/** Reachable hexes for an ordered leader moving alone (1-3 hexes, through friendly pieces). */
+/**
+ * Reachable hexes for an ordered leader moving alone (1-3 hexes, through friendly pieces). Exit objectives that score
+ * leaders (317, §18.4) add `OFF_BOARD`: stepping off the board from a listed hex is one more hex of the move, from the
+ * start hex or a hex he passed without being stopped there.
+ */
 export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?: HexId[] } = {}): MoveTarget[] {
   const l = leaderById(s, leaderId);
   if (!l) return [];
@@ -219,6 +223,7 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
   type Node = { hex: HexId; dist: number; path: HexId[] };
   const queue: Node[] = [{ hex: start, dist: 0, path: [start] }];
   const best = new Map<HexId, number>([[start, 0]]);
+  const passed: Node[] = [queue[0]]; // every hex he can be on without having stopped (the exit steps start from these)
   while (queue.length) {
     const n = queue.shift()!;
     if (n.dist >= max) continue;
@@ -238,10 +243,17 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
       if (stop) continue;
       if ((best.get(h) ?? 99) <= d) continue;
       best.set(h, d);
-      queue.push({ hex: h, dist: d, path });
+      const node = { hex: h, dist: d, path };
+      queue.push(node);
+      passed.push(node);
     }
   }
   results.delete(start);
+  const exits = leaderExitHexes(s, l);
+  if (exits.length) {
+    const from = passed.filter((n) => exits.includes(n.hex) && n.dist + 1 <= max).sort((a, b) => a.dist - b.dist)[0];
+    if (from) results.set(OFF_BOARD, { hex: OFF_BOARD, dist: from.dist + 1, path: [...from.path, OFF_BOARD], canBattle: false, mustBattle: false });
+  }
   return [...results.values()];
 }
 

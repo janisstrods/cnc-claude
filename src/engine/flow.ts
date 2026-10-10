@@ -7,7 +7,7 @@ import {
 import { ALL_HEXES, areAdjacent, neighbours, onBaseline, rearHexes } from './hex';
 import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './movement';
 import { bannerTotal, gainBanner, updateHeld } from './banners';
-import { captureOnStop, exitUnit, turnEndObjectives, turnStartObjectives } from './objectives';
+import { captureOnStop, exitLeader, exitUnit, turnEndObjectives, turnStartObjectives } from './objectives';
 import {
   autoOrders, commandChoices, orderMode, rallyCandidates, spartacusDiceCount, validateOrders, validateRally, validateSpartacus,
 } from './orders';
@@ -1021,9 +1021,15 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
   if (op.isLeader) {
     const l = leaderById(s, id)!;
     const from = l.hex;
-    l.hex = to;
     op.moveDone = true;
     if (stage === 2) op.move2Done = true;
+    if (to === OFF_BOARD) {
+      // an exit objective that scores leaders (317): he walks to his exit hex (the path's second-to-last hex) and steps off the board
+      ctx.emit({ t: 'move', id, path: target.path });
+      exitLeader(s, ctx, l, target.path[target.path.length - 2]);
+      return;
+    }
+    l.hex = to;
     ctx.emit({ t: 'move', id, path: from === OFF_BOARD ? [to] : target.path });
     const u = unitAt(s, to);
     if (u && u.side === l.side) {
