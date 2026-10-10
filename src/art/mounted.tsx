@@ -4,6 +4,7 @@ import { useContext } from 'react';
 import type { EliteId, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
 import { figurePalette, type CrewDress } from './foot';
+import { KITS, type MountKit } from './kits';
 import type { Kit, LookPalette, Palette } from './palettes';
 import {
   Arm, Body, FacingRightCtx, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, dots, makeFig,
@@ -339,37 +340,11 @@ export function Rider({ kit, f, standard }: { kit: RiderKit; f: Fig; standard?: 
   );
 }
 
-export function riderKit(type: UnitType, kit: Kit, i: number): RiderKit {
-  const greek = kit === 'greek';
-  const punic = kit === 'punic';
-  if (type === 'LC') {
-    return {
-      torso: 'tunic', helmet: punic ? 'none' : greek ? 'pilos' : 'none', crest: 'none', shield: 'round', weapon: 'javelin',
-      legs: 'bare', spare: true, beard: punic && i % 2 === 0,
-    };
-  }
-  if (type === 'HC') {
-    return {
-      torso: greek ? 'muscle' : punic ? 'linen' : 'mail', helmet: greek ? 'attic' : punic ? 'attic' : 'montefortino',
-      crest: greek ? 'horsehair' : punic ? 'horsehair' : 'plumes', shield: 'none', weapon: 'lance', legs: greek || punic ? 'greaves' : 'bare',
-    };
-  }
-  return {
-    torso: greek ? 'linen' : punic ? 'tunic' : 'tunic', helmet: greek ? 'attic' : punic ? 'conical' : 'montefortino',
-    crest: greek ? 'none' : 'knob', shield: 'round', weapon: 'spear', legs: punic ? 'trousers' : 'bare',
-  };
-}
-
 // ---------------------------------------------------------------------------------------------
-// Expansion #1 cavalry: per-kit riders and horse furniture, per-look variants, the Companions
+// Cavalry of the Expansion #1 kits (`KITS[kit].cavalry`), horse archers of every kit, the Companions
 
-/** How one mounted figure is equipped: rider kit, saddle cloth, horse armour, size. */
-interface Mount {
-  rider: RiderKit;
-  cloth: HorseCloth | 'none';
-  /** Bronze chamfron and peytral (the base heavy cavalry's barding). */
-  barding?: boolean;
-  cataphract?: boolean;
+/** How one mounted figure is drawn: rider kit, saddle cloth, horse armour, size, pose and coat. */
+interface Mount extends MountKit {
   scale: number;
   pose: number;
   /** Offset into the army's horse coats. */
@@ -377,89 +352,38 @@ interface Mount {
 }
 
 /**
- * Is this mounted type drawn as the base game's cavalry (LC, MC, HC of the Roman, Punic and Greek kits)? Those keep their
- * base drawing whatever the elite; horse archers and the Expansion #1 kits' cavalry are drawn by `KitMounted`.
+ * Is this mounted type drawn as the base game's cavalry (LC, MC, HC of a kit whose cavalry is drawn so: the Roman, Punic
+ * and Greek kits)? Those keep their base drawing whatever the elite; horse archers and the other kits' cavalry are drawn
+ * by `KitMounted`.
  */
-export const baseCavalry = (type: UnitType, kit: Kit) => type !== 'LBC' && (kit === 'roman' || kit === 'punic' || kit === 'greek');
+export const baseCavalry = (type: UnitType, kit: Kit) => type !== 'LBC' && KITS[kit].cavalry.drawing === 'base';
 
-/** Horse archers (LBC) of every kit: drawn bow, gorytos at the hip. */
-function horseArcher(kit: Kit, i: number): RiderKit {
-  const base = { crest: 'none' as const, shield: 'none' as const, weapon: 'bow' as const, gorytos: 'arrows' as const };
-  switch (kit) {
-    case 'scythian':
-      return { ...base, torso: 'kaftan', helmet: 'scythianCap', legs: 'trousers', longSleeve: true, hair: 'long', beard: true, bow: 'scythian', backShot: i === 0 };
-    case 'persian':
-      return { ...base, torso: 'tunic', helmet: 'tiara', legs: 'trousers', longSleeve: true, beard: i % 2 === 0, bow: 'scythian', backShot: i === 0 };
-    case 'macedonian':
-      // Dahae mercenaries from the steppe, and Thracian horse archers in fox-fur-like caps
-      return i % 2
-        ? { ...base, torso: 'tunic', helmet: 'thracian', legs: 'trousers', longSleeve: true, bow: 'scythian', moustache: true }
-        : { ...base, torso: 'kaftan', helmet: 'scythianCap', legs: 'trousers', longSleeve: true, hair: 'long', beard: true, bow: 'scythian', backShot: i === 0 };
-    case 'indian':
-      return { ...base, torso: 'cotton', helmet: 'turban', legs: 'bare', beard: i % 2 === 0, bow: 'self' };
-    case 'punic':
-      return { ...base, torso: 'tunic', helmet: 'cap', legs: 'bare', beard: i % 2 === 0, bow: 'scythian' };
-    case 'greek':
-      return { ...base, torso: 'tunic', helmet: 'pilos', legs: 'bare', bow: 'self' };
-    case 'roman':
-    default:
-      return { ...base, torso: 'tunic', helmet: 'none', legs: 'bare', bow: 'self' };
-  }
+/** Alexander's Companions: Boeotian helmet with white plumes, gilded cuirass, purple cloak, leopard skin, xyston. */
+const COMPANIONS_MOUNT: MountKit = {
+  rider: { torso: 'muscle', helmet: 'boeotian', crest: 'plume2', shield: 'none', weapon: 'lance', legs: 'bare', cloak: true },
+  cloth: 'leopard',
+};
+
+/** The kit's mount for a type (its horse archers for LBC), with the look's override for that type and figure. */
+function lookMount(type: UnitType, p: Palette, i: number): MountKit {
+  const kd = KITS[p.kit];
+  let own: MountKit;
+  if (type === 'LBC') own = { rider: kd.horseArcher.rider(i), cloth: kd.horseArcher.cloth };
+  else if (kd.cavalry.drawing === 'kit') own = kd.cavalry.mount(type, i);
+  else throw new Error(`The ${p.kit} kit draws its ${type} as the base game's cavalry`);
+  const o = p.style.mounted?.[type];
+  const lo = Array.isArray(o) ? o[i % o.length] : o;
+  return lo ? { ...own, ...lo } : own;
 }
 
-/** The mount of a horse archer (any kit) or of an Expansion #1 kit's cavalry; base kits draw their LC/MC/HC in `MountedFigure`. */
+/** The mount of a horse archer (any kit) or of a kit-drawn cavalry figure; base cavalry is drawn in `MountedFigure`. */
 function kitMount(type: UnitType, p: Palette, i: number, elite: EliteId | undefined): Mount {
   const light = type === 'LC' || type === 'LBC';
   const pose = light ? 1 + (i % 2) : type === 'HC' ? 2 * (i % 2) : i % 3;
   const coat = type === 'HC' ? 1 : light ? 2 : 0;
-  const m = (rider: RiderKit, cloth: Mount['cloth'], extra: Partial<Mount> = {}): Mount => ({
-    rider, cloth, scale: light ? 0.92 : type === 'HC' ? 1.06 : 1, pose, coat, ...extra,
-  });
-  if (type === 'LBC') return m(horseArcher(p.kit, i), p.kit === 'scythian' || p.kit === 'macedonian' ? 'plain' : 'rich');
-  if (elite === 'companions') {
-    // Alexander's Companions: Boeotian helmet with white plumes, gilded cuirass, purple cloak, leopard skin, xyston
-    return m({ torso: 'muscle', helmet: 'boeotian', crest: 'plume2', shield: 'none', weapon: 'lance', legs: 'bare', cloak: true }, 'leopard', { scale: 1.04 });
-  }
-  switch (p.kit) {
-    case 'macedonian': {
-      if (type === 'LC') {
-        // Thessalian / Thracian light horse: petasos or Thracian helmet, javelins, painted shield; Seleucid eastern light horse
-        if (p.look === 'seleucid' && i % 2 === 0) {
-          return m({ torso: 'tunic', helmet: 'tiara', crest: 'none', shield: 'none', weapon: 'javelin', legs: 'trousers', longSleeve: true, spare: true, beard: true }, 'rich');
-        }
-        return m({ torso: 'tunic', helmet: i % 2 ? 'thracian' : 'petasos', crest: 'none', shield: 'round', weapon: 'javelin', legs: 'bare', spare: true, cloak: i % 2 === 0 }, 'plain');
-      }
-      if (type === 'HC') {
-        if (p.look === 'seleucid') {
-          // the cataphracts of Magnesia: scale-armoured riders on scale-armoured horses
-          return m({ torso: 'scale', helmet: 'phrygian', crest: 'horsehair', shield: 'none', weapon: 'lance', legs: 'trousers', longSleeve: true }, 'none', { cataphract: true, barding: true });
-        }
-        return m({ torso: 'muscle', helmet: 'boeotian', crest: 'horsehair', shield: 'none', weapon: 'lance', legs: 'greaves' }, 'leopard', { barding: true });
-      }
-      // MC: linen corslet, Boeotian helmet, xyston
-      return m({ torso: 'linen', helmet: 'boeotian', crest: 'none', shield: 'none', weapon: 'lance', legs: 'bare' }, 'plain');
-    }
-    case 'persian': {
-      const dress = { helmet: 'tiara' as const, crest: 'none' as const, legs: 'trousers' as const, longSleeve: true };
-      if (type === 'LC') return m({ ...dress, torso: 'tunic', shield: 'none', weapon: 'javelin', spare: true, beard: i % 2 === 0 }, 'rich');
-      if (type === 'HC') return m({ ...dress, torso: 'scale', shield: 'none', weapon: 'lance', beard: true }, 'rich', { barding: true });
-      return m({ ...dress, torso: 'tunic', shield: 'none', weapon: 'spear', beard: true }, 'rich');
-    }
-    case 'scythian': {
-      const dress = { legs: 'trousers' as const, longSleeve: true, hair: 'long' as const, beard: true, crest: 'none' as const };
-      if (type === 'LC') return m({ ...dress, torso: 'kaftan', helmet: 'scythianCap', shield: 'none', weapon: 'javelin', spare: true, gorytos: 'bow' }, 'plain');
-      if (type === 'HC') return m({ ...dress, torso: 'scale', helmet: 'conical', shield: 'none', weapon: 'lance', gorytos: 'bow' }, 'plain', { barding: true });
-      // noble cavalry in scale coats with Greek-made helmets or caps
-      return m({ ...dress, torso: 'scale', helmet: i % 2 ? 'conical' : 'scythianCap', shield: 'none', weapon: 'spear', gorytos: 'bow' }, 'plain');
-    }
-    case 'indian':
-    default: {
-      const dress = { helmet: 'turban' as const, crest: 'none' as const, legs: 'bare' as const };
-      if (type === 'LC') return m({ ...dress, torso: 'cotton', shield: 'round', weapon: 'javelin', spare: true, beard: i % 2 === 0 }, 'rich');
-      if (type === 'HC') return m({ ...dress, torso: 'scale', shield: 'none', weapon: 'lance', beard: true }, 'rich', { barding: true });
-      return m({ ...dress, torso: 'cotton', shield: 'round', weapon: 'spear', beard: true }, 'rich');
-    }
-  }
+  const scale = light ? 0.92 : type === 'HC' ? 1.06 : 1;
+  if (type !== 'LBC' && elite === 'companions') return { ...COMPANIONS_MOUNT, scale: 1.04, pose, coat };
+  return { ...lookMount(type, p, i), scale, pose, coat };
 }
 
 /** Paint of the Companions: purple cloak, white plumes, gilded helmet and cuirass. */
@@ -515,12 +439,14 @@ function KitMounted({ type, p: armyP, i, elite }: { type: UnitType; p: Palette; 
 
 /** One mounted miniature (LC, MC, HC, LBC). `elite` gives the Companions their own figures. */
 export function MountedFigure({ type, p, i, elite }: { type: UnitType; p: Palette; i: number; elite?: EliteId }) {
-  if (!baseCavalry(type, p.kit)) return <KitMounted type={type} p={p} i={i} elite={elite} />;
+  const cavalry = KITS[p.kit].cavalry;
+  if (type === 'LBC' || cavalry.drawing !== 'base') return <KitMounted type={type} p={p} i={i} elite={elite} />;
   const f = makeFig(p, i);
-  const kit = riderKit(type, p.kit, i);
+  const kit = cavalry.rider(type, i);
   const coats = p.horses;
   const h = coats[(i + (type === 'HC' ? 1 : type === 'LC' ? 2 : 0)) % coats.length];
-  const numidian = type === 'LC' && p.kit === 'punic';
+  // bareback light horse without a bridle (Numidians)
+  const numidian = type === 'LC' && !!cavalry.barebackLight;
   const scale = type === 'LC' ? 0.92 : type === 'HC' ? 1.06 : 1;
   return (
     <g transform={scale !== 1 ? `scale(${scale})` : undefined}>

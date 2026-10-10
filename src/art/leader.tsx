@@ -2,9 +2,10 @@
 import { memo } from 'react';
 import type { ArmyLook, Blocks } from '../engine/types';
 import { darken, lighten } from './color';
-import { paletteFor, type Finial, type Kit, type Palette } from './palettes';
-import { Emblem, FacingRightCtx, Head, Hi, Line2, OL, Paint, Shape, makeFig, type Crest, type Fig, type Helmet } from './parts';
-import { HORSE_GEOM, Horse, Rider, type RiderKit } from './mounted';
+import { KITS } from './kits';
+import { paletteFor, type Finial, type Palette } from './palettes';
+import { Emblem, FacingRightCtx, Head, Hi, Line2, OL, Paint, Shape, makeFig, type Fig } from './parts';
+import { HORSE_GEOM, Horse, Rider } from './mounted';
 import { BasePlate } from './token';
 
 /** Where the board should place an attached leader token, relative to the unit hex centre. */
@@ -154,57 +155,15 @@ function BannerDevice({ p, cx, cy }: { p: Palette; cx: number; cy: number }) {
   );
 }
 
-const GENERAL_KIT: RiderKit = {
-  torso: 'muscle', helmet: 'attic', crest: 'horsehair', shield: 'none', weapon: 'standard', legs: 'greaves', cloak: true,
-};
-
-/** The mounted general of the Expansion #1 kits (the base kits all ride as GENERAL_KIT). */
-const KIT_GENERALS: Partial<Record<Kit, RiderKit>> = {
-  // Macedonian king: Phrygian helmet with tall plumes, gilded cuirass, cloak
-  macedonian: { torso: 'muscle', helmet: 'phrygian', crest: 'plume2', shield: 'none', weapon: 'standard', legs: 'greaves', cloak: true },
-  // Persian noble: upright tiara, robe, trousers
-  persian: { torso: 'robe', helmet: 'kidaris', crest: 'none', shield: 'none', weapon: 'standard', legs: 'trousers', cloak: true, beard: true },
-  // Scythian chief: pointed cap, scale coat, trousers
-  scythian: { torso: 'scale', helmet: 'scythianCap', crest: 'none', shield: 'none', weapon: 'standard', legs: 'trousers', beard: true },
-  // Indian raja: turban and white cotton, under the royal parasol
-  indian: { torso: 'cotton', helmet: 'turban', crest: 'none', shield: 'none', weapon: 'standard', legs: 'bare', beard: true },
-};
-
-/** Helmet, crest and beard of the attached-leader portrait, per kit. */
-const BUSTS: Partial<Record<Kit, { helmet: Helmet; crest: Crest; beard: boolean }>> = {
-  macedonian: { helmet: 'phrygian', crest: 'horsehair', beard: false },
-  persian: { helmet: 'kidaris', crest: 'none', beard: true },
-  scythian: { helmet: 'scythianCap', crest: 'none', beard: true },
-  indian: { helmet: 'turban', crest: 'none', beard: true },
-};
-
-/** Mounted general with cloak and standard, facing right, hooves at y = 0. */
+/** Mounted general with cloak and standard, facing right, hooves at y = 0: his kit's general (`KITS[kit].general`). */
 export function MountedGeneral({ p }: { p: Palette }) {
   const gp = generalPalette(p);
   const f = makeFig(gp, 1);
-  const kitGeneral = KIT_GENERALS[p.kit];
-  if (kitGeneral) return <KitGeneral p={p} gp={gp} f={f} kit={kitGeneral} />;
+  const def = KITS[p.kit].general;
+  // the look's general helmet and crest (Theban, Spartan, Pyrrhus' horns) and horse replace the kit's
   const g = p.style.general;
-  const rider = g?.helmet || g?.crest ? { ...GENERAL_KIT, helmet: g.helmet ?? GENERAL_KIT.helmet, crest: g.crest ?? GENERAL_KIT.crest } : GENERAL_KIT;
-  const horse = g?.horse ?? (p.kit === 'greek' ? p.horses[0] : { coat: '#e6dfd0', shade: '#aea592', mane: '#8c8272' });
-  return (
-    <g>
-      <g transform={`scale(${HORSE_GEOM.scale})`}>
-        <Horse coat={horse.coat} shade={horse.shade} mane={horse.mane} pose={2} cloth={gp.saddle} clothTrim={p.gold} light={lighten(horse.coat, 0.5)} />
-      </g>
-      <g transform={`translate(${HORSE_GEOM.seatX} ${HORSE_GEOM.seatY})`}>
-        <Rider kit={rider} f={f} standard={<Standard p={p} x1={-3.8} y1={6} x2={-0.9} y2={-40} />} />
-      </g>
-      <path d="M5.8 -22.4 Q11 -19.6 16.6 -20.6" fill="none" stroke="#3a2416" strokeWidth={0.55} />
-    </g>
-  );
-}
-
-/** The general of the Macedonian, Persian, Scythian and Indian kits (eastern lords wear a gold torque). */
-function KitGeneral({ p, gp, f, kit }: { p: Palette; gp: Palette; f: Fig; kit: RiderKit }) {
-  const g = p.style.general;
-  const rider = g?.helmet || g?.crest ? { ...kit, helmet: g.helmet ?? kit.helmet, crest: g.crest ?? kit.crest } : kit;
-  const horse = g?.horse ?? p.horses[0];
+  const rider = g?.helmet || g?.crest ? { ...def.rider, helmet: g.helmet ?? def.rider.helmet, crest: g.crest ?? def.rider.crest } : def.rider;
+  const horse = g?.horse ?? def.horse ?? p.horses[0];
   const ub = 'translate(-0.6 13.4)';
   return (
     <g>
@@ -214,11 +173,11 @@ function KitGeneral({ p, gp, f, kit }: { p: Palette; gp: Palette; f: Fig; kit: R
       <g transform={`translate(${HORSE_GEOM.seatX} ${HORSE_GEOM.seatY})`}>
         <Rider kit={rider} f={f} standard={<Standard p={p} x1={-3.8} y1={6} x2={-0.9} y2={-40} />} />
         {/* gold torque of rank */}
-        {p.kit !== 'macedonian' && <g transform={ub}>
+        {def.torque && <g transform={ub}>
           <Line2 d="M-0.8 -21.6 C0.2 -20.9 1.4 -20.9 2.4 -21.6" w={0.75} c={p.gold} ow={0.4} />
-          {p.kit === 'indian' && <circle cx={0.4} cy={-24.4} r={0.45} fill={p.gold} stroke={OL} strokeWidth={0.25} />}
+          {def.jewel && <circle cx={0.4} cy={-24.4} r={0.45} fill={p.gold} stroke={OL} strokeWidth={0.25} />}
         </g>}
-        {p.kit === 'scythian' && <ScythianGorytos p={gp} />}
+        {def.gorytos && <ScythianGorytos p={gp} />}
       </g>
       <path d="M5.8 -22.4 Q11 -19.6 16.6 -20.6" fill="none" stroke="#3a2416" strokeWidth={0.55} />
     </g>
@@ -255,15 +214,15 @@ const CAMEO = '#f1e5c6';
  */
 function Bust({ f }: { f: Fig }) {
   const { p } = f;
-  const b = BUSTS[p.kit];
+  const b = KITS[p.kit].bust;
   const g = p.style.general;
-  const helmet = g?.helmet ?? b?.helmet ?? 'atticOpen';
-  const crest = g?.crest ?? b?.crest ?? 'horsehair';
-  const eastern = p.kit === 'persian' || p.kit === 'scythian' || p.kit === 'indian';
+  const helmet = g?.helmet ?? b.helmet;
+  const crest = g?.crest ?? b.crest;
+  const eastern = !!b.robe;
   return (
     <>
       <g transform="translate(-0.75 24.4) scale(1.05)">
-        <Head f={f} helmet={helmet} crest={crest} beard={b ? b.beard : p.kit !== 'roman'} />
+        <Head f={f} helmet={helmet} crest={crest} beard={b.beard} />
       </g>
       {/* cloak across the shoulders */}
       <Shape d="M-7.63 2.4 C-5.8 1.4 -3.4 1.2 0 1.5 C3.4 1.7 5.8 2 7.63 2.4 A 8 8 0 0 1 -7.63 2.4 Z" f={p.cloak} sw={0.6} />

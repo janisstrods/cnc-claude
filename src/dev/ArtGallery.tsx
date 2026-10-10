@@ -25,12 +25,13 @@ const MAX: Record<UnitType, number> = {
 };
 const ARMY_LABEL: Record<ArmyName, string> = { rome: 'Rome', carthage: 'Carthage', syracuse: 'Syracuse' };
 
-/** Gallery order of the looks: base game, Greek cities, Macedon and the Successors, the Eastern kingdoms. */
+/** Gallery order of the looks: base game, Greek cities, Macedon and the Successors, the Eastern kingdoms, Expansion #2. */
 const LOOK_ORDER: ArmyLook[] = [
   'roman', 'carthaginian', 'syracusan',
   'athenian', 'theban', 'spartan', 'phocian',
   'macedonian', 'antigonid', 'epirote', 'craterus', 'eumenes', 'antigonus', 'seleucid', 'ptolemaic',
   'persian', 'scythian', 'indian', 'mauryan',
+  'gallic', 'germanic', 'slave', 'belgic', 'briton', 'marian',
 ];
 const LOOK_LABEL: Record<ArmyLook, string> = {
   roman: 'Rome', carthaginian: 'Carthage', syracusan: 'Syracuse', athenian: 'Athens', theban: 'Thebes', spartan: 'Sparta',

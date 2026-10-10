@@ -1,6 +1,7 @@
 // Foot soldier miniatures (LI, LB, LS, AX, WA, MI, HI) and war-machine crews. Drawn facing right, feet at (0,0), ~30 units tall.
 import type { EliteId, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
+import { KITS, crewDress } from './kits';
 import { TRIBAL_HAIR, TRIBAL_SKIN, type Kit, type LookPalette, type Palette } from './palettes';
 import {
   Arm, Body, Head, Hi, Line2, LegsEl, OL, Paint, Shape, Shield, Spear, makeFig,
@@ -58,191 +59,9 @@ export interface FootKit {
 /** A look's (or an elite's) override of a kit's foot figure. */
 export type FootLook = Partial<FootKit>;
 
-/** The kit's figure for a foot unit type. The look's and the elite's overrides are applied by `FootFigure`. */
+/** The kit's figure for a foot unit type (see `KITS`). The look's and the elite's overrides are applied by `FootFigure`. */
 export function footKit(type: UnitType, kit: Kit, i: number): FootKit {
-  if (kit === 'macedonian') return { unit: type, ...macedonianKit(type, i) };
-  if (kit === 'persian') return { unit: type, ...persianKit(type, i) };
-  if (kit === 'scythian') return { unit: type, ...scythianKit(type, i) };
-  if (kit === 'indian') return { unit: type, ...indianKit(type, i) };
-  return { unit: type, ...classicKit(type, kit, i) };
-}
-
-function celticWarrior(i: number): FootKit {
-  return {
-    torso: 'bare', skirt: false, legs: 'trousers', helmet: 'none', crest: 'none', hair: i % 2 ? 'wild' : 'long',
-    shield: 'longOval', shieldScale: 0.94, shieldDy: 2.4, weapon: 'sword', tribal: true, moustache: true, torc: true,
-  };
-}
-
-/** The base game's kits: Roman, Punic and Greek. */
-function classicKit(type: UnitType, kit: Kit, i: number): FootKit {
-  const greek = kit === 'greek';
-  const punic = kit === 'punic';
-  switch (type) {
-    case 'LI':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: 'none', crest: 'none',
-        hair: i % 2 ? 'long' : 'short', shield: 'round', weapon: 'javelin', spare: 'javelins', sleeve: true, beard: punic && i % 2 === 1,
-      };
-    case 'LB':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: punic ? 'cap' : 'none', crest: 'none', hair: 'short',
-        shield: 'none', weapon: 'bow', sleeve: true, beard: greek && i % 2 === 0,
-      };
-    case 'LS':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: 'none', crest: 'none', hair: i % 2 ? 'long' : 'short',
-        shield: 'none', weapon: 'sling', sleeve: true, beard: i % 3 === 1,
-      };
-    case 'AX':
-      return {
-        torso: 'leather', skirt: true, legs: 'bare', helmet: greek ? 'pilos' : punic ? 'conical' : 'montefortino',
-        crest: 'knob', hair: 'short', shield: 'oval', shieldScale: 0.84, painted: true, weapon: 'javelin', spare: 'spear', sleeve: true,
-      };
-    case 'WA': {
-      const iberian = punic && i % 2 === 1;
-      if (iberian) {
-        return {
-          torso: 'tunic', skirt: true, legs: 'bare', helmet: 'cap', crest: 'none', hair: 'short', shield: 'longOval', shieldScale: 0.94, shieldDy: 2.4,
-          weapon: 'sword', falcata: true, tribal: true, sleeve: true, moustache: true,
-        };
-      }
-      return celticWarrior(i);
-    }
-    case 'MI':
-      return {
-        torso: 'tunic', skirt: true, legs: greek ? 'greaves' : 'bare', helmet: greek ? 'pilos' : punic ? 'attic' : 'montefortino',
-        crest: 'knob', hair: 'short', shield: greek ? 'aspis' : 'oval', shieldScale: greek ? 0.92 : 1, weapon: 'spear', sleeve: true,
-      };
-    case 'HI':
-    default:
-      if (greek) {
-        return {
-          torso: 'linen', skirt: true, pteruges: true, legs: 'greaves', helmet: 'corinthian', crest: 'tall', hair: 'short',
-          shield: 'aspis', weapon: 'longSpear',
-        };
-      }
-      if (punic) {
-        return {
-          torso: 'linen', skirt: true, pteruges: true, legs: 'greaves', helmet: 'attic', crest: 'horsehair', hair: 'short',
-          shield: 'aspis', weapon: 'longSpear', beard: i % 2 === 0,
-        };
-      }
-      return {
-        torso: 'mail', skirt: true, legs: 'bare', helmet: 'montefortino', crest: 'plumes', hair: 'short', shield: 'scutum',
-        weapon: 'pilum', sleeve: false,
-      };
-  }
-}
-
-/** Macedon and the Successors: kausia-hatted skirmishers, Cretan archers, Thracian peltasts, hypaspists, the phalanx. */
-function macedonianKit(type: UnitType, i: number): FootKit {
-  switch (type) {
-    case 'LI':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: i % 2 ? 'kausia' : 'none', crest: 'none', hair: 'short',
-        shield: 'round', weapon: 'javelin', spare: 'javelins', sleeve: true, beard: i % 2 === 0,
-      };
-    case 'LB':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: i % 2 ? 'none' : 'petasos', crest: 'none', hair: 'short',
-        shield: 'none', weapon: 'bow', sleeve: true, beard: i % 2 === 1,
-      };
-    case 'LS':
-      return {
-        torso: 'tunic', skirt: true, legs: 'bare', helmet: i % 2 ? 'petasos' : 'none', crest: 'none', hair: 'short',
-        shield: 'none', weapon: 'sling', sleeve: true, beard: i % 3 === 1,
-      };
-    case 'AX':
-      return {
-        torso: 'tunic', skirt: true, legs: 'boots', helmet: 'thracian', crest: 'knob', hair: 'short',
-        shield: 'pelta', weapon: 'javelin', spare: 'spear', sleeve: true,
-      };
-    case 'WA':
-      return celticWarrior(i);
-    case 'MI':
-      return {
-        torso: 'linen', skirt: true, legs: 'greaves', helmet: 'phrygian', crest: 'horsehair', hair: 'short',
-        shield: 'aspis', shieldScale: 0.92, weapon: 'spear', sleeve: true,
-      };
-    case 'HI':
-    default:
-      return {
-        torso: 'linen', skirt: true, pteruges: true, legs: 'greaves', helmet: 'phrygian', crest: i % 2 ? 'plume2' : 'horsehair', hair: 'short',
-        shield: 'phalanx', weapon: 'sarissa',
-      };
-  }
-}
-
-/** Achaemenid Persia: hoods, long sleeves and trousers; wicker shields; bows everywhere. */
-function persianKit(type: UnitType, i: number): FootKit {
-  const dress = { torso: 'tunic' as const, skirt: true, legs: 'trousers' as const, helmet: 'tiara' as const, crest: 'none' as const, hair: 'short' as const, sleeve: true, longSleeve: true };
-  switch (type) {
-    case 'LI':
-      return { ...dress, shield: 'round', weapon: 'javelin', spare: 'javelins', beard: i % 2 === 0 };
-    case 'LB':
-      return { ...dress, shield: 'none', weapon: 'bow', beard: i % 2 === 1 };
-    case 'LS':
-      return { ...dress, shield: 'none', weapon: 'sling', beard: i % 2 === 0 };
-    case 'AX':
-      // takabara with the crescent wicker shield
-      return { ...dress, shield: 'pelta', weapon: 'javelin', spare: 'spear', beard: true };
-    case 'WA':
-      // hill tribesmen with axes
-      return { ...dress, shield: 'pelta', weapon: 'axe', beard: true };
-    case 'MI':
-      // sparabara: wicker shield and spear, bow case at the hip
-      return { ...dress, shield: 'spara', weapon: 'spear', back: 'bowcase', beard: true };
-    case 'HI':
-    default:
-      // the King's apple-bearers in scale coats
-      return { ...dress, torso: 'scale', shield: 'spara', weapon: 'spear', butt: 'pomegranate', back: 'bowcase', beard: true };
-  }
-}
-
-/** Scythians: pointed caps, kaftans and trousers, gorytos at the hip. */
-function scythianKit(type: UnitType, i: number): FootKit {
-  const dress = { torso: 'kaftan' as const, skirt: true, legs: 'trousers' as const, helmet: 'scythianCap' as const, crest: 'none' as const, hair: 'long' as const, sleeve: true, longSleeve: true, beard: true };
-  switch (type) {
-    case 'LI':
-      return { ...dress, shield: 'round', weapon: 'javelin', spare: 'javelins', beard: i % 2 === 0 };
-    case 'LB':
-      return { ...dress, shield: 'none', weapon: 'bow', bow: 'scythian', back: 'gorytos' };
-    case 'LS':
-      return { ...dress, shield: 'none', weapon: 'sling', beard: i % 2 === 1 };
-    case 'AX':
-      return { ...dress, shield: 'pelta', weapon: 'axe', spare: 'spear' };
-    case 'WA':
-      return { ...dress, helmet: 'none', hair: 'wild', shield: 'round', weapon: 'axe', moustache: true };
-    case 'MI':
-      return { ...dress, torso: 'scale', shield: 'spara', weapon: 'spear', back: 'gorytos' };
-    case 'HI':
-    default:
-      return { ...dress, torso: 'scale', helmet: 'conical', shield: 'spara', weapon: 'spear', back: 'gorytos' };
-  }
-}
-
-/** India: turbans, white cotton, longbows, long bamboo shields, broadswords. */
-function indianKit(type: UnitType, i: number): FootKit {
-  const dress = { torso: 'cotton' as const, skirt: true, legs: 'bare' as const, helmet: 'turban' as const, crest: 'none' as const, hair: 'short' as const, beard: i % 2 === 0 };
-  switch (type) {
-    case 'LI':
-      return { ...dress, shield: 'round', weapon: 'javelin', spare: 'javelins' };
-    case 'LB':
-      return { ...dress, shield: 'none', weapon: 'longbow' };
-    case 'LS':
-      return { ...dress, shield: 'none', weapon: 'sling' };
-    case 'AX':
-      return { ...dress, shield: 'bamboo', shieldDy: 2.2, weapon: 'javelin', spare: 'spear' };
-    case 'WA':
-      // hill tribesmen
-      return { ...dress, torso: 'bare', helmet: 'none', hair: 'long', shield: 'bamboo', shieldDy: 2.2, weapon: 'greatsword', beard: true };
-    case 'MI':
-      return { ...dress, shield: 'bamboo', shieldDy: 2.2, weapon: 'spear', beard: true };
-    case 'HI':
-    default:
-      return { ...dress, torso: 'scale', shield: 'bamboo', shieldDy: 2.2, weapon: 'greatsword', beard: true };
-  }
+  return { unit: type, ...KITS[kit].foot(type, i) };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -638,19 +457,6 @@ export interface CrewDress {
   moustache?: boolean;
   longSleeve?: boolean;
   legs?: 'bare' | 'trousers';
-}
-
-/** Dress of a crewman of a kit (`i` varies helmets), the same on a war machine as in a tower or a chariot. */
-export function crewDress(kit: Kit, i: number): CrewDress {
-  switch (kit) {
-    case 'roman': return { torso: 'mail', helmet: 'montefortino', crest: i % 2 ? 'plumes' : 'knob' };
-    case 'punic': return { torso: 'linen', helmet: i % 2 ? 'attic' : 'conical', crest: i % 2 ? 'horsehair' : 'knob', beard: i % 2 === 0 };
-    case 'greek': return { torso: 'linen', helmet: i % 2 ? 'corinthian' : 'pilos', crest: i % 2 ? 'tall' : 'knob' };
-    case 'macedonian': return { torso: 'linen', helmet: i % 2 ? 'thracian' : 'phrygian', crest: i % 2 ? 'knob' : 'horsehair' };
-    case 'persian': return { torso: 'tunic', helmet: 'tiara', crest: 'none', longSleeve: true, beard: true, legs: 'trousers' };
-    case 'scythian': return { torso: 'kaftan', helmet: 'scythianCap', crest: 'none', longSleeve: true, hair: 'long', beard: true, legs: 'trousers' };
-    case 'indian': return { torso: 'cotton', helmet: 'turban', crest: 'none', beard: i % 2 === 0 };
-  }
 }
 
 function CrewFigure({ p: armyP, i, pose }: { p: Palette; i: number; pose: CrewPose }) {

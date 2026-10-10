@@ -3,6 +3,7 @@
 // two spring frames show (near arm swept back and down, far arm back and up). Facing right, ground at y = 0.
 import { darken, lighten } from './color';
 import { crewFigure } from './foot';
+import { KITS } from './kits';
 import type { Palette } from './palettes';
 import { Emblem, Hi, Line2, OL, Paint, Shape, makeFig } from './parts';
 
@@ -28,10 +29,11 @@ function Spring({ x, top, bottom, p, dark }: { x: number; top: number; bottom: n
 
 /** The engine itself (stand, stock, windlass, slider with bolt, spring frame, arms and string). */
 function BoltThrower({ p, i }: { p: Palette; i: number }) {
-  const roman = p.kit === 'roman';
+  // the Roman scorpio: frame in the shield colour and a curved front shield
+  const scorpio = KITS[p.kit].warMachine === 'scorpio';
   const wood = p.wood;
   const woodShade = p.woodShade;
-  const frame = roman ? p.shield : wood;
+  const frame = scorpio ? p.shield : wood;
   const iron = p.iron;
   const f = makeFig(p, i);
   // arm tips (the near arm sweeps back and down, the far arm back and up)
@@ -73,7 +75,7 @@ function BoltThrower({ p, i }: { p: Palette; i: number }) {
       <Line2 d={`M8.6 -18.4 L${near[0]} ${near[1]}`} w={1.5} c={wood} ow={0.6} />
       <circle cx={near[0]} cy={near[1]} r={0.55} fill={p.metal} stroke={OL} strokeWidth={0.35} />
       {/* the Roman scorpio's curved front shield with its sighting window */}
-      {roman ? (
+      {scorpio ? (
         <g>
           <Shape d="M11 -27.6 C12.6 -28.4 13.8 -27.6 13.8 -26 L13.6 -10.8 C12.8 -10.4 11.8 -10.4 11 -10.8 Z" f={p.shield} sw={0.6} />
           <Paint d="M11 -27.6 C11.4 -27.8 11.8 -27.9 12.2 -27.9 L12 -10.6 C11.6 -10.6 11.3 -10.7 11 -10.8 Z" f={p.shieldShade} mx={12.4} />

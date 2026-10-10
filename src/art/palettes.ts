@@ -1,6 +1,7 @@
 import type { ArmyLook, Blocks, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
-import type { FootLook } from './foot';
+import type { CrewDress, FootLook } from './foot';
+import type { ElephantDef, MountKit } from './kits';
 import type { Crest, Helmet } from './parts';
 
 /** Figure kit: the shapes (helmets, shields, torsos, mounts) an army's miniatures are built from. */
@@ -102,8 +103,9 @@ export type StandardDevice = EmblemKind | 'wreath';
 export type Finial = 'eagle' | 'crescent' | 'lozenge' | 'star' | 'spearhead' | 'royalEagle' | 'wheel' | 'trident' | 'stag';
 
 /**
- * Look-specific art choices beyond the swatches: shield devices, the army standard, per-figure paint variants and
- * per-unit-type overrides of the kit's foot figures. The base looks only name their devices (their figures are the kit's).
+ * Look-specific art choices beyond the swatches: shield devices, the army standard, per-figure paint variants and the
+ * look's exceptions to its kit (`KITS` in kits.ts): foot figures, mounts, elephants, the chariot driver, the general.
+ * The base looks only name their devices (their figures are the kit's).
  */
 export interface LookStyle {
   /** Devices on line-infantry shields (aspis, oval, phalanx, thureos), one per figure index, cycling. */
@@ -118,6 +120,15 @@ export interface LookStyle {
   variants?: Partial<LookPalette>[];
   /** Overrides of the kit's foot figures per unit type: one override, or one per figure index (cycled). */
   foot?: Partial<Record<UnitType, FootLook | FootLook[]>>;
+  /**
+   * Overrides of the kit's mounts per unit type (horse archers, and the cavalry of kits not drawn as the base game's):
+   * one, or one per figure index (cycled; `{}` keeps the kit's mount).
+   */
+  mounted?: Partial<Record<UnitType, Partial<MountKit> | Partial<MountKit>[]>>;
+  /** The look's elephants instead of the kit's. */
+  elephant?: ElephantDef;
+  /** Changes to the dress of the kit's scythed-chariot driver. */
+  chariotDriver?: Partial<CrewDress>;
   /** The general: colours (cloak, saddle cloth), horse, and helmet / crest instead of the kit's. */
   general?: Partial<LookPalette> & { horse?: { coat: string; shade: string; mane: string }; helmet?: Helmet; crest?: Crest };
 }
@@ -680,6 +691,25 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
     style: {
       emblems: ['anchor'], device: 'anchor', finial: 'spearhead',
       foot: { MI: { shield: 'thureos' }, LI: EASTERN_LIGHTS, LB: EASTERN_LIGHTS, LS: EASTERN_LIGHTS },
+      mounted: {
+        // eastern light horse on every other figure
+        LC: [{
+          rider: { torso: 'tunic', helmet: 'tiara', crest: 'none', shield: 'none', weapon: 'javelin', legs: 'trousers', longSleeve: true, spare: true, beard: true },
+          cloth: 'rich',
+        }, {}],
+        // the cataphracts of Magnesia: scale-armoured riders on scale-armoured horses
+        HC: {
+          rider: { torso: 'scale', helmet: 'phrygian', crest: 'horsehair', shield: 'none', weapon: 'lance', legs: 'trousers', longSleeve: true },
+          cloth: 'none', cataphract: true, barding: true,
+        },
+      },
+      // Indian elephants with towers and an armoured headpiece; eastern crews (in coloured hoods) with javelins and bows
+      elephant: {
+        drawing: 'loaded', body: 'indian', load: 'tower', frontlet: true, crew: ['bow', 'javelin'], crewKit: 'persian', scale: 0.94,
+        crewPaint: (q) => ({ cap: q.cloak, capShade: q.cloakShade }),
+      },
+      // the scythed chariot's driver in long eastern sleeves
+      chariotDriver: { longSleeve: true },
     },
   },
   ptolemaic: {
@@ -687,6 +717,8 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
     style: {
       emblems: ['eagle'], device: 'eagle', finial: 'eagle',
       foot: { MI: { shield: 'thureos' }, LI: [EGYPTIAN, {}], LB: [{}, EGYPTIAN], LS: [EGYPTIAN, {}] },
+      // the smaller African forest elephant with a tower and a Macedonian crew
+      elephant: { drawing: 'loaded', body: 'forest', load: 'tower', crew: ['pike', 'javelin'], scale: 0.86 },
     },
   },
   persian: {

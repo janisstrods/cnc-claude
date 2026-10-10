@@ -3,10 +3,11 @@
 // Expansion #1: Indian elephants with a howdah of archers (India, Persia) or a tower (the Successors, the Seleucids
 // with an armoured headpiece), the Ptolemies' smaller African forest elephants with a tower.
 import { darken, lighten } from './color';
-import type { Kit, LookPalette, Palette } from './palettes';
+import type { LookPalette, Palette } from './palettes';
 import { Arm, Body, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, dots, makeFig, type Fig } from './parts';
 import { HalfFigure, type CrewAction } from './mounted';
-import { crewDress, figurePalette, type CrewDress } from './foot';
+import { figurePalette, type CrewDress } from './foot';
+import { KITS, type ElephantDef, type LoadedElephant } from './kits';
 
 const BODY =
   'M-16.4 -13.6 C-17 -20.4 -12.8 -26.4 -5 -27.4 C1 -28.2 6 -27.4 9.2 -25.6 C11.2 -29.2 15.8 -30 18.6 -27.4 ' +
@@ -30,7 +31,7 @@ function Leg({ x, w, c, toe }: { x: number; w: number; c: string; toe: string })
 }
 
 /** The base game's elephant (Carthage; also Rome and Syracuse): saddle cloth, mahout and a javelin-armed rider. */
-function BaseElephant({ p, i }: { p: Palette; i: number }) {
+function BaseElephant({ p, i, def }: { p: Palette; i: number; def: Extract<ElephantDef, { drawing: 'base' }> }) {
   const skin = i % 2 ? lighten(p.elephant, 0.06) : p.elephant;
   const shade = p.elephantShade;
   const far = darken(skin, 0.2);
@@ -74,8 +75,8 @@ function BaseElephant({ p, i }: { p: Palette; i: number }) {
         <Arm s={[-2.2, -7]} e={[-5.6, -10.6]} h={[-4, -15.6]} f={rider} sleeve={p.tunic} />
         <Line2 d="M-1 -0.6 L3.6 1.8 L3.2 6.4" w={2.5} c={rider.skin} />
         <g transform="translate(-0.6 13.4)">
-          <Body f={rider} torso={p.kit === 'greek' ? 'linen' : 'tunic'} skirt={false} />
-          <Head f={rider} helmet={p.kit === 'greek' ? 'pilos' : p.kit === 'punic' ? 'conical' : 'montefortino'} crest="knob" />
+          <Body f={rider} torso={def.rider.torso} skirt={false} />
+          <Head f={rider} helmet={def.rider.helmet} crest="knob" />
         </g>
         <Spear x1={1.2} y1={4.4} x2={9.4} y2={-14.6} f={rider} w={0.6} blade={2.1} bladeW={1.0} />
         <Shield kind="round" f={rider} dx={1.2} dy={11.6} />
@@ -114,42 +115,7 @@ const RICH_DOTS = dots([[-7.4, -23.6], [-3.6, -24.4], [0.2, -24.2], [3.6, -23.2]
 /** Depigmented (pinkish) mottling of an Indian elephant's ear and trunk. */
 const IND_MOTTLE = dots([[12.6, -20.4], [13.2, -22.4], [11.8, -19], [20.8, -12], [21, -9.6], [20.6, -7.4], [19.6, -18.4]], 0.45);
 
-/** How an Expansion #1 elephant is drawn. */
-interface ElephantKit {
-  body: 'indian' | 'forest';
-  load: 'tower' | 'howdah';
-  /** Armoured headpiece with a plume (Seleucid). */
-  frontlet?: boolean;
-  /** Rich Indian caparison with fringe and bells (else a plain cloth in the army colours). */
-  rich?: boolean;
-  crew: [CrewAction, CrewAction];
-  /** Crew dress (default: the kit's). */
-  dress?: (i: number) => CrewDress;
-  /** Paint of the crew over the army's (e.g. coloured hoods). */
-  crewPaint?: (p: Palette) => Partial<LookPalette>;
-  scale: number;
-}
-
 const INDIAN_SKIN = ['#a8714a', '#946038', '#b57e52', '#8a5634'];
-
-function elephantKit(p: Palette): ElephantKit {
-  const kit: Kit = p.kit;
-  if (p.look === 'seleucid') {
-    // Indian elephants with towers and an armoured headpiece; eastern crews with javelins and bows
-    return {
-      body: 'indian', load: 'tower', frontlet: true, crew: ['bow', 'javelin'], dress: (i) => crewDress('persian', i), scale: 0.94,
-      crewPaint: (q) => ({ cap: q.cloak, capShade: q.cloakShade }),
-    };
-  }
-  if (p.look === 'ptolemaic') {
-    // the smaller African forest elephant with a tower and a Macedonian crew
-    return { body: 'forest', load: 'tower', crew: ['pike', 'javelin'], scale: 0.86 };
-  }
-  // India, Persia (and the Scythian kit): a richly caparisoned elephant with a howdah, javelin-man and archer
-  if (kit === 'indian' || kit === 'persian' || kit === 'scythian') return { body: 'indian', load: 'howdah', rich: true, crew: ['javelin', 'bow'], scale: 1 };
-  // Macedon and the Successors (Pyrrhus, Antigonus, Eumenes): Indian elephants with a tower and a Macedonian crew
-  return { body: 'indian', load: 'tower', crew: ['pike', 'javelin'], scale: 0.94 };
-}
 
 const mahoutPalettes = new WeakMap<Palette, Palette>();
 /** The mahout is an Indian in a white turban and loincloth, whoever owns the elephant. */
@@ -218,20 +184,20 @@ function Crewman({ p, i, dress, action, x, y, s = 0.84, paint }: {
   const f = makeFig(fp, i);
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`}>
-      <HalfFigure dress={dress} action={action} f={f} bow={p.kit === 'scythian' || p.kit === 'persian' ? 'scythian' : 'self'} aim={action === 'bow' ? -24 : 0} />
+      <HalfFigure dress={dress} action={action} f={f} bow={KITS[p.kit].crewBow} aim={action === 'bow' ? -24 : 0} />
     </g>
   );
 }
 
-function KitElephant({ p, i }: { p: Palette; i: number }) {
-  const ek = elephantKit(p);
+/** An elephant carrying a tower or a howdah with two crewmen, and a mahout on the neck. */
+function LoadedElephantFigure({ p, i, ek }: { p: Palette; i: number; ek: LoadedElephant }) {
   const skin = i % 2 ? lighten(p.elephant, 0.06) : p.elephant;
   const shade = p.elephantShade;
   const far = darken(skin, 0.2);
   const indian = ek.body === 'indian';
   const mp = mahoutPalette(p);
   const mahout = makeFig(mp, i + 1, INDIAN_SKIN);
-  const dress = ek.dress ?? ((k: number) => crewDress(p.kit, k));
+  const dress = KITS[ek.crewKit ?? p.kit].crew;
   const back = indian ? -29 : -27.4;
   const pat = p.pattern && p.pattern !== p.saddle ? p.pattern : p.gold;
   // where the load sits on the back
@@ -348,8 +314,9 @@ function KitElephant({ p, i }: { p: Palette; i: number }) {
   );
 }
 
-/** One elephant miniature: the base game's for the Roman, Punic and Greek kits, an Expansion #1 elephant otherwise. */
+/** One elephant miniature: the look's elephant (`LookStyle.elephant`) or its kit's (`KITS[kit].elephant`). */
 export function ElephantFigure({ p, i }: { p: Palette; i: number }) {
-  if (p.kit === 'roman' || p.kit === 'punic' || p.kit === 'greek') return <BaseElephant p={p} i={i} />;
-  return <KitElephant p={p} i={i} />;
+  const def = p.style.elephant ?? KITS[p.kit].elephant;
+  if (def.drawing === 'base') return <BaseElephant p={p} i={i} def={def} />;
+  return <LoadedElephantFigure p={p} i={i} ek={def} />;
 }

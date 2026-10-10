@@ -3,18 +3,21 @@
 // Expansion #1: the four-horse scythed chariots of Persia and the Successors, the large Indian chariot with archers,
 // and a light two-horse chariot for the steppe kit.
 import { darken, lighten } from './color';
-import { crewDress, figurePalette, type CrewDress } from './foot';
+import { figurePalette, type CrewDress } from './foot';
+import { KITS, type ChariotDef } from './kits';
 import type { Palette } from './palettes';
 import { Arm, Body, Emblem, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, dots, makeFig } from './parts';
 import { HalfFigure, Horse, type CrewAction } from './mounted';
 
-function BaseChariot({ p, i }: { p: Palette; i: number }) {
+type BaseChariotDef = Extract<ChariotDef, { drawing: 'base' }>;
+type KitChariotDef = Exclude<ChariotDef, { drawing: 'base' }>;
+
+function BaseChariot({ p, i, def }: { p: Palette; i: number; def: BaseChariotDef }) {
   const h1 = p.horses[(i + 1) % p.horses.length];
   const h2 = p.horses[(i + 2) % p.horses.length];
   const driver = makeFig(p, i + 1);
   const warrior = makeFig(p, i + 2);
-  const helmet = p.kit === 'greek' ? 'corinthian' : p.kit === 'punic' ? 'attic' : 'montefortino';
-  const crest = p.kit === 'roman' ? 'plumes' : p.kit === 'greek' ? 'tall' : 'horsehair';
+  const { torso, helmet, crest } = def.warrior;
   const wx = -13;
   const wy = -6.8;
   const wr = 6.6;
@@ -37,7 +40,7 @@ function BaseChariot({ p, i }: { p: Palette; i: number }) {
         <Spear x1={-12.4} y1={-12.4} x2={11} y2={-20.6} f={warrior} w={0.8} blade={2.8} bladeW={1.3} />
         <Arm s={[-2.2, -7]} e={[-5.6, -10.6]} h={[-4, -15.6]} f={warrior} sleeve={p.tunic} />
         <g transform="translate(-0.6 13.4)">
-          <Body f={warrior} torso={p.kit === 'roman' ? 'mail' : p.kit === 'greek' ? 'muscle' : 'linen'} skirt={false} />
+          <Body f={warrior} torso={torso} skirt={false} />
           <Head f={warrior} helmet={helmet} crest={crest} beard={i % 2 === 0} />
         </g>
       </g>
@@ -52,7 +55,7 @@ function BaseChariot({ p, i }: { p: Palette; i: number }) {
       <g transform="translate(-6.8 -17.2) scale(0.95)">
         <g transform="translate(-0.6 13.4)">
           <Body f={driver} torso="tunic" skirt={false} />
-          <Head f={driver} helmet={p.kit === 'greek' ? 'pilos' : 'cap'} crest="none" />
+          <Head f={driver} helmet={def.driverHelmet} crest="none" />
         </g>
         <Arm s={[1.6, -7.2]} e={[4.4, -4.8]} h={[6.8, -3.2]} f={driver} near sleeve={p.tunic} />
       </g>
@@ -99,14 +102,17 @@ interface ChariotKit {
   /** Far to near (draw order). */
   crew: CrewSpot[];
   bow: 'self' | 'scythian';
+  /** Railing posts along the box (the big Indian car). */
+  railing: boolean;
 }
 
-function chariotKit(p: Palette, i: number): ChariotKit {
-  if (p.kit === 'indian') {
+/** The chariot of a kit's drawing; its crew wear the kit's crew dress and draw the kit's bow. */
+function chariotKit(p: Palette, def: KitChariotDef, i: number): ChariotKit {
+  const { crew: d, crewBow: bow } = KITS[p.kit];
+  if (def.drawing === 'great') {
     // Porus' heavy chariots: four horses, six men; drawn with two archers and the driver
-    const d = (k: number) => crewDress('indian', k);
     return {
-      horses: 4, scythed: false, barded: false, box: { x0: -25, x1: -3.6, top: -20.8 }, wheel: 7.4, bow: 'self',
+      horses: 4, scythed: false, barded: false, box: { x0: -25, x1: -3.6, top: -20.8 }, wheel: 7.4, bow, railing: true,
       crew: [
         { action: 'javelin', dress: d(i + 3), x: -19.8, y: -19.4, s: 0.94, i: i + 3 },
         { action: 'reins', dress: d(i + 1), x: -7.4, y: -18.6, s: 0.94, i: i + 1 },
@@ -114,30 +120,27 @@ function chariotKit(p: Palette, i: number): ChariotKit {
       ],
     };
   }
-  if (p.kit === 'scythian') {
-    const d = (k: number) => crewDress('scythian', k);
+  if (def.drawing === 'light') {
     return {
-      horses: 2, scythed: false, barded: false, box: { x0: -20, x1: -4.4, top: -18.6 }, wheel: 6.6, bow: 'scythian',
+      horses: 2, scythed: false, barded: false, box: { x0: -20, x1: -4.4, top: -18.6 }, wheel: 6.6, bow, railing: false,
       crew: [
         { action: 'reins', dress: d(i + 1), x: -6.6, y: -17.2, s: 0.95, i: i + 1 },
         { action: 'bow', dress: d(i + 2), x: -13.6, y: -17.8, s: 1, aim: -14, i: i + 2 },
       ],
     };
   }
-  // the scythed chariot: one armoured driver behind high sides (a Persian in his hood, a Successor's in a crested helmet)
-  const driver: CrewDress = p.kit === 'persian'
-    ? { torso: 'scale', helmet: 'tiara', crest: 'none', longSleeve: true, beard: true }
-    : { torso: 'scale', helmet: 'phrygian', crest: 'horsehair', longSleeve: p.look === 'seleucid' };
+  // the scythed chariot: one armoured driver behind high sides, in the kit's dress with the look's changes
+  const driver: CrewDress = p.style.chariotDriver ? { ...def.driver, ...p.style.chariotDriver } : def.driver;
   return {
-    horses: 4, scythed: true, barded: true, box: { x0: -19.6, x1: -4.4, top: -20.4 }, wheel: 6.8, bow: 'scythian',
+    horses: 4, scythed: true, barded: true, box: { x0: -19.6, x1: -4.4, top: -20.4 }, wheel: 6.8, bow, railing: false,
     crew: [{ action: 'whip', dress: driver, x: -9.4, y: -18.2, s: 1, i: i + 1 }],
   };
 }
 
 const r2 = (n: number) => n.toFixed(2);
 
-function KitChariot({ p, i }: { p: Palette; i: number }) {
-  const ck = chariotKit(p, i);
+function KitChariot({ p, i, def }: { p: Palette; i: number; def: KitChariotDef }) {
+  const ck = chariotKit(p, def, i);
   const coats = p.horses;
   const h1 = coats[(i + 1) % coats.length];
   const h2 = coats[(i + 2) % coats.length];
@@ -211,7 +214,7 @@ function KitChariot({ p, i }: { p: Palette; i: number }) {
       {ck.scythed && (device === 'none'
         ? <path d={dots([[x0 + 3.2, top + 3.6], [x0 + 6.6, top + 3.8], [x0 + 10, top + 3.8], [x0 + 13.2, top + 3.6]], 0.62)} fill={pat} />
         : <Emblem kind={device} cx={(x0 + x1) / 2 - 0.6} cy={top + 3.9} s={0.78} f={makeFig(p, 0)} c={p.shieldEmblem} bg={p.saddle} />)}
-      {p.kit === 'indian' && (
+      {ck.railing && (
         <g>
           {/* railing posts of the big Indian car */}
           <Hi d={`M${x0 + 5.4} ${top + 1} L${x0 + 5.4} -9.6 M${x0 + 10.8} ${top + 1} L${x0 + 10.8} -9.6 M${x0 + 16.2} ${top + 1} L${x0 + 16.2} -9.6`} c={p.gold} w={0.7} o={0.95} />
@@ -237,8 +240,9 @@ function KitChariot({ p, i }: { p: Palette; i: number }) {
   );
 }
 
-/** One chariot miniature: the base game's for the Punic, Greek and Roman kits, an Expansion #1 chariot otherwise. */
+/** One chariot miniature, drawn as its kit's chariot (`KITS[kit].chariot`): the base game's, scythed, great or light. */
 export function ChariotFigure({ p, i }: { p: Palette; i: number }) {
-  if (p.kit === 'roman' || p.kit === 'punic' || p.kit === 'greek') return <BaseChariot p={p} i={i} />;
-  return <KitChariot p={p} i={i} />;
+  const def = KITS[p.kit].chariot;
+  if (def.drawing === 'base') return <BaseChariot p={p} i={i} def={def} />;
+  return <KitChariot p={p} i={i} def={def} />;
 }

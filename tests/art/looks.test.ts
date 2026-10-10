@@ -264,6 +264,49 @@ describe("the base game's Sacred Band keeps its look (rendered SVG)", () => {
   });
 });
 
+describe('Expansion #1 armies are drawn exactly as before Expansion #2 (rendered SVG)', () => {
+  // SHA-256 of a react-dom/server render of every UnitToken (all strengths, both facings) and UnitIcon of the 16
+  // Expansion #1 looks (every type but BCH, which gets its own figure in Expansion #2) and their LeaderTokens, of the base
+  // looks' Expansion #1 types (LBC, CAM, HWM), and of the Expansion #1 elites on their armies, computed on the tree before
+  // the Expansion #2 art (and unchanged by the kit table that replaced the kit literals).
+  const BASELINE = '15b5df0029e5ee4479e916b35890f7edeca193908fcbd44610ff4e8684cfa5d9';
+  const EXP1_LOOKS: ArmyLook[] = [
+    'athenian', 'theban', 'spartan', 'phocian', 'macedonian', 'antigonid', 'epirote', 'craterus', 'eumenes', 'antigonus',
+    'seleucid', 'ptolemaic', 'persian', 'scythian', 'indian', 'mauryan',
+  ];
+  const EXP1_ELITES: { elite: EliteId; look: ArmyLook; type: UnitType }[] = [
+    { elite: 'thebanSacredBand', look: 'theban', type: 'MI' }, { elite: 'silverShields', look: 'eumenes', type: 'HI' },
+    { elite: 'companions', look: 'macedonian', type: 'MC' }, { elite: 'immortals', look: 'persian', type: 'MI' },
+    { elite: 'bowAuxilia', look: 'mauryan', type: 'AX' },
+  ];
+  const blocksOf = (look: ArmyLook): Blocks => (['athenian', 'theban', 'spartan', 'phocian'].includes(look) ? 'grk' : 'eas');
+
+  it('every Expansion #1 token, icon, leader and elite renders byte-identically', async () => {
+    const parts: string[] = [];
+    const tokens = (a: { look: ArmyLook; blockColor: Blocks; elite?: EliteId }, type: UnitType) => {
+      for (let blocks = 1; blocks <= MAX[type]; blocks++) {
+        for (const facing of ['left', 'right'] as const) parts.push(svg(h(UnitToken, { type, ...a, blocks, maxBlocks: MAX[type], facing })));
+      }
+      for (const size of [24, 64]) parts.push(svg(h(UnitIcon, { type, ...a, size })));
+    };
+    for (const look of EXP1_LOOKS) {
+      const a = { look, blockColor: blocksOf(look) };
+      for (const type of ALL_TYPES.filter((t) => t !== 'BCH')) tokens(a, type);
+      for (const facing of ['left', 'right'] as const) {
+        for (const attached of [false, true]) parts.push(svg(h(LeaderToken, { ...a, facing, attached, name: 'Alexander', showName: true })));
+      }
+    }
+    for (const a of [{ look: 'roman', blockColor: 'rom' }, { look: 'carthaginian', blockColor: 'car' }, { look: 'syracusan', blockColor: 'grk' }] as const) {
+      for (const type of ['LBC', 'CAM', 'HWM'] as const) tokens(a, type);
+    }
+    for (const { elite, look, type } of EXP1_ELITES) tokens({ look, blockColor: blocksOf(look), elite }, type);
+    expect(parts).toHaveLength(2226);
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(parts.join('')));
+    const hex = [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, '0')).join('');
+    expect(hex).toBe(BASELINE);
+  });
+});
+
 /** The kit of every look (Expansion #1 brief). */
 const KITS: Record<ArmyLook, Kit> = {
   roman: 'roman', carthaginian: 'punic', syracusan: 'greek',

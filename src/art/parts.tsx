@@ -7,6 +7,7 @@
 // about their own axis (`mx`) so the light stays on the screen's upper left for both facings.
 import { createContext, useContext, type ReactNode } from 'react';
 import { darken, lighten } from './color';
+import { KITS } from './kits';
 import type { EmblemKind, Palette } from './palettes';
 
 export const OL = '#1d140e';
@@ -419,7 +420,7 @@ export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted 
   painted?: boolean;
 }) {
   const { p } = f;
-  const kit = p.kit;
+  const kit = KITS[p.kit];
   const pt = painted ?? (kind === 'round' || kind === 'longOval' || kind === 'pelta');
   const face = pt ? p.paint : p.shield;
   const faceShade = pt ? p.paintShade : p.shieldShade;
@@ -460,7 +461,7 @@ export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted 
         <ellipse cx={4.3} cy={-13.8} rx={4.4} ry={7.9} fill="none" stroke={p.shieldRim} strokeWidth={0.6} />
         {emblem && <EmblemAt kind={ek} at={OVAL_AT[ek] ?? [4.5, -13.8, 1.05]} f={f} c={emb} bg={face} />}
         <Hi d="M7.4 -19.4 C8.6 -16.6 8.8 -12.4 7.8 -9" c={faceLight} w={0.8} mx={4.3} />
-        {kit === 'roman' && <ellipse cx={4.5} cy={-13.8} rx={1.3} ry={1.8} fill={p.metal} stroke={OL} strokeWidth={0.5} />}
+        {kit.ovalShieldBoss && <ellipse cx={4.5} cy={-13.8} rx={1.3} ry={1.8} fill={p.metal} stroke={OL} strokeWidth={0.5} />}
       </>
     );
   } else if (kind === 'longOval') {
@@ -516,7 +517,7 @@ export function Shield({ kind, f, dx = 0, dy = 0, s = 1, emblem = true, painted 
     );
   } else if (kind === 'pelta') {
     // crescent shield (Thracian pelta, Persian taka)
-    const wicker = kit === 'persian' || kit === 'scythian';
+    const wicker = kit.wickerPelta;
     body = (
       <>
         <Shape d="M-0.2 -21.6 C1.2 -18.8 3 -17 5 -17 C7 -17 8.8 -18.8 10.2 -21.6 C11.2 -16.4 9 -10.6 5 -9.8 C1 -10.6 -1.2 -16.4 -0.2 -21.6 Z" f={face} />
