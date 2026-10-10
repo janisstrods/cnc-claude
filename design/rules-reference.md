@@ -1090,7 +1090,7 @@ research where they differ):
   (4,5)–(4,12), `faces: 'top'`, with three gaps on the left; nine hills in the bottom-right corner. Objective: `exit` for
   the Pompeians over the Caesarian left-section baseline **(8,0)–(8,4)**, any unit, 1 permanent banner, removed; the side
   edges do not count (Designer erratum, X3 Q12). The Pompeian army has **LI 2 and LB 1** (map).
-* **315 Pharsalus (48 BC):** Julian legions for both armies, Caesar. The seven hills in the top-right corner are impassable
+* **315 Pharsalus (48 BC):** Julian legions for both armies, Caesar. The seven hills along the top edge (six in the right corner and one at 0,6) are impassable
   (`steep`); one marsh hex at (4,0). The Caesarians have **3 leaders** (map); their WA is a red Roman one standing behind
   Caesar. No other rules.
 * **316 Zela (47 BC):** Julian legions for the **Romans only** (the Pontic MI 4 and HI 2 have none, X3 Q1), Caesar. The

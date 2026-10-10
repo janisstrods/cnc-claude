@@ -22,7 +22,7 @@ export type Legion = (typeof LEGIONS)[number];
  * Terrain of a hex. A fordable river is `river` with `fords[hex] === true` (and `noCap[hex]` when it has no dice caps).
  * `sea` follows the lake rules (a coast played as a ford is a fordable `river`, 217); `rampart` is open ground whose
  * protected hexsides are `GameState.rampart[hex]` (§16); `ditch` (212) stops every unit and lone leader on entering and
- * does nothing else (§18.6); `wall` is a scalable city wall (Expansion #3, rules-reference §18.10; its rules come with the
+ * does nothing else (§18.6); `wall` is a scalable city wall (Expansion #3, rules-reference §18.7; its rules come with the
  * wall engine task, until then it is open ground for movement and combat). `void` = not on the board.
  */
 export type TerrainType =
