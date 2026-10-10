@@ -445,6 +445,7 @@ const LEGEND: { t: TerrainType; ford?: boolean; art?: string }[] = [
   { t: 'broken' },
   { t: 'marsh' },
   { t: 'ditch' },
+  { t: 'wall' },
   { t: 'river', ford: true, art: 'coast' },
 ];
 

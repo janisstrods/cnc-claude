@@ -156,5 +156,6 @@ export const TERRAIN_NAMES: Record<TerrainType, string> = {
   sea: 'Sea',
   rampart: 'Rampart',
   ditch: 'Ditch',
+  wall: 'City Wall',
   void: '',
 };

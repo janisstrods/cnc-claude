@@ -41,6 +41,8 @@ const LOOK_LABEL: Record<ArmyLook, string> = {
   epirote: 'Epirus (Pyrrhus)', craterus: "Craterus' Successors", eumenes: "Eumenes' Successors", antigonus: "Antigonus' Successors",
   seleucid: 'Seleucids', ptolemaic: 'Ptolemies', persian: 'Persia', scythian: 'Scythians', indian: 'India (Porus)', mauryan: 'Mauryan India',
   gallic: 'Gauls', germanic: 'Germans', slave: 'Slave army (Spartacus)', belgic: 'Belgae', briton: 'Britons', marian: 'Marian Romans',
+  sullan: 'Sullan Romans', samnite: 'Samnites', sertorian: 'Sertorian army (Spain)', pompeian: 'Pompeians', caesarian: 'Caesarians',
+  helvetii: 'Helvetii', numidian: 'Numidians', pontic: 'Pontic army (Mithridates)',
 };
 
 interface LookUse {

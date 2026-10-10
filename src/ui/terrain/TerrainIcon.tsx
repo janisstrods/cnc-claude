@@ -25,6 +25,8 @@ const ICON_TO_LAND = { x: -Math.sqrt(3) / 2, y: 0.5 };
 function iconArt(t: TerrainType, ford: boolean, hexArt?: string): JSX.Element | null {
   // a coast played as a ford (217): a fordable river in the rules, drawn as sea shallows
   if (hexArt === 'coast' && t === 'river') t = 'sea';
+  // a city wall (Expansion #3) shows the steep-rock swatch until the art track gives it its own
+  if (t === 'wall') t = 'steep';
   const key = `${t}:${ford ? 1 : 0}`;
   if (cache.has(key)) return cache.get(key)!;
   const ctx = iconCtx(t, ford);

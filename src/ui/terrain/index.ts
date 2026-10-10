@@ -77,6 +77,8 @@ export function terrainName(t: TerrainType, ford: boolean, noCap = false, art?: 
       return 'Rampart';
     case 'ditch':
       return 'Ditch';
+    case 'wall':
+      return 'City Wall';
     case 'void':
       return 'Off Board';
   }

@@ -22,10 +22,11 @@ export type Legion = (typeof LEGIONS)[number];
  * Terrain of a hex. A fordable river is `river` with `fords[hex] === true` (and `noCap[hex]` when it has no dice caps).
  * `sea` follows the lake rules (a coast played as a ford is a fordable `river`, 217); `rampart` is open ground whose
  * protected hexsides are `GameState.rampart[hex]` (§16); `ditch` (212) stops every unit and lone leader on entering and
- * does nothing else (§18.6). `void` = not on the board.
+ * does nothing else (§18.6); `wall` is a scalable city wall (Expansion #3, rules-reference §18.10; its rules come with the
+ * wall engine task, until then it is open ground for movement and combat). `void` = not on the board.
  */
 export type TerrainType =
-  | 'plain' | 'hill' | 'forest' | 'marsh' | 'broken' | 'river' | 'lake' | 'camp' | 'steep' | 'sea' | 'rampart' | 'ditch' | 'void';
+  | 'plain' | 'hill' | 'forest' | 'marsh' | 'broken' | 'river' | 'lake' | 'camp' | 'steep' | 'sea' | 'rampart' | 'ditch' | 'wall' | 'void';
 
 /** Hexside / neighbour directions, in the board's neighbour order (row 0 at the top, so NE and NW point up the board). */
 export type HexDir = 'E' | 'NE' | 'NW' | 'W' | 'SW' | 'SE';
@@ -41,6 +42,7 @@ export const ARMY_LOOKS = [
   'athenian', 'theban', 'spartan', 'phocian', 'macedonian', 'antigonid', 'epirote',
   'craterus', 'eumenes', 'antigonus', 'seleucid', 'ptolemaic', 'persian', 'scythian', 'indian', 'mauryan',
   'gallic', 'germanic', 'slave', 'belgic', 'briton', 'marian',
+  'sullan', 'samnite', 'sertorian', 'pompeian', 'caesarian', 'helvetii', 'numidian', 'pontic',
 ] as const;
 /** Army look: the figure kit and palette an army is drawn with (see src/art/palettes.ts). */
 export type ArmyLook = (typeof ARMY_LOOKS)[number];

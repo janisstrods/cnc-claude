@@ -218,6 +218,24 @@ const TROOPS: Partial<Record<ArmyLook, Partial<Record<UnitType, string>>>> = {
     LI: 'skirmishers', LB: 'Cretan archers', LS: 'Balearic slingers', AX: 'auxilia', WA: 'Germanic allies', MI: 'legionaries',
     HI: 'veteran legionaries', LC: 'Numidian horse', MC: 'Roman horse', HWM: 'ballistae',
   },
+  // Expansion #3: the Roman Civil Wars (troop names are plain placeholders until the battles are transcribed into the game)
+  sullan: { LI: 'skirmishers', LB: 'Cretan archers', LS: 'slingers', AX: 'auxilia', MI: 'legionaries', HI: 'veteran legionaries', LC: 'light horse', MC: 'Roman horse' },
+  samnite: { LI: 'skirmishers', AX: 'Samnite foot', WA: 'Samnite warband', MI: 'Samnite spearmen', LC: 'Samnite light horse', MC: 'Samnite horse' },
+  sertorian: {
+    LI: 'Iberian skirmishers', LB: 'archers', LS: 'slingers', AX: 'Iberian foot', WA: 'Celtiberian warband', MI: 'Roman legionaries',
+    HI: 'veteran legionaries', LC: 'Iberian light horse', MC: 'Iberian horse',
+  },
+  pompeian: { LI: 'skirmishers', LB: 'archers', LS: 'slingers', AX: 'auxilia', MI: 'legionaries', HI: 'veteran legionaries', LC: 'light horse', MC: 'Roman horse' },
+  caesarian: {
+    LI: 'skirmishers', LB: 'archers', LS: 'slingers', AX: 'auxilia', WA: 'Gallic allies', MI: 'legionaries', HI: 'veteran legionaries',
+    LC: 'German horse', MC: 'Gallic horse',
+  },
+  helvetii: { LI: 'Helvetian skirmishers', AX: 'Helvetian foot', WA: 'Helvetian warband', MI: 'Helvetian spearmen', LC: 'Helvetian horse', MC: 'Helvetian horse' },
+  numidian: { LI: 'Numidian skirmishers', LB: 'archers', AX: 'Numidian foot', MI: 'Libyan spearmen', LC: 'Numidian horse', MC: 'Numidian cavalry' },
+  pontic: {
+    LI: 'skirmishers', LB: 'archers', LS: 'slingers', AX: 'peltasts', WA: 'Galatians', MI: 'Pontic infantry', HI: 'phalanx',
+    LC: 'light horse', MC: 'Pontic horse', HC: 'cataphracts', HCH: 'scythed chariots',
+  },
 };
 
 /** Elite units are called by their own name (§17.1). */

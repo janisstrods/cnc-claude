@@ -731,8 +731,10 @@ const GLADIATOR: FootLook = {
 const ROMAN_LOOK: LookDef = { kit: 'roman', palette: ROMAN, style: { emblems: ['rome'], device: 'wreath', finial: 'eagle' } };
 const CARTHAGINIAN_LOOK: LookDef = { kit: 'punic', palette: CARTHAGINIAN, style: { emblems: ['carthage'], device: 'carthage', finial: 'crescent' } };
 
-/** Every army look: its kit, swatches and style. */
-export const LOOKS: Record<ArmyLook, LookDef> = {
+/** The looks new in Expansion #3 (Roman Civil Wars): they draw as an older look until the art track gives them their own. */
+type Exp3Look = 'sullan' | 'samnite' | 'sertorian' | 'pompeian' | 'caesarian' | 'helvetii' | 'numidian' | 'pontic';
+
+const EARLIER_LOOKS: Record<Exclude<ArmyLook, Exp3Look>, LookDef> = {
   roman: ROMAN_LOOK,
   carthaginian: CARTHAGINIAN_LOOK,
   syracusan: { kit: 'greek', palette: SYRACUSAN, style: { emblems: ['syracuse'], device: 'syracuse', finial: 'lozenge' } },
@@ -1004,6 +1006,21 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
     // generals on a bay horse (Caesar rides his white one, LEADER_LOOKS)
     style: { emblems: ['wingedBolt'], device: 'wingedBolt', finial: 'eagle', standard: 'aquila', general: { horse: { coat: '#7a4a2a', shade: '#4e2e18', mane: '#22160e' } } },
   },
+};
+
+/** Every army look: its kit, swatches and style. */
+export const LOOKS: Record<ArmyLook, LookDef> = {
+  ...EARLIER_LOOKS,
+  // Expansion #3 (temporary until the art track): the Roman parties draw as Marian Romans, the Helvetii and the Sertorian
+  // Celtiberians as Gauls, the Numidians as Carthaginians, the Pontic army as the Antigonid one, the Samnites as Syracusans.
+  sullan: EARLIER_LOOKS.marian,
+  pompeian: EARLIER_LOOKS.marian,
+  caesarian: EARLIER_LOOKS.marian,
+  helvetii: EARLIER_LOOKS.gallic,
+  sertorian: EARLIER_LOOKS.gallic,
+  numidian: EARLIER_LOOKS.carthaginian,
+  pontic: EARLIER_LOOKS.antigonid,
+  samnite: EARLIER_LOOKS.syracusan,
 };
 
 /**

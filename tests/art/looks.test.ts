@@ -291,8 +291,11 @@ describe('Expansion #1 armies are drawn exactly as before Expansion #2 (rendered
   });
 });
 
-/** The kit of every look (Expansion #1 brief). */
-const KITS: Record<ArmyLook, Kit> = {
+/** The looks new in Expansion #3: they draw as an older look until the art track gives them their own (see EXP3_KITS). */
+type Exp3Look = 'sullan' | 'samnite' | 'sertorian' | 'pompeian' | 'caesarian' | 'helvetii' | 'numidian' | 'pontic';
+
+/** The kit of every look before Expansion #3 (Expansion #1 brief). */
+const KITS: Record<Exclude<ArmyLook, Exp3Look>, Kit> = {
   roman: 'roman', carthaginian: 'punic', syracusan: 'greek',
   athenian: 'greek', theban: 'greek', spartan: 'greek', phocian: 'greek',
   macedonian: 'macedonian', antigonid: 'macedonian', epirote: 'macedonian', craterus: 'macedonian', eumenes: 'macedonian',
@@ -302,14 +305,25 @@ const KITS: Record<ArmyLook, Kit> = {
   // figures among them), the Germanic kit, the late-Roman kit for the Marian legions
   gallic: 'celtic', germanic: 'germanic', slave: 'celtic', belgic: 'celtic', briton: 'celtic', marian: 'lateRoman',
 };
-const ALL_LOOKS = Object.keys(KITS) as ArmyLook[];
+const ALL_LOOKS = Object.keys(KITS) as Exclude<ArmyLook, Exp3Look>[];
+
+/** Expansion #3 (temporary art): the Roman parties draw as Marian Romans, the Helvetii and Sertorians as Gauls, the Numidians
+ *  as Carthaginians, the Pontic army as the Antigonid one, the Samnites as Syracusans. */
+const EXP3_KITS: Record<Exp3Look, Kit> = {
+  sullan: 'lateRoman', pompeian: 'lateRoman', caesarian: 'lateRoman', helvetii: 'celtic', sertorian: 'celtic',
+  numidian: 'punic', pontic: 'macedonian', samnite: 'greek',
+};
 
 describe('army looks of Expansion #1', () => {
   it('every army look has art, with its kit', () => {
-    expect(Object.keys(LOOKS).sort()).toEqual([...ALL_LOOKS].sort());
+    expect(Object.keys(LOOKS).sort()).toEqual([...ALL_LOOKS, ...(Object.keys(EXP3_KITS) as Exp3Look[])].sort());
     for (const look of ALL_LOOKS) {
       expect(lookDef(look).kit, look).toBe(KITS[look]);
       expect(paletteFor(look, 'grk').kit, look).toBe(KITS[look]);
+    }
+    for (const look of Object.keys(EXP3_KITS) as Exp3Look[]) {
+      expect(lookDef(look).kit, look).toBe(EXP3_KITS[look]);
+      expect(paletteFor(look, 'grk').kit, look).toBe(EXP3_KITS[look]);
     }
   });
 

@@ -40,10 +40,13 @@ export interface BoardArtProps {
 const NO_RAMPARTS: readonly number[] = [];
 const NO_ART: readonly (string | undefined)[] = [];
 
-/** The terrain as painted: a fordable river hex with `'coast'` art is drawn as (fordable) sea. */
+/**
+ * The terrain as painted: a fordable river hex with `'coast'` art is drawn as (fordable) sea. A city wall (Expansion #3) is
+ * drawn as steep rock until the art track gives it its own painter.
+ */
 function paintedTerrain(terrain: readonly TerrainType[], art: readonly (string | undefined)[]): readonly TerrainType[] {
-  if (!art.some((a) => a === 'coast')) return terrain;
-  return terrain.map((t, i) => (art[i] === 'coast' && t === 'river' ? 'sea' : t));
+  if (!art.some((a) => a === 'coast') && !terrain.includes('wall')) return terrain;
+  return terrain.map((t, i) => (art[i] === 'coast' && t === 'river' ? 'sea' : t === 'wall' ? 'steep' : t));
 }
 
 function BoardArtImpl({
