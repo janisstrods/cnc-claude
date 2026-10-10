@@ -5,10 +5,9 @@ import { COLS, ROWS, type TerrainType } from '../../engine/types';
 import { BOARD_H, BOARD_MARGIN, BOARD_W, HEX_R, HEX_W, ROW_H } from '../geometry';
 
 /**
- * Terrain the painters know: the engine's `TerrainType`, plus the Expansion #2 `ditch` (§18.6) until the engine type
- * has it (plan Task 10); then this is just `TerrainType`.
+ * Terrain the painters know: the engine's `TerrainType` (which includes the Expansion #2 `ditch`, §18.6).
  */
-export type PaintTerrain = TerrainType | 'ditch';
+export type PaintTerrain = TerrainType;
 
 export interface Pt {
   x: number;
