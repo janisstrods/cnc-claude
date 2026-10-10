@@ -94,14 +94,29 @@ function MapLegend({ h, colors }: { h: BattleHistory; colors: Record<Side, MapCo
   );
 }
 
+/** Whether the window is phone-narrow (false outside a browser). */
+function useNarrow(): boolean {
+  const query = '(max-width: 640px)';
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia?.(query);
+    if (!mq) return;
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return narrow;
+}
+
 /** Slide 2: the map in a phase, the phase strip and the phase's caption. */
 export function MapSlide(p: { h: BattleHistory; phase: number; colors: Record<Side, MapColors>; flipped?: boolean; onPhase?: (i: number) => void }) {
   const { h, phase, colors } = p;
   const ph = h.map.phases[phase];
+  const narrow = useNarrow();
   return (
     <div className="hist-slide hist-mapslide">
       <div className="hist-map-frame">
-        <BattleMap map={h.map} phase={phase} colors={colors} flipped={p.flipped} label={`Battle map, phase ${phase + 1}: ${ph.title}. ${ph.caption}`} />
+        <BattleMap map={h.map} phase={phase} colors={colors} flipped={p.flipped} labelScale={narrow ? 1.5 : 1} label={`Battle map, phase ${phase + 1}: ${ph.title}. ${ph.caption}`} />
       </div>
       <MapLegend h={h} colors={colors} />
       {h.map.phases.length > 1 && (

@@ -103,8 +103,14 @@
 .hist-step { font-size: 14px; color: var(--kit-ink-soft); font-style: italic; text-align: center; }
 
 @media (max-width: 640px) {
+  .kit-modal:has(.hist) { padding: 8px; }
+  .kit-modal__inner:has(.hist) { padding: 18px 12px 16px; }
   .hist-sides { grid-template-columns: minmax(0, 1fr); }
   .hist-tabs button { font-size: 12px; padding: 3px 7px; }
+  .hist-map-frame { margin: 0 -4px; }
+  .hist-phase { font-size: 13px; padding: 2px 9px 2px 3px; }
+  .hist-p { font-size: 15.5px; }
+  .hist-caption { font-size: 15px; }
   .hist-nav .kit-btn { padding: 6px 10px; }
 }
 

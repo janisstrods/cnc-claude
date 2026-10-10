@@ -3,6 +3,7 @@
  * suits what it brought (no fixed order, never reused). Bump for every publish, together with package.json's version.
  */
 export const RELEASES = [
+  { number: '1.3.0', name: 'Marathon', notes: 'History of every battle: the road to battle, an animated battle map and the outcome, in three slides' },
   { number: '1.2.1', name: 'Ilipa', notes: 'End-of-battle dialog redrawn: banner scoreboard, tidy rematch buttons' },
   { number: '1.2.0', name: '2nd Beneventum', notes: 'Rematch after a battle, same or switched sides; release shown on the main menu' },
   { number: '1.1.0', name: 'Gaugamela', notes: 'Expansion #1, Greece & Eastern Kingdoms (battles 101–124)' },

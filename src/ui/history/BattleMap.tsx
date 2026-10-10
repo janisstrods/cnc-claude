@@ -238,22 +238,23 @@ const overlaps = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 &
  * above, right, left, and on the block itself as a last resort. Free = clear of every other visible block, of the labels
  * already placed and of the field's edge.
  */
-export function placeLabels(units: Placed[], displayedTop: Side): Map<string, Pt> {
+export function placeLabels(units: Placed[], displayedTop: Side, scale = 1): Map<string, Pt> {
   const out = new Map<string, Pt>();
   const blocks = units.filter((u) => u.f.visible).map((u) => ({ id: u.f.unit.id, box: { x0: u.x - u.ex - 2, y0: u.y - u.ey - 2, x1: u.x + u.ex + 2, y1: u.y + u.ey + 2 } }));
   const taken: Box[] = [];
   for (const u of units) {
     const text = u.f.unit.label;
     if (!text) continue;
-    const lw = labelW(text);
-    const above: Pt = [u.x, u.y - u.ey - 4 - LABEL_H / 2];
-    const below: Pt = [u.x, u.y + u.ey + 4 + LABEL_H / 2];
+    const lw = labelW(text) * scale;
+    const lh = LABEL_H * scale;
+    const above: Pt = [u.x, u.y - u.ey - 4 - lh / 2];
+    const below: Pt = [u.x, u.y + u.ey + 4 + lh / 2];
     const tries: Pt[] = [
       ...(u.f.unit.side === displayedTop ? [above, below] : [below, above]),
       [u.x + u.ex + 6 + lw / 2, u.y],
       [u.x - u.ex - 6 - lw / 2, u.y],
     ];
-    const boxOf = ([cx, cy]: Pt): Box => ({ x0: cx - lw / 2, y0: cy - LABEL_H / 2, x1: cx + lw / 2, y1: cy + LABEL_H / 2 });
+    const boxOf = ([cx, cy]: Pt): Box => ({ x0: cx - lw / 2, y0: cy - lh / 2, x1: cx + lw / 2, y1: cy + lh / 2 });
     const free = (b: Box) =>
       b.x0 >= 2 && b.x1 <= MAP_W - 2 && b.y0 >= 2 && b.y1 <= MAP_H - 2 &&
       !blocks.some((o) => o.id !== u.f.unit.id && overlaps(b, o.box)) &&
@@ -303,15 +304,16 @@ function Arrow({ pts, color, dark, dashed }: { pts: Pt[]; color: string; dark: s
   );
 }
 
-/** The map of a history in one phase. */
-export function BattleMap({ map, phase, colors, flipped = false, label }: { map: MapData; phase: number; colors: Record<Side, MapColors>; flipped?: boolean; label?: string }) {
+/** The map of a history in one phase. `labelScale` enlarges the text for small screens. */
+export function BattleMap({ map, phase, colors, flipped = false, label, labelScale = 1 }: { map: MapData; phase: number; colors: Record<Side, MapColors>; flipped?: boolean; label?: string; labelScale?: number }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const tp = (p: Pt): Pt => (flipped ? [MAP_W - p[0], MAP_H - p[1]] : p);
   const displayedTop: Side = flipped ? 'bottom' : 'top';
   const terrain = [...map.terrain].sort((a, b) => AREA_ORDER.indexOf(a.kind) - AREA_ORDER.indexOf(b.kind));
   const ph = map.phases[Math.min(phase, map.phases.length - 1)];
   const placed = unitFrames(map, phase).map((f) => placeUnit(f, flipped));
-  const labelAt = placeLabels(placed, displayedTop);
+  const labelAt = placeLabels(placed, displayedTop, labelScale);
+  const textStyle = labelScale === 1 ? undefined : { fontSize: `${18 * labelScale}px` };
   const labels = terrain.map((t) => featureLabel(t, tp)).filter((l) => l !== null);
   const north = map.north === undefined ? undefined : (map.north + (flipped ? 180 : 0)) % 360;
   return (
@@ -354,7 +356,7 @@ export function BattleMap({ map, phase, colors, flipped = false, label }: { map:
       <rect width={MAP_W} height={MAP_H} fill={`url(#${uid}-vignette)`} pointerEvents="none" />
       <g className="hm-labels">
         {labels.map((l, i) => (
-          <text key={i} className={l.cls} x={f1(l.x)} y={f1(l.y)} textAnchor="middle" transform={l.angle ? `rotate(${f1(l.angle)} ${f1(l.x)} ${f1(l.y)})` : undefined}>{l.text}</text>
+          <text key={i} className={l.cls} style={textStyle} x={f1(l.x)} y={f1(l.y)} textAnchor="middle" transform={l.angle ? `rotate(${f1(l.angle)} ${f1(l.x)} ${f1(l.y)})` : undefined}>{l.text}</text>
         ))}
       </g>
       <g className="hm-arrows" key={`arrows-${phase}`}>
@@ -371,7 +373,7 @@ export function BattleMap({ map, phase, colors, flipped = false, label }: { map:
           if (!at) return null;
           return (
             <g key={p.f.unit.id} className={`hm-ulabel${p.f.broken ? ' is-broken' : ''}${p.f.visible ? '' : ' is-hidden'}`} style={{ transform: `translate(${f1(at[0])}px, ${f1(at[1])}px)` }}>
-              <text className="hm-unit-label" y={6} textAnchor="middle">{p.f.unit.label}</text>
+              <text className="hm-unit-label" style={textStyle} y={6 * labelScale} textAnchor="middle">{p.f.unit.label}</text>
             </g>
           );
         })}

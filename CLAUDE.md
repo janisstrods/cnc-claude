@@ -34,7 +34,7 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
 ## Development shortcuts
 
 - Battles: `001`–`015` (base game) and `101`–`124` (Expansion #1, *Greece & Eastern Kingdoms*), data in `src/scenarios/data/<id>.json`.
-- Dev-only routes: `#/play/<scenario>/<top|bottom>/<recruit|tribune|consul>[/<seed>]` (e.g. `#/play/109/top/tribune`) and `#/gallery/art|terrain|kit`.
+- Dev-only routes: `#/play/<scenario>/<top|bottom>/<recruit|tribune|consul>[/<seed>]` (e.g. `#/play/109/top/tribune`) and `#/gallery/art|terrain|kit|history`.
 - In dev, `window.__cca` is the GameController. `__cca.autoAnswer()` plays a random legal move for the human, and `__cca.setSpeed(4)` speeds up animations.
 
 ## Rules and docs
@@ -53,6 +53,7 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
 - A battle without a file simply has no History button, so new expansions add their `2xx`/`3xx` files when ready.
 - Check one: `npx vite-node scripts/history-check.ts -- 007` (validator and word counts); look at it with
   `scripts/history-shot.sh 007 <dir>` against a running dev server (`#/gallery/history/007`), reading every tile.
+  `#/gallery/history/maps[/101-124]` is a contact sheet of every map phase, for checking many battles at once.
 - Texts are original prose in British spelling, hedged where the sources are uncertain, with ancient sources cited.
 
 ## Golden fixtures
