@@ -300,7 +300,7 @@ const KITS: Record<ArmyLook, Kit> = {
   persian: 'persian', scythian: 'scythian', indian: 'indian', mauryan: 'indian',
   // Expansion #2: the Celtic kit for the Gauls, Belgae, Britons and the Slave army (with Thracian, Germanic and Italian
   // figures among them), the Germanic kit, the late-Roman kit for the Marian legions
-  gallic: 'celtic', germanic: 'punic', slave: 'punic', belgic: 'celtic', briton: 'celtic', marian: 'roman',
+  gallic: 'celtic', germanic: 'germanic', slave: 'punic', belgic: 'celtic', briton: 'celtic', marian: 'roman',
 };
 const ALL_LOOKS = Object.keys(KITS) as ArmyLook[];
 

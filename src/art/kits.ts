@@ -668,6 +668,63 @@ const CELTIC: KitDef = {
 };
 
 /**
+ * The Germanic tribes: mostly unarmoured, hair combed into the Suebian knot, the framea (a short spear), clubs, hide
+ * cloaks, flat board and hexagonal shields with an iron boss, trousers.
+ */
+function germanicFoot(type: UnitType, i: number): FootKit {
+  const dress = { legs: 'trousers' as const, helmet: 'none' as const, crest: 'none' as const, beard: i % 2 === 1 };
+  const tunic = { ...dress, torso: 'tunic' as const, skirt: true, sleeve: true };
+  const bare = { ...dress, torso: 'bare' as const, skirt: false };
+  switch (type) {
+    case 'LI':
+      return { ...bare, hair: i % 2 ? 'long' : 'knot', shield: 'board', shieldScale: 0.78, weapon: 'javelin', spare: 'javelins' };
+    case 'LB':
+      return { ...tunic, hair: i % 2 ? 'knot' : 'long', shield: 'none', weapon: 'bow' };
+    case 'LS':
+      return { ...tunic, hair: i % 2 ? 'long' : 'knot', shield: 'none', weapon: 'sling' };
+    case 'AX':
+      // frameae and javelins, hide cloaks on some
+      return { ...tunic, hair: i % 2 ? 'long' : 'knot', pelt: i % 2 === 0, shield: 'board', shieldScale: 0.9, weapon: 'javelin', spare: 'spear' };
+    case 'WA':
+      // clubmen and spearmen, bare-chested or in hide cloaks, behind board and hexagonal shields
+      if (i % 2 === 0) return { ...bare, hair: i % 4 ? 'wild' : 'knot', pelt: i % 4 === 2, shield: 'hex', shieldScale: 0.94, shieldDy: 2.4, weapon: 'club' };
+      return { ...(i % 4 === 1 ? bare : tunic), hair: i % 4 === 1 ? 'knot' : 'long', pelt: i % 4 === 3, shield: 'board', shieldScale: 0.96, shieldDy: 1.6, weapon: 'spear' };
+    case 'MI':
+      // a chieftain's sworn following: cloaks, frameae, a few captured helmets
+      return {
+        ...tunic, hair: i % 2 ? 'long' : 'knot', helmet: i % 4 === 3 ? 'montefortino' : 'none', pelt: i % 2 === 0, shield: 'board',
+        weapon: 'spear', beard: true,
+      };
+    case 'HI':
+    default:
+      return { ...tunic, torso: 'mail', sleeve: false, hair: 'knot', helmet: 'none', shield: 'board', weapon: 'spear', beard: true };
+  }
+}
+
+/** Germanic horsemen ride small horses, bareback or on a plain cloth, with javelins or a spear and a round shield. */
+function germanicMount(type: UnitType, i: number): MountKit {
+  const dress = { helmet: 'none' as const, crest: 'none' as const, legs: 'trousers' as const, hair: i % 2 ? 'long' as const : 'knot' as const, beard: i % 2 === 1 };
+  if (type === 'LC') return { rider: { ...dress, torso: 'bare', shield: 'round', weapon: 'javelin', spare: true }, cloth: 'none' };
+  if (type === 'HC') return { rider: { ...dress, torso: 'mail', shield: 'none', weapon: 'lance' }, cloth: 'plain' };
+  return { rider: { ...dress, torso: 'tunic', shield: 'round', weapon: 'spear' }, cloth: 'plain' };
+}
+
+const GERMANIC: KitDef = {
+  foot: germanicFoot,
+  cavalry: { drawing: 'kit', mount: germanicMount },
+  // a war leader in mail and cloak, his hair in the knot
+  general: {
+    rider: { torso: 'mail', helmet: 'none', crest: 'none', shield: 'none', weapon: 'standard', legs: 'trousers', cloak: true, beard: true, hair: 'knot' },
+    torque: true,
+  },
+  bust: { helmet: 'none', crest: 'none', beard: true, hair: 'knot', chest: 'mail' },
+  iconBox: {
+    MI: [-40, 1.8, -8.2, 10.2], HI: [-40, 1.8, -6.1, 10.2], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31],
+    HWM: [-33.2, 0.4, -28.1, 21.9], BCH: [-39.6, 0.9, -27.8, 31],
+  },
+};
+
+/**
  * Fills the choices a kit leaves out: crews dressed as its medium infantry, the base game's chariot and elephant manned
  * by such crews, horse archers built from its light horseman, the self bow, the oxybeles, plain shields, no icon boxes.
  */
@@ -708,6 +765,7 @@ export const KIT_DEFS: Record<Kit, KitDef> = {
   scythian: SCYTHIAN,
   indian: INDIAN,
   celtic: CELTIC,
+  germanic: GERMANIC,
 };
 
 /** Every figure kit, completed (see `completeKit`): the table the drawing code reads. */

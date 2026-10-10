@@ -6,7 +6,7 @@ import type { RiderKit } from './mounted';
 import type { Crest, Helmet } from './parts';
 
 /** Figure kit: the shapes (helmets, shields, torsos, mounts) an army's miniatures are built from. */
-export type Kit = 'roman' | 'punic' | 'greek' | 'macedonian' | 'persian' | 'scythian' | 'indian' | 'celtic';
+export type Kit = 'roman' | 'punic' | 'greek' | 'macedonian' | 'persian' | 'scythian' | 'indian' | 'celtic' | 'germanic';
 
 /**
  * The elite presets that have art: the engine's `EliteId`, plus the Tenth Legion until the engine's Expansion #2 types
@@ -626,6 +626,16 @@ const BRITON = look({
   woad: '#2e5cb0',
 });
 
+/** The Germanic tribes: undyed browns and greys, hide cloaks, board shields painted white, black, ochre and blue. */
+const GERMANIC = look({
+  tunic: '#6e6450', trim: '#a89a74', trousers: '#4a4236', cloak: '#4a5a3a',
+  shield: '#e4dcc4', shieldRim: '#4a3a28', shieldEmblem: '#2a2420',
+  paint: '#e4dcc4', paintEmblem: '#2a2420',
+  metal: ['#b48a48', '#7a5a26', '#e2c486'], crest: '#2a2420', crestAlt: '#a89a74',
+  skin: NORTH_SKIN, hair: NORTH_HAIR, horses: HORSES_NORTH, saddle: '#4a5a3a',
+  fur: '#7a5c3c',
+});
+
 /** Side colours of each block set (base edge and standard cloth). */
 export const BLOCK_COLORS: Record<Blocks, SideColors> = {
   rom: {
@@ -882,7 +892,18 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
       },
     },
   },
-  germanic: CARTHAGINIAN_LOOK,
+  germanic: {
+    kit: 'germanic', palette: GERMANIC,
+    style: {
+      emblems: ['halves', 'ring', 'bands', 'none'], device: 'bull', finial: 'bull',
+      variants: [
+        {},
+        { ...tunicOf('#5e6a58'), ...paintOf('#2a2826', '#e4dcc4') },
+        { ...tunicOf('#8c7a58'), ...trousersOf('#5a5a50'), ...paintOf('#c08a30', '#2a2420') },
+        { ...tunicOf('#4f4a40'), ...paintOf('#3a5a7a', '#e4dcc4') },
+      ],
+    },
+  },
   slave: CARTHAGINIAN_LOOK,
   marian: ROMAN_LOOK,
 };
