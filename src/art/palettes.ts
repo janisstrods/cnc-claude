@@ -995,7 +995,26 @@ export interface LeaderLook {
   bust?: Partial<BustDef>;
 }
 
-export const LEADER_LOOKS: LeaderLook[] = [];
+const SCARLET = '#c0262a';
+
+export const LEADER_LOOKS: LeaderLook[] = [
+  // Caesar: a laurel wreath instead of a helmet, the scarlet general's cloak (paludamentum), a white horse
+  {
+    names: ['Caesar', 'Julius Caesar', 'C. Julius Caesar', 'Gaius Julius Caesar'],
+    rider: { helmet: 'laurel', crest: 'none' },
+    horse: { coat: '#ece6da', shade: '#b0a690', mane: '#8a7e6a' },
+    colours: { cloak: SCARLET, cloakShade: darken(SCARLET, 0.38), saddle: SCARLET, saddleShade: darken(SCARLET, 0.36) },
+    bust: { helmet: 'laurel', crest: 'none', beard: false, hair: 'short' },
+  },
+  // Spartacus: the Thracian gladiator in a crested Thracian helmet with the curved sica, on a dark horse
+  {
+    names: ['Spartacus'],
+    rider: { helmet: 'thracian', crest: 'horsehair', torso: 'tunic', legs: 'greaves', cloak: true, beard: true, sidearm: 'sica' },
+    horse: { coat: '#3a2a20', shade: '#22180f', mane: '#0e0905' },
+    colours: { crest: '#a8282a', crestShade: darken('#a8282a', 0.4), crestAlt: '#d8584a', cloak: '#6a4a2a', cloakShade: darken('#6a4a2a', 0.38) },
+    bust: { helmet: 'thracian', crest: 'horsehair', beard: true, chest: 'tunic' },
+  },
+];
 
 /** The named leader's own look, if he has one. */
 export function leaderLook(name: string | undefined): LeaderLook | undefined {
