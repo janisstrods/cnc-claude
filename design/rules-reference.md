@@ -500,8 +500,8 @@ block colours. Fordable rivers use the §4/§7/§9.6 rules, except 108 (§16).
 * **113 Paraitacene (317 BC):** the hills down the left edge are impassable (`steep`, §16). The Eumenes HI labelled Silver
   Shields is `silverShields`. One LBC on each side.
 * **114 Gabiene (316 BC):** `silverShields` (the Eumenes HI so labelled). One LBC on each side. **Camp capture**
-  (`campCapture`, the 011 Baecula rule of §14 generalised so that scenario data names the capturing side and the camp
-  hexes): the camp hex in the bottom-right corner is Eumenes' camp; the first time a unit of Antigonus' army (the top
+  (a `capture` objective with timing `stop`, §18.4: the 011 Baecula rule of §14 with the capturing side and camp hexes
+  named in the data): the camp hex in the bottom-right corner is Eumenes' camp; the first time a unit of Antigonus' army (the top
   side) **ends its move on it** its side gains 1 banner. A unit that merely passes through does not capture. Once only,
   and the banner is never lost. Finishing a close-combat sequence (momentum advance, extra hex, bonus combat) standing
   on it counts as ending the move, and a retreat or evade onto it does not **[Interp]** (extends §14's "ending its
