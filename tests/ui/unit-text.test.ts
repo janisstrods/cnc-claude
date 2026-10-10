@@ -21,10 +21,9 @@ const TOOLTIP: Record<UnitType, string[]> = {
   LC: ['Move 4 · Retreat 4/flag', 'Close combat 2 dice, swords miss', 'Missiles: range 2, 2 dice (1 after moving)', 'Can evade'],
   MC: ['Move 3 · Retreat 3/flag', 'Close combat 3 dice', 'Can evade foot & heavy mounted'],
   HC: ['Move 2 · Retreat 2/flag', 'Close combat 4 dice', 'Can evade foot & elephants'],
-  // The elephant's dice note also lists Expansion #2's Barbarian chariots (fixed 2 dice, whatever their strength).
   EL: [
     'Move 2 · Retreat 1/flag',
-    'Close combat: same dice as the enemy unit (3 vs elephants, warriors, chariots; 2 vs Barbarian chariots)',
+    'Close combat: same dice as the enemy unit (3 vs elephants, warriors, chariots)',
     'Cannot evade',
     'Ignores sword hits · rampages when it retreats',
   ],

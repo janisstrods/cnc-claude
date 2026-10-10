@@ -140,7 +140,7 @@ describe('Barbarian light chariot (BCH): close combat dice', () => {
     const d = toBattle(s, 'order4C', ['u1']);
     ev(d);
     must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
-    forceDice(['light', 'medium', 'medium', 'medium', 'medium', ...n('heavy', 6)]); // 1 hit on the chariot; its battle back misses
+    forceDice(['light', 'medium', 'medium', 'medium', 'medium', ...n(miss('HI', 'BCH'), 6)]); // 1 hit on the chariot; its battle back (3 dice) misses the HI
     must(d, { kind: 'defend', choice: 'stand' });
     expect(u(d, 'u2')!.blocks).toBe(2);
     expect(combatDice(ev(d), 'battleBack')).toBe(3);
@@ -164,17 +164,19 @@ describe('Barbarian light chariot (BCH): hits', () => {
     expect(scoreClose(s, a, d, ['swords', 'heavy', 'light'], false, 'attack').hits).toBe(2);
     expect(scoreClose(s, a, d, ['swords', 'swords', 'swords'], false, 'attack').hits).toBe(3);
   });
-  it('it ignores 1 sword rolled against it: two swords and a green circle score 2 hits', () => {
+  it('it ignores 1 sword rolled against it: two swords and a green circle score 2 hits, three swords 2 hits', () => {
     const { s, a, d } = pair('HI', 'BCH');
     expect(scoreClose(s, a, d, ['swords', 'swords', 'light', 'flag', 'flag'], false, 'attack').hits).toBe(2);
     expect(scoreClose(s, a, d, ['swords', 'medium', 'heavy'], false, 'attack').hits).toBe(0);
+    // exactly one sword is ignored, not all of them
+    expect(scoreClose(s, a, d, ['swords', 'swords', 'swords'], false, 'attack').hits).toBe(2);
   });
-  it('flow: heavy infantry rolling two swords, a green circle and two flags takes 2 blocks off a full-strength chariot', () => {
+  it('flow: heavy infantry rolling two swords, a green circle and two misses takes 2 blocks off a full-strength chariot', () => {
     const s = build({ units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'BCH', at: [4, 6] }] });
     const d = toBattle(s, 'order4C', ['u1']);
     ev(d);
     must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
-    forceDice(['swords', 'swords', 'light', 'medium', 'medium', ...n('heavy', 6)]);
+    forceDice(['swords', 'swords', 'light', 'medium', 'medium', ...n(miss('HI', 'BCH'), 6)]); // the chariot's battle back misses the HI
     must(d, { kind: 'defend', choice: 'stand' });
     expect(u(d, 'u2')!.blocks).toBe(1);
   });
@@ -192,7 +194,7 @@ describe('Barbarian light chariot (BCH): flags and retreat', () => {
     const d = toBattle(s, 'order4C', ['u1']);
     ev(d);
     must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
-    forceDice(['flag', 'medium', 'medium', 'medium', 'medium', ...n('heavy', 6)]);
+    forceDice(['flag', 'medium', 'medium', 'medium', 'medium', ...n(miss('HI', 'BCH'), 6)]);
     must(d, { kind: 'defend', choice: 'stand' });
     expect(d.pending?.kind).toBe('ignoreFlags');
   });
