@@ -1025,7 +1025,7 @@ army is pre-Marian: the Romans use red blocks drawn with the base `roman` look a
 
 Banner targets, hands, first player and unit lists are scenario data (`src/scenarios/data/3xx.json`, imported from the
 verified hex-by-hex transcriptions in `design/exp3-data/`, with the transcription notes and the verifiers' report beside
-them); only rules are listed here, using the mechanics of §18 (decisions: `design/exp3-rulings.md`, "X3 Qn"; per-battle
+them; import decisions in `design/exp3-scenario-notes.md`); only rules are listed here, using the mechanics of §18 (decisions: `design/exp3-rulings.md`, "X3 Qn"; per-battle
 survey: `design/exp3-survey.md`). The four Epic battles (EPIC01–04) are out of scope: they need a separate two-board
 mode. In the civil-war battles the top army is on grey Roman blocks (`gry`) and the bottom army on red (`rom`), told apart
 in play by look as well as block colour; 306–308 have the Barbarians (green `bar`) on top, 316 the Pontic army on tan
