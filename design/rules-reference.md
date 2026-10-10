@@ -66,6 +66,8 @@ Flags never hit; they cause retreats (except against lone leaders and eliminated
 ## 4. Dice count
 
 `dice = min(base, caps) - campPenalty + cardBonus` **[Interp]** order: caps first, then -1 camp, then card bonus.
+The site's Units FAQ applies the camp −1 to the base dice before the caps (a full-strength warrior in a camp on a hill:
+4 − 1 = 3, then the cap 3). The engine keeps its order for every battle so base play does not change (`design/exp3-rulings.md` Q19).
 * Ranged base: 2 if the unit did not move this turn, 1 if it moved. AX that moved 2 cannot fire. (HWM cannot fire at all
   after moving, §15.)
 * CC base: table above.
@@ -536,3 +538,197 @@ block colours. Fordable rivers use the §4/§7/§9.6 rules, except 108 (§16).
 * **124 Pydna (168 BC):** optional Roman Tactical Flexibility (§17.3); broken ground (about 7 hexes in the centre) exists
   here, so the clause matters. Two fortified camps on the Roman baseline are terrain only (the Bonus Pack has no camp
   rule). Official Bonus Pack #2 battle.
+
+## 18. Expansions #2 and #3: units, abilities, objectives and terrain
+
+Used by the Expansion #2 battles (§19) and, later, Expansion #3. Paraphrased from the GMT living rules 2009 ("LR"), the
+Expansion 2/3 rule texts as transcribed on commandsandcolors.net and the rulings research in `design/exp2-rulings.md`
+("X2 Qn") and `design/exp3-rulings.md` ("X3 Qn"). Everything in §1–§17 applies unless stated here.
+
+### 18.1 Barbarian light chariot (BCH)
+
+| Code | Unit | Class | Kind | Blocks | Move | CC dice | Ranged | Retreat/flag | Evade |
+|---|---|---|---|---|---|---|---|---|---|
+| BCH | Barbarian light chariot | light (white border) | mounted, chariot | 3 | 3, may battle | 2; **3 at full strength**; swords hit | — | 3 (+1 per elephant/camel flag) | always |
+
+* **Full strength** (like warriors, judged per combat at its start): +1 die and +1 ignorable flag. A full-strength
+  chariot that loses a block in a combat still battles back with 3 (X2 Q1). The flag-ignore is a 2009 LR addition that
+  players dispute; LR is followed.
+* **Ignores 1 sword hit** in every close combat (all chariots do, LR; the 2026 site page dropped it, X2 Q1).
+* Momentum: advance and bonus close combat (mounted), never the cavalry extra hex (it is a chariot, not cavalry).
+* Cards: light (Order Light Troops; Move-Fire-Move gives it moves only), mounted (Order Mounted, Mounted Charge without
+  the 3-hex move). Not a missile unit. Cannot be rallied **[Interp]** (as the other chariots).
+* A leader escaping through its hex meets 3 dice at full strength, 2 after a loss (site FAQ). Elephants roll 2 against
+  it **[Interp]** (none in these battles).
+
+### 18.2 Pilum, march and the legion rules
+
+* **Pilum** (a ranged ability): range 2; **always 1 die**, whether the unit stayed or moved 1 hex; it may not fire after
+  moving 2 hexes. It is a missile unit for every ranged rule (§8: not at or while adjacent to an enemy; a unit never fires
+  and close combats in the same turn; Darken the Sky fires twice). It is not light: no Order Light Troops or
+  Move-Fire-Move. From a fortified camp it rolls 1 − 1 = 0 dice, so it cannot fire (X2 Q2). Line Command: moves at most
+  1 hex, then may fire.
+* **March** (a movement ability): the unit may move 2 hexes if it does not battle that turn; it may still move 1 and
+  battle. With Double Time: 2 hexes and battle, never 3 (X2 Q3).
+* **Marius legions** (scenario rule, X2 Q2): every MI and HI of the named side has the pilum. 206–223 for the Romans.
+* **Julian legions** (Expansion #3): pilum + march for every MI and HI of the named side(s).
+* **Tenth Legion** (elite `tenthLegion`, HI; 215 ×2, 217): pilum + march; otherwise an ordinary HI (5 dice, retreat 1, no
+  flag-ignore, no helmet hits). The two 215 units are ordered and fight separately (X2 Q3).
+* An elite with its own ranged weapon (the Immortals, §17.1) keeps its 2/1 dice; the 1-die rule is the pilum's alone.
+
+### 18.3 Leaders: Caesar and Spartacus
+
+* **Caesar** (`ccBonus` + `forcedMarch`): +1 close-combat die exactly like Alexander (§17.2: every close combat, after the
+  caps, not mirrored by elephants, not for leader escape; X2 Q4). **Forced march:** an infantry unit (any foot but a war
+  machine) that has Caesar attached when it begins its move may move 2 hexes and still battle. Terrain stops, Line
+  Command's 1 hex and the marsh start limit still apply; Double Time stays at 2; a pilum unit still cannot fire after 2
+  hexes. A unit that only joins Caesar during its move gets nothing that turn (Designer, X2 Q4).
+* **Spartacus** (`spartacusDice`): while he is on the board, his side's I Am Spartacus roll uses Command + 2 dice, also
+  when a Counter Attack copies the card. Everything else on the card is unchanged; the other side never gets the bonus
+  (X2 Q5).
+
+### 18.4 Battle objectives
+
+Scenario objectives give banners in addition to eliminated units and leaders. **Only units count** (never lone
+leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side wins as soon as its **banner total**
+(permanent banners + banners currently held) reaches the target; losing a held banner later never undoes a win.
+
+* **Capture** (`capture`): hexes (usually enemy camps) a side can take once each.
+  * `stop` (011 Baecula, 114 Gabiene): a unit of that side ending a move or momentum advance on an untaken hex.
+  * `turnStart`: at the start of that side's turn, before its card, every untaken hex holding one of its units is taken.
+  * Banners per capture in order (default 1 each); e.g. 201 Clusium 0, 0, 1 (the third camp scores). Banners are
+    permanent. `together: n` (211): nothing until n listed hexes are occupied at once; then 1 banner and every listed hex
+    is taken.
+  * `remove`: a taken camp (or rampart standing in for a camp, 215) is removed and the hex becomes open ground.
+* **Hold** (`hold`; 204, 213, 214, 222): 1 banner per listed hex a unit of that side stands on (up to a maximum),
+  counted continuously: gained the moment a unit enters, lost when it leaves or is eliminated, regained later (Designer,
+  X2 Q9a).
+* **Majority** (`majority`; 202 hills): at the end of every player turn the side with more units on the listed hexes
+  holds the banners; a tie (or none on either side) gives them to nobody (X2 Q9b).
+* **Section clear** (`sectionClear`; 219): at the end of that side's turn, each section with no enemy unit scores 1 held
+  banner; it is lost the moment an enemy unit stands in that section. A unit on a boundary hex is in both sections
+  (X2 Q9c).
+* **Exit** (`exit`; 010 Castulo, 210, 212, 221): a unit of that side on a listed edge hex may move off the board as one
+  hex of movement (not from or through terrain that stops it, unless it starts there); it scores 1 permanent banner and
+  is removed (not eliminated: no banner for the enemy). An attached leader leaves with it and scores nothing more
+  (X2 Q14). Some exits allow only foot units (212).
+
+### 18.5 Ambush reserves, separate commands, Rolling Fire, last-row retreat
+
+* **Ambush reserve** (generalised Trebbia, §14): off-board units of one side enter on empty enemy-baseline hexes of the
+  card's section when that side plays a trigger card (Trebbia: a Leadership card, not on its first turn; 206: a
+  Leadership card or Order Light Troops, from the first turn, X2 Q8). Leadership Any Section and Order Light Troops let
+  the player choose the section. The card is used for the entry only; placement counts as the first hex of movement and
+  the units then move and battle normally; units that cannot be placed wait for a later trigger. They retreat toward
+  their own side.
+* **Separate commands** (210): each unit belongs to a command; one card orders units of one command only — every card
+  type, including Clash of Shields, Darken the Sky, Rally and I Am Spartacus (the player names the command when the card
+  could order units of both). Leaders belong to no command and support everyone (X2 Q7).
+* **Rolling Fire** (210, the Slaves; X2 Q6, path length **[Interp]**): a Slave infantry unit on a hill, ordered by a
+  card that is not a Tactic card (a Counter Attack copying a section or troop card qualifies), that has not moved, may
+  use its battle to roll burning logs downhill, even when adjacent to an enemy.
+  * Path: from the unit's hex, each step goes to one of the two neighbouring hexes one row nearer the Roman edge; it may
+    not enter a hill (or impassable terrain); it ends in the first hex that is not open ground; otherwise it runs 3 hexes
+    (shorter only where no forward hex can be entered). The player chooses the path.
+  * Every unit in the path, friend or foe, nearest first, is rolled 2 dice: only its class symbol hits; **no flag may be
+    ignored** for any reason; no battle back. An attached leader makes the usual casualty check. A lone leader in the
+    path evades at once toward his own side.
+  * Then the rolling unit loses 1 block (casualty check for its leader; the Romans score a banner if it is eliminated).
+* **Last-row retreat** (214, the Slaves): a unit of that side whose retreat ends on its own baseline row with retreat
+  hexes it could not take is eliminated instead of losing blocks (enemy banner). Evades and a retreat that ends by
+  joining a leader are not affected (X2 Q10).
+
+### 18.6 Terrain
+
+* **Ditch** (212): every unit and lone leader stops on entering. No other effect: no dice caps, battle allowed, war
+  machines may enter, momentum advances in and out allowed, no line-of-sight block (X2 Q13).
+* **Very steep hills** (223, rule `veryHills`): a unit moving from lower ground onto a hill stops and may not battle that
+  turn; a momentum advance up onto a hill gives no bonus combat. Close-combat caps replace the §4 hill caps: uphill 1,
+  downhill 2, hill to hill 3; card and leader bonuses add on top. Ranged combat and line of sight are normal (X2 Q12).
+* **Coast played as a ford** (217): those sea hexes are a fordable river in every respect (§4, §7: stop on entry, close
+  combat max 2, ranged from it max 1); only the art is sea (X2 Q13).
+* **Removable tiles:** captured camps (§18.4) and, in 223, ramparts a Roman unit enters or passes through (move, advance,
+  retreat or evade) become open ground at once.
+* Rampart (§16), fortified camp, marsh, impassable hills (`steep`), sea, lake and rivers keep their rules.
+
+## 19. Expansion #2 battles (201–223)
+
+Banner targets, hands, first player and unit lists are scenario data (`src/scenarios/data/2xx.json`, decisions in
+`design/exp2-scenario-notes.md`); only rules are listed here, using the mechanics of §18. The Barbarian army is the
+top side and Rome the bottom; "Roman", "Gallic" etc. in scenario rules name armies, not block colours. In 201–205 the
+army is pre-Marian: the Romans use red blocks drawn with the base `roman` look and have **no** Marius rule (X2 Q15).
+"Marius legions" below is the §18.2 rule (Roman MI and HI have the pilum), used for the Romans in every battle from
+206 on.
+
+* **201 Clusium (225 BC):** one Gallic BCH (§18.1). Objective: `capture` for the Romans, `turnStart`, over the 3
+  Gallic fortified camps: at the start of the Roman turn, before its card, every camp with a Roman unit on it is taken
+  and removed. Banners per capture 0, 0, 1: the third camp taken gives 1 permanent banner (X2 Q9d). The Gauls capture
+  nothing.
+* **202 Telamon (225 BC):** two Gallic BCH. Objective: `majority` over the hill hexes, 2 banners, checked at the end
+  of every player turn: the side with more units on those hills holds them, a tie (0-0 too) gives them to nobody; lone
+  leaders never count (X2 Q9b). The sea down the left edge is impassable (`sea`). Regulus' wing starts on the Gallic
+  baseline rows and retreats down through the Gauls (X2 Q16).
+* **203 Clastidium (222 BC):** no special rules. **4 banners** (War Council text; the page tag's "8" is ignored, X2
+  Q11).
+* **204 Arausio (105 BC):** the Rhone down the right edge is an impassable river. Objective: `hold` for the Germans
+  over the 2 Roman camps (ordinary fortified camps, bottom right), at most 1 banner: 1 while a German unit stands on
+  either camp (holding both is still 1), lost when it leaves or is eliminated, regained later (X2 Q9a). Nothing is
+  removed.
+* **205 Scirthaea (103 BC):** no special rules; plain.
+* **206 Aquae Sextiae (102 BC):** Marius legions. **Ambush** (§18.5, X2 Q8): Marcellus' off-board force (LI, 2 AX, LC
+  and Marcellus) enters on empty German-baseline hexes when the Romans play any Leadership card or Order Light Troops
+  (or a Counter Attack copying one), from the first turn; an Inspired card fixes the section, Leadership Any Section
+  and Order Light Troops let the Roman player choose. The force retreats towards the Roman side.
+* **207 Vercellae (101 BC):** Marius legions; plain, no other rules.
+* **208 Mt Vesuvius (73 BC):** Marius legions; the Slaves' Spartacus (`spartacusDice`, §18.3). All hills are
+  impassable (`steep`). Objective: `capture` for the Slaves, `turnStart`, over the 4 Roman fortified camps, 1
+  permanent banner each, each camp removed when taken (X2 Q9d); two start holding only a Roman lone leader (§11), who
+  must be driven out first. Slave units behind the Roman line retreat up the board (X2 Q16).
+* **209 Mt Garganus (72 BC):** Marius legions. The 13 Mount Garganus hills across the top centre are impassable
+  (`steep`). Crixus leads: no Spartacus and no I Am Spartacus bonus.
+* **210 Picenum (72 BC):** Marius legions (all Roman MI); the Slaves' Spartacus. **Commands** (§18.5, X2 Q7): Lentulus
+  (left of the hill chain) and Gellius (right), one command per card. **Rolling Fire** (§18.5, X2 Q6) for Slave
+  infantry on a hill. Objective: `exit` for the Slaves: any Slave unit on a Roman-baseline hex may leave for 1
+  permanent banner and is removed (X2 Q14; removal **[Interp]**, from 212/221).
+* **211 Mummius' Defeat (72 BC):** Marius legions; the Slaves' Spartacus. Objective: `capture` for the Romans,
+  `turnStart`, `together: 2`, over the 3 Slave fortified camps: Roman units on 2 or more of them at the start of the
+  Roman turn score 1 permanent banner and **all three** camps are removed (X2 Q9d). The Slaves capture nothing.
+* **212 Bruttium (71 BC):** Marius legions; the Slaves' Spartacus. **Ditch** (§18.6, X2 Q13): the row of 9 hexes
+  across the centre and right. Objective: `exit` for the Slaves, **foot units only** (not the LC), over the Roman
+  baseline: 1 permanent banner, unit removed (X2 Q14). The Roman ramparts and 4 camps are ordinary; the 3 Slave LC
+  start beside and behind the Roman line and retreat towards the top (X2 Q16).
+* **213 Camalatrum (71 BC):** Marius legions; the Slaves' Spartacus. The Lucanian Lake is impassable (`lake`).
+  Objective: `hold` for the Romans over the single Slave fortified camp (Cannicus' MI starts on it): 1 banner while a
+  Roman unit stands on it, lost when it leaves or is eliminated, regained later (X2 Q9a). Marcius' group (top left)
+  and Castus' group (bottom left) retreat towards their own sides (X2 Q16).
+* **214 Silarus (71 BC):** Marius legions; the Slaves' Spartacus. Objective: `hold` for the Slaves over the camp hexes
+  on the Roman right (a palisade camp and the tent camp on the baseline), at most 1 banner: either one held scores it
+  **[Interp]**, the page names only "the camp hex" (X2 Q10). **Last-row retreat** for the Slaves (§18.5): row 0, the
+  top baseline.
+* **215 River Sabis (57 BC):** Marius legions; Caesar (§18.3); two `tenthLegion` HI (§18.2), ordered separately, no
+  adjacency needed (X2 Q3). The Sabis is fordable. Objective: `capture` for **both** sides, `turnStart`, 1 permanent
+  banner each, tile removed: the Romans for a unit on the Belgic camp (fortified camp, top left), the Belgae for a
+  unit on the Roman "unfinished camp", a single rampart hex that becomes open ground (X2 Q9d).
+* **216 Sotium (56 BC):** Marius legions; no other rules.
+* **217 Invasion of Britain (55 BC):** Marius legions; Caesar; one `tenthLegion` HI; two Briton BCH. The coast along
+  the Roman baseline is played as a ford (§18.6, X2 Q13): 8 Roman units start standing in it.
+* **218 River Stour (54 BC):** Marius legions; Caesar; seven Briton BCH. The Stour (the top-row river) is fordable.
+  **6 banners** (War Council text; the page has no banner tag, X2 Q11).
+* **219 Foraging Party (54 BC):** Marius legions; four Briton BCH. Objective: `sectionClear` for the Romans: at the
+  end of each Roman turn every section with no Briton unit scores 1 held banner, lost the moment a Briton unit enters
+  it (by any means) and regained later; a unit on a boundary hex is in both sections (X2 Q9c). Lone leaders never
+  count.
+* **220 Teutoburger Wald P1 (9 AD):** Marius legions; no other rules. The 9 marsh hexes behind the Roman line and the
+  2 flank broken-ground hexes keep their usual rules.
+* **221 Teutoburger Wald P2 (9 AD):** Marius legions. The Roman marching camp is a ring of ramparts (front row faces
+  the top, the slanted sides outward) round one fortified camp hex. Objective: `capture` for the Germans, `turnStart`,
+  over that camp hex only (the ramparts are not camps), **2** permanent banners, camp removed (X2 Q9d). Objective:
+  `exit` for the Romans over the German (top) baseline, any unit: 1 permanent banner, unit removed (X2 Q14).
+* **222 Angrivarii Rampart (16 AD):** Marius legions. **The Romans move first** (War Council text; the map's star
+  would give the Germans the move, X2 Q11, **[Interp]**). The river down the right edge is impassable. Objective:
+  `hold` for the Romans over the 7 rampart hexes (`faces: 'bottom'`, German-held at setup), at most 2 banners: 1 per
+  rampart hex with a Roman unit on it, lost when it leaves or is eliminated (X2 Q9a). Ramparts stay (§16).
+* **223 Cefn Carnedd (51 AD):** Marius legions. The Severn is fordable (ford cap and hill cap: the lower applies).
+  **Very steep hills** on every hill hex (§18.6, X2 Q12). **Rampart breakers:** the 6 Briton-held ramparts (facing the
+  bottom) become open ground when a Roman unit enters or passes through one (move, advance, retreat or evade); Britons
+  never remove them.
