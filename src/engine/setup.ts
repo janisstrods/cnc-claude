@@ -9,7 +9,7 @@ import { TERRAIN_NAMES, isImpassable, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain } from './units';
 import {
   ARMY_LOOKS, BLOCKS, COLS, LEGIONS, OFF_BOARD, ROWS, SPECIAL_RULE_IDS,
-  type AmbushDef, type ArmyLook, type Blocks, type CommandDef, type EliteId, type GameState, type HexDir, type HexId, type Leader, type LeaderTrait,
+  type AmbushDef, type ArmyLook, type Blocks, type CommandDef, type EliteId, type GameState, type HandGrowth, type HexDir, type HexId, type Leader, type LeaderTrait,
   type Legion, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
@@ -76,6 +76,11 @@ export interface ScenarioSetup {
   sacredLeader?: { side: Side; name: string };
   /** Starting Command for a side when different from `cards` (Trasimenus Romans start with 2). */
   initialCommand?: Partial<Record<Side, number>>;
+  /**
+   * Hand growth (006 Trasimenus, 313 Brindisi Raid; rules-reference §18.8): at the end of each of `side`'s turns, while its
+   * Command is below `to`, it draws 2 cards instead of 1 and its Command rises by 1. Left out: no hand growth.
+   */
+  handGrowth?: HandGrowth;
   /** Battle objectives (§18.4): camp capture (011 Baecula, 114 Gabiene), exits (010 Castulo) and the like. */
   objectives?: ObjectiveSetup[];
   /**
@@ -308,6 +313,17 @@ function checkPlacement(setup: ScenarioSetup, rules: SpecialRuleId[]) {
   }
 }
 
+/** The hand growth of a battle (§18.8), copied and validated: null when the scenario gives none. */
+function resolveHandGrowth(setup: ScenarioSetup): HandGrowth | null {
+  const g: unknown = setup.handGrowth;
+  if (g === undefined) return null;
+  if (typeof g !== 'object' || g === null || Array.isArray(g)) throw new Error('handGrowth must be an object');
+  const { side, to } = g as Partial<HandGrowth>;
+  if (side !== 'top' && side !== 'bottom') throw new Error(`handGrowth: unknown side ${String(side)}`);
+  if (!Number.isInteger(to) || (to as number) < 1) throw new Error('handGrowth: to must be a whole number, 1 or more');
+  return { side, to: to as number };
+}
+
 /** Trebbia's ambush: a Leadership card after the side's first turn (§14). */
 const DEFAULT_AMBUSH: AmbushDef = {
   trigger: ['inspiredL', 'inspiredC', 'inspiredR', 'leadershipAny'],
@@ -410,6 +426,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   const rules = effectiveRules(setup, options);
   checkPlacement(setup, rules);
   const ambush = resolveAmbush(setup, rules);
+  const handGrowth = resolveHandGrowth(setup);
   const unplaced: string[] = [];
   for (const l of setup.placeLeaders ?? []) {
     const leader = withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: OFF_BOARD }, l.traits);
@@ -460,6 +477,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     winReason: '',
     special: {
       rules,
+      handGrowth,
       commands,
       rollingFire: setup.rollingFire ?? null,
       rampartBreakers: setup.rampartBreakers ?? null,

@@ -235,7 +235,7 @@ Base-game battles with special rules are listed here. The Expansion #1 battles 1
 * 005 Trebbia: river fordable; Mago's ambush (Carthaginian reserve: 1 MC + 2 WA + Mago) enters when Carthage plays a
   Leadership card after its first turn: units placed on Roman baseline hexes in the card's section (Any Section: chosen),
   placement counts as 1 hex of movement; these units retreat toward the Carthaginian side.
-* 006 Lake Trasimenus: lake and the four steep hills impassable; Roman hand 2 -> 3 -> 4 (draws 2 after turns 1 and 2).
+* 006 Lake Trasimenus: lake and the four steep hills impassable; Roman hand 2 -> 3 -> 4 (draws 2 after turns 1 and 2; scenario data `handGrowth`, §18.8).
 * 010 Castulo: if Publius Scipio is eliminated Carthage wins at once; a Roman unit exiting the Carthaginian baseline from
   a centre or Roman-right hex scores 1 banner and is removed.
 * 011 Baecula: a Roman unit ending its move on a Carthaginian camp hex gains 1 banner (once per camp).

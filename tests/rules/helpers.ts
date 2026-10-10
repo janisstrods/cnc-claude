@@ -44,6 +44,8 @@ export interface Pos {
   rampartBreakers?: ScenarioSetup['rampartBreakers'];
   /** The side whose units are eliminated by a retreat that ends on their baseline row (214 Silarus, §18.5). */
   lastRowRetreat?: ScenarioSetup['lastRowRetreat'];
+  /** Hand growth (006 Trasimenus, 313 Brindisi Raid, §18.8). */
+  handGrowth?: ScenarioSetup['handGrowth'];
 }
 
 export const H = (r: number, c: number) => hexId(r, c);
@@ -77,6 +79,7 @@ export function setupOf(p: Pos): ScenarioSetup {
     ...(p.rollingFire !== undefined ? { rollingFire: p.rollingFire } : {}),
     ...(p.rampartBreakers !== undefined ? { rampartBreakers: p.rampartBreakers } : {}),
     ...(p.lastRowRetreat !== undefined ? { lastRowRetreat: p.lastRowRetreat } : {}),
+    ...(p.handGrowth !== undefined ? { handGrowth: p.handGrowth } : {}),
   };
 }
 

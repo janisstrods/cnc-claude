@@ -85,7 +85,7 @@ describe('scenario data', () => {
   it('special rules are attached to the right scenarios', () => {
     expect(scenarioById('002').setup.rules).toContain('sacredBand');
     expect(scenarioById('005').setup.rules).toContain('magoAmbush');
-    expect(scenarioById('006').setup.rules).toContain('trasimenusHand');
+    expect(scenarioById('006').setup.handGrowth).toEqual({ side: 'bottom', to: 4 });
     expect(scenarioById('009').setup.rules).toContain('beneventumHand');
     expect(scenarioById('010').setup.rules).toContain('castulo');
     expect(scenarioById('011').setup.objectives).toEqual([{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }]);

@@ -183,12 +183,12 @@ export interface TurnState {
  * `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3). Camp capture (011 Baecula, 114 Gabiene) is a
  * battle objective (`ObjectiveDef`), not a rule. Expansion #2: `magoAmbush` also serves 206 (§18.5) and
  * `veryHills` (223, §18.6) makes every hill very steep: a unit climbing onto one stops and may not battle, and the
- * close-combat caps change. Scenario data is validated against this list.
+ * close-combat caps change. The Trasimenus hand (006) is no rule of its own any more: it is hand growth
+ * (`ScenarioSpecial.handGrowth`, §18.8). Scenario data is validated against this list.
  */
 export const SPECIAL_RULE_IDS = [
   'sacredBand',
   'magoAmbush',
-  'trasimenusHand',
   'beneventumHand',
   'castulo',
   'leaderLossCostsCard',
@@ -264,8 +264,19 @@ export interface CommandDef {
   blocks?: Blocks;
 }
 
+/**
+ * Hand growth (006 Trasimenus, 313 Brindisi Raid; rules-reference §18.8): at the end of each of `side`'s turns, while its
+ * Command is below `to`, it draws 2 cards instead of 1 and its Command rises by 1.
+ */
+export interface HandGrowth {
+  side: Side;
+  to: number;
+}
+
 export interface ScenarioSpecial {
   rules: SpecialRuleId[];
+  /** Hand growth of one side (§18.8); null in most battles. Never changed during play. */
+  handGrowth: HandGrowth | null;
   /** Separate commands (§18.5), in data order; empty in most battles. Never changed during play: `cloneState` shares the array. */
   commands: CommandDef[];
   /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs; null in most battles. */
@@ -287,7 +298,7 @@ export interface ScenarioSpecial {
   reserveLeaders: Leader[];
   reserveSide: Side | null;
   reserveReleased: boolean;
-  /** Turns completed per side (used by hand-growth rules and by ambush reserves' `afterOwnTurns`, §18.5). */
+  /** Turns completed per side (used by ambush reserves' `afterOwnTurns`, §18.5, and by the AI's card memory). */
   turnsDone: Record<Side, number>;
   /** Battle objectives (§18.4; empty in most battles). Never changed during play: `cloneState` shares the array. */
   objectives: ObjectiveDef[];

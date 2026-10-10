@@ -35,6 +35,8 @@ export interface ScenarioJson {
   objectives?: ObjectiveSetup[];
   /** Legion rule per side (Marius: the Romans of 206-223, §18.2). */
   legions?: ScenarioSetup['legions'];
+  /** Hand growth of one side (313 Brindisi Raid, §18.8): it draws 2 and grows by 1 while its Command is below `to`. */
+  handGrowth?: ScenarioSetup['handGrowth'];
   /** Separate commands (210 Picenum, §18.5); units and leaders name theirs with `command`. */
   commands?: ScenarioSetup['commands'];
   /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs. */
@@ -75,6 +77,7 @@ const files = import.meta.glob<ScenarioJson>('./data/*.json', { eager: true, imp
 interface Extra extends ScenarioTexts {
   rules?: SpecialRuleId[];
   objectives?: ObjectiveSetup[];
+  handGrowth?: ScenarioSetup['handGrowth'];
   patch?: (s: ScenarioSetup) => void;
 }
 
@@ -127,7 +130,7 @@ const EXTRA: Record<string, Extra> = {
       'Lake Trasimenus and the steep hills are impassable.',
       'The Roman column is caught unprepared: the Romans start with 2 command cards and draw 2 cards after each of their first two turns, growing to a hand of 4.',
     ],
-    rules: ['trasimenusHand'],
+    handGrowth: { side: 'bottom', to: 4 }, // §18.8; the patch below sets the starting Command of 2
     hint: 'Ambush — the Romans start disorganised.',
     patch: (s) => {
       s.initialCommand = { bottom: 2 };
@@ -245,6 +248,8 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   if (j.ambush) setup.ambush = { ...j.ambush, ...(j.ambush.trigger ? { trigger: [...j.ambush.trigger] } : {}) };
   if (j.options && Object.keys(j.options).length) setup.options = { ...j.options };
   if (j.legions && Object.keys(j.legions).length) setup.legions = { ...j.legions };
+  const handGrowth = oneSource(j.id, 'handGrowth', j.handGrowth, ex?.handGrowth);
+  if (handGrowth !== undefined) setup.handGrowth = typeof handGrowth === 'object' && handGrowth !== null ? { ...handGrowth } : handGrowth; // the engine rejects a non-object
   if (j.commands !== undefined) setup.commands = Array.isArray(j.commands) ? j.commands.map((c) => ({ ...c })) : j.commands; // the engine rejects a non-list
   if (j.rollingFire !== undefined) setup.rollingFire = j.rollingFire; // the engine rejects an unknown side
   if (j.rampartBreakers !== undefined) setup.rampartBreakers = j.rampartBreakers; // likewise

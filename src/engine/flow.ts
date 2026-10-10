@@ -12,7 +12,7 @@ import {
   autoOrders, commandChoices, orderMode, rallyCandidates, spartacusDiceCount, validateOrders, validateRally, validateSpartacus,
 } from './orders';
 import {
-  attachedLeader, isEmptyHex, isLeaderId, isRomanArmy, leaderAt, leaderById, leaderUnit, other, unitAt, unitById,
+  attachedLeader, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, unitAt, unitById,
 } from './query';
 import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption } from './retreat';
 import { randInt, rollDice, rollDie, shuffle } from './rng';
@@ -1185,7 +1185,9 @@ function endOfTurn(s: GameState, ctx: FlowCtx) {
   }
   if (t.firstStrikeBy && t.firstStrikeBy !== side) drawCard(s, ctx, t.firstStrikeBy);
   let draws = 1;
-  if (s.special.rules.includes('trasimenusHand') && isRomanArmy(s, side) && s.special.turnsDone[side] < 2) {
+  // hand growth (006 Trasimenus, 313 Brindisi Raid, §18.8): while its Command is below the target the side draws 2 and grows by 1
+  const growth = s.special.handGrowth;
+  if (growth && growth.side === side && s.players[side].command < growth.to) {
     draws = 2;
     s.players[side].command += 1;
     ctx.emit({ t: 'command', side, command: s.players[side].command });

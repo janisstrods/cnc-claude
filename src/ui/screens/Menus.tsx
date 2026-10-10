@@ -177,6 +177,12 @@ export function ScenarioSelect(p: {
   const enemy = sel.setup[side === 'top' ? 'bottom' : 'top'];
   const historical = personalityFor(enemy.commander, enemy.army);
   const armies = { top: sel.setup.top, bottom: sel.setup.bottom };
+  /** Cards a side holds: its Command, and "2→4" for a side whose hand grows to 4 (hand growth, 006 and 313, §18.8). */
+  const cardsText = (sd: Side) => {
+    const growth = preview.special.handGrowth;
+    const startCommand = preview.players[sd].command;
+    return growth?.side === sd && growth.to > startCommand ? `${startCommand}→${growth.to}` : armies[sd].cards;
+  };
   const start = () => {
     try {
       localStorage.setItem('cca-difficulty', diff);
@@ -233,7 +239,7 @@ export function ScenarioSelect(p: {
           <div className="brief-facts">
             <span>{sel.setup.banners} banners to win</span>
             <span>{armies[sel.setup.first].army} move first</span>
-            <span>{armies.top.army}: {armies.top.cards} cards · {armies.bottom.army}: {sel.id === '006' ? '2→4' : armies.bottom.cards} cards</span>
+            <span>{armies.top.army}: {cardsText('top')} cards · {armies.bottom.army}: {cardsText('bottom')} cards</span>
           </div>
           {sel.specialText.length > 0 && (
             <ul className="brief-special">
