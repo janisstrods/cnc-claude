@@ -58,7 +58,8 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
 - The History dialog (briefing and in-game header) shows three slides per battle from `src/history/battles/<id>.ts`:
   context and armies, a schematic map in 1–4 phases, outcome and consequences. Format: `src/history/types.ts`;
   worked example: `battles/007.ts`; spec: `design/superpowers/specs/2026-10-10-battle-history-design.md`.
-- A battle without a file simply has no History button, so new expansions add their `2xx`/`3xx` files when ready.
+- A battle without a file simply has no History button, so new expansions add their `2xx`/`3xx` files when ready;
+  `COVERED` in `tests/history/history.test.ts` lists the expansions whose battles must all have one.
 - Check one: `npx vite-node scripts/history-check.ts -- 007` (validator and word counts); look at it with
   `scripts/history-shot.sh 007 <dir>` against a running dev server (`#/gallery/history/007`), reading every tile.
   `#/gallery/history/maps[/101-124]` is a contact sheet of every map phase, for checking many battles at once.
