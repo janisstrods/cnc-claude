@@ -13,7 +13,7 @@ import {
 } from '../../src/ui/game/controller';
 import { RandomOpponent } from '../../src/ui/game/opponent';
 import {
-  boardUi, deploymentSide, leadershipHint, rampartSidesText, terrainTipLines, type UiSel,
+  boardUi, deploymentSide, leadershipHint, rampartSidesText, type UiSel,
 } from '../../src/ui/game/uiModel';
 import {
   OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue,
@@ -404,32 +404,6 @@ describe('rampart tooltip', () => {
     expect(rampartSidesText(NE, false)).toBe('its upper-right hexside');
     expect(rampartSidesText(NE, true)).toBe('its lower-left hexside');
     expect(rampartSidesText(63, false)).toBe('all its hexsides');
-  });
-
-  it('terrain lines: ramparts and Expansion #1 terrain explain themselves, base terrain is unchanged', () => {
-    const beneventum = createGame(scenarioById('118').setup, 1); // Roman (bottom) ramparts face up the board
-    const r = hexId(8, 4);
-    expect(terrainTipLines(beneventum, r, false, 'Rampart')[0]).toBe('Rampart: protects its upper hexsides');
-    expect(terrainTipLines(beneventum, r, true, 'Rampart')[0]).toBe('Rampart: protects its lower hexsides');
-    expect(terrainTipLines(beneventum, r, false, 'Rampart')[1]).toMatch(/^Foot here ignore 1 sword and 1 flag/);
-    const himera = createGame(scenarioById('102').setup, 1);
-    expect(terrainTipLines(himera, hexId(3, 1), false, 'Rampart')[0]).toBe('Rampart: protects its lower hexsides');
-    expect(terrainTipLines(himera, hexId(0, 8), false, 'Rampart')[0]).toBe('Rampart: protects its left and lower-left hexsides');
-    const marathon = createGame(scenarioById('101').setup, 1);
-    const sea = marathon.terrain.indexOf('sea');
-    expect(terrainTipLines(marathon, sea, false, 'Sea')).toEqual(['Terrain: Sea', 'Impassable; does not block line of sight']);
-    const issus = createGame(scenarioById('108').setup, 1);
-    const ford = issus.noCap.indexOf(true);
-    expect(terrainTipLines(issus, ford, false, 'Ford (no dice limit)')).toEqual(['Terrain: Ford (no dice limit)', 'Stops movement; no dice limits in or out']);
-    const hill = marathon.terrain.indexOf('hill');
-    expect(terrainTipLines(marathon, hill, false, 'Hill')).toEqual(['Terrain: Hill']);
-    // impassable hills say so, like the sea (Marathon's right edge; Lake Trasimenus in the base game)
-    for (const id of ['101', '006']) {
-      const g = createGame(scenarioById(id).setup, 1);
-      expect(terrainTipLines(g, g.terrain.indexOf('steep'), false, 'Steep Hill'), id).toEqual(['Terrain: Steep Hill', 'Impassable; blocks line of sight']);
-    }
-    const plain = marathon.terrain.indexOf('plain');
-    expect(terrainTipLines(marathon, plain, false, 'Open Ground')).toEqual([]);
   });
 });
 

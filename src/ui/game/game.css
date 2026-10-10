@@ -251,7 +251,14 @@ body {
 .tip-sub { color: rgba(240, 227, 194, .7); font-style: italic; }
 .tip-line { color: rgba(240, 227, 194, .9); }
 .tip-leader { color: #f3dc9a; margin-top: 3px; }
-.tip-terrain { color: #b9d8a8; margin-top: 3px; }
+/* terrain: swatch, name and its effects, each kind labelled once (Move, Combat, Sight, Battle) */
+.tip-terrain-block.tip-divided { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(226, 189, 114, .25); }
+.tip-terrain-block .tip-head { margin-bottom: 3px; }
+.tip-terrain-name { font-family: var(--kit-font-title); font-size: 13px; color: #cfe3c2; }
+.tip-effects { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; row-gap: 2px; }
+.tip-kind { padding-top: 2px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: rgba(185, 216, 168, .6); white-space: nowrap; }
+.tip-effect { color: #b9d8a8; }
+.tip-effect.tip-battle { color: #f3dc9a; }
 /* Expansion #2: battle objectives on the hex (§18.4) and a unit's separate command (210) */
 .tip-objective { color: #f6d27a; margin-top: 3px; }
 .tip-command { color: #c9d3ee; margin-top: 3px; }
