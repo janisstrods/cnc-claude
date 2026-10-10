@@ -114,8 +114,10 @@ export function Exp2Device({ kind, col, bg }: { kind: EmblemKind; col: string; b
 /** The La Tene S-scroll and the back-to-back crescents, running the length of a long shield through the boss. */
 const TALL_SCROLL = 'M-1.4 -6.6 C1.8 -6.6 2.6 -2.6 0 0 C-2.6 2.6 -1.8 6.6 1.4 6.6 M-1.4 -6.6 C-3.2 -6.6 -3.3 -8.8 -1.7 -8.9 C-0.7 -9 -0.3 -8.1 -0.9 -7.7 M1.4 6.6 C3.2 6.6 3.3 8.8 1.7 8.9 C0.7 9 0.3 8.1 0.9 7.7';
 const TALL_CRESCENTS = 'M-3.1 -6.8 A3.1 2.9 0 0 0 3.1 -6.8 A2.5 1.2 0 0 1 -3.1 -6.8 Z M-3.1 6.8 A3.1 2.9 0 0 1 3.1 6.8 A2.5 1.2 0 0 0 -3.1 6.8 Z';
-/** Devices drawn above the boss (figures), the rest are centred on it. */
-const ABOVE_BOSS: ReadonlySet<EmblemKind> = new Set<EmblemKind>(['boar', 'horse', 'bull', 'pileus', 'stag', 'eagle', 'owl', 'club']);
+/** Devices drawn above the boss (figures; with the Expansion #3 ones), the rest are centred on it. */
+const ABOVE_BOSS: ReadonlySet<EmblemKind> = new Set<EmblemKind>([
+  'boar', 'horse', 'bull', 'pileus', 'stag', 'eagle', 'owl', 'club', 'fawn', 'lion', 'trophy', 'starCrescent',
+]);
 /** Above the boss of a long shield: the boar runs up the shield (as on the Gallic shields of the arch at Orange). */
 const LONG_ABOVE: Partial<Record<EmblemKind, string>> = { boar: 'translate(4.4 -19.6) rotate(-90) scale(1.3)', horse: 'translate(4.4 -19.4) scale(1.05)' };
 

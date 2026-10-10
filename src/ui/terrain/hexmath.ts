@@ -100,6 +100,17 @@ export interface HexInfo {
   y: number;
   t: TerrainType;
   ford: boolean;
+  // Expansion #3 (set only when the board passes them)
+  /** A hill under the hex's camp or wall: painted as a hill beneath it. */
+  hillUnder?: boolean;
+  /** The hex's art where it differs from its terrain (`terrainArtOf`): 'wall' or 'town' on an impassable `steep` hex. */
+  art?: string;
+}
+
+/** What a board knows of its hexes beyond terrain and fords (Expansion #3): hills under camps and walls, the hex art. */
+export interface BoardExtras {
+  hillUnder?: readonly boolean[];
+  art?: readonly (string | undefined)[];
 }
 
 /** Everything a painter needs to know about the board it paints. */
@@ -119,7 +130,7 @@ export interface PaintCtx {
   lonePorts?: [Dir, Dir];
 }
 
-export function boardCtx(terrain: readonly TerrainType[], fords: readonly boolean[], flipped: boolean): PaintCtx {
+export function boardCtx(terrain: readonly TerrainType[], fords: readonly boolean[], flipped: boolean, extras: BoardExtras = {}): PaintCtx {
   const hexes: HexInfo[] = [];
   const byId = new Map<number, HexInfo>();
   for (let r = 0; r < ROWS; r++) {
@@ -129,6 +140,9 @@ export function boardCtx(terrain: readonly TerrainType[], fords: readonly boolea
       const p = vCenter(r, c, flipped);
       const t = terrain[id] ?? 'plain';
       const h: HexInfo = { id, r, c, x: p.x, y: p.y, t: t === 'void' ? 'plain' : t, ford: !!fords[id] };
+      if (extras.hillUnder?.[id]) h.hillUnder = true;
+      const art = extras.art?.[id];
+      if (art === 'wall' || art === 'town') h.art = art;
       hexes.push(h);
       byId.set(id, h);
     }
@@ -153,10 +167,12 @@ export function boardCtx(terrain: readonly TerrainType[], fords: readonly boolea
   };
 }
 
-/** Context describing a single hex centred on (0, 0) (legend/tooltip icons). */
-export function iconCtx(t: TerrainType, ford: boolean): PaintCtx {
+/** Context describing a single hex centred on (0, 0) (legend/tooltip icons); `hill`: a hill under it, `art`: its hex art. */
+export function iconCtx(t: TerrainType, ford: boolean, hill = false, art?: string): PaintCtx {
   const o = vCenter(0, 0, false);
   const h: HexInfo = { id: 0, r: 0, c: 0, x: 0, y: 0, t, ford };
+  if (hill) h.hillUnder = true;
+  if (art === 'wall' || art === 'town') h.art = art;
   const inHex = (x: number, y: number) => {
     const ax = Math.abs(x);
     const ay = Math.abs(y);

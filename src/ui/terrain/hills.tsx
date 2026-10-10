@@ -110,10 +110,11 @@ function relief(ctx: PaintCtx, hexes: Pt[], o: ReliefOpts): Relief {
 
 /**
  * Hills. `steep`: the very steep hills of 223 (rule `veryHills`, §18.6), still hills but rockier and darker: a steeper
- * relief in dark olive, bare rock on the steepest slopes, crags along the crest, boulders and scree.
+ * relief in dark olive, bare rock on the steepest slopes, crags along the crest, boulders and scree. A camp or wall with a
+ * hill under it (Expansion #3, `hillUnder`) is part of the hills, and its camp or wall is painted on top.
  */
 export function paintHills(ctx: PaintCtx, patternFill?: string, strength = 1, steep = false): JSX.Element | null {
-  const hills = ctx.hexes.filter((h) => h.t === 'hill');
+  const hills = ctx.hexes.filter((h) => h.t === 'hill' || h.hillUnder);
   if (!hills.length) return null;
   if (steep) return paintVerySteep(ctx, hills, patternFill, strength);
   const r = relief(ctx, hills, {

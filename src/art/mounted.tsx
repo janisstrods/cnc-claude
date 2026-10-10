@@ -257,6 +257,9 @@ export interface RiderKit {
   sword?: boolean;
   /** The device on a long shield instead of the look's (a captured Roman scutum keeps its thunderbolts). */
   device?: EmblemKind;
+  // Expansion #3
+  /** The broad bronze belt of the Samnites instead of the leather one. */
+  belt?: 'bronze';
 }
 
 /** Long shields carried on the near arm by riders: they cover the thigh and the horse's flank. */
@@ -367,7 +370,7 @@ export function Rider({ kit, f, standard }: { kit: RiderKit; f: Fig; standard?: 
     : null;
   const upper = (
     <g transform={`translate(${UB_DX} ${UB_DY})`}>
-      <Body f={f} torso={kit.torso} skirt={false} />
+      <Body f={f} torso={kit.torso} skirt={false} bronzeBelt={kit.belt === 'bronze'} />
       {woad && kit.torso === 'bare' && <WoadBody p={p} />}
       <Head f={f} helmet={kit.helmet} crest={kit.crest} hair={kit.hair ?? 'short'} beard={kit.beard} moustache={kit.moustache} torc={kit.torc} />
       {woad && <WoadFace p={p} />}
@@ -396,10 +399,10 @@ export function Rider({ kit, f, standard }: { kit: RiderKit; f: Fig; standard?: 
       {kit.gorytos && <g transform={UB}><HipGorytos p={p} bow={kit.gorytos === 'bow'} /></g>}
       {reins}
       {turned && front ? turn(front) : front}
-      {kit.shield === 'round' && (
+      {(kit.shield === 'round' || kit.shield === 'caetra') && (
         <g>
           <Arm s={ns} e={[4.6, -3.6]} h={[6, -2.4]} f={f} near sleeve={sleeve} long={long} woad={woad} />
-          <Shield kind="round" f={f} dx={1.2} dy={14.0} s={1.0} />
+          <Shield kind={kit.shield} f={f} dx={1.2} dy={14.0} s={1.0} />
         </g>
       )}
       {kit.shield === 'aspis' && <Shield kind="aspis" f={f} dx={0.4 + 0.75 * 0.2} dy={13.4 - 14.4 * 0.25} s={0.75} />}
@@ -469,13 +472,20 @@ const COMPANIONS_MOUNT: MountKit = {
   cloth: 'leopard',
 };
 
-/** The kit's mount for a type (its horse archers for LBC), with the look's override for that type and figure. */
+/**
+ * The kit's mount for a type (its horse archers for LBC), with the look's override for that type and figure. A kit drawn
+ * as the base game's cavalry gives its base rider on the base saddle cloth (bareback without a bridle for its light horse,
+ * where `barebackLight`), barded for HC: the mount a look's override (`LookStyle.mounted`) starts from.
+ */
 export function lookMount(type: UnitType, p: Palette, i: number): MountKit {
   const kd = KITS[p.kit];
   let own: MountKit;
   if (type === 'LBC') own = { rider: kd.horseArcher.rider(i), cloth: kd.horseArcher.cloth };
   else if (kd.cavalry.drawing === 'kit') own = kd.cavalry.mount(type, i);
-  else throw new Error(`The ${p.kit} kit draws its ${type} as the base game's cavalry`);
+  else {
+    const bareback = type === 'LC' && !!kd.cavalry.barebackLight;
+    own = { rider: kd.cavalry.rider(type, i), cloth: bareback ? 'none' : 'plain', bridle: !bareback, barding: type === 'HC' };
+  }
   const o = p.style.mounted?.[type];
   const lo = Array.isArray(o) ? o[i % o.length] : o;
   if (lo?.dress) {
@@ -551,10 +561,13 @@ function KitMounted({ type, p: armyP, i, elite }: { type: UnitType; p: Palette; 
   );
 }
 
-/** One mounted miniature (LC, MC, HC, LBC). `elite` gives the Companions their own figures. */
+/**
+ * One mounted miniature (LC, MC, HC, LBC). `elite` gives the Companions their own figures. A look's mounted override of a
+ * base-drawn kit (the Numidian nobles on their leopard skins) is drawn from the kit's base mount (`lookMount`).
+ */
 export function MountedFigure({ type, p, i, elite }: { type: UnitType; p: Palette; i: number; elite?: EliteId }) {
   const cavalry = KITS[p.kit].cavalry;
-  if (type === 'LBC' || cavalry.drawing !== 'base') return <KitMounted type={type} p={p} i={i} elite={elite} />;
+  if (type === 'LBC' || cavalry.drawing !== 'base' || p.style.mounted?.[type]) return <KitMounted type={type} p={p} i={i} elite={elite} />;
   const f = makeFig(p, i);
   const kit = cavalry.rider(type, i);
   const coats = p.horses;

@@ -48,10 +48,16 @@ export function scenarioArt(scenarioId: string): readonly (string | undefined)[]
 
 /**
  * Human-readable terrain name ("Hill", "Forest", "Fordable River", ...). `noCap`: a ford without dice limits (§16).
- * `art`: the hex's art (`terrainArtOf`); a fordable river with `'coast'` art is a coast played as a ford (217).
+ * `art`: the hex's art (`terrainArtOf`); a fordable river with `'coast'` art is a coast played as a ford (217), a `steep`
+ * hex with `'wall'` or `'town'` art an impassable city wall (301) or town (303, 304). `hill`: a hill under the hex's camp
+ * or wall (`GameState.hillUnder`, 308).
  */
-export function terrainName(t: TerrainType, ford: boolean, noCap = false, art?: string): string {
+export function terrainName(t: TerrainType, ford: boolean, noCap = false, art?: string, hill = false): string {
   if (art === 'coast' && t === 'river') return 'Coastal Ford';
+  if (t === 'steep' && art === 'wall') return 'City Wall (impassable)';
+  if (t === 'steep' && art === 'town') return 'Town (impassable)';
+  if (hill && t === 'camp') return 'Fortified Camp on a Hill';
+  if (hill && t === 'wall') return 'City Wall on a Hill';
   switch (t) {
     case 'plain':
       return 'Open Ground';

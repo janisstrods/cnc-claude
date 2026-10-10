@@ -1,12 +1,15 @@
 import type { ArmyLook, Blocks, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
 import type { CrewDress, FootKit, FootLook } from './foot';
-import type { BustDef, ElephantDef, HorseCoat, MountKit } from './kits';
+import type { BustDef, ElephantDef, HorseCoat, IconBox, MountKit } from './kits';
 import type { RiderKit } from './mounted';
 import type { Crest, Helmet } from './parts';
 
 /** Figure kit: the shapes (helmets, shields, torsos, mounts) an army's miniatures are built from. */
-export type Kit = 'roman' | 'punic' | 'greek' | 'macedonian' | 'persian' | 'scythian' | 'indian' | 'celtic' | 'germanic' | 'lateRoman';
+export type Kit =
+  | 'roman' | 'punic' | 'greek' | 'macedonian' | 'persian' | 'scythian' | 'indian' | 'celtic' | 'germanic' | 'lateRoman'
+  // Expansion #3: the Samnites and the Italic peoples; Spain (Iberians, Celtiberians and Lusitanians, with Sertorius' legions)
+  | 'italic' | 'iberian';
 
 /** Cloth colours of a captured banner (the victory banner track). */
 export interface BannerCloth {
@@ -104,6 +107,9 @@ export type EmblemKind =
   // Expansion #2: Celtic La Tene scroll, boar, back-to-back crescents and the chalk-figure horse; Germanic shield paint
   // (two halves, a ring round the boss, diagonal bands); Jupiter's winged thunderbolt of the legions; the freedman's cap
   | 'scroll' | 'boar' | 'crescents' | 'horse' | 'halves' | 'ring' | 'bands' | 'wingedBolt' | 'pileus'
+  // Expansion #3: Sertorius' white fawn, Pompey's lion holding a sword (his seal), Sulla's trophy, the star and crescent of
+  // the Pontic kings
+  | 'fawn' | 'lion' | 'trophy' | 'starCrescent'
   | 'none';
 
 /** Device on the cloth of the army standard: an emblem, or the Roman laurel wreath. */
@@ -113,7 +119,9 @@ export type StandardDevice = EmblemKind | 'wreath';
 export type Finial =
   | 'eagle' | 'crescent' | 'lozenge' | 'star' | 'spearhead' | 'royalEagle' | 'wheel' | 'trident' | 'stag'
   // Expansion #2: a bronze boar or bull (the Cimbri's bull, Plutarch) and the cap of liberty on a spear
-  | 'boar' | 'bull' | 'pileus';
+  | 'boar' | 'bull' | 'pileus'
+  // Expansion #3: the star and crescent of Pontus, Sertorius' fawn
+  | 'starCrescent' | 'fawn';
 
 /**
  * Look-specific art choices beyond the swatches: shield devices, the army standard, per-figure paint variants and the
@@ -147,6 +155,10 @@ export interface LookStyle {
   chariotDriver?: Partial<CrewDress>;
   /** Changes to the crew of the kit's light chariot (BCH): one, or one per figure index (cycled). */
   lightChariot?: { warrior?: Partial<FootKit> | Partial<FootKit>[]; driver?: Partial<CrewDress> | Partial<CrewDress>[] };
+  /** Icon extents of the look's own figures where they differ from its kit's box by more than 1.5 units (icon.tsx). */
+  iconBox?: Partial<Record<UnitType, IconBox>>;
+  /** The look's war machine instead of the kit's (the Pompeians' scorpio beside Caesar's ballistae). */
+  warMachine?: 'scorpio' | 'oxybeles' | 'ballista';
   /** The general: colours (cloak, saddle cloth), horse, and helmet / crest instead of the kit's. */
   general?: Partial<LookPalette> & { horse?: { coat: string; shade: string; mane: string }; helmet?: Helmet; crest?: Crest };
 }
@@ -667,6 +679,141 @@ const MARIAN = look({
   saddle: '#8c1c24',
 });
 
+// --- Expansion #3: the Roman Civil Wars ------------------------------------------------------
+// The civil-war armies meet on grey (top) and red (bottom) blocks; their figures read apart without the base edge too:
+// Caesar's legions in red with red scuta, Pompey's in blue with navy scuta and silvered helmets, Sulla's in red with white
+// scuta. Every Expansion #3 matchup differs by dE >= 20 in tunics, shields and painted shields (tests/art/exp3-looks.test.ts).
+
+const ROMAN_SKIN = ['#e6b48a', '#d9a077', '#cc9168', '#e0aa80'];
+const ROMAN_HAIR = ['#3a2416', '#24170f', '#5a3a20', '#2e1d12'];
+const HORSES_ROMAN: LookPalette['horses'] = [
+  { coat: '#8a5530', shade: '#5c3519', mane: '#2a1a10' },
+  { coat: '#5e3a22', shade: '#3c2414', mane: '#1a110b' },
+  { coat: '#a77446', shade: '#714a28', mane: '#3a2414' },
+];
+const BAY: HorseCoat = { coat: '#7a4a2a', shade: '#4e2e18', mane: '#22160e' };
+
+/** Caesar's legions: red tunics and scuta with gold wings and thunderbolts, or the bull of his legions; bronze helmets. */
+const CAESARIAN = look({
+  tunic: '#b4252b', trim: '#e8c050', trousers: '#5a4030', cloak: '#8c1c24',
+  shield: '#a51f28', shieldRim: '#d0aa5c', shieldEmblem: '#f2c94f',
+  paint: '#a8222a', paintEmblem: '#f2c94f',
+  metal: ['#c7923d', '#85591f', '#f3d68e'], crest: '#1c1a1e', crestAlt: '#d42a2e',
+  skin: ROMAN_SKIN, hair: ROMAN_HAIR, horses: HORSES_ROMAN, saddle: '#8c1c24',
+});
+
+/**
+ * Pompey's legions: blue tunics (the colour of his son Sextus, "son of Neptune"), navy scuta with Pompey's lion in silver,
+ * silvered helmets, white crests.
+ */
+const POMPEIAN = look({
+  tunic: '#3f5f96', trim: '#e2e6ec', trousers: '#4a4a52', cloak: '#2a3f6e',
+  shield: '#24407a', shieldRim: '#c4cad2', shieldEmblem: '#eef1f4',
+  paint: '#7d96c4', paintEmblem: '#1e3462',
+  metal: ['#c3c8cd', '#757c84', '#f1f3f5'], crest: '#f2efe6', crestAlt: '#24407a',
+  skin: ROMAN_SKIN, hair: ROMAN_HAIR, horses: HORSES_ROMAN, saddle: '#2a3f6e',
+});
+
+/** Sulla's legions: red tunics, white scuta with Sulla's trophy and the wings in red, black crests. */
+const SULLAN = look({
+  tunic: '#a82c2a', trim: '#e8c050', trousers: '#5a4030', cloak: '#7a1c22',
+  shield: '#e8e1d0', shieldRim: '#c9a25a', shieldEmblem: '#a8262a',
+  paint: '#e8e1d0', paintEmblem: '#a8262a',
+  metal: ['#c7923d', '#85591f', '#f3d68e'], crest: '#1c1a1e', crestAlt: '#f0ece0',
+  skin: ROMAN_SKIN, hair: ROMAN_HAIR, horses: HORSES_ROMAN, saddle: '#7a1c22',
+});
+
+/**
+ * The Samnites: Livy's gilded shields (9.40), tunics of many colours and of white linen, white feathers, bronze; the Oscan
+ * bull of the Italian rebels' coins on the shields.
+ */
+const SAMNITE = look({
+  tunic: '#ebe3cd', trim: '#b8482a', trousers: '#6b4a32', cloak: '#3a5a8a',
+  shield: '#d4a440', shieldRim: '#8a6424', shieldEmblem: '#5a2414',
+  paint: '#b84a2a', paintEmblem: '#f0e2b4',
+  metal: ['#cf9a44', '#8a5f22', '#f6dc96'], crest: '#f4f0e4', crestAlt: '#b8482a',
+  skin: ['#dca478', '#cc9168', '#d49c70', '#c08660'], hair: ['#24170f', '#3a2416', '#1a110b', '#4a3020'],
+  horses: HORSES_ROMAN, saddle: '#3a5a8a',
+});
+
+/**
+ * Sertorius' army: white tunics with red borders, green Roman scuta with Sertorius' white fawn, caetrae painted red-brown,
+ * black or left as hide with white rings, dark red crests.
+ */
+const SERTORIAN = look({
+  tunic: '#ece6d6', trim: '#a8231f', trousers: '#6b4a32', cloak: '#6a2a22',
+  shield: '#2f5f4a', shieldRim: '#c9a25a', shieldEmblem: '#f4f0e6',
+  paint: '#9a3a24', paintEmblem: '#f0e8d6',
+  crest: '#8a1e1e', crestAlt: '#ece6d6',
+  skin: ['#e0aa80', '#d49c70', '#c88f64', '#d8a276'], hair: ['#24170f', '#3a2416', '#1a110b', '#2e1d12'],
+  horses: [
+    { coat: '#6b4128', shade: '#432716', mane: '#1a110b' },
+    { coat: '#a0703f', shade: '#6a4524', mane: '#2a1a10' },
+    { coat: '#2e231d', shade: '#1a130f', mane: '#0c0806' },
+  ],
+  saddle: '#6a2a22',
+});
+
+/** The Helvetii: lake-green, tan and dark checked wool, white and black shields with wheels and crescents; no red. */
+const HELVETII = look({
+  tunic: '#3d6e6a', trim: '#d8c48a', trousers: '#8a6a3a', cloak: '#5a3a2a',
+  shield: '#d8cfb4', shieldRim: '#6a5236', shieldEmblem: '#2a3a38',
+  paint: '#e2dcc8', paintEmblem: '#2f5a5a',
+  crest: '#2a2420', crestAlt: '#d8c48a',
+  skin: NORTH_SKIN, hair: NORTH_HAIR, horses: HORSES_NORTH, saddle: '#5a3a2a',
+});
+
+/**
+ * The Numidians: short white tunics, hide shields, dark curled hair and beards; Juba's legions in Roman arms with
+ * ochre scuta and the galloping horse of the Numidian kings' coins.
+ */
+const NUMIDIAN = look({
+  tunic: '#e6dcc2', trim: '#7a3a2a', trousers: '#6b4a32', cloak: '#7a3a2a',
+  shield: '#c39a52', shieldRim: '#6a4424', shieldEmblem: '#3a2414',
+  paint: '#b08a5a', paintEmblem: '#3a2414',
+  crest: '#3a2414', crestAlt: '#e6dcc2',
+  skin: ['#b07a50', '#9a6640', '#c08a5c', '#8a5a38'], hair: ['#140d08', '#1c1410', '#24170f', '#100c0a'],
+  horses: [
+    { coat: '#7a4a2a', shade: '#4e2e18', mane: '#22160e' },
+    { coat: '#a0703f', shade: '#6a4524', mane: '#2a1a10' },
+    { coat: '#3a2a20', shade: '#22180f', mane: '#0e0905' },
+  ],
+  saddle: '#7a3a2a',
+});
+
+/**
+ * Pontus (Pharnaces, son of Mithridates): bronze shields (the chalkaspides) with the royal star and crescent, robes of
+ * many colours (Plutarch, Sulla 16), royal purple cloaks.
+ */
+const PONTIC = look({
+  tunic: '#2a6a5e', trim: '#e8c050', trousers: '#6a2a5a', cloak: '#5a2660',
+  shield: '#d0a24a', shieldRim: '#8a6020', shieldEmblem: '#4a1e5a',
+  paint: '#e8dcc0', paintEmblem: '#5a2660',
+  crest: '#f0e6cc', crestAlt: '#5a2660',
+  skin: PERSIAN_SKIN, hair: GREEK_HAIR, horses: HORSES_EAST, saddle: '#5a2660',
+  cap: '#ece2c8', pattern: '#e8c050',
+});
+
+/** Gallic light horse in Caesar's service (in his colours). */
+const GALLIC_LC: MountLook = {
+  rider: {
+    torso: 'tunic', helmet: 'none', crest: 'none', shield: 'celtOval', weapon: 'javelin', legs: 'trousers', spare: true, hair: 'long',
+    moustache: true, torc: true,
+  },
+  // (on a horse with its bridle, not the kit's Numidian pony this rider replaces)
+  cloth: 'plain', bridle: true, pony: false,
+};
+/** Numidian light horse: bareback, no bridle, javelins and a small hide shield (Juba's horsemen with the Pompeians). */
+const NUMIDIAN_LC: MountLook[] = [
+  { rider: { torso: 'tunic', helmet: 'none', crest: 'none', shield: 'round', weapon: 'javelin', legs: 'bare', spare: true, beard: true, hair: 'long' }, cloth: 'none', bridle: false, pony: true },
+  { rider: { torso: 'tunic', helmet: 'none', crest: 'none', shield: 'none', weapon: 'javelin', legs: 'bare', spare: true, beard: false, hair: 'short', cloak: true }, cloth: 'none', bridle: false, pony: true },
+];
+/** Roman horsemen: mail, a Boeotian or Montefortino helmet, the round parma, a spear. */
+const ROMAN_MC: MountLook = {
+  rider: { torso: 'mail', helmet: 'boeotian', crest: 'horsehair', shield: 'round', weapon: 'spear', legs: 'bare', cloak: true },
+  cloth: 'horned', phalerae: true,
+};
+
 /** Side colours of each block set (base edge and standard cloth). */
 export const BLOCK_COLORS: Record<Blocks, SideColors> = {
   rom: {
@@ -731,7 +878,7 @@ const GLADIATOR: FootLook = {
 const ROMAN_LOOK: LookDef = { kit: 'roman', palette: ROMAN, style: { emblems: ['rome'], device: 'wreath', finial: 'eagle' } };
 const CARTHAGINIAN_LOOK: LookDef = { kit: 'punic', palette: CARTHAGINIAN, style: { emblems: ['carthage'], device: 'carthage', finial: 'crescent' } };
 
-/** The looks new in Expansion #3 (Roman Civil Wars): they draw as an older look until the art track gives them their own. */
+/** The looks new in Expansion #3 (the Roman Civil Wars). */
 type Exp3Look = 'sullan' | 'samnite' | 'sertorian' | 'pompeian' | 'caesarian' | 'helvetii' | 'numidian' | 'pontic';
 
 const EARLIER_LOOKS: Record<Exclude<ArmyLook, Exp3Look>, LookDef> = {
@@ -1011,16 +1158,138 @@ const EARLIER_LOOKS: Record<Exclude<ArmyLook, Exp3Look>, LookDef> = {
 /** Every army look: its kit, swatches and style. */
 export const LOOKS: Record<ArmyLook, LookDef> = {
   ...EARLIER_LOOKS,
-  // Expansion #3 (temporary until the art track): the Roman parties draw as Marian Romans, the Helvetii and the Sertorian
-  // Celtiberians as Gauls, the Numidians as Carthaginians, the Pontic army as the Antigonid one, the Samnites as Syracusans.
-  sullan: EARLIER_LOOKS.marian,
-  pompeian: EARLIER_LOOKS.marian,
-  caesarian: EARLIER_LOOKS.marian,
-  helvetii: EARLIER_LOOKS.gallic,
-  sertorian: EARLIER_LOOKS.gallic,
-  numidian: EARLIER_LOOKS.carthaginian,
-  pontic: EARLIER_LOOKS.antigonid,
-  samnite: EARLIER_LOOKS.syracusan,
+  // Expansion #3 (the Roman Civil Wars)
+  caesarian: {
+    kit: 'lateRoman', palette: CAESARIAN,
+    style: {
+      // the wings and thunderbolts, and the bull of Caesar's legions
+      emblems: ['wingedBolt', 'bull'], device: 'bull', finial: 'eagle', standard: 'aquila',
+      // Aeduan and Germanic warriors with the legions (308, 315)
+      foot: { WA: [{ from: 'celtic' }, {}] },
+      // German, Gallic and Spanish horse; no Numidians, who fight for the other side in Africa
+      mounted: { LC: [GALLIC_LC, {}, {}] },
+      general: { horse: BAY },
+    },
+  },
+  pompeian: {
+    kit: 'lateRoman', palette: POMPEIAN,
+    style: {
+      emblems: ['lion'], device: 'lion', finial: 'eagle', standard: 'aquila',
+      // Galatians of Deiotarus
+      foot: { WA: { from: 'celtic' } },
+      mounted: {
+        // Juba's Numidians (311, 318)
+        LC: NUMIDIAN_LC,
+        // young Roman nobles, Thracians and Galatians (Pharsalus)
+        MC: [
+          ROMAN_MC,
+          { rider: { torso: 'tunic', helmet: 'thracian', crest: 'horsehair', shield: 'round', weapon: 'spear', legs: 'trousers', beard: true, cloak: true }, cloth: 'plain' },
+          {},
+        ],
+      },
+      // Juba's African elephants at Thapsus, ridden by Numidians
+      elephant: { drawing: 'base', rider: { torso: 'tunic', helmet: 'none' } },
+      // Pompey's bolt-throwers (Dyrrhachium) beside Caesar's stone-throwers
+      warMachine: 'scorpio',
+      iconBox: { LC: [-34, 0.4, -16.1, 17.1], HWM: [-33.1, 0.3, -28.1, 21.9] },
+      general: { horse: { coat: '#d8d0bf', shade: '#9e9583', mane: '#6a6052' } },
+    },
+  },
+  sullan: {
+    kit: 'lateRoman', palette: SULLAN,
+    style: {
+      emblems: ['trophy'], device: 'trophy', finial: 'eagle', standard: 'aquila',
+      // Spanish allies in Fufidius' army (302)
+      foot: { WA: { from: 'iberian' } },
+      mounted: { MC: [ROMAN_MC, { ...ROMAN_MC, rider: { ...ROMAN_MC.rider!, helmet: 'montefortino', cloak: false } }, ROMAN_MC] },
+      general: { horse: BAY },
+    },
+  },
+  samnite: {
+    kit: 'italic', palette: SAMNITE,
+    style: {
+      emblems: ['bull'], device: 'bull', finial: 'bull',
+      // tunics of many colours among the white linen (Livy 9.40)
+      variants: [{}, { ...tunicOf('#d8a83a') }, { ...tunicOf('#c8642a') }, { ...tunicOf('#3a5a8a') }],
+      general: { cloak: '#b8482a', horse: { coat: '#2e231d', shade: '#1a130f', mane: '#0c0806' } },
+    },
+  },
+  sertorian: {
+    kit: 'iberian', palette: SERTORIAN,
+    style: {
+      emblems: ['fawn'], device: 'fawn', finial: 'fawn',
+      variants: [
+        {},
+        { ...tunicOf('#cdbf9c'), ...paintOf('#2a2622', '#f0e8d6') },
+        { ...paintOf('#a07a4a', '#2a1a10') },
+        { ...tunicOf('#e4dcc6'), ...paintOf('#9a3a24', '#f0e8d6') },
+      ],
+      general: { cloak: '#7a1c22', horse: { coat: '#ece6da', shade: '#b0a690', mane: '#8a7e6a' } },
+    },
+  },
+  helvetii: {
+    kit: 'celtic', palette: HELVETII,
+    style: {
+      emblems: ['wheel', 'crescents', 'ring', 'scroll'], device: 'wheel', finial: 'boar', standard: 'carnyx',
+      variants: [
+        {},
+        { ...tunicOf('#a8844a'), ...trousersOf('#3d5a58'), ...paintOf('#2a2a28', '#e2dcc8') },
+        { ...tunicOf('#4a4a3a'), ...trousersOf('#a8844a'), ...paintOf('#8a6a3a', '#1e1a16') },
+        { ...tunicOf('#6a5a7a'), ...paintOf('#3a6a8a', '#e2dcc8') },
+      ],
+      // the Helvetian phalanx (Caesar, Gallic War 1.24-25): spearmen behind locked shields among the swordsmen
+      foot: { WA: [{}, { weapon: 'spear' }, {}, { weapon: 'spear', helmet: 'coolus', crest: 'knob' }] },
+      general: { cloak: '#3d6e6a' },
+    },
+  },
+  numidian: {
+    kit: 'punic', palette: NUMIDIAN,
+    style: {
+      emblems: ['horse'], device: 'horse', finial: 'crescent',
+      variants: [{}, { ...tunicOf('#c4a878') }, {}, { ...tunicOf('#d8ccb0'), ...paintOf('#8a6a44', '#e6dcc2') }],
+      foot: {
+        LI: { hair: 'long', beard: true },
+        // javelinmen with small hide shields, bare-headed
+        AX: { torso: 'tunic', helmet: 'none', crest: 'none', hair: 'long', beard: true, shield: 'round', shieldScale: 1, painted: undefined, weapon: 'javelin', spare: 'javelins' },
+        // Gaetulian and Numidian warriors: tunics, long hair and beards, hide shields, swords and spears
+        WA: [
+          { torso: 'tunic', skirt: true, sleeve: true, legs: 'bare', helmet: 'none', crest: 'none', hair: 'long', beard: true, moustache: false, torc: false, tribal: false, falcata: false, shield: 'longOval', shieldScale: 0.9, shieldDy: 2, weapon: 'sword' },
+          { torso: 'tunic', skirt: true, sleeve: true, legs: 'bare', helmet: 'none', crest: 'none', hair: 'wild', beard: true, moustache: false, torc: false, tribal: false, falcata: false, shield: 'round', shieldScale: 1, shieldDy: 0, weapon: 'spear', spare: 'javelins' },
+        ],
+        // Juba's legions, armed and drilled in the Roman way
+        MI: { from: 'lateRoman', beard: true },
+        HI: { from: 'lateRoman', beard: true },
+      },
+      // the nobles' horses: a leopard skin, no bridle
+      mounted: {
+        MC: [
+          { rider: { torso: 'tunic', helmet: 'none', crest: 'none', shield: 'round', weapon: 'javelin', legs: 'bare', spare: true, hair: 'long', beard: true }, cloth: 'leopard', bridle: false },
+          { rider: { torso: 'tunic', helmet: 'none', crest: 'none', shield: 'round', weapon: 'spear', legs: 'bare', hair: 'long', beard: true, cloak: true }, cloth: 'leopard', bridle: false },
+        ],
+      },
+      elephant: { drawing: 'base', rider: { torso: 'tunic', helmet: 'none' } },
+      // Juba's legionaries carry the late-Roman pilum, the nobles javelins rather than the base riders' long spears
+      iconBox: { MI: [-42.5, 1.8, -6.1, 10.6], MC: [-38.9, 0.6, -19.7, 20.9] },
+      general: { cloak: '#7a3a2a' },
+    },
+  },
+  pontic: {
+    kit: 'macedonian', palette: PONTIC,
+    style: {
+      emblems: ['starCrescent'], device: 'starCrescent', finial: 'starCrescent',
+      variants: [{}, { ...tunicOf('#6a2a72') }, { ...tunicOf('#c8962a') }, { ...tunicOf('#2a4a7a') }],
+      // Cappadocian and Armenian light troops in hoods and trousers; the medium foot behind the thureos
+      foot: { MI: { shield: 'thureos' }, LI: EASTERN_LIGHTS, LB: EASTERN_LIGHTS, LS: EASTERN_LIGHTS },
+      mounted: {
+        LC: { rider: { torso: 'tunic', helmet: 'tiara', crest: 'none', shield: 'none', weapon: 'javelin', legs: 'trousers', longSleeve: true, spare: true, beard: true }, cloth: 'rich' },
+        // armoured horsemen in scale, on barded horses
+        HC: { rider: { torso: 'scale', helmet: 'phrygian', crest: 'horsehair', shield: 'none', weapon: 'lance', legs: 'trousers', longSleeve: true }, cloth: 'rich', barding: true },
+      },
+      // the scythed chariots' drivers in eastern sleeves and trousers
+      chariotDriver: { longSleeve: true, legs: 'trousers' },
+      general: { cloak: '#5a2660', horse: { coat: '#ece6da', shade: '#b0a690', mane: '#8a7e6a' } },
+    },
+  },
 };
 
 /**
@@ -1040,6 +1309,7 @@ export interface LeaderLook {
 }
 
 const SCARLET = '#c0262a';
+const TYRIAN = '#5e2466';
 
 export const LEADER_LOOKS: LeaderLook[] = [
   // Caesar: a laurel wreath instead of a helmet, the scarlet general's cloak (paludamentum), a white horse
@@ -1057,6 +1327,15 @@ export const LEADER_LOOKS: LeaderLook[] = [
     horse: { coat: '#3a2a20', shade: '#22180f', mane: '#0e0905' },
     colours: { crest: '#a8282a', crestShade: darken('#a8282a', 0.4), crestAlt: '#d8584a', cloak: '#6a4a2a', cloakShade: darken('#6a4a2a', 0.38) },
     bust: { helmet: 'thracian', crest: 'horsehair', beard: true, chest: 'tunic' },
+  },
+  // Pompey the Great: bare-headed with his upswept forelock (the anastole of his portraits), a purple cloak, a dark horse.
+  // Not his son Gnaeus Pompeius (319), who leads as an ordinary general.
+  {
+    names: ['Pompey', 'Pompey the Great', 'Pompeius Magnus', 'Gnaeus Pompeius Magnus', 'Cn. Pompeius Magnus'],
+    rider: { helmet: 'none', crest: 'none', hair: 'anastole' },
+    horse: { coat: '#3a2c22', shade: '#221910', mane: '#0e0905' },
+    colours: { cloak: TYRIAN, cloakShade: darken(TYRIAN, 0.38), saddle: TYRIAN, saddleShade: darken(TYRIAN, 0.36) },
+    bust: { helmet: 'none', crest: 'none', beard: false, hair: 'anastole' },
   },
 ];
 

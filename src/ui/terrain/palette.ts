@@ -66,6 +66,23 @@ export const P = {
   canvas: '#efe5c9',
   canvasShade: '#c2b38c',
 
+  // Expansion #3: city walls of limestone, Rome's tufa wall, the towns' plaster and roof tiles, ships' hulls
+  wallTop: '#ddd3b6',
+  wallFace: '#b6a684',
+  wallShade: '#8c7c5e',
+  wallDark: '#4a3f30',
+  tufa: '#cdb781',
+  tufaFace: '#a78f5c',
+  tufaShade: '#7a6640',
+  plaster: '#ece2c6',
+  plasterShade: '#c9b68e',
+  roof: '#b8643a',
+  roofShade: '#874325',
+  roofLight: '#d98c5a',
+  street: '#c4aa76',
+  hull: '#6a4526',
+  hullDark: '#3e2814',
+
   wood: '#3d2b1d',
   woodDark: '#2a1d13',
   woodLight: '#5a4029',

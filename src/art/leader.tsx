@@ -149,7 +149,7 @@ function figOf(p: Palette): Fig {
 function FinialEl({ p, kind, x, y }: { p: Palette; kind: Finial; x: number; y: number }) {
   if (
     kind === 'star' || kind === 'royalEagle' || kind === 'wheel' || kind === 'trident' || kind === 'stag'
-    || kind === 'boar' || kind === 'bull' || kind === 'pileus'
+    || kind === 'boar' || kind === 'bull' || kind === 'pileus' || kind === 'starCrescent' || kind === 'fawn'
   ) {
     const s = kind === 'wheel' ? 0.62 : 0.7;
     return (

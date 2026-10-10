@@ -1,6 +1,7 @@
 // Dev gallery for the battlefield art: every scenario board, a large normal + flipped board,
-// close-ups of the sea coasts and ramparts, the Expansion #2 terrain and objective markers, and the terrain legend.
-// URL options (hash query): ?s=006 (large board), ?units=1 (mock blocks), ?only=large|grid|legend|samples|exp2.
+// close-ups of the sea coasts and ramparts, the Expansion #2 terrain and objective markers, the Expansion #3 walls, towns,
+// hills under camps and walls, steep slopes and ship markers, and the terrain legend.
+// URL options (hash query): ?s=006 (large board), ?units=1 (mock blocks), ?only=large|grid|legend|samples|exp2|exp3.
 import { useEffect, useMemo, useState } from 'react';
 import { UnitToken } from '../art';
 import { rampartMask, type TerrainSetup } from '../engine/setup';
@@ -8,8 +9,8 @@ import { COLS, ROWS, type ArmyLook, type Blocks, type ObjectiveDef, type Objecti
 import { BOARD_H, BOARD_W, hexCenter, isOnBoard } from '../ui/geometry';
 import { BoardArt, ObjectiveMarkers, TerrainIcon, terrainArtOf, terrainName } from '../ui/terrain';
 
-/** A terrain entry: the scenario file format, plus the Expansion #2 `ditch` and `art` (until the engine has them). */
-type TerrainEntry = Omit<TerrainSetup, 't'> & { t: TerrainType; art?: string };
+/** A terrain entry: the scenario file format, plus `art` and the Expansion #3 hill under a camp or wall (`hill`). */
+type TerrainEntry = Omit<TerrainSetup, 't'> & { t: TerrainType; art?: string; hill?: boolean };
 
 interface ScenarioJson {
   id: string;
@@ -23,6 +24,8 @@ interface ScenarioJson {
 }
 
 const modules = import.meta.glob('../scenarios/data/*.json', { eager: true }) as Record<string, { default: ScenarioJson }>;
+/** The Expansion #3 battles from their verified transcriptions, until they are imported as scenarios. */
+const exp3Modules = import.meta.glob('../../design/exp3-data/3*.json', { eager: true }) as Record<string, { default: ScenarioJson }>;
 /** Synthetic board exercising every terrain type and the tricky joins (river junction, river
  * into a lake, dead-end stream, merged marsh/broken/steep clusters, sea, rampart edges). */
 const SAMPLER: ScenarioJson = {
@@ -267,10 +270,59 @@ const OBJECTIVE_STATE_HELD: ObjectiveState[] = OBJECTIVE_STATE.map((st, i) =>
 const OBJECTIVE_BLOCKS: Record<Side, Blocks> = { top: 'bar', bottom: 'rom' };
 const OBJECTIVE_LOOKS: Record<Side, ArmyLook> = { top: 'gallic', bottom: 'marian' };
 
+/** Expansion #3 samplers: lone walls (one on a hill, one beside a camp on a hill), steep slopes round a forest, a town. */
+const WALLS: ScenarioJson = {
+  id: 'W',
+  name: 'Wall sampler',
+  top: { army: 'Gallic' },
+  bottom: { army: 'Roman' },
+  rules: ['steepSlopes'],
+  terrain: [
+    { r: 1, c: 2, t: 'wall' },
+    { r: 1, c: 5, t: 'wall', hill: true },
+    { r: 1, c: 6, t: 'hill' },
+    { r: 2, c: 5, t: 'hill' },
+    { r: 1, c: 9, t: 'camp', hill: true },
+    { r: 1, c: 10, t: 'wall', hill: true },
+    { r: 2, c: 10, t: 'forest' },
+    { r: 2, c: 9, t: 'hill' },
+    { r: 3, c: 9, t: 'forest' },
+    { r: 0, c: 0, t: 'wall' },
+    { r: 1, c: 0, t: 'wall' },
+    { r: 4, c: 2, t: 'steep', art: 'town' },
+    { r: 5, c: 6, t: 'steep', art: 'wall' },
+    { r: 5, c: 7, t: 'steep', art: 'wall' },
+    { r: 6, c: 10, t: 'hill' },
+    { r: 6, c: 11, t: 'forest' },
+    { r: 7, c: 10, t: 'forest' },
+    { r: 5, c: 10, t: 'forest' },
+  ],
+  units: [
+    { side: 'top', type: 'LB', r: 1, c: 5 },
+    { side: 'bottom', type: 'MI', r: 2, c: 2 },
+  ],
+};
+
+/** 313 Brindisi: the ship markers on the coast played as a ford (Pompeian top, Caesarian bottom), one of them taken. */
+const SHIPS_ID = '313';
+const shipDefs = (): ObjectiveDef[] => [
+  { kind: 'capture', side: 'top', hexes: [8, 9, 10, 11].map((c) => hx(0, c)), when: 'turnStart', banners: [1], together: 0, remove: false, text: '', marker: 'ship' } as ObjectiveDef,
+  { kind: 'capture', side: 'bottom', hexes: [0, 1, 2, 3].map((c) => hx(0, c)), when: 'turnStart', banners: [1], together: 0, remove: false, text: '', marker: 'ship' } as ObjectiveDef,
+];
+const SHIP_STATE: ObjectiveState[] = [
+  { taken: [hx(0, 9)], held: { top: 0, bottom: 0 }, sections: [] },
+  { taken: [], held: { top: 0, bottom: 0 }, sections: [] },
+];
+const SHIP_BLOCKS: Record<Side, Blocks> = { top: 'gry', bottom: 'rom' };
+
+const EXP3_BATTLES: ScenarioJson[] = Object.values(exp3Modules).map((m) => m.default).sort((a, b) => a.id.localeCompare(b.id));
+const exp3 = (id: string) => EXP3_BATTLES.find((s) => s.id === id) ?? WALLS;
+
 const SCENARIOS: ScenarioJson[] = [
   ...Object.values(modules)
     .map((m) => m.default)
     .sort((a, b) => a.id.localeCompare(b.id)),
+  ...EXP3_BATTLES.filter((s) => !Object.values(modules).some((m) => m.default.id === s.id)),
   SAMPLER,
   COASTS,
   RAMPARTS,
@@ -278,6 +330,7 @@ const SCENARIOS: ScenarioJson[] = [
   COAST_FORD,
   STEEP_HILLS,
   OBJECTIVES,
+  WALLS,
 ];
 
 /** Close-ups shown normal and flipped: a sampler board and the hexes (r, c) to frame. */
@@ -306,6 +359,18 @@ const EXP2_SAMPLES: { label: string; s: ScenarioJson; hexes: [number, number][] 
   { label: 'Very steep hills around a rampart, with an impassable steep hill', s: STEEP_HILLS, hexes: [[2, 8], [3, 9], [5, 10], [1, 10]] },
 ];
 
+/** Close-ups of the Expansion #3 terrain, normal and flipped. */
+const EXP3_SAMPLES: { label: string; s: ScenarioJson; hexes: [number, number][] }[] = [
+  { label: '308 Gergovia: the city walls on the heights, camps on hills, steep slopes down to the woods', s: exp3('308'), hexes: [[0, 5], [0, 9], [2, 5], [2, 9], [3, 4]] },
+  { label: '308 Gergovia: steep slopes on the flanks of the hill mass', s: exp3('308'), hexes: [[3, 1], [4, 0], [5, 2], [2, 2]] },
+  { label: '309 Ilerda: the walls round the town, on open ground', s: exp3('309'), hexes: [[0, 10], [2, 10], [1, 8], [1, 11]] },
+  { label: '301 Colline Gate: the Wall of Rome (impassable) and the gap between its gate towers', s: exp3('301'), hexes: [[7, 1], [7, 4], [7, 5], [7, 8], [6, 5]] },
+  { label: '303 Lauron: an impassable town', s: exp3('303'), hexes: [[2, 3], [2, 4], [3, 2], [3, 3]] },
+  { label: '304 Valentia: an impassable town', s: exp3('304'), hexes: [[3, 7], [3, 8], [4, 7], [4, 8]] },
+  { label: 'Sampler: lone walls (on open ground, on a hill), a camp on a hill beside a wall, a wall at the board edge', s: WALLS, hexes: [[0, 0], [1, 2], [1, 5], [1, 10], [2, 9]] },
+  { label: 'Sampler: a lone town hex, two impassable wall hexes, a hill ringed by woods (steep slopes)', s: WALLS, hexes: [[4, 2], [5, 6], [5, 7], [6, 10], [7, 10]] },
+];
+
 /** viewBox framing hexes (with some margin) on a normal or flipped board. */
 function cropBox(hexes: [number, number][], flipped: boolean): string {
   const ps = hexes.map(([r, c]) => hexCenter(r, c, flipped));
@@ -317,10 +382,11 @@ function cropBox(hexes: [number, number][], flipped: boolean): string {
   return `${x0.toFixed(1)} ${y0.toFixed(1)} ${(x1 - x0).toFixed(1)} ${(y1 - y0).toFixed(1)}`;
 }
 
-function boardArrays(s: ScenarioJson): { terrain: TerrainType[]; fords: boolean[]; rampart: number[]; art: (string | undefined)[] } {
+function boardArrays(s: ScenarioJson): { terrain: TerrainType[]; fords: boolean[]; rampart: number[]; art: (string | undefined)[]; hillUnder: boolean[] } {
   const terrain: TerrainType[] = [];
   const fords: boolean[] = [];
   const rampart: number[] = [];
+  const hillUnder: boolean[] = new Array(ROWS * COLS).fill(false);
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       terrain.push(isOnBoard(r, c) ? 'plain' : 'void');
@@ -335,8 +401,9 @@ function boardArrays(s: ScenarioJson): { terrain: TerrainType[]; fords: boolean[
     terrain[id] = seaFord ? 'river' : t.t;
     fords[id] = (t.t === 'river' || seaFord) && !!t.ford;
     rampart[id] = rampartMask(t as TerrainSetup);
+    if (t.hill && (t.t === 'camp' || t.t === 'wall')) hillUnder[id] = true;
   }
-  return { terrain, fords, rampart, art: terrainArtOf(s) };
+  return { terrain, fords, rampart, art: terrainArtOf(s), hillUnder };
 }
 
 function useHashParams(): URLSearchParams {
@@ -404,10 +471,10 @@ function Board({
   width: number | string;
   units: boolean;
   viewBox?: string;
-  objectives?: { defs: ObjectiveDef[]; state: ObjectiveState[] };
+  objectives?: { defs: ObjectiveDef[]; state: ObjectiveState[]; blocks?: Record<Side, Blocks> };
   tokens?: boolean;
 }) {
-  const { terrain, fords, rampart, art } = useMemo(() => boardArrays(s), [s]);
+  const { terrain, fords, rampart, art, hillUnder } = useMemo(() => boardArrays(s), [s]);
   const topLabel = flipped ? s.bottom.army : s.top.army;
   const bottomLabel = flipped ? s.top.army : s.bottom.army;
   const placed = useMemo(() => (s.units ?? []).map((u) => ({ side: u.side, hex: u.r * COLS + u.c })), [s]);
@@ -419,19 +486,21 @@ function Board({
         rampart={rampart}
         art={art}
         steepHills={!!s.rules?.includes('veryHills')}
+        hillUnder={hillUnder}
+        steepSlopes={!!s.rules?.includes('steepSlopes')}
         flipped={flipped}
         topLabel={topLabel}
         bottomLabel={bottomLabel}
       />
       {objectives && (
-        <ObjectiveMarkers objectives={objectives.defs} objState={objectives.state} flipped={flipped} blocks={OBJECTIVE_BLOCKS} units={placed} />
+        <ObjectiveMarkers objectives={objectives.defs} objState={objectives.state} flipped={flipped} blocks={objectives.blocks ?? OBJECTIVE_BLOCKS} units={placed} />
       )}
       {tokens ? <Tokens s={s} flipped={flipped} /> : units && <MockUnits s={s} flipped={flipped} />}
     </svg>
   );
 }
 
-const LEGEND: { t: TerrainType; ford?: boolean; art?: string }[] = [
+const LEGEND: { t: TerrainType; ford?: boolean; art?: string; hill?: boolean }[] = [
   { t: 'plain' },
   { t: 'hill' },
   { t: 'forest' },
@@ -446,6 +515,10 @@ const LEGEND: { t: TerrainType; ford?: boolean; art?: string }[] = [
   { t: 'marsh' },
   { t: 'ditch' },
   { t: 'wall' },
+  { t: 'wall', hill: true },
+  { t: 'camp', hill: true },
+  { t: 'steep', art: 'wall' },
+  { t: 'steep', art: 'town' },
   { t: 'river', ford: true, art: 'coast' },
 ];
 
@@ -500,10 +573,10 @@ export default function TerrainGallery() {
 
       {show('legend') && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, margin: '12px 0 4px' }}>
-          {LEGEND.map(({ t, ford, art }) => (
-            <div key={`${t}${ford ? 'f' : ''}${art ?? ''}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <TerrainIcon t={t} ford={ford} art={art} size={iconSize} />
-              <span style={{ fontSize: 15 }}>{terrainName(t, !!ford, false, art)}</span>
+          {LEGEND.map(({ t, ford, art, hill }) => (
+            <div key={`${t}${ford ? 'f' : ''}${art ?? ''}${hill ? 'h' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <TerrainIcon t={t} ford={ford} art={art} hill={hill} size={iconSize} />
+              <span style={{ fontSize: 15 }}>{terrainName(t, !!ford, false, art, hill)}</span>
             </div>
           ))}
         </div>
@@ -558,6 +631,34 @@ export default function TerrainGallery() {
               ))}
             </div>
           ))}
+        </>
+      )}
+
+      {show('exp3') && (
+        <>
+          <div style={h2}>Expansion #3: city walls, towns, hills under camps and walls, steep slopes (normal | flipped)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(560px, 1fr))', gap: 18 }}>
+            {EXP3_SAMPLES.map(({ label, s, hexes }) => (
+              <div key={label}>
+                <div style={{ fontSize: 15, marginBottom: 4 }}>{label}</div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {[false, true].map((f) => (
+                    <div key={String(f)} style={{ flex: '1 1 0' }}>
+                      <Board s={s} flipped={f} width="100%" units={false} viewBox={cropBox(hexes, f)} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={h2}>313 Brindisi: ship markers (normal | flipped; one Caesarian transport taken)</div>
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 18 }}>
+            {[false, true].map((f) => (
+              <div key={String(f)} style={{ flex: '1 1 640px', maxWidth: 1200 }}>
+                <Board s={exp3(SHIPS_ID)} flipped={f} width="100%" units={false} objectives={{ defs: shipDefs(), state: SHIP_STATE, blocks: SHIP_BLOCKS }} />
+              </div>
+            ))}
+          </div>
         </>
       )}
 

@@ -11,7 +11,8 @@ type Box = IconBox;
 
 // Measured extents of one figure (i = 2) in its local frame (feet at 0,0, incl. weapons, about 1 unit of margin), used to
 // centre and scale icons. The base kits' boxes; LBC, CAM, HWM and BCH measured over the Roman, Punic and Greek kits. A kit
-// whose figure differs by more than 1.5 units has its own box (`KITS[kit].iconBox`). Measure with #/gallery/art/boxes.
+// whose figure differs by more than 1.5 units has its own box (`KITS[kit].iconBox`), and so does a look whose own figures
+// differ from its kit's (`LookStyle.iconBox`). Measure with #/gallery/art/boxes.
 const BOX: Record<UnitType, Box> = {
   LI: [-35, 0.4, -11.7, 12.4],
   LB: [-33.4, 0.4, -9.6, 14.6],
@@ -43,7 +44,7 @@ function UnitIconImpl({ type, look, blockColor, size, elite }: { type: UnitType;
   const p = paletteFor(look, blockColor);
   // an elite's own figure (base cavalry stays the base figure whatever its elite)
   const eliteBox = elite && !(figureKind(type) === 'horse' && baseCavalry(type, p.kit)) ? ELITE_BOX[elite]?.[type] : undefined;
-  const [top, bottom, left, right] = eliteBox ?? KITS[p.kit].iconBox[type] ?? BOX[type];
+  const [top, bottom, left, right] = eliteBox ?? p.style.iconBox?.[type] ?? KITS[p.kit].iconBox[type] ?? BOX[type];
   const s = size / Math.max(bottom - top, right - left);
   const cx = (left + right) / 2;
   const cy = (top + bottom) / 2;

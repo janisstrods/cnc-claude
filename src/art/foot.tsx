@@ -64,6 +64,9 @@ export interface FootKit {
   woad?: boolean;
   /** The shield's device instead of the look's (captured Roman shields keep their thunderbolts). */
   device?: EmblemKind;
+  // Expansion #3
+  /** The broad bronze belt of the Samnites instead of the leather one. */
+  belt?: 'bronze';
 }
 
 /**
@@ -501,7 +504,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
   } else if (kit.spare === 'spear') {
     spare = <Spear x1={1.4} y1={-1.8} x2={9.8 + lean} y2={-38} f={f} w={0.85} blade={3.4} bladeW={1.4} />;
   }
-  if (kit.shield === 'round') {
+  if (kit.shield === 'round' || kit.shield === 'caetra') {
     nearArm = <Arm s={nearShoulder} e={[4.4, -16.8]} h={[5.6, -15]} f={f} near sleeve={sleeve} long={long} woad={woad} />;
   }
   if (nearArmOverride) nearArm = nearArmOverride;
@@ -518,7 +521,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit;
       {kit.cloak && <BackCloak p={p} />}
       {kit.pelt && <FurCloak p={p} />}
       <LegsEl f={f} legs={kit.legs} />
-      <Body f={f} torso={kit.torso} skirt={kit.skirt} pteruges={kit.pteruges} hips={hips} />
+      <Body f={f} torso={kit.torso} skirt={kit.skirt} pteruges={kit.pteruges} hips={hips} bronzeBelt={kit.belt === 'bronze'} />
       {kit.woad && kit.torso === 'bare' && <WoadBody p={p} />}
       {kit.doubling && <MailDoubling p={p} />}
       {kit.pelt && <FurCollar p={p} />}

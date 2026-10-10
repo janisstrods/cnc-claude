@@ -379,7 +379,8 @@ describe('named leaders', () => {
     for (const n of ['Caesar', 'Julius Caesar', 'julius caesar', ' Caesar ', 'C. Julius Caesar']) expect(leaderLook(n)?.names[0], n).toBe('Caesar');
     expect(leaderLook('Spartacus')?.names[0]).toBe('Spartacus');
     for (const n of ['Lucius Caesar', 'Crixus', 'Marius', '', undefined]) expect(leaderLook(n), String(n)).toBeUndefined();
-    expect(LEADER_LOOKS.map((l) => l.names[0])).toEqual(['Caesar', 'Spartacus']);
+    // the Expansion #2 leaders come first (Expansion #3 adds Pompey after them)
+    expect(LEADER_LOOKS.map((l) => l.names[0]).slice(0, 2)).toEqual(['Caesar', 'Spartacus']);
   });
 
   it('Caesar wears the laurel wreath and the scarlet cloak and rides a white horse; another Marian general does not', () => {
