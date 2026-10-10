@@ -636,6 +636,17 @@ const GERMANIC = look({
   fur: '#7a5c3c',
 });
 
+/** The Slave army: undyed wool and whatever the escaped gladiators, herdsmen and captives had; captured Roman bronze. */
+const SLAVE = look({
+  tunic: '#c8b88f', trim: '#7a5a3a', trousers: '#6a5a44', cloak: '#6a5a44',
+  shield: '#8a6a44', shieldRim: '#c9a25a', shieldEmblem: '#efe4c4',
+  paint: '#a8844a', paintEmblem: '#2a2018',
+  crest: '#3a2a1e', crestAlt: '#c8b88f',
+  // figure i takes skin[i] and hair[(3i + 1) % 4]: a dark Thracian, a red-haired Gaul, a fair German, a dark Italian
+  skin: ['#d8a87e', '#e8bc94', '#e4b48a', '#c8946a'], hair: ['#a8582a', '#2e1d12', '#3a2416', '#d8b060'],
+  horses: HORSES_NORTH, fur: '#7a5c3c',
+});
+
 /** The legions of Marius and Caesar: red tunics and scuta with Jupiter's winged thunderbolt in gold, bronze helmets. */
 const MARIAN = look({
   tunic: '#b0262c', trim: '#e8c050', trousers: '#5a4030', cloak: '#8c1c24',
@@ -695,6 +706,21 @@ const EGYPTIAN: FootLook = { helmet: 'nemes', torso: 'bare', legs: 'bare', sleev
 const PELTAST: FootLook = { shield: 'pelta', helmet: 'thracian', crest: 'none', shieldScale: 1, torso: 'tunic' };
 /** Skirmishers who always wear a cap: the cue that sets the Epirote and Antigonid light troops apart from the bare-headed Roman velites. */
 const CAPPED_LIGHTS: Partial<Record<UnitType, FootLook>> = { LI: { helmet: 'kausia' }, LB: { helmet: 'petasos' }, LS: { helmet: 'petasos' } };
+
+/** The Slave army's Thracians: boots, a crescent shield, bearded. */
+const THRACIAN_LIGHT: FootLook = {
+  torso: 'tunic', skirt: true, sleeve: true, legs: 'boots', helmet: 'none', crest: 'none', hair: 'short', beard: true, moustache: false,
+  torc: false, shield: 'pelta', shieldScale: 0.84, shieldDy: 0, weapon: 'javelin', spare: 'javelins',
+};
+/** Spartacus' countrymen: the Thracian helmet and the curved sica. */
+const THRACIAN_SWORD: FootLook = { ...THRACIAN_LIGHT, helmet: 'thracian', crest: 'horsehair', shieldScale: 1, weapon: 'sica', spare: undefined };
+/** Italian herdsmen of the hills: a felt hat, bare legs. */
+const HERDSMAN: FootLook = { torso: 'tunic', skirt: true, sleeve: true, legs: 'bare', helmet: 'petasos', crest: 'none', hair: 'short', beard: true, moustache: false, torc: false };
+/** An escaped gladiator: brimmed visored helmet with a tall crest, bare chest, greaves, a small shield and a short sword. */
+const GLADIATOR: FootLook = {
+  torso: 'bare', skirt: true, sleeve: false, legs: 'greaves', helmet: 'gladiator', crest: 'plume2', hair: 'short', beard: false, moustache: false,
+  torc: false, shield: 'board', shieldScale: 0.72, shieldDy: -1, weapon: 'sword',
+};
 
 const ROMAN_LOOK: LookDef = { kit: 'roman', palette: ROMAN, style: { emblems: ['rome'], device: 'wreath', finial: 'eagle' } };
 const CARTHAGINIAN_LOOK: LookDef = { kit: 'punic', palette: CARTHAGINIAN, style: { emblems: ['carthage'], device: 'carthage', finial: 'crescent' } };
@@ -919,7 +945,33 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
       ],
     },
   },
-  slave: CARTHAGINIAN_LOOK,
+  slave: {
+    kit: 'celtic', palette: SLAVE,
+    style: {
+      emblems: ['crescents', 'triskeles', 'halves', 'pileus'], device: 'pileus', finial: 'pileus',
+      // every unit mixes a Thracian, a Gaul, a German and an Italian herdsman or gladiator (figures 0-3)
+      variants: [
+        { ...tunicOf('#b07a34'), ...trousersOf('#5a4a3a'), ...paintOf('#8a5a34', '#efe4c4') },
+        { ...tunicOf('#3a6a9a'), ...trousersOf('#a8843a'), ...paintOf('#ebe1c4', '#2c4c7c') },
+        { ...tunicOf('#6e6450'), ...trousersOf('#4a4236'), ...paintOf('#e4dcc4', '#2a2420') },
+        { ...tunicOf('#ddd4bf'), ...paintOf('#a8844a', '#2a2018'), ...capOf('#9a7a4a') },
+      ],
+      foot: {
+        LI: [THRACIAN_LIGHT, {}, { from: 'germanic' }, { ...HERDSMAN, shield: 'none', weapon: 'javelin', spare: 'javelins' }],
+        LS: [{ ...THRACIAN_LIGHT, shield: 'none', weapon: 'sling', spare: undefined }, {}, { from: 'germanic' }, { ...HERDSMAN, shield: 'none', weapon: 'sling' }],
+        AX: [{ ...THRACIAN_LIGHT, helmet: 'thracian', crest: 'knob', shieldScale: 1, spare: 'spear' }, {}, { from: 'germanic' }, { ...HERDSMAN, shield: 'round', weapon: 'javelin', spare: 'spear' }],
+        WA: [THRACIAN_SWORD, {}, { from: 'germanic' }, GLADIATOR],
+        // the Romans' own arms, taken from their camps
+        MI: [
+          { from: 'lateRoman', doubling: false, beard: true, device: 'wingedBolt' }, {}, { from: 'germanic' },
+          { from: 'lateRoman', torso: 'tunic', sleeve: true, doubling: false, device: 'wingedBolt' },
+        ],
+      },
+      mounted: {
+        LC: [{ rider: { torso: 'tunic', helmet: 'thracian', crest: 'none', shield: 'none', weapon: 'javelin', legs: 'trousers', spare: true, cloak: true, beard: true } }, {}],
+      },
+    },
+  },
   marian: {
     kit: 'lateRoman', palette: MARIAN,
     // generals on a bay horse (Caesar rides his white one, LEADER_LOOKS)
