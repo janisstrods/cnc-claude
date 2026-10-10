@@ -155,6 +155,11 @@ export class GameController {
   private skipAnim = false;
   /** Toasts waiting for the notice on the board to run its full time (see `toast`). */
   private toastQueue: { text: string; kind: 'turn' | 'notice'; ms: number; stale?: () => boolean }[] = [];
+  /**
+   * Held banners per side as the log last told them (§18.4). The engine updates both sides before it emits either `held`
+   * event, so the display before the second event already has its new count: the change is measured against this.
+   */
+  private shownHeld: Record<Side, number> = { top: 0, bottom: 0 };
 
   constructor(config: SessionConfig, opponent: Opponent, answers: Answer[] = [], check?: SavedGame['check']) {
     this.config = config;
@@ -194,6 +199,8 @@ export class GameController {
       toast: null,
       fatal: false,
     };
+    // a new game's turn-start events are still queued: they are measured from the opening position
+    this.syncHeld(answers.length ? this.driver.state : initial);
     if (answers.length) this.addLog({ text: 'Battle resumed from your last save.', kind: 'info' });
     else {
       this.addLog({ text: `${sc.name} (${sc.year}).`, kind: 'turn' });
@@ -254,6 +261,11 @@ export class GameController {
     return ms / (this.view.speed || 1);
   }
 
+  /** The held banners the log has told, taken from `s` (wherever the display is resynced without its events). */
+  private syncHeld(s: GameState) {
+    this.shownHeld = { top: heldBanners(s, 'top'), bottom: heldBanners(s, 'bottom') };
+  }
+
   private addLog(l: Omit<LogLine, 'id'>) {
     const log = [...this.view.log, { ...l, id: seq++ }];
     if (log.length > 400) log.splice(0, log.length - 400);
@@ -284,6 +296,7 @@ export class GameController {
       console.error(e);
       // the generator is dead: rebuild it from the recorded answers
       this.driver = GameDriver.replay(this.driver.initial, this.driver.answers, { snapshots: true });
+      this.syncHeld(this.driver.state);
       this.set({ error: 'That order could not be resolved — try another.', pending: this.driver.pending, display: cloneState(this.driver.state), canUndo: this.undoable(this.driver.pending) });
       return;
     }
@@ -305,6 +318,7 @@ export class GameController {
     if (!this.driver.canUndo() || this.busy) return;
     this.driver = this.driver.undo();
     this.driver.drainEvents();
+    this.syncHeld(this.driver.state);
     const p = this.driver.pending;
     this.set({ display: cloneState(this.driver.state), pending: p && p.side === this.config.humanSide ? p : null, canUndo: this.undoable(p), error: null, walking: {} });
     this.save();
@@ -638,7 +652,8 @@ export class GameController {
       case 'held': {
         // banners held through objectives (§18.4): gained while a position is held, lost when it lapses
         const army = after.players[e.side].army;
-        const change = e.held - heldBanners(before, e.side);
+        const change = e.held - this.shownHeld[e.side];
+        this.shownHeld[e.side] = e.held;
         const tally = `${e.total}/${after.bannersToWin}`;
         const holds = `holds ${e.held} banner${e.held === 1 ? '' : 's'}`;
         if (change > 0) {

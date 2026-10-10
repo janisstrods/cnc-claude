@@ -13,8 +13,8 @@ import { Board } from './Board';
 import type { GameController, LogLine } from './controller';
 import {
   ambushTexts, attackDice, bannerCounts, boardUi, commandBlocks, commandById, commandTipLine, deploymentSide, effectiveKind, expectedHits,
-  leaderTraitLines, leadershipHint, objectiveTipLines, pieceHexOf, possessive, retreatEliminates, rollingFireStep, terrainTipLines, unitSummary,
-  type UiSel,
+  leaderTraitLines, leadershipHint, objectiveTipLines, pieceHexOf, possessive, retreatEliminates, rollingFireStep, selectAllUnits,
+  terrainTipLines, unitSummary, type UiSel,
 } from './uiModel';
 import { RulesReference } from '../screens/RulesReference';
 import { HistoryButton } from '../history/HistoryDialog';
@@ -302,10 +302,8 @@ export function GameScreen({ controller, onExit, onRematch }: {
           btn(n ? `Confirm ${count} order${(max ?? n) > 1 ? 's' : ''}` : 'Order nothing', () => answer({ kind: 'orders', pieces: ui.orderSel }), { disabled: !!err, variant: n ? 'primary' : 'secondary', key: 'confirm' }),
         ];
         if (n) buttons.push(btn('Clear', () => setUi({ ...ui, orderSel: [] }), { variant: 'ghost' }));
-        if (mode === 'troop' && n === 0) {
-          const units = all.filter((id) => !isLeaderId(id));
-          if (units.length > 0 && units.length <= s.players[human].command) buttons.push(btn('Select all', () => setUi({ ...ui, orderSel: units }), { variant: 'secondary' }));
-        }
+        const allUnits = n === 0 ? selectAllUnits(s, human, d.card) : null;
+        if (allUnits) buttons.push(btn('Select all', () => setUi({ ...ui, orderSel: allUnits }), { variant: 'secondary' }));
         if (amb) {
           const title = ambushTexts(s, ambushLeader).button;
           for (const sec of ambushSections(d.card)) buttons.push(btn(`Ambush: ${SECTION_LABEL[sec]}`, () => answer({ kind: 'orders', pieces: [], ambushSection: sec }), { variant: 'secondary', key: `amb-${sec}`, title }));

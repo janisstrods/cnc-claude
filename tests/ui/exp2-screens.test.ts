@@ -5,7 +5,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import {
-  UNIT_STATS, cloneState, createGame, hexId, rollingFirePaths,
+  UNIT_STATS, cloneState, createGame, eligiblePieces, hexId, rollingFirePaths, validateOrders,
   type Decision, type GameEvent, type GameState, type HexId, type QueuedEvent, type RetreatOption, type Side, type Unit, type UnitType,
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
@@ -15,7 +15,7 @@ import { GameController, newSessionConfig } from '../../src/ui/game/controller';
 import { RandomOpponent } from '../../src/ui/game/opponent';
 import {
   ambushTexts, bannerCounts, boardUi, commandTipLine, edgeBlocksOf, leaderTraitLines, objectiveTipLines, possessive, retreatEliminates,
-  rollingFireStep, selectionCommand, terrainTipLines, unitSummary, type UiSel,
+  rollingFireStep, selectAllUnits, selectionCommand, terrainTipLines, unitSummary, type UiSel,
 } from '../../src/ui/game/uiModel';
 import { PICKER_TABS, battlesOf } from '../../src/ui/screens/picker';
 import { Expansion2 } from '../../src/ui/screens/RulesReference';
@@ -232,6 +232,23 @@ describe('separate commands (210)', () => {
     for (const u of mounted) if (u.command === 'gellius') expect(narrowed.has(u.hex), u.id).toBe(false);
     for (const u of mounted) if (u.command === 'lentulus' && u !== lc) expect(narrowed.get(u.hex), u.id).toBe('eligible');
   });
+  it('"Select all" is offered only when every eligible unit belongs to one command', () => {
+    // the Roman troop cards of 210 all reach units of both commands: selecting them all would be an illegal order
+    for (const card of ['orderLight', 'orderHeavy', 'orderMounted', 'mountedCharge', 'moveFireMove'] as const) {
+      const units = eligiblePieces(s, 'bottom', card).filter((id) => !id.startsWith('L'));
+      expect(units.length, card).toBeLessThanOrEqual(s.players.bottom.command);
+      expect(validateOrders(s, 'bottom', card, units), card).toBe('One card orders one army only.');
+      expect(selectAllUnits(s, 'bottom', card), card).toBeNull();
+    }
+    // the Gauls have no commands: their cards offer it as before, and the selection is a legal order
+    const light = selectAllUnits(s, 'top', 'orderLight');
+    expect(light?.length).toBeGreaterThan(0);
+    expect(validateOrders(s, 'top', 'orderLight', light!)).toBeNull();
+    // a battle without commands
+    const base = game('001');
+    const mounted = selectAllUnits(base, 'bottom', 'orderMounted');
+    expect(mounted).toEqual(eligiblePieces(base, 'bottom', 'orderMounted').filter((id) => !id.startsWith('L')));
+  });
   it('the board draws a command badge on every unit of a command, none elsewhere', () => {
     const board = (st: GameState) => renderToStaticMarkup(createElement(Board, {
       state: st, flipped: false, humanSide: 'bottom', walking: {}, highlights: new Map(), leaderHighlights: new Map(), badges: new Map(),
@@ -362,6 +379,27 @@ describe('controller log lines', () => {
       lost.special.objState[0].held.bottom = 0;
       await animate({ t: 'held', side: 'bottom', held: 0, total: 0, reason: 'Control of the hills decides the day.' }, lost);
       expect(lastLog(c)).toBe(`The Roman army loses 2 held banners and now holds 0 banners (0/${s0.bannersToWin}).`);
+    } finally {
+      c.dispose();
+    }
+  });
+
+  it('the hills changing hands (202): both held events share one snapshot, and the side gaining them is told so', async () => {
+    const { c, animate } = await settled('202', 'bottom');
+    try {
+      const s0 = c.driver.state;
+      const REASON = 'Control of the hills decides the day.';
+      const [top, bottom] = [s0.players.top.army, s0.players.bottom.army];
+      const topHolds = cloneState(s0);
+      topHolds.special.objState[0].held = { top: 2, bottom: 0 };
+      await animate({ t: 'held', side: 'top', held: 2, total: 2, reason: REASON }, topHolds);
+      // the engine updates both sides before it emits either event: the loss first, then the gain, after the same update
+      const swapped = cloneState(topHolds);
+      swapped.special.objState[0].held = { top: 0, bottom: 2 };
+      await animate({ t: 'held', side: 'top', held: 0, total: 0, reason: REASON }, swapped);
+      expect(lastLog(c)).toBe(`The ${top} army loses 2 held banners and now holds 0 banners (0/${s0.bannersToWin}).`);
+      await animate({ t: 'held', side: 'bottom', held: 2, total: 2, reason: REASON }, swapped);
+      expect(lastLog(c)).toBe(`${REASON} The ${bottom} army holds 2 banners (2/${s0.bannersToWin}) — held, so it can be lost again.`);
     } finally {
       c.dispose();
     }

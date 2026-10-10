@@ -2,7 +2,7 @@
 // descriptions shown in tooltips and the rules reference.
 import {
   ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, bannerTotal, baselineRow, battleReady, battleTargets, canMarch,
-  cardKind, closeCombatDice, closeHitChance, eligiblePieces, eliteDef, fireMoveLimit, heldBanners, inSection, isFord, isLeaderId, leaderAt,
+  cardKind, closeCombatDice, closeHitChance, commandClash, eligiblePieces, eliteDef, fireMoveLimit, heldBanners, inSection, isFord, isLeaderId, leaderAt,
   leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces, nextCaptureBanners, orderCommander, orderMode, other, pieceMoves,
   rangeOf, rangedBaseDice, rangedDice, rollingFirePaths, rowOf, sectionsOf, terrainAt, unitAt, unitById, veryHills,
   type Blocks, type CardKind, type CommandDef, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type Leader,
@@ -612,6 +612,18 @@ export function selectionCommand(s: GameState, sel: readonly string[]): string |
     if (c !== undefined) return c;
   }
   return undefined;
+}
+
+/**
+ * The units the "Select all" button orders for a troop card: every eligible unit, when they fit the side's Command and
+ * belong to one command (210, §18.5: one card orders one army only). Null: no such button (another order mode, no
+ * eligible unit, too many, or units of two commands).
+ */
+export function selectAllUnits(s: GameState, side: Side, card: CardKind): string[] | null {
+  if (orderMode(s, side, card).mode !== 'troop') return null;
+  const units = eligiblePieces(s, side, card).filter((id) => !isLeaderId(id));
+  if (!units.length || units.length > s.players[side].command) return null;
+  return commandClash(s, units) === null ? units : null;
 }
 
 /** The definition of a command id. */
