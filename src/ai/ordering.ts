@@ -3,7 +3,7 @@ import { CARD_DEFS, modsFor } from '../engine/cards';
 import { ambushAvailable, ambushSections } from '../engine/flow';
 import { areAdjacent, inSection } from '../engine/hex';
 import { unitMoves } from '../engine/movement';
-import { leadershipChain, orderMode, validateOrders } from '../engine/orders';
+import { commandClash, leadershipChain, orderMode, validateOrders } from '../engine/orders';
 import { isLoneLeader, leaderUnit, leadersOf, unitsOf } from '../engine/query';
 import { cloneState } from '../engine/setup';
 import { UNIT_STATS } from '../engine/units';
@@ -49,6 +49,7 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
   const s = cloneState(s0);
   s.active = side;
   s.turn.mods = kind ? modsFor(kind) : modsFor('order2C');
+  s.turn.effective = kind ?? 'order2C'; // the card ordering (Rolling Fire needs one that is not a Tactic card, §18.5)
   s.turn.ordered = {};
   const occ = new Occ(s);
   const out = new Map<string, number>();
@@ -147,7 +148,8 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
   const leaders = leadersOf(s, side);
   const total = (ids: string[]) => ids.reduce((a, id) => a + Math.max(0, b(id)), 0);
   const valid = (ids: string[]) => !validateOrders(s, side, kind, ids);
-  const clash = commandClash(s, units, leaders);
+  // separate commands (§18.5): adding the piece would mix two commands (never in a battle without commands)
+  const clash = (sel: string[], id: string) => s.special.commands.length > 0 && commandClash(s, [...sel, id]) !== null;
   const fill = (order: string[], seed: string[] = []): string[] => {
     const sel = [...seed];
     for (const id of order) {
@@ -279,27 +281,16 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
   if (!out.length) out.push({ pieces: [], benefit: 0 });
   let res = dedupe(out).slice(0, max);
   if (ambushAvailable(s, side, kind)) {
-    for (const sec of ambushSections(kind)) res.push({ pieces: [], ambush: sec, benefit: 0.5 });
+    // the ambush entry (Trebbia's Leadership cards, 206's Order Light Troops too): one candidate per section the card
+    // allows, the same for every trigger card; the turn search plays each out (its benefit only labels it)
+    for (const sec of ambushSections(kind)) res.push({ pieces: [], ambush: sec, benefit: AMBUSH_BENEFIT });
     res = dedupe(res);
   }
   return res;
 }
 
-/**
- * Separate commands (§18.5): `clash(sel, id)` is true when adding the piece to the selection would mix two commands
- * (pieces with no command go with any). Never true in a battle without commands.
- */
-function commandClash(s: GameState, units: Unit[], leaders: Leader[]): (sel: string[], id: string) => boolean {
-  if (!s.special.commands.length) return () => false;
-  const command = new Map<string, string | undefined>([...units, ...leaders].map((p) => [p.id, p.command]));
-  return (sel, id) => {
-    const c = command.get(id);
-    return c !== undefined && sel.some((x) => {
-      const d = command.get(x);
-      return d !== undefined && d !== c;
-    });
-  };
-}
+/** Nominal benefit of an ambush entry candidate (not used to rank it: the search simulates each section). */
+const AMBUSH_BENEFIT = 0.5;
 
 function leadershipChains(
   s: GameState, side: Side, kind: CardKind, l: Leader, chain: number, b: (id: string) => number, units: Unit[],

@@ -1,6 +1,6 @@
 // Simulation harness: run the engine's own turn generator on cloned, determinised states with AI policies.
 import { CARD_LIST } from '../engine/cards';
-import { turnFlow, type Gen } from '../engine/flow';
+import { continueTurn, turnFlow, type Gen } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
 import { other } from '../engine/query';
 import type { Answer, Decision, FlowCtx, GameState, HexId, Side } from '../engine/types';
@@ -108,11 +108,28 @@ export function runTurnUntil(s: GameState, policy: Policy, rng: Rng, stop: (d: D
 const FIRST_STRIKE_ID = CARD_LIST.indexOf('firstStrike');
 
 /**
+ * Must a resumed turn continue exactly where it stands (`continueTurn`)? Restarting it (below) runs the turn-start
+ * objectives again, which would capture a hex a unit has only just reached (turn-start captures, §18.4), and judges the
+ * first battle step under First Strike, a Tactic card, which hides Rolling Fire (§18.5). Battles without either keep the
+ * restart, so their searches are unchanged.
+ */
+function exactResume(s: GameState): boolean {
+  if (s.special.rollingFire) return true;
+  return s.special.objectives.some((o) => o.kind === 'capture' && o.when === 'turnStart');
+}
+
+/**
  * Continue a turn that is in its movement or battle phase. Generators cannot be cloned, so the turn is restarted on
  * the cloned state with a no-op card (First Strike, which orders nothing) and the real card's modifiers are restored
- * before the first decision is answered. `from = 'battle'` skips any remaining movement.
+ * before the first decision is answered; in battles with turn-start captures or Rolling Fire the engine's
+ * `continueTurn` resumes it where it stands instead. `from = 'battle'` skips any remaining movement.
  */
 export function resumeTurn(s: GameState, policy: Policy, rng: Rng, from: 'move' | 'battle'): boolean {
+  if (exactResume(s)) {
+    const st: Runner = { rejected: false };
+    const ctx: FlowCtx = { emit() {}, invalid() { st.rejected = true; } };
+    return drive(s, continueTurn(s, ctx, from), policy, rng, st, 600);
+  }
   const side = s.active;
   const t = s.turn;
   const saved = { mods: { ...t.mods }, card: t.card, effective: t.effective, mirrored: t.mirrored };

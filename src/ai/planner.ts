@@ -1,5 +1,6 @@
 // Turn planning by Monte-Carlo simulation: candidate (card, orders, moves) plans are played out on determinised clones
 // with the engine's own turn generator, evaluated statically, and compared (minus the value of keeping the card).
+import { bannerTotal } from '../engine/banners';
 import { cardKind } from '../engine/cards';
 import { nextTurn, pieceMoves, turnFlow, type Gen } from '../engine/flow';
 import { other } from '../engine/query';
@@ -7,7 +8,7 @@ import { forcedDiceLeft } from '../engine/rng';
 import { cloneState } from '../engine/setup';
 import type { Answer, CardKind, Decision, FlowCtx, GameState, HexId, SectionName, Side } from '../engine/types';
 import { cardRetention, quickCardScore } from './cardsense';
-import { attackOptions } from './estimate';
+import { attackAnswer, attackOptions, sameAttack } from './estimate';
 import { evaluate } from './evaluate';
 import { greedyMoveStep, scoreOption, type MoveCtx } from './moves';
 import { orderCandidates, pieceBenefits, type OrderCandidate } from './ordering';
@@ -112,6 +113,8 @@ export interface Cand {
   effective: CardKind | null;
   orders: string[] | null;
   ambush?: SectionName;
+  /** The command named for the card when it asked (separate commands, §18.5). */
+  command?: string;
   moves: Answer[] | null;
   label: string;
   retention: number;
@@ -154,9 +157,16 @@ class Stepper {
     this.cur = r.done ? null : r.value;
     return !this.rejected;
   }
-  /** Names the command when the card asks for one (§18.5), as the live game will (same function), then plans on. */
-  settleCommand(): void {
-    if (this.cur?.kind === 'chooseCommand') this.answer({ kind: 'choose', index: chooseCommandIndex(this.s, this.cur) });
+  /**
+   * Names the command when the card asks for one (§18.5), as the live game will (same function, which sees no hidden
+   * information), then plans on. Returns the command named (undefined when the card asked nothing).
+   */
+  settleCommand(W: Weights): string | undefined {
+    if (this.cur?.kind !== 'chooseCommand') return undefined;
+    const d = this.cur;
+    const index = chooseCommandIndex(this.s, d, W);
+    this.answer({ kind: 'choose', index });
+    return d.options[index];
   }
 }
 
@@ -207,10 +217,11 @@ function buildCand(root: GameState, ctx: PlanCtx, card: number, effective: CardK
     if (!st.answer(ordersAnswer(oc))) return null;
     orders = oc?.pieces ?? [];
   }
-  st.settleCommand();
+  const command = st.settleCommand(ctx.W);
   const kind = cardKind(card);
   const base = {
-    card, kind, effective, orders, ambush: oc?.ambush, retention: cardRetention(root, ctx.me, kind, ctx.W) * (ctx.keepScale?.(card) ?? 1),
+    card, kind, effective, orders, ambush: oc?.ambush, command,
+    retention: cardRetention(root, ctx.me, kind, ctx.W) * (ctx.keepScale?.(card) ?? 1),
     n: 0, sum: 0, laN: 0, laSum: 0, oc, vals: [] as number[],
   };
   const label = `${kind}${effective && effective !== kind ? `->${effective}` : ''}${oc?.ambush ? ` ambush:${oc.ambush}` : ''} [${(orders ?? []).join(',')}] ${v.tag}`;
@@ -237,7 +248,7 @@ function replayPrefix(root: GameState, ctx: PlanCtx, c: Cand, upto: number): Ste
     const a: Answer = c.ambush ? { kind: 'orders', pieces: [], ambushSection: c.ambush } : { kind: 'orders', pieces: c.orders ?? [] };
     if (!st.answer(a)) return null;
   }
-  st.settleCommand();
+  st.settleCommand(ctx.W);
   for (let j = 0; j < upto; j++) {
     if (!st.cur || st.cur.kind !== 'move' || !st.answer(c.moves![j])) return null;
   }
@@ -649,14 +660,14 @@ export function decideBattle(s: GameState, ctx: PlanCtx): Answer {
   const opts = attackOptions(s, W);
   if (!opts.length) return { kind: 'endBattle' };
   const greedy = pickAttack(opts, W, ctx.rng, ctx.cfg.battleNoise);
-  const greedyAns: Answer = greedy ? { kind: 'attack', unit: greedy.unit, target: greedy.target } : { kind: 'endBattle' };
+  const greedyAns: Answer = greedy ? attackAnswer(greedy) : { kind: 'endBattle' };
   if (ctx.cfg.battleRollouts <= 0 || forcedDiceLeft() > 0) return greedyAns;
   const must = opts.filter((o) => o.must);
   const pool = (must.length ? must : opts)
     .slice()
     .sort((a, b) => b.ev + 0.15 * b.pElim - (a.ev + 0.15 * a.pElim))
     .slice(0, ctx.cfg.battleCands);
-  const answers: Answer[] = pool.map((o) => ({ kind: 'attack', unit: o.unit, target: o.target }));
+  const answers: Answer[] = pool.map(attackAnswer);
   if (!must.length) answers.push({ kind: 'endBattle' });
   if (answers.length === 1) return answers[0];
   const sums = answers.map(() => 0);
@@ -674,7 +685,7 @@ export function decideBattle(s: GameState, ctx: PlanCtx): Answer {
   }
   // Game-deciding phase: look harder at the two best answers (rare catastrophes and wins need more samples).
   const T = s.bannersToWin;
-  const matchPoint = s.players[ctx.me].banners >= T - 1 || s.players[other(ctx.me)].banners >= T - 1;
+  const matchPoint = bannerTotal(s, ctx.me) >= T - 1 || bannerTotal(s, other(ctx.me)) >= T - 1;
   if ((terminal || matchPoint) && answers.length >= 2) {
     const order = answers.map((_, i) => i).sort((a, b) => sums[b] / ns[b] - sums[a] / ns[a]).slice(0, 2);
     for (let r = 0; r < ctx.cfg.battleRollouts; r++) {
@@ -690,7 +701,7 @@ export function decideBattle(s: GameState, ctx: PlanCtx): Answer {
   let bv = -Infinity;
   answers.forEach((a, i) => {
     // small prior toward the analytic favourite to break near-ties
-    const prior = a.kind === 'attack' && greedy && a.unit === greedy.unit && a.target === greedy.target ? 0.01 : 0;
+    const prior = greedy && sameAttack(a, greedy) ? 0.01 : 0;
     const v = sums[i] / Math.max(1, ns[i]) + prior;
     if (v > bv) {
       bv = v;
