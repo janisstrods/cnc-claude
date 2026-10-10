@@ -3,7 +3,7 @@
 // readings); the immobile recruits of 306 Bibracte; and 304 Valentia's two Sertorian commands, whose leaders both carry one.
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  GameDriver, OFF_BOARD, battleTargets, canFireAt, canMarch, cloneState, createGame, hasPilum, movablePieces, pieceMoves, unitMoves,
+  GameDriver, OFF_BOARD, battleTargets, canFireAt, canMarch, cloneState, createGame, evadeOptions, hasPilum, movablePieces, pieceMoves, unitMoves,
   validateOrders, type LeaderTrait, type UnitType,
 } from '../../src/engine';
 import { scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
@@ -291,6 +291,25 @@ describe('immobile units (306 Bibracte, §18.11, X3 Q15)', () => {
     must(d, { kind: 'playCard', card });
     must(d, { kind: 'orders', pieces: ['u1'] });
     expect(pieceMoves(d.state, 'u1')).toEqual([]);
+  });
+
+  it('never evades, even when its type could: no evade option, so nothing to choose (§18.11)', () => {
+    // a light infantry may evade a medium infantry's close combat; an immobile one may not (it never moves)
+    const attacked = (immobile: boolean) => {
+      const s = build({ first: 'top', units: [bottom('LI', [5, 6], { immobile }), top('MI', [4, 6])] });
+      noFirstStrike(s);
+      expect(evadeOptions(s, s.units[0]).length > 0).toBe(!immobile);
+      const d = play(s, 'order4C', ['u2']);
+      if (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
+      forceDice(n('heavy', 4));
+      must(d, { kind: 'attack', unit: 'u2', target: H(5, 6) });
+      return d;
+    };
+    expect(attacked(false).pending).toMatchObject({ kind: 'defend', canEvade: true });
+    const still = attacked(true);
+    expect(still.pending?.kind).not.toBe('defend'); // no evade and no First Strike: the combat is fought at once
+    expect(still.answer({ kind: 'defend', choice: 'evade' })).toBe(false);
+    expect(u(still, 'u1')!.hex).toBe(H(5, 6));
   });
 
   it('a leader may move onto it and attach; the unit still cannot move', () => {

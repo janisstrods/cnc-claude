@@ -109,9 +109,11 @@ export function elephantRetreatOptions(s: GameState, u: Unit, hexes: number): El
 
 /**
  * Evade options: 2 hexes toward own side (1 only if no 2-hex evade exists), not through units, lone enemy leaders,
- * impassable terrain or terrain the unit may not enter. Empty = cannot evade.
+ * impassable terrain or terrain the unit may not enter. Empty = cannot evade, and always for an immobile unit (306, §18.11:
+ * it never moves; it still retreats when flags force it).
  */
 export function evadeOptions(s: GameState, u: Unit): RetreatOption[] {
+  if (u.immobile) return [];
   const hasLeader = !!attachedLeader(s, u);
   const two: RetreatOption[] = [];
   const one: RetreatOption[] = [];

@@ -160,6 +160,7 @@ export function retreatRoom(s: GameState, occ: Occ, u: Unit, need: number): numb
 
 /** Can the unit evade at all (mirror of engine evadeOptions non-emptiness)? */
 export function canEvadeOcc(s: GameState, occ: Occ, u: Unit): boolean {
+  if (u.immobile) return false; // 306 (§18.11): an immobile unit never evades
   const hasLeader = !!attachedLeaderOcc(occ, u);
   const forbidden = barredTerrain(u.type);
   for (const h of rearOf(u.hex, u.side)) {
