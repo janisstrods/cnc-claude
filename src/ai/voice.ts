@@ -1,5 +1,6 @@
 // Battle-log flavour lines in the commander's voice. Lines never reveal hidden information: card lines are spoken
 // only after the card is played (it is revealed anyway), and nothing refers to cards still in hand.
+import { leaderHas } from '../engine/query';
 import type { ArmyLook, CardKind, EliteId, GameState, Side, UnitType } from '../engine/types';
 import type { Personality, Voice } from './personality';
 import type { Rng } from './rand';
@@ -47,7 +48,7 @@ const LINES: Record<Moment, Lines> = {
     reckless: ['Watch your general and do as I do!'],
   },
   ambush: {
-    any: ['Now, Mago! Spring the trap!', 'Out of the ravine, and into their rear!', 'They never saw it coming.'],
+    any: ['Now, {reserve}! Spring the trap!', 'Out of hiding, and into their rear!', 'They never saw it coming.'],
   },
   rally: {
     any: ['Re-form the ranks. Bind your wounds.', 'Rally to the standard!', 'Close up, close up. We are not done.'],
@@ -192,6 +193,31 @@ const TROOPS: Partial<Record<ArmyLook, Partial<Record<UnitType, string>>>> = {
   scythian: { LC: 'Scythian riders', LBC: 'Scythian horse archers', MC: 'Scythian nobles' },
   indian: { LB: 'Indian archers', AX: 'Indian foot', MC: 'Indian horse', HCH: 'Indian chariots', EL: 'war elephants' },
   mauryan: { LB: 'Mauryan archers', AX: 'Indian foot', MC: 'Mauryan horse', HCH: 'Mauryan chariots', EL: 'war elephants', HI: 'Mauryan guard' },
+  // Expansion #2: Rome and the barbarians
+  gallic: {
+    LI: 'Gallic skirmishers', LB: 'archers', LS: 'slingers', AX: 'Gallic foot', WA: 'Gallic warband', MI: 'Gaesatae',
+    HI: 'Gallic nobles', LC: 'Gallic light horse', MC: 'Gallic horse', BCH: 'Gallic chariots',
+  },
+  belgic: {
+    LI: 'Belgic skirmishers', AX: 'Belgic foot', WA: 'Belgic warband', MI: 'Nervian foot', LC: 'Belgic light horse',
+    MC: 'Belgic horse', BCH: 'Belgic chariots',
+  },
+  germanic: {
+    LI: 'Germanic skirmishers', LB: 'archers', AX: 'Germanic foot', WA: 'Germanic warband', MI: 'Germanic spearmen',
+    LC: 'Germanic light horse', MC: 'Germanic horse',
+  },
+  briton: {
+    LI: 'British skirmishers', LB: 'archers', LS: 'slingers', AX: 'British foot', WA: 'British warband',
+    LC: 'British light horse', MC: 'British horse', BCH: 'British chariots',
+  },
+  slave: {
+    LI: 'rebel skirmishers', LS: 'slingers', AX: 'rebel foot', WA: 'rebel warband', MI: 'gladiators', LC: 'rebel horse',
+    MC: 'rebel cavalry',
+  },
+  marian: {
+    LI: 'skirmishers', LB: 'Cretan archers', LS: 'Balearic slingers', AX: 'auxilia', WA: 'Germanic allies', MI: 'legionaries',
+    HI: 'veteran legionaries', LC: 'Numidian horse', MC: 'Roman horse', HWM: 'ballistae',
+  },
 };
 
 /** Elite units are called by their own name (§17.1). */
@@ -203,7 +229,18 @@ const ELITE_NAMES: Record<EliteId, string> = {
 export function troopName(s: GameState, side: Side, t: UnitType | undefined, elite?: EliteId): string {
   if (elite) return ELITE_NAMES[elite];
   if (!t) return 'men';
-  return TROOPS[s.players[side].look]?.[t] ?? DEFAULT_TROOPS[t];
+  const look = s.players[side].look;
+  // the slave army's gladiators are Spartacus' own while he leads it
+  if (look === 'slave' && t === 'MI') {
+    const sp = s.leaders.find((l) => l.side === side && l.hex >= 0 && leaderHas(l, 'spartacusDice'));
+    if (sp) return `${sp.name}' gladiators`;
+  }
+  return TROOPS[look]?.[t] ?? DEFAULT_TROOPS[t];
+}
+
+/** The leader of `side`'s off-board ambush reserve (Mago at the Trebbia, Marcellus at Aquae Sextiae), if any. */
+function reserveLeaderName(s: GameState, side: Side): string | undefined {
+  return s.special.reserveSide === side ? s.special.reserveLeaders.find((l) => l.side === side)?.name || undefined : undefined;
 }
 
 /** "The Romans", "Craterus' Successors" (an army name already plural keeps its form). */
@@ -268,6 +305,10 @@ export function speak(
   const text = raw
     .replace('{troops}', troopName(s, side, opts.troops, opts.elite))
     .replace('{enemy}', armyPlural(s.players[opp].army))
+    .replace(', {reserve}!', () => {
+      const name = reserveLeaderName(s, side);
+      return name ? `, ${name}!` : '!';
+    })
     .replace(/(^|[.!?]\s+)([a-z])/g, (_m, pre: string, c: string) => pre + c.toUpperCase());
   const who = s.players[side].commander || s.players[side].army;
   return `${who}: "${text}"`;
