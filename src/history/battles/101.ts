@@ -1,0 +1,134 @@
+// 101 Marathon, 490 BC. Top: Athenians and Plataeans (Callimachus); bottom: Persians (Datis).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '101',
+  context: {
+    war: 'Greco-Persian Wars: first invasion of Greece, 492–490 BC',
+    text: [
+      'In 498 BC Athens and Eretria sent ships to help the Ionian Greeks in their revolt against Persia, and the rebels burned Sardis. Once the revolt was crushed, Darius I sent a seaborne expedition under the Mede Datis and Artaphernes, the king\'s nephew, to punish both cities. It took Naxos, then Eretria after a six-day siege.',
+      'Guided by Hippias, the exiled tyrant of Athens, the Persians landed on the plain of Marathon, some 40 km from the city, in August or September 490 BC. The Athenians marched out, camped at a shrine of Heracles at the edge of the plain and were joined by the Plataeans. Sparta promised help only after the full moon. The armies faced each other for several days before, by Herodotus\' account, Miltiades won the polemarch Callimachus over to fighting.',
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Athenians and Plataeans',
+      commanders: ['Callimachus (polemarch, right wing)', 'Miltiades (one of the ten generals)', 'Aristides and Themistocles (centre, per Plutarch)', 'Arimnestus (Plataeans, per Pausanias)'],
+      strength: 'c. 9,000–11,000 hoplites with the Plataeans (later sources); Herodotus gives no figure',
+      forces: 'Citizen hoplites in ten tribal regiments, the Plataeans on the left; no cavalry or archers to speak of.',
+    },
+    bottom: {
+      name: 'Persians and subject peoples',
+      commanders: ['Datis the Mede', 'Artaphernes (nephew of Darius)', 'Hippias (exiled Athenian tyrant, as guide)'],
+      strength: 'Unknown; modern estimates c. 20,000–25,000 fighting men. Later ancient writers give hundreds of thousands',
+      forces: 'Persian and Saka infantry with bows and wicker shields, contingents of subject peoples, and cavalry that plays no clear part in Herodotus.',
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'sea', points: [[-60, -60], [62, -60], [52, 120], [66, 280], [50, 420], [62, 660], [-60, 660]], label: 'Sea' },
+      { kind: 'hills', points: [[1060, 70], [930, 80], [860, 170], [820, 260], [770, 340], [730, 430], [790, 500], [1060, 520]], label: 'Hills' },
+      { kind: 'marsh', points: [[190, 548], [400, 538], [560, 556], [580, 660], [170, 660]], label: 'Great Marsh' },
+      { kind: 'river', points: [[40, 505], [200, 500], [400, 507], [560, 500], [640, 520], [680, 580], [695, 640]], width: 14, label: 'Charadra' },
+      { kind: 'camp', at: [880, 46], size: 30, label: 'Athenian camp' },
+      { kind: 'label', at: [118, 572], text: 'Persian ships' },
+    ],
+    units: [
+      { id: 'rw', side: 'top', kind: 'foot', label: 'Callimachus (right)', w: 130, h: 40 },
+      { id: 'c1', side: 'top', kind: 'foot', label: 'Thin centre', w: 110, h: 16 },
+      { id: 'c2', side: 'top', kind: 'foot', w: 110, h: 16 },
+      { id: 'lw', side: 'top', kind: 'foot', label: 'Left wing', w: 120, h: 40 },
+      { id: 'plat', side: 'top', kind: 'foot', label: 'Plataeans', w: 100, h: 40 },
+      { id: 'pL', side: 'bottom', kind: 'foot', w: 140, h: 30 },
+      { id: 'pC', side: 'bottom', kind: 'foot', label: 'Persians & Saka', w: 220, h: 34 },
+      { id: 'pR', side: 'bottom', kind: 'foot', label: 'Subject contingents', w: 180, h: 30 },
+    ],
+    phases: [
+      {
+        title: 'Deployment',
+        caption: 'The Athenians stretch their line to match the Persian front, leaving the centre only a few ranks deep and the wings strong. Callimachus holds the right, the Plataeans the left. The exact site of the lines is disputed.',
+        at: {
+          rw: [185, 190],
+          c1: [312, 190],
+          c2: [430, 190],
+          lw: [556, 190],
+          plat: [676, 190],
+          pL: [180, 420],
+          pC: [380, 420],
+          pR: [590, 420],
+        },
+      },
+      {
+        title: 'The run and the clash',
+        caption: "The Athenians advance at a run, across eight stades by Herodotus' account. The Persians and Saka break the thin centre and chase it inland, while both Greek wings rout their opponents.",
+        at: {
+          rw: [185, 355],
+          lw: [556, 355],
+          plat: [676, 355],
+          pL: [175, 445],
+          pR: [600, 450],
+          pC: [380, 250],
+          c1: [312, 112],
+          c2: [430, 112],
+        },
+        broken: ['pL', 'pR', 'c1', 'c2'],
+        arrows: [
+          { side: 'top', points: [[185, 215], [185, 420]] },
+          { side: 'top', points: [[556, 215], [556, 425]] },
+          { side: 'top', points: [[676, 215], [676, 425]] },
+          { side: 'bottom', points: [[384, 405], [384, 192]] },
+          { side: 'top', points: [[371, 160], [371, 58]], style: 'rout' },
+        ],
+      },
+      {
+        title: 'The wings close in',
+        caption: 'Rather than chase the beaten wings, the Athenians and Plataeans let them run, then turn inward and fall together on the Persians and Saka who had broken through.',
+        at: {
+          rw: [228, 255, 90],
+          lw: [532, 255, -90],
+          plat: [596, 270, -90],
+        },
+        gone: ['pL', 'pR'],
+        arrows: [
+          { side: 'top', points: [[185, 360], [196, 300], [222, 262], [262, 250]] },
+          { side: 'top', points: [[556, 360], [548, 300], [528, 262], [498, 250]] },
+          { side: 'bottom', points: [[175, 470], [120, 560]], style: 'rout' },
+          { side: 'bottom', points: [[600, 475], [540, 590]], style: 'rout' },
+        ],
+      },
+      {
+        title: 'To the ships',
+        caption: 'Caught between the wings, the Persian centre breaks and runs for the ships. The Athenians pursue to the shore and seize seven ships; Callimachus falls in the fighting there. The rest of the fleet escapes.',
+        at: {
+          rw: [150, 410],
+          lw: [380, 455],
+          plat: [540, 445],
+        },
+        gone: ['pC'],
+        arrows: [
+          { side: 'bottom', points: [[380, 285], [330, 400], [230, 500], [150, 552]], style: 'rout' },
+          { side: 'top', points: [[228, 320], [185, 420], [130, 520]] },
+          { side: 'top', points: [[532, 320], [440, 420], [345, 525]] },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'top',
+    result: 'Decisive Athenian victory',
+    losses: 'Persians: 6,400 dead by Herodotus, and seven ships taken. Athenians: 192 dead, among them Callimachus and the general Stesilaus; Plataean losses unrecorded.',
+    text: [
+      'The survivors sailed round Cape Sunium, hoping to find Athens undefended, but the Athenians marched straight back to the city, and the fleet turned for Asia. Two thousand Spartans arrived after the battle, in time only to view the dead.',
+      'The mound on the plain known as the Soros is generally taken to be the grave of the Athenian dead. Marathon became the proudest memory of the democracy, proof that citizen hoplites could beat the Great King. Darius prepared a far larger invasion but died in 486 BC; his son Xerxes led it in 480 BC.',
+    ],
+  },
+  sources: [
+    'Herodotus, Histories 6.94–120',
+    'Cornelius Nepos, Miltiades 4–6',
+    'Plutarch, Life of Aristides 5',
+    'Pausanias, Description of Greece 1.32.3–7, 9.4.2',
+    'Peter Krentz, The Battle of Marathon (2010)',
+  ],
+};
+
+export default history;

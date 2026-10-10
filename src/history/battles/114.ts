@@ -1,0 +1,157 @@
+// 114 Gabiene, 316 BC. Top: Antigonus' army (Antigonus); bottom: Eumenes and the eastern satraps (Eumenes).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '114',
+  context: {
+    war: 'Second War of the Successors, 319–315 BC',
+    text: [
+      "After Paraitacene the armies wintered apart: Antigonus at Gamarga in Media, Eumenes' troops spread widely across Gabiene. Around midwinter Antigonus marched straight across the desert to catch them unprepared, forbidding fires at night; but the bitter cold made his men light them, and local people sent riders on dromedaries to warn Eumenes.",
+      'Eumenes had fires lit along the heights facing the desert, as if his whole army were camped there, and Antigonus, deceived, turned aside to rest his men. That gave Eumenes time to gather his forces, and an attempt to cut off his elephants was beaten off. Early in 316 BC (315 by a lower chronology) the armies drew up on a flat, salty plain.',
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Antigonus and his allies',
+      commanders: ['Antigonus the One-Eyed (right wing)', 'Demetrius, his son (right-wing horse)', 'Peithon (left wing)'],
+      strength: '22,000 foot, 9,000 horse and 65 elephants (Diodorus)',
+      forces: 'A phalanx of mercenaries and Macedonians; heavy horse on the right, Median, Parthian and Tarentine light horse on the left.',
+    },
+    bottom: {
+      name: 'Eumenes and the eastern satraps',
+      commanders: ['Eumenes of Cardia (left wing)', 'Peucestas (left-wing horse)', 'Philip (right wing)', 'Antigenes (Silver Shields)'],
+      strength: '36,700 foot, 6,000 horse and 114 elephants (Diodorus)',
+      forces: "Silver Shields, hypaspists and mercenaries; satrapal cavalry, weaker than Antigonus'; Indian elephants.",
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'river', points: [[-40, 556], [150, 578], [350, 588], [540, 600], [680, 650]], width: 16 },
+      { kind: 'label', at: [150, 552], text: 'River' },
+      { kind: 'camp', at: [892, 556], size: 34 },
+      { kind: 'label', at: [892, 506], text: 'Baggage camp' },
+    ],
+    units: [
+      { id: 'ad', side: 'top', kind: 'horse', label: 'Antigonus & Demetrius', w: 110, h: 24 },
+      { id: 'tel1', side: 'top', kind: 'elephants', label: 'Elephants', w: 70, h: 22 },
+      { id: 'tel2', side: 'top', kind: 'elephants', w: 70, h: 22 },
+      { id: 'tel3', side: 'top', kind: 'elephants', w: 70, h: 22 },
+      { id: 'tph1', side: 'top', kind: 'foot', w: 116, h: 30 },
+      { id: 'tph2', side: 'top', kind: 'foot', label: "Antigonus' phalanx", w: 116, h: 30 },
+      { id: 'tph3', side: 'top', kind: 'foot', w: 116, h: 30 },
+      { id: 'pith', side: 'top', kind: 'lighthorse', label: "Peithon's horse", w: 130, h: 18 },
+      { id: 'raid', side: 'top', kind: 'lighthorse', label: 'Medes & Tarentines', w: 70, h: 16 },
+      { id: 'peu', side: 'bottom', kind: 'horse', label: 'Peucestas', w: 70, h: 22 },
+      { id: 'eum', side: 'bottom', kind: 'horse', label: 'Eumenes', w: 76, h: 22 },
+      { id: 'bel1', side: 'bottom', kind: 'elephants', label: 'Elephants', w: 80, h: 22 },
+      { id: 'bel2', side: 'bottom', kind: 'elephants', w: 70, h: 22 },
+      { id: 'hyp', side: 'bottom', kind: 'foot', label: 'Hypaspists', w: 104, h: 30 },
+      { id: 'ss', side: 'bottom', kind: 'foot', label: 'Silver Shields', w: 104, h: 30 },
+      { id: 'merc', side: 'bottom', kind: 'foot', label: 'Mercenaries', w: 104, h: 30 },
+      { id: 'phil', side: 'bottom', kind: 'horse', label: 'Philip', w: 80, h: 22 },
+    ],
+    phases: [
+      {
+        title: 'Deployment',
+        caption: "Eumenes takes his best horse and sixty elephants to the left, against Antigonus and Demetrius, and tells Philip to avoid battle on the right. Antigenes sends a rider to shame Antigonus' Macedonians for attacking the veterans of Philip and Alexander.",
+        at: {
+          ad: [150, 208],
+          tel1: [175, 272],
+          tel2: [430, 270],
+          tel3: [640, 270],
+          tph1: [370, 204],
+          tph2: [490, 204],
+          tph3: [610, 204],
+          pith: [810, 200],
+          raid: [905, 140],
+          peu: [112, 440],
+          eum: [200, 440],
+          bel1: [160, 376],
+          bel2: [500, 376],
+          hyp: [330, 440],
+          ss: [440, 440],
+          merc: [550, 440],
+          phil: [810, 452],
+        },
+      },
+      {
+        title: 'The raid in the dust',
+        caption: "Elephants, then cavalry, clash on the left, raising clouds of salty dust. Unseen, some of Antigonus' Median and Tarentine horse ride round the flank and seize Eumenes' baggage camp. Peucestas leaves the field with his own horse and 1,500 others.",
+        at: {
+          ad: [96, 324],
+          tel1: [236, 296],
+          bel1: [226, 340],
+          eum: [124, 380],
+          raid: [892, 556],
+        },
+        gone: ['peu'],
+        arrows: [
+          { side: 'bottom', points: [[218, 428], [188, 398], [174, 388]] },
+          { side: 'top', points: [[930, 150], [972, 290], [970, 460], [944, 532]] },
+          { side: 'bottom', points: [[100, 456], [70, 540], [50, 612]], style: 'retreat' },
+        ],
+      },
+      {
+        title: 'The Silver Shields win',
+        caption: "The Silver Shields charge in close order and rout Antigonus' phalanx, killing over 5,000, by Diodorus' count, without losing a man. On the left Eumenes, outnumbered, loses his lead elephant and rides across to Philip's wing.",
+        at: {
+          tph1: [370, 112],
+          tph2: [490, 106],
+          tph3: [610, 112],
+          tel2: [430, 166],
+          tel3: [640, 166],
+          hyp: [345, 282],
+          ss: [470, 262],
+          merc: [590, 282],
+          bel2: [500, 340],
+          eum: [720, 500],
+          ad: [160, 404],
+        },
+        broken: ['tph1', 'tph2', 'tph3', 'tel2', 'tel3', 'bel1'],
+        arrows: [
+          { side: 'bottom', points: [[345, 424], [345, 312]] },
+          { side: 'bottom', points: [[470, 424], [470, 292]] },
+          { side: 'bottom', points: [[590, 424], [590, 312]] },
+          { side: 'top', points: [[540, 184], [540, 136]], style: 'rout' },
+          { side: 'bottom', points: [[150, 392], [300, 520], [560, 528], [676, 506]] },
+          { side: 'top', points: [[104, 336], [130, 364], [150, 388]] },
+        ],
+      },
+      {
+        title: 'Victory thrown away',
+        caption: 'Peucestas will not return to the fight. Threatened by Peithon\'s horse, the isolated Silver Shields form a square and fall back to a river. Soon afterwards, to recover their families and baggage, they hand Eumenes over to Antigonus.',
+        at: {
+          pith: [640, 380],
+          hyp: [300, 506],
+          ss: [420, 514],
+          merc: [540, 506],
+          eum: [660, 528],
+          phil: [768, 500],
+        },
+        arrows: [
+          { side: 'top', points: [[800, 214], [740, 300], [680, 360]] },
+          { side: 'bottom', points: [[345, 298], [320, 400], [304, 482]], style: 'retreat' },
+          { side: 'bottom', points: [[470, 278], [440, 400], [424, 490]], style: 'retreat' },
+          { side: 'bottom', points: [[590, 298], [560, 400], [544, 482]], style: 'retreat' },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'top',
+    result: "Victory for Antigonus, won by capturing Eumenes' baggage",
+    losses: 'Antigonus: over 5,000 foot killed by the Silver Shields, who lost none (Diodorus). Other losses are not recorded.',
+    text: [
+      "The baggage held the Silver Shields' wives, children and savings. Their commander Teutamus bargained in secret, and the veterans seized Eumenes and handed him over in return for it. Antigonus hesitated over his old friend for some days, then had him killed and sent his ashes to his family; Antigenes was burned alive.",
+      "The Silver Shields were broken up, the most troublesome sent to Arachosia to be used up on dangerous duties. Antigonus was now master of Asia from the Aegean to Iran, and his power drove Cassander, Ptolemy, Lysimachus and Seleucus to unite against him in 315 BC. Among the captives was Hieronymus of Cardia, whose lost history underlies our accounts.",
+    ],
+  },
+  sources: [
+    'Diodorus Siculus, Library 19.37–44',
+    'Plutarch, Life of Eumenes 15–19',
+    'Cornelius Nepos, Eumenes 8–12',
+    'A. B. Bosworth, The Legacy of Alexander (2002), ch. 4',
+  ],
+};
+
+export default history;

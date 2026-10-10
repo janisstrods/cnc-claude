@@ -1,0 +1,141 @@
+// 002 Crimissos River, 341 BC. Top: Carthaginians (Hasdrubal); bottom: Syracusans and allies (Timoleon).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '002',
+  context: {
+    war: "Sicilian Wars: Timoleon's campaigns, c. 344–338 BC",
+    text: [
+      'In 344 BC Corinth answered an appeal from Syracuse, torn by rival tyrants and threatened by Carthage, and sent Timoleon with a small mercenary force. Within two years he had won Syracuse from Dionysius II, defeated the tyrant Hicetas, whose Carthaginian allies sailed away, and begun raiding the Carthaginian west of the island.',
+      'Carthage landed a great army at Lilybaeum under Hasdrubal and Hamilcar. Timoleon marched west to meet it with what men he could raise; on the way a thousand mercenaries deserted. In early summer, in 341 or 339 BC (the date is disputed), he came upon the Carthaginians as they forded the river Crimisus, whose exact site is uncertain.',
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Carthaginians and mercenaries',
+      commanders: ['Hasdrubal', 'Hamilcar'],
+      strength: 'c. 70,000 (Plutarch); over 70,000 foot, and 10,000 horse, chariots and spare teams together (Diodorus)',
+      forces: 'A Sacred Band of 2,500 Carthaginian citizens (Diodorus), Libyan levies, Iberian, Celtic and Ligurian mercenaries, four-horse chariots and cavalry.',
+    },
+    bottom: {
+      name: 'Syracusans, Sicilian Greeks and mercenaries',
+      commanders: ['Timoleon of Corinth', 'Demaretus (cavalry)'],
+      strength: 'c. 6,000 (Plutarch) to 12,000 (Diodorus)',
+      forces: 'Syracusan and other Sicilian Greek hoplites, veteran mercenaries and about 1,000 horse.',
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'river', points: [[455, -40], [468, 50], [528, 140], [610, 195], [690, 255], [750, 335], [800, 420], [860, 490], [1060, 548]], width: 24, label: 'Crimisus' },
+      { kind: 'hills', points: [[230, 660], [245, 545], [370, 505], [560, 500], [700, 525], [745, 660]], label: 'Hills' },
+    ],
+    units: [
+      { id: 'sb', side: 'top', kind: 'foot', label: 'Sacred Band', w: 120, h: 32 },
+      { id: 'van', side: 'top', kind: 'foot', w: 100, h: 28 },
+      { id: 'char', side: 'top', kind: 'chariots', label: 'Chariots', w: 96, h: 22 },
+      { id: 'm1', side: 'top', kind: 'foot', label: 'Main army', w: 110, h: 28 },
+      { id: 'm2', side: 'top', kind: 'warband', w: 100, h: 28 },
+      { id: 'cav', side: 'top', kind: 'horse', label: 'Cavalry', w: 70, h: 22 },
+      { id: 'dem', side: 'bottom', kind: 'horse', label: "Demaretus' horse", w: 80, h: 22 },
+      { id: 'wl', side: 'bottom', kind: 'foot', label: 'Sicilian Greeks', w: 110, h: 28 },
+      { id: 'tim', side: 'bottom', kind: 'foot', label: "Timoleon's centre", w: 110, h: 30 },
+      { id: 'wr', side: 'bottom', kind: 'foot', w: 110, h: 28 },
+      { id: 'lt', side: 'bottom', kind: 'light', label: 'Light troops', w: 80, h: 14 },
+    ],
+    phases: [
+      {
+        title: 'The crossing',
+        caption: "As the mist lifts off the plain towards midday, Timoleon's army on the hills sees the Carthaginians fording the Crimisus: chariots and white-shielded citizen foot in front, the rest following in disorder. He attacks before they can form up.",
+        at: {
+          sb: [360, 245],
+          van: [495, 252],
+          char: [430, 310],
+          m1: [700, 110],
+          m2: [820, 190],
+          cav: [895, 300],
+          dem: [235, 435],
+          wl: [310, 505],
+          tim: [460, 500],
+          wr: [610, 505],
+          lt: [700, 455],
+        },
+        arrows: [{ side: 'top', points: [[660, 128], [612, 170], [578, 206]] }],
+      },
+      {
+        title: 'Timoleon attacks',
+        caption: "Demaretus' horse cannot close, as the chariots keep dashing out along the front, so Timoleon sends it round the flank and leads his foot against the vanguard. The main Carthaginian body hurries over the river to help.",
+        at: {
+          char: [430, 335],
+          dem: [190, 305],
+          wl: [310, 405],
+          tim: [460, 400],
+          wr: [610, 405],
+          lt: [700, 375],
+          m1: [680, 272],
+          m2: [792, 236],
+        },
+        arrows: [
+          { side: 'bottom', points: [[232, 414], [214, 372], [196, 334]] },
+          { side: 'bottom', points: [[310, 488], [310, 432]] },
+          { side: 'bottom', points: [[460, 482], [460, 428]] },
+          { side: 'bottom', points: [[610, 488], [610, 432]] },
+          { side: 'top', points: [[724, 128], [736, 186], [716, 236]] },
+        ],
+      },
+      {
+        title: 'The storm breaks',
+        caption: "A storm of rain and hail sweeps off the hills into the Carthaginians' faces. Slipping in the mud under heavy armour and sodden clothes, their front ranks give way, though the Sacred Band stands firm.",
+        at: {
+          dem: [245, 248],
+          wl: [315, 322],
+          tim: [450, 318],
+          wr: [575, 330],
+          lt: [700, 330],
+          char: [600, 232],
+          m1: [700, 298],
+        },
+        broken: ['van', 'char'],
+        arrows: [
+          { side: 'bottom', points: [[315, 425], [315, 354]] },
+          { side: 'bottom', points: [[460, 422], [452, 351]] },
+          { side: 'bottom', points: [[610, 425], [586, 363]] },
+        ],
+      },
+      {
+        title: 'Rout at the river',
+        caption: 'The Sacred Band is cut down where it stands. The rest flee back across the river, now in flood, and many drown; Greek light troops hunt down fugitives making for the hills.',
+        at: {
+          dem: [250, 226],
+          wl: [315, 300],
+          tim: [450, 296],
+          wr: [585, 270],
+          lt: [820, 332],
+        },
+        broken: ['sb'],
+        gone: ['van', 'char', 'm1', 'm2', 'cav'],
+        arrows: [
+          { side: 'top', points: [[520, 236], [580, 160], [630, 80]], style: 'rout' },
+          { side: 'top', points: [[700, 280], [790, 200], [850, 120]], style: 'rout' },
+          { side: 'top', points: [[895, 280], [930, 200], [960, 130]], style: 'rout' },
+          { side: 'bottom', points: [[712, 332], [770, 332]] },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'bottom',
+    result: 'Decisive Greek victory',
+    losses: 'Carthaginians: c. 10,000 dead, 3,000 of them citizens, and at least 5,000 captured (Plutarch); the 2,500 of the Sacred Band and over 10,000 others dead, 15,000 captured (Diodorus). Greek losses unrecorded.',
+    text: [
+      'Plutarch stresses how many Carthaginian citizens fell, for Carthage usually fought with Libyan, Iberian and Numidian troops. Timoleon took the camp with 200 chariots, 1,000 breastplates and 10,000 shields, and sent the finest armour to Corinth.',
+      'Carthage recalled the exiled Gisco and began hiring Greek mercenaries, but in about 339 BC it made peace: the river Halycus became the frontier, the Greek cities were to be free, and Carthage would not aid tyrants against Syracuse. Timoleon went on to depose the remaining tyrants and resettle the island\'s ruined cities.',
+    ],
+  },
+  sources: [
+    'Plutarch, Life of Timoleon 25–30, 34',
+    'Diodorus Siculus, Library of History 16.77–82',
+    'R. J. A. Talbert, Timoleon and the Revival of Greek Sicily, 344–317 B.C. (1974)',
+  ],
+};
+
+export default history;

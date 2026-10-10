@@ -21,6 +21,10 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
 - Repo: https://github.com/janisstrods/cnc-claude. Live site: https://strods.work/cnc-claude/.
 - Pages serves **`main` branch, `/docs` folder**. `docs/` is generated build output: never hand-edit it, and never put notes there (design notes live in `design/`).
 - To publish a change: `npm run build`, then commit the source changes **together with the regenerated `docs/`**, then `git push`. Pages updates about a minute later.
+- Every publish is a release. Before building, add it at the top of `RELEASES` in `src/version.ts` and set the same number
+  in `package.json` (and the root of `package-lock.json`). The main menu shows it in the lower-right corner, with the build time.
+  Each release takes the name of a battle in the game that fits what it brings, never reused. Pick it yourself (the user
+  likes a fitting, playful choice) and tell the user; there is no need to ask first.
 - `docs/.nojekyll` comes from `public/.nojekyll`; keep it.
 - `vite.config.ts` uses `base: './'` and routes are hash-based (`#/...`) so the site works under `/cnc-claude/`. Do not introduce absolute asset paths (`/assets/...`).
 - To check the built site under the sub-path locally: run `npm run build`, then start the `pages-preview` launch config (http://localhost:4173/cnc-claude/).
@@ -30,7 +34,7 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
 ## Development shortcuts
 
 - Battles: `001`–`015` (base game) and `101`–`124` (Expansion #1, *Greece & Eastern Kingdoms*), data in `src/scenarios/data/<id>.json`.
-- Dev-only routes: `#/play/<scenario>/<top|bottom>/<recruit|tribune|consul>[/<seed>]` (e.g. `#/play/109/top/tribune`) and `#/gallery/art|terrain|kit`.
+- Dev-only routes: `#/play/<scenario>/<top|bottom>/<recruit|tribune|consul>[/<seed>]` (e.g. `#/play/109/top/tribune`) and `#/gallery/art|terrain|kit|history`.
 - In dev, `window.__cca` is the GameController. `__cca.autoAnswer()` plays a random legal move for the human, and `__cca.setSpeed(4)` speeds up animations.
 
 ## Rules and docs
@@ -40,6 +44,17 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
 - `design/exp1-*.md`: Expansion #1 scenario survey (`exp1-survey.md`), rulings research (`exp1-rulings.md`),
   scenario transcription notes (`exp1-scenario-notes.md`) and AI calibration and balance log (`exp1-ai-balance.md`).
 - `design/superpowers/` holds the original design spec and implementation plan.
+
+## Battle histories
+
+- The History dialog (briefing and in-game header) shows three slides per battle from `src/history/battles/<id>.ts`:
+  context and armies, a schematic map in 1–4 phases, outcome and consequences. Format: `src/history/types.ts`;
+  worked example: `battles/007.ts`; spec: `design/superpowers/specs/2026-10-10-battle-history-design.md`.
+- A battle without a file simply has no History button, so new expansions add their `2xx`/`3xx` files when ready.
+- Check one: `npx vite-node scripts/history-check.ts -- 007` (validator and word counts); look at it with
+  `scripts/history-shot.sh 007 <dir>` against a running dev server (`#/gallery/history/007`), reading every tile.
+  `#/gallery/history/maps[/101-124]` is a contact sheet of every map phase, for checking many battles at once.
+- Texts are original prose in British spelling, hedged where the sources are uncertain, with ancient sources cited.
 
 ## Golden fixtures
 

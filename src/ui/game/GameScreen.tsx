@@ -8,6 +8,7 @@ import {
 import { BLOCK_COLORS, UnitIcon, unitTypeName } from '../../art';
 import { BannerTrack, Button, CardBack, CardView, DiceTray, DieView, Modal, Panel } from '../kit';
 import { scenarioArt, terrainName } from '../terrain';
+import { BattleResult } from './BattleResult';
 import { Board } from './Board';
 import type { GameController, LogLine } from './controller';
 import {
@@ -16,6 +17,7 @@ import {
   type UiSel,
 } from './uiModel';
 import { RulesReference } from '../screens/RulesReference';
+import { HistoryButton } from '../history/HistoryDialog';
 import { isMuted, setMuted } from '../sound';
 import { opponentPersonality } from './makeOpponent';
 import './game.css';
@@ -29,7 +31,12 @@ function pct(x: number) {
   return `${Math.round(x * 100)}%`;
 }
 
-export function GameScreen({ controller, onExit }: { controller: GameController; onExit: () => void }) {
+export function GameScreen({ controller, onExit, onRematch }: {
+  controller: GameController;
+  onExit: () => void;
+  /** After the battle: play it again, with the same or switched sides. */
+  onRematch?: (switchSides: boolean) => void;
+}) {
   const view = useSyncExternalStore(controller.subscribe, controller.getView);
   const s = view.display;
   const human = view.humanSide;
@@ -541,6 +548,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
             </select>
           </label>
           <Button variant="ghost" onClick={() => { setMuted(!mutedState); setMutedState(!mutedState); }} title="Sound effects">{mutedState ? 'Sound: off' : 'Sound: on'}</Button>
+          <HistoryButton scenario={controller.scenario} flipped={flipped} />
           <Button variant="ghost" onClick={() => setShowRules(true)}>Rules</Button>
           <Button variant="ghost" onClick={() => setConfirmExit(true)}>Menu</Button>
         </div>
@@ -686,15 +694,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
       </Modal>
 
       <Modal open={!!view.over} title={view.over ? (view.over.winner === human ? 'Victory!' : view.over.winner === 'draw' ? 'A Draw' : 'Defeat') : ''}>
-        {view.over && (
-          <div className="victory">
-            <p className="modal-p">{view.over.reason}.</p>
-            <p className="modal-p">Banners — {me.army}: {meBanners.total} · {them.army}: {themBanners.total} · Turns played: {s.turn.number}</p>
-            <div className="modal-buttons">
-              <Button onClick={onExit}>Return to menu</Button>
-            </div>
-          </div>
-        )}
+        {view.over && <BattleResult state={s} human={human} over={view.over} onExit={onExit} onRematch={onRematch} />}
       </Modal>
     </div>
   );

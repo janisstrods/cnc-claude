@@ -32,6 +32,9 @@ Then open http://localhost:5173. Other scripts:
 4. First to the scenario's number of Victory Banners wins. Games are saved automatically — **Continue** from
    the main menu.
 
+**History** (in the battle briefing and in the top bar) tells the story of the real battle in three slides: the road to
+battle and the two armies, an animated schematic map of the fighting in phases, and the outcome and what it changed.
+
 **Rules** in the top bar opens a full reference (units, dice, terrain, every card, and an Expansion #1 tab). Hover any
 unit for its stats. Keys: **1–9** pick a card, **Enter** confirms, **Esc** clears a selection; click the board to hurry
 animations.
@@ -78,6 +81,7 @@ that shapes how boldly he fights and what he says in the battle log; you can pic
 src/engine/     Pure TypeScript rules engine (deterministic, replayable)
 src/ai/         Computer opponent (runs in a Web Worker)
 src/scenarios/  The 39 battles: base game 001–015 and Expansion #1 101–124 (JSON data + special rules)
+src/history/    The battles' histories (one data file per battle in battles/) and their validator
 src/art/        Original SVG miniatures
 src/ui/         React UI: board, terrain art, cards, dice, menus
 design/         Design spec, rules reference (Expansion #1 in §15–§17), implementation plan, Expansion #1 notes
@@ -86,7 +90,8 @@ tests/          Engine, rules, scenario, art, terrain, UI, AI and golden-game te
 ```
 
 Dev shortcuts: `#/play/007/bottom/tribune` starts Cannae as the Romans directly, `#/play/109/top/tribune` Gaugamela as
-Alexander; `#/gallery/art`, `#/gallery/terrain`, `#/gallery/kit` show the art galleries.
+Alexander; `#/gallery/art`, `#/gallery/terrain`, `#/gallery/kit` show the art galleries, `#/gallery/history/007` every slide and
+map phase of a battle's history.
 
 ## Credits
 

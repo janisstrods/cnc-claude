@@ -9,10 +9,12 @@ import type { Difficulty, SavedGame } from '../game/controller';
 import { edgeBlocksOf } from '../game/uiModel';
 import { PERSONALITIES, personalityFor } from '../../ai';
 import { RulesReference } from './RulesReference';
+import { HistoryButton } from '../history/HistoryDialog';
 import {
   OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue, saveOptionChoice,
   savePickerTab, tabForKey, type OptionId,
 } from './picker';
+import { BUILD_TIME, RELEASE, buildLabel } from '../../version';
 import './screens.css';
 
 const MENU_ARMY_L: UnitType[] = ['HI', 'MI', 'LC'];
@@ -58,6 +60,10 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
           <Button variant="ghost" onClick={() => setCredits(true)}>Credits</Button>
         </div>
       </div>
+      <div className="menu-version">
+        <div>v{RELEASE.number} “{RELEASE.name}”</div>
+        <div className="menu-build">{buildLabel(BUILD_TIME)}</div>
+      </div>
       <Modal open={rules} title="How to Play" onClose={() => setRules(false)} width={880}>
         <RulesReference />
       </Modal>
@@ -67,6 +73,7 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
           <p>Scenario setups follow the base game's 15 battles as documented by the community at commandsandcolors.net.</p>
           <p><b>Expansion #1</b>, <i>Greece &amp; Eastern Kingdoms</i>: its 24 battles (101–124) were transcribed hex by hex from the official battle maps published at commandsandcolors.net (122–124 from GMT's Bonus Pack #2). Its rules are paraphrased, its battle summaries original, and its armies drawn as original artwork.</p>
           <p><b>Expansion #2</b>, <i>Rome &amp; the Barbarians</i>: its 23 battles (201–223) were transcribed the same way from the battle maps published at commandsandcolors.net. Its rules are paraphrased, its battle summaries original, and its armies drawn as original artwork.</p>
+          <p><b>Battle histories:</b> original summaries written from the ancient historians (Herodotus, Xenophon, Polybius, Diodorus, Livy, Plutarch, Arrian and others) and modern scholarship, each with its sources. The maps are schematic reconstructions; ancient numbers and details are often uncertain.</p>
           <p><b>Fonts:</b> Cinzel (Natanael Gama) and EB Garamond (Georg Duffner, Octavio Pardo) — SIL Open Font License 1.1.</p>
           <p><b>Icons:</b> game-icons.net by Lorc and Delapouite — CC BY 3.0 (see CREDITS.md for the full list).</p>
           <p><b>Miniatures, terrain, cards and dice:</b> original SVG artwork made for this edition.</p>
@@ -218,7 +225,10 @@ export function ScenarioSelect(p: {
       </div>
       <div className="select-detail">
         <Panel variant="parchment" className="brief">
-          <div className="brief-title">{sel.name} <span>{sel.year}</span></div>
+          <div className="brief-head">
+            <div className="brief-title">{sel.name} <span>{sel.year}</span></div>
+            <HistoryButton scenario={sel} flipped={side === 'top'} variant="secondary" className="brief-history" />
+          </div>
           <p className="brief-blurb">{sel.blurb}</p>
           <div className="brief-facts">
             <span>{sel.setup.banners} banners to win</span>
