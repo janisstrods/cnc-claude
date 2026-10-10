@@ -15,7 +15,7 @@ import { lookMount } from '../../src/art/mounted';
 import { deltaE } from './delta-e';
 
 const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
-const MAX: Partial<Record<UnitType, number>> = { LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3 };
+const MAX: Partial<Record<UnitType, number>> = { LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HWM: 2, BCH: 3 };
 const FOOT: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI'];
 const BARBARIANS: ArmyLook[] = ['gallic', 'belgic', 'briton', 'germanic', 'slave'];
 const EXP2: ArmyLook[] = [...BARBARIANS, 'marian'];
@@ -70,7 +70,7 @@ describe('Expansion #2 kits', () => {
     }
     // Germanic auxiliaries in Roman service (222) are Germanic warriors
     expect(KITS.lateRoman.foot('WA', 0)).toMatchObject({ ...KITS.germanic.foot('WA', 0), tribal: true });
-    expect(KITS.lateRoman.warMachine).toBe('scorpio');
+    expect(KITS.lateRoman.warMachine).toBe('ballista');
   });
 });
 
@@ -260,6 +260,26 @@ describe('Marian cavalry', () => {
         expect(svg(h(Miniature, { type, p: marianShapes, i })), `${type} ${i}`).not.toBe(svg(h(Miniature, { type, p: roman, i })));
       }
     }
+  });
+});
+
+describe('the Marian war machine', () => {
+  it('is a stone-throwing ballista with a late-Roman crew, not the base Roman scorpio', () => {
+    expect(KITS.lateRoman.warMachine).toBe('ballista');
+    expect(KITS.roman.warMachine).toBe('scorpio');
+    const marian = paletteFor('marian', 'rom');
+    const roman = paletteFor('roman', 'rom');
+    // the same engine in the same paint would be the scorpio; the Marian one is drawn apart
+    const shapes = (p: Palette) => [0, 1].map((i) => svg(h(Miniature, { type: 'HWM', p, i }))).join('');
+    expect(shapes({ ...roman, kit: 'lateRoman' })).not.toBe(shapes(roman));
+    const hwm = token('HWM', 'marian');
+    expect(hwm).not.toMatch(/NaN|undefined/);
+    // stone shot: one loaded, three piled, one carried, on each of the two engines
+    expect(hwm.split('fill="#b8ae98"').length - 1).toBe(10);
+    // the crew wear the late-Roman crew helmets
+    expect([0, 1].map((i) => KITS.lateRoman.crew(i).helmet)).toEqual(['montefortino', 'coolus']);
+    expect(svg(h(UnitIcon, { type: 'HWM', look: 'marian', blockColor: 'rom', size: 64 }))).not.toMatch(/NaN/);
+    expect(marian.kit).toBe('lateRoman');
   });
 });
 

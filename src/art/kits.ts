@@ -149,8 +149,11 @@ export interface KitDef {
   crew?: (i: number) => CrewDress;
   /** Bow of the crewmen of elephants and chariots: the plain self bow (default) or the short double-curved bow of the steppe. */
   crewBow?: 'self' | 'scythian';
-  /** The bolt-thrower: a Roman scorpio (frame in the shield colour, curved front shield with a sighting window) or an oxybeles (default). */
-  warMachine?: 'scorpio' | 'oxybeles';
+  /**
+   * The war machine: a Roman scorpio (frame in the shield colour, curved front shield with a sighting window), a Greek
+   * oxybeles (default), or a stone-throwing ballista (heavy frame on a braced trestle, a stone loaded, shot piled by it).
+   */
+  warMachine?: 'scorpio' | 'oxybeles' | 'ballista';
   /** Oval shields have a bronze boss (default no). */
   ovalShieldBoss?: boolean;
   /** Crescent shields are woven wicker without a painted device (the Persian taka; default no). */
@@ -869,12 +872,13 @@ const LATE_ROMAN: KitDef = {
   foot: lateRomanFoot,
   cavalry: { drawing: 'kit', mount: lateRomanMount },
   crew: (i) => ({ torso: 'mail', helmet: i % 2 ? 'coolus' : 'montefortino', crest: 'knob' }),
-  warMachine: 'scorpio',
+  // the legions' stone-throwers (Caesar's ballistae at Avaricum and Alesia), apart from the base game's scorpio
+  warMachine: 'ballista',
   ovalShieldBoss: true,
   general: { rider: CLASSIC_GENERAL, horse: WHITE_HORSE },
   bust: { helmet: 'atticOpen', crest: 'horsehair', beard: false },
   iconBox: {
-    MI: [-42.5, 1.8, -6.1, 10.6], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31], HWM: [-33.1, 0.4, -28.1, 21.9],
+    MI: [-42.5, 1.8, -6.1, 10.6], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31], HWM: [-39, 1, -29.5, 23.1],
     BCH: [-38, 1.4, -27.8, 29.3],
   },
 };
