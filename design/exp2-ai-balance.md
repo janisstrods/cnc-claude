@@ -48,7 +48,7 @@ Before Task 19 the Tribune lost all four 202 games: it did not see the two banne
 (the Recruit won "6-6" on permanent banners). Tribune card decisions (the whole turn plan) averaged 246 ms and 262 ms in
 the two shards, at most 811 ms (limit 1.5 s). No answer was rejected, no game stalled (longest 50 turns).
 
-## Strength: Tribune beats Recruit on every battle
+## Strength: Tribune 32–14 overall; 202 lost on these seeds, 12 battles split
 
 All 23 battles, one seed each, both side assignments (46 games; Tribune at full budget, Recruit at its own):
 
@@ -99,9 +99,10 @@ cap (longest 57 turns, 223), every game had a winner, and no answer was rejected
 Counters (Expansion #2 battles only): `rollingFire` Rolling Fire uses, with the rolls against enemy and own units;
 `exits` units that left the board for a banner; `camps` turn-start (and stop) captures; `heldTop`/`heldBottom` held
 banners summed over the turn ends; `heldWins` wins whose total included held banners; `pilumShots` pilum throws;
-`caesarMarches` 2-hex moves of infantry carrying Caesar; `marches` 2-hex moves of the Tenth Legion; `chooseCommand`
-commands named; `ambush` reserve units entering (206); `lastRow` units lost to last-row retreat (214); `ramparts`
-ramparts broken (223).
+`caesarMarches` 2-hex infantry moves with Caesar (any 2-hex infantry move ending on his hex: his forced march, but also
+Double Time); `marches` 2-hex moves of the Tenth Legion (a march or Double Time); `chooseCommand` commands named;
+`ambush` reserve units entering (206); `lastRow` units lost to last-row retreat (214); `ramparts` ramparts broken (223).
+`aiFallbacks` (added after these runs, every battle) counts AI answers replaced by the fallback: AI bugs, expected 0.
 
 ### Flagged for a second look (one side wins 85% or more)
 
@@ -112,10 +113,10 @@ ramparts broken (223).
   rampart line more firmly (the evaluation gives a rampart only its flag and sword protection, not the value of the
   line) and at the battle's intended balance.
 * **217 Invasion of Britain: the Romans win 8 of 8**, **218 River Stour 7 of 8**, **216 Sotium 7 of 8**, **207 Vercellae
-  7 of 8**. Caesar's legions with the pilum (90 throws in 217), Caesar's +1 die and forced march (25 marches), the Tenth
-  Legion, against warband and chariot armies with 4–5 cards. The Britons' chariots (BCH) evade and skirmish but rarely
-  win the decisive combats. Likely partly the battles (the Roman side is stronger on paper in all four) and partly the
-  barbarian AI, which, like the Persian AI of Expansion #1, does not concentrate its numbers.
+  7 of 8**. Caesar's legions with the pilum (90 throws in 217), Caesar's +1 die and forced march (25 2-hex infantry
+  moves with him), the Tenth Legion, against warband and chariot armies with 4–5 cards. The Britons' chariots (BCH)
+  evade and skirmish but rarely win the decisive combats. Likely partly the battles (the Roman side is stronger on paper
+  in all four) and partly the barbarian AI, which, like the Persian AI of Expansion #1, does not concentrate its numbers.
 * **220 and 221 Teutoburger Wald: the Germans win 7 of 8 each.** Historically a Roman disaster, and the setups give the
   Germans the forest and the numbers. In 221 the Romans exited only twice in 8 games (the German baseline is behind the
   whole German army) and the Germans took the marching camp twice (2 banners each).
@@ -149,8 +150,8 @@ ramparts broken (223).
   once a Slave unit reaches the Roman baseline, which the Roman line usually prevents.
 * **Turn-start captures**: 201's camps were all taken in most games (20 captures in 8, the third one scoring); 208 10,
   211 9 (the 2-camp `together` capture), 215 and 221 one or two each.
-* **Caesar** (215, 217, 218): 71 forced marches; his +1 die makes his unit the spearhead (front-line bonus as for
-  Alexander). He fell in 4 of 24 games.
+* **Caesar** (215, 217, 218): 71 2-hex infantry moves with Caesar; his +1 die makes his unit the spearhead (front-line
+  bonus as for Alexander). He fell in 4 of 24 games.
 * **Ambush** (206): the Romans brought Marcellus' force in in 6 of 8 games (24 unit entries).
 * **Ramparts broken** (223): 11 in 8 games: the Romans enter the empty Briton ramparts when it costs nothing.
 * **War machines** (209, 210, 215, 216, 222, an Expansion #1 unit in Roman hands): when ordered with a target they fired
@@ -162,8 +163,8 @@ ramparts broken (223).
 Every Expansion #2 behaviour is gated on the battle's data (objective kinds, `rollingFire`, `lastRowRetreat`,
 `rampartBreakers`, `veryHills`, ditch terrain, legions, leader traits, commands). Checks: `tests/golden` unchanged
 (including the deterministic AI games of 002, 007 and 010), and deterministic Tribune AI-vs-AI games (`budgetScale 0.1`,
-8 turns, battle rollouts included) of all 39 base and Expansion #1 battles give identical answers and commentary before
-and after Task 19.
+8 turns, battle rollouts included) of all 39 base and Expansion #1 battles give identical answers before and after
+Task 19; the commentary is identical too except the reworded Trebbia ambush line.
 
 ## Next steps
 

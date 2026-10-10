@@ -5,8 +5,9 @@
 //   measure the battle's balance; with --a tribune --b recruit they measure strength. Without --scenarios every battle of
 //   --expansion (default exp1) is played. The counters flag silly play: war machines abandoned, moved or left adjacent
 //   to the enemy; light bow cavalry closing on heavy units; camels attacking horses; leaders lost in Hellespont; decision
-//   times. Expansion #2 battles add their own counters (`X2`, below): Rolling Fire, exits, camps captured, held
-//   banners, pilum throws, Caesar's forced marches, commands named, ambush entries, last-row losses, ramparts broken.
+//   times; AI answers replaced by the fallback (AI bugs). Expansion #2 battles add their own counters (`X2`, below):
+//   Rolling Fire, exits, camps captured, held banners, pilum throws, 2-hex infantry moves with Caesar, commands named,
+//   ambush entries, last-row losses, ramparts broken.
 //   Banners are banner totals (permanent + held; the same as permanent banners outside Expansion #2).
 import { writeFileSync } from 'node:fs';
 import {
@@ -58,8 +59,9 @@ const zero = (): Counters => ({
 /**
  * Expansion #2 counters (added to a game's counters in Expansion #2 battles only, so Expansion #1 output is unchanged).
  * Rolling Fire: uses, rolls against enemy and own units; exits; turn-start / stop captures; held banners summed over the
- * turn ends (top, bottom) and wins whose total included held banners; pilum throws; Caesar's 2-hex forced marches and
- * the Tenth Legion's 2-hex marches; commands named; ambush entries; units lost to last-row retreat; ramparts broken.
+ * turn ends (top, bottom) and wins whose total included held banners; pilum throws; 2-hex infantry moves ending on
+ * Caesar's hex (his forced march, also Double Time) and the Tenth Legion's 2-hex moves; commands named; ambush entries;
+ * units lost to last-row retreat; ramparts broken.
  */
 interface X2 {
   rollingFire: number; rollingFireVsEnemy: number; rollingFireVsOwn: number; exits: number; camps: number;

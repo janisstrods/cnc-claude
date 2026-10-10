@@ -503,9 +503,10 @@ block colours. Fordable rivers use the §4/§7/§9.6 rules, except 108 (§16).
   (a `capture` objective with timing `stop`, §18.4: the 011 Baecula rule of §14 with the capturing side and camp hexes
   named in the data): the camp hex in the bottom-right corner is Eumenes' camp; the first time a unit of Antigonus' army (the top
   side) **ends its move on it** its side gains 1 banner. A unit that merely passes through does not capture. Once only,
-  and the banner is never lost. Finishing a close-combat sequence (momentum advance, extra hex, bonus combat) standing
-  on it counts as ending the move, and a retreat or evade onto it does not **[Interp]** (extends §14's "ending its
-  move"; this is how 011 is implemented). Eumenes' units never capture. The camp is otherwise an ordinary fortified camp.
+  and the banner is never lost. A momentum advance (or the cavalry's extra hex) onto it counts as ending the move when
+  the unit still stands on it at the end of its close-combat sequence (bonus combat included); attacking from it without
+  advancing, or a retreat or evade onto it, does not **[Interp]** (extends §14's "ending its move"; §18.4; this is how
+  011 is implemented). Eumenes' units never capture. The camp is otherwise an ordinary fortified camp.
 * **115 Ipsus (301 BC):** no special rules; plain. (The fourth Seleucid elephant is a component note only.)
 * **116 Heraclea (280 BC):** two rules.
   * **River Siris:** only the bend hexes are passable; every other river hex is impassable. The bend hexes follow the
@@ -595,6 +596,10 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
 
 * **Capture** (`capture`): hexes (usually enemy camps) a side can take once each.
   * `stop` (011 Baecula, 114 Gabiene): a unit of that side ending a move or momentum advance on an untaken hex.
+    **[Interp]** Precisely: a unit ending its move there, or a unit whose last momentum advance of its close-combat
+    sequence (the cavalry's extra hex included) ended there and that still stands there when the sequence is over
+    (after any bonus combat). Passing through, attacking from the hex without advancing onto it, or a retreat or evade
+    onto it never captures.
   * `turnStart`: at the start of that side's turn, before its card, every untaken hex holding one of its units is taken.
   * Banners per capture in order (default 1 each); e.g. 201 Clusium 0, 0, 1 (the third camp scores). Banners are
     permanent. `together: n` (211): nothing until n listed hexes are occupied at once; then 1 banner and every listed hex
@@ -611,10 +616,18 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
 * Held banners are counted again after every change of position or removal, and first at the start of turn 1. A
   capture hex may be a rampart standing in for a camp (215). If both sides reach the target in the same update, the
   active side wins **[Interp]**.
+* **[Interp]** A retreat, evade or momentum advance is counted where it ends, after its own losses: blocks lost for
+  retreat hexes it could not take, a marsh check where it ends, a war machine abandoned after its evade. A unit
+  eliminated there never held the hex (no held banner and no win for its side; the enemy scores the unit).
+* **[Interp]** Every banner scored (a unit or leader eliminated, an exit, a capture) first brings the held banners up to
+  date, so an exit or capture that also changes a held objective counts the held change first: a unit leaving a hold hex
+  or a `majority` 'always' hex to exit or to take a camp loses that held banner before its own banner counts. A total
+  never counts a held banner already lost.
 * **Exit** (`exit`; 010 Castulo, 210, 212, 221): a unit of that side on a listed edge hex may move off the board as one
-  hex of movement (not from or through terrain that stops it, unless it starts there); it scores 1 permanent banner and
-  is removed (not eliminated: no banner for the enemy). An attached leader leaves with it and scores nothing more
-  (X2 Q14). Some exits allow only foot units (212).
+  hex of movement (not from or through terrain that stops it, unless it starts there; warriors only within a 1-hex move,
+  as their 2-hex move is a charge into close combat **[Interp]**); it scores 1 permanent banner and is removed (not
+  eliminated: no banner for the enemy). An attached leader leaves with it and scores nothing more (X2 Q14). Some exits
+  allow only foot units (212).
 
 ### 18.5 Ambush reserves, separate commands, Rolling Fire, last-row retreat
 
