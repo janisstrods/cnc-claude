@@ -319,6 +319,11 @@ function simPolicy(ctx: PlanCtx, cand: Cand, rng: Rng): Policy {
         return greedyMoveStep(s, d.stage, (d.stage === 1 ? online : online2)!);
       }
       case 'battle': return greedyBattle(s, ctx.W, rng);
+      case 'chooseCommand': {
+        // the command the plan named (settleCommand: the same choice, which sees no hidden information)
+        const i = cand.command !== undefined ? d.options.indexOf(cand.command) : -1;
+        return { kind: 'choose', index: i >= 0 ? i : chooseCommandIndex(s, d, ctx.W) };
+      }
       default: return reactiveFast(s, d, ctx.W, rng);
     }
   };

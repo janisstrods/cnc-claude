@@ -91,6 +91,11 @@ export interface AiMemory {
   cardSeenIdx?: number;
   /** Camps our side had captured at the previous decision (commentary). */
   campsSeen?: number;
+  /**
+   * Decisions where `decide` gave an illegal answer or threw, answered by `fallback()` instead: an AI bug whenever it is
+   * not 0 (each is also reported with console.error, which tests/ai turn into failures).
+   */
+  fallbacks?: number;
 }
 
 export function newMemory(): AiMemory {
@@ -111,6 +116,7 @@ export function newMemory(): AiMemory {
     cardSeen: {},
     cardSeenIdx: -1,
     campsSeen: -1,
+    fallbacks: 0,
   };
 }
 
@@ -520,10 +526,15 @@ export function chooseAnswer(state: GameState, decision: Decision, opts: AiOptio
     // Work on a private copy: the planner moves pieces around temporarily.
     const camp = campLine(state, decision.side, opts.personality, mem, rng);
     out = decide(cloneState(state), decision, opts, mem, rng);
-    if (!isLegal(state, decision, out.answer)) out = { answer: fallback(state, decision, rng) };
+    if (!isLegal(state, decision, out.answer)) {
+      if (typeof console !== 'undefined') console.error('AI error: illegal answer replaced by a fallback', decision.kind, JSON.stringify(out.answer));
+      mem.fallbacks = (mem.fallbacks ?? 0) + 1;
+      out = { answer: fallback(state, decision, rng) };
+    }
     if (camp && !out.say) out.say = camp;
   } catch (e) {
     if (typeof console !== 'undefined') console.error('AI error', e);
+    mem.fallbacks = (mem.fallbacks ?? 0) + 1;
     out = { answer: fallback(state, decision, rng) };
   }
   setViewer(null);

@@ -612,7 +612,7 @@ export function spartacusAssign(s: GameState, side: Side, faces: DieFace[], W: W
  * the attacks its units could make under the card (Clash, Darken; the card's modifiers are in force), the blocks it could
  * rally, or the pieces I Am Spartacus' dice would likely order (about two dice in three order something).
  */
-function commandValue(s: GameState, occ: Occ, side: Side, cmd: string, W: Weights): number {
+function commandValue(s: GameState, occ: Occ, side: Side, cmd: string, W: Weights, benefits: () => Map<string, number>): number {
   const kind = s.turn.effective;
   let v = 0;
   if (kind === 'clash' || kind === 'darken') {
@@ -628,7 +628,7 @@ function commandValue(s: GameState, occ: Occ, side: Side, cmd: string, W: Weight
     }
     return v;
   }
-  const ben = pieceBenefits(s, side, kind, W);
+  const ben = benefits();
   const vals: number[] = [];
   for (const u of s.units) if (u.side === side && u.hex >= 0 && inCommand(u, cmd)) vals.push(Math.max(0, ben.get(u.id) ?? 0));
   for (const l of s.leaders) if (l.side === side && l.hex >= 0 && inCommand(l, cmd)) vals.push(Math.max(0, ben.get(l.id) ?? 0));
@@ -645,10 +645,13 @@ function commandValue(s: GameState, occ: Occ, side: Side, cmd: string, W: Weight
  */
 export function chooseCommandIndex(s: GameState, d: D<'chooseCommand'>, W: Weights): number {
   const occ = new Occ(s);
+  // I Am Spartacus: every piece's benefit from the card, the same whichever command is named (computed once, if needed)
+  let ben: Map<string, number> | undefined;
+  const benefits = () => (ben ??= pieceBenefits(s, d.side, s.turn.effective, W));
   let best = 0;
   let bestV = -Infinity;
   d.options.forEach((id, i) => {
-    const v = commandValue(s, occ, d.side, id, W);
+    const v = commandValue(s, occ, d.side, id, W, benefits);
     if (v > bestV + 1e-9) {
       best = i;
       bestV = v;

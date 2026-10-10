@@ -46,11 +46,13 @@ interface Counters {
   lbcShots: number; lbcClose: number; lbcCloseVsHeavy: number;
   camClose: number; camCloseVsHorse: number;
   leadersKilled: number;
+  /** AI answers that were illegal (or threw) and were replaced by a fallback (`AiMemory.fallbacks`): AI bugs. */
+  aiFallbacks: number;
 }
 const zero = (): Counters => ({
   hwmEvade: 0, hwmAbandoned: 0, hwmEliminated: 0, hwmMoves: 0, hwmShots: 0, hwmClose: 0, hwmAdjacentTurns: 0, hwmTurns: 0,
   hwmCould: 0, hwmCouldFired: 0, hwmCouldOrdered: 0, hwmOrderedFired: 0, hwmCouldEV: 0, hwmFiredEV: 0,
-  lbcShots: 0, lbcClose: 0, lbcCloseVsHeavy: 0, camClose: 0, camCloseVsHorse: 0, leadersKilled: 0,
+  lbcShots: 0, lbcClose: 0, lbcCloseVsHeavy: 0, camClose: 0, camCloseVsHorse: 0, leadersKilled: 0, aiFallbacks: 0,
 });
 
 /**
@@ -194,7 +196,9 @@ for (const job of mine) {
       taken = now;
     }
     const t0 = performance.now();
+    const fallbacks = mem[dec.side].fallbacks ?? 0;
     const ans = chooseAnswer(d.state, dec, opt[dec.side], mem[dec.side]).answer;
+    c.aiFallbacks += (mem[dec.side].fallbacks ?? 0) - fallbacks;
     if (dec.kind === 'playCard') ms[dec.side].push(performance.now() - t0);
     if (x2 && ans.kind === 'rollingFire') x2.rollingFire++;
     if (x2 && dec.kind === 'chooseCommand') x2.chooseCommand++;

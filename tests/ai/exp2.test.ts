@@ -2,7 +2,7 @@
 // Rolling Fire, separate commands, last-row retreat, very steep hills, Caesar and Spartacus, the ambush reserve, commanders
 // and their voice, and the legality of the first decisions of every Expansion #2 battle. Cheap and deterministic
 // (tribune in deterministic mode, fixed seeds, constructed positions).
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   CARD_LIST, GameDriver, OFF_BOARD, cloneState, createGame, forceDice, hexId, other, rollingFireRoutes, sectionsOf,
   validateOrders, type ArmyLook, type Blocks, type CommandDef, type Decision, type EliteId, type GameEvent, type GameState,
@@ -599,5 +599,28 @@ describe('206 ambush, information hiding, commanders and voice', () => {
     s.players.top.look = 'slave';
     s.leaders = [];
     expect(troopName(s, 'top', 'MI')).toBe('gladiators');
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// an illegal answer is never hidden
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe('an AI answer replaced by the fallback', () => {
+  it('is counted in the memory and reported with console.error (so failOnAiErrors fails on it)', () => {
+    // a placement decision with no hex to offer: the AI's answer cannot be legal, so the fallback answers instead
+    const s = createGame(SCENARIOS.find((sc) => sc.id === '210')!.setup, 1);
+    const l = s.leaders.find((x) => x.side === s.active)!;
+    const d: Decision = { kind: 'placeLeader', side: s.active, leader: l.id, options: [] };
+    const mem = newMemory();
+    expect(mem.fallbacks).toBe(0);
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      chooseAnswer(s, d, detOpts(s.active, 1), mem);
+      expect(mem.fallbacks).toBe(1);
+      expect(err.mock.calls.map((c) => String(c[0]))).toEqual(['AI error: illegal answer replaced by a fallback']);
+    } finally {
+      err.mockClear(); // the reported error is this test's subject, not a hidden AI failure
+    }
   });
 });
