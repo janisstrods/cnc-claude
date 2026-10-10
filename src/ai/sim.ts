@@ -44,6 +44,7 @@ export function safeAnswer(s: GameState, d: Decision, rng: Rng, attempt: number)
       case 'momentum': return { kind: 'yesno', yes: false };
       case 'cavalryExtra': return { kind: 'hex', hex: null };
       case 'bonusCombat': return { kind: 'hex', hex: null };
+      case 'chooseCommand': return { kind: 'choose', index: 0 };
       case 'rally':
       case 'spartacus': return { kind: 'assign', ids: d.faces.map(() => null) };
       case 'placeLeader': return { kind: 'hex', hex: safePlacement(s, d) };

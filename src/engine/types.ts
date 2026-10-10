@@ -66,6 +66,8 @@ export interface Unit {
   elite?: EliteId;
   /** Legion rule of the unit's army (pilum, march; §18.2); absent for units outside a legion. */
   legion?: Legion;
+  /** Id of the separate command the unit belongs to (`ScenarioSpecial.commands`, 210 Picenum, §18.5); absent outside one. */
+  command?: string;
 }
 
 /**
@@ -83,6 +85,8 @@ export interface Leader {
   hex: HexId;
   /** Special abilities (see LeaderTrait); absent for ordinary leaders. */
   traits?: LeaderTrait[];
+  /** Command the leader belongs to (§18.5): a card that orders him orders only that command; absent = free (210). */
+  command?: string;
 }
 
 export interface PlayerState {
@@ -242,8 +246,21 @@ export interface AmbushDef {
   text: string;
 }
 
+/**
+ * A separate command of one side's army (210 Picenum, §18.5): one card orders units of one command only. `blocks`
+ * recolours the command's base edges (art only, e.g. Lentulus' grey).
+ */
+export interface CommandDef {
+  id: string;
+  name: string;
+  side: Side;
+  blocks?: Blocks;
+}
+
 export interface ScenarioSpecial {
   rules: SpecialRuleId[];
+  /** Separate commands (§18.5), in data order; empty in most battles. Never changed during play: `cloneState` shares the array. */
+  commands: CommandDef[];
   /** Ambush trigger data: set exactly when the rule `magoAmbush` is on, else null. Never changed during play. */
   ambush: AmbushDef | null;
   /** Off-board reserve force (Trebbia: Mago's ambush). */
@@ -332,8 +349,15 @@ export type Decision =
   | { kind: 'momentum'; side: Side; unit: string; hex: HexId; bonus?: boolean }
   | { kind: 'cavalryExtra'; side: Side; unit: string; options: HexId[] }
   | { kind: 'bonusCombat'; side: Side; unit: string; targets: HexId[] }
-  | { kind: 'rally'; side: Side; faces: DieFace[] }
-  | { kind: 'spartacus'; side: Side; faces: DieFace[] }
+  /** `command`: the command the player named for this card (§18.5); only its units can be rallied. Absent without commands. */
+  | { kind: 'rally'; side: Side; faces: DieFace[]; command?: string }
+  /** `command`: as for Rally, only its units (and leaders with no command) can be ordered. */
+  | { kind: 'spartacus'; side: Side; faces: DieFace[]; command?: string }
+  /**
+   * Which command a card orders (§18.5), asked before Clash of Shields, Darken the Sky, Rally and I Am Spartacus act
+   * when their eligible units belong to more than one command. `options` = command ids, in data order; answer `choose`.
+   */
+  | { kind: 'chooseCommand'; side: Side; options: string[] }
   /** Asculum: place `leader` before the first turn on one of `options` (answer `hex`, never null). */
   | { kind: 'placeLeader'; side: Side; leader: string; options: HexId[] };
 

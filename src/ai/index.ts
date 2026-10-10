@@ -23,8 +23,8 @@ import { orderCandidates } from './ordering';
 import { PERSONALITIES, personalityById, personalityFor, type Personality } from './personality';
 import { DIFFICULTY, candScore, decideBattle, makeCtx, planTurn, type Cand, type DiffCfg } from './planner';
 import {
-  chooseBonusCombat, chooseCavalryExtra, chooseIgnoreFlags, chooseLeaderEvade, chooseMomentum, choosePlacement, chooseRetreat,
-  defendChoice, rallyAssign, spartacusAssign,
+  chooseBonusCombat, chooseCavalryExtra, chooseCommandIndex, chooseIgnoreFlags, chooseLeaderEvade, chooseMomentum, choosePlacement,
+  chooseRetreat, defendChoice, rallyAssign, spartacusAssign,
 } from './policies';
 import { Rng, entropySeed } from './rand';
 import { safeAnswer } from './sim';
@@ -159,10 +159,12 @@ export function isLegal(s: GameState, d: Decision, a: Answer): boolean {
       return a.kind === 'hex' && (a.hex === null || d.options.includes(a.hex));
     case 'bonusCombat':
       return a.kind === 'hex' && (a.hex === null || d.targets.includes(a.hex));
+    case 'chooseCommand':
+      return a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < d.options.length;
     case 'rally':
-      return a.kind === 'assign' && !validateRally(s, d.side, d.faces, a.ids);
+      return a.kind === 'assign' && !validateRally(s, d.side, d.faces, a.ids, d.command);
     case 'spartacus':
-      return a.kind === 'assign' && !validateSpartacus(s, d.side, d.faces, a.ids);
+      return a.kind === 'assign' && !validateSpartacus(s, d.side, d.faces, a.ids, d.command);
     case 'placeLeader':
       return a.kind === 'hex' && a.hex !== null && d.options.includes(a.hex);
   }
@@ -489,10 +491,12 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       }
       return { answer: { kind: 'hex', hex } };
     }
+    case 'chooseCommand':
+      return { answer: { kind: 'choose', index: chooseCommandIndex(s, d) } };
     case 'rally':
-      return { answer: { kind: 'assign', ids: rallyAssign(s, me, d.faces) } };
+      return { answer: { kind: 'assign', ids: rallyAssign(s, me, d.faces, d.command) } };
     case 'spartacus':
-      return { answer: { kind: 'assign', ids: spartacusAssign(s, me, d.faces, W) } };
+      return { answer: { kind: 'assign', ids: spartacusAssign(s, me, d.faces, W, d.command) } };
     case 'placeLeader':
       return { answer: { kind: 'hex', hex: choosePlacement(s, d, W) } };
   }

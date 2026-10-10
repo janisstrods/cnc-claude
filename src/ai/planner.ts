@@ -11,7 +11,7 @@ import { attackOptions } from './estimate';
 import { evaluate } from './evaluate';
 import { greedyMoveStep, scoreOption, type MoveCtx } from './moves';
 import { orderCandidates, pieceBenefits, type OrderCandidate } from './ordering';
-import { greedyBattle, pickAttack, reactiveFast } from './policies';
+import { chooseCommandIndex, greedyBattle, pickAttack, reactiveFast } from './policies';
 import { Rng } from './rand';
 import { determinize, resumeTurn, runTurn, runTurnUntil, type Policy } from './sim';
 import { WIN_SCORE, tweak, type Difficulty, type Weights } from './values';
@@ -154,6 +154,10 @@ class Stepper {
     this.cur = r.done ? null : r.value;
     return !this.rejected;
   }
+  /** Names the command when the card asks for one (§18.5), as the live game will (same function), then plans on. */
+  settleCommand(): void {
+    if (this.cur?.kind === 'chooseCommand') this.answer({ kind: 'choose', index: chooseCommandIndex(this.s, this.cur) });
+  }
 }
 
 interface Variant {
@@ -203,6 +207,7 @@ function buildCand(root: GameState, ctx: PlanCtx, card: number, effective: CardK
     if (!st.answer(ordersAnswer(oc))) return null;
     orders = oc?.pieces ?? [];
   }
+  st.settleCommand();
   const kind = cardKind(card);
   const base = {
     card, kind, effective, orders, ambush: oc?.ambush, retention: cardRetention(root, ctx.me, kind, ctx.W) * (ctx.keepScale?.(card) ?? 1),
@@ -232,6 +237,7 @@ function replayPrefix(root: GameState, ctx: PlanCtx, c: Cand, upto: number): Ste
     const a: Answer = c.ambush ? { kind: 'orders', pieces: [], ambushSection: c.ambush } : { kind: 'orders', pieces: c.orders ?? [] };
     if (!st.answer(a)) return null;
   }
+  st.settleCommand();
   for (let j = 0; j < upto; j++) {
     if (!st.cur || st.cur.kind !== 'move' || !st.answer(c.moves![j])) return null;
   }

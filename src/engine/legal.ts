@@ -90,15 +90,17 @@ export function randomAnswer(s: GameState, d: Decision, rnd: Rand): Answer {
       return { kind: 'hex', hex: rnd() < 0.3 ? null : pick(d.options, rnd) };
     case 'bonusCombat':
       return { kind: 'hex', hex: rnd() < 0.2 ? null : pick(d.targets, rnd) };
+    case 'chooseCommand':
+      return { kind: 'choose', index: Math.floor(rnd() * d.options.length) };
     case 'rally': {
-      const cands = rallyCandidates(s, d.side);
+      const cands = rallyCandidates(s, d.side, d.command);
       const ids: (string | null)[] = [];
       for (let i = 0; i < d.faces.length; i++) {
         const opts = shuffled(cands, rnd);
         let chosen: string | null = null;
         for (const u of opts) {
           const trial = [...ids, u.id, ...Array(d.faces.length - i - 1).fill(null)];
-          if (!validateRally(s, d.side, d.faces, trial)) { chosen = u.id; break; }
+          if (!validateRally(s, d.side, d.faces, trial, d.command)) { chosen = u.id; break; }
         }
         ids.push(chosen);
       }
@@ -111,7 +113,7 @@ export function randomAnswer(s: GameState, d: Decision, rnd: Rand): Answer {
         let chosen: string | null = null;
         for (const id of shuffled(pieces, rnd)) {
           const trial = [...ids, id, ...Array(d.faces.length - i - 1).fill(null)];
-          if (!validateSpartacus(s, d.side, d.faces, trial)) { chosen = id; break; }
+          if (!validateSpartacus(s, d.side, d.faces, trial, d.command)) { chosen = id; break; }
         }
         ids.push(chosen);
       }

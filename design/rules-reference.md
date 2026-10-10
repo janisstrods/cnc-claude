@@ -627,6 +627,11 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
 * **Separate commands** (210): each unit belongs to a command; one card orders units of one command only — every card
   type, including Clash of Shields, Darken the Sky, Rally and I Am Spartacus (the player names the command when the card
   could order units of both). Leaders belong to no command and support everyone (X2 Q7).
+  * Engine: `commands` in the scenario data, `command` on units (and, optionally, leaders). A selection may mix units
+    only of one command ("One card orders one army only."); a piece with no command goes with any. A leader whose data
+    names a command counts as a piece of it, so a card that orders him orders only that command. Clash of Shields, Darken
+    the Sky, Rally and I Am Spartacus ask `chooseCommand` (before any dice are rolled) when their eligible units belong
+    to more than one command; with eligible units in one command nothing is asked. Battles without commands are unchanged.
 * **Rolling Fire** (210, the Slaves; X2 Q6, path length **[Interp]**): a Slave infantry unit on a hill, ordered by a
   card that is not a Tactic card (a Counter Attack copying a section or troop card qualifies), that has not moved, may
   use its battle to roll burning logs downhill, even when adjacent to an enemy.

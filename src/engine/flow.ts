@@ -9,7 +9,7 @@ import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './mov
 import { bannerTotal, gainBanner, updateHeld } from './banners';
 import { captureOnStop, exitUnit, turnEndObjectives, turnStartObjectives } from './objectives';
 import {
-  autoOrders, orderMode, rallyCandidates, spartacusDiceCount, validateOrders, validateRally, validateSpartacus,
+  autoOrders, commandChoices, orderMode, rallyCandidates, spartacusDiceCount, validateOrders, validateRally, validateSpartacus,
 } from './orders';
 import {
   attachedLeader, isEmptyHex, isLeaderId, isRomanArmy, leaderAt, leaderById, leaderUnit, other, unitAt, unitById,
@@ -763,15 +763,35 @@ function returnUnplacedReserves(s: GameState) {
   for (const p of [...backU, ...backL]) delete s.turn.ordered[p.id];
 }
 
+/**
+ * Separate commands (§18.5): when the pieces `kind` could order belong to more than one command, the player names one
+ * before the card acts (before any dice are rolled). Returns the command named, or undefined when nothing was asked
+ * (always, in a battle without commands).
+ */
+function* chooseCommandStep(s: GameState, ctx: FlowCtx, side: Side, kind: CardKind): Gen<string | undefined> {
+  const options = commandChoices(s, side, kind);
+  if (!options.length) return undefined;
+  const a = (yield* ask(ctx, { kind: 'chooseCommand', side, options }, (a) =>
+    a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < options.length ? null : 'Choose a command.',
+  )) as Extract<Answer, { kind: 'choose' }>;
+  const id = options[a.index];
+  log(s, ctx, `Orders go to the ${s.special.commands.find((c) => c.id === id)!.name} command.`, side);
+  return id;
+}
+
 function* rallyStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
+  const command = yield* chooseCommandStep(s, ctx, side, 'rally');
   const faces = rollDice(s, s.players[side].command);
-  const cands = rallyCandidates(s, side);
+  const cands = rallyCandidates(s, side, command);
   emitRoll(ctx, 'rally', faces, faces.map((f) => f !== 'flag' && f !== 'swords'), null, null);
   if (!cands.length) {
     log(s, ctx, 'No damaged units are near a leader: nothing to rally.', side);
     return [];
   }
-  const a = yield* ask(ctx, { kind: 'rally', side, faces }, (a) => (a.kind === 'assign' ? validateRally(s, side, faces, a.ids) : 'Assign the rally dice.'));
+  const a = yield* ask(
+    ctx, { kind: 'rally', side, faces, ...(command !== undefined ? { command } : {}) },
+    (a) => (a.kind === 'assign' ? validateRally(s, side, faces, a.ids, command) : 'Assign the rally dice.'),
+  );
   const ids = (a as { ids: (string | null)[] }).ids;
   const rallied = new Map<string, number>();
   for (const id of ids) if (id) rallied.set(id, (rallied.get(id) ?? 0) + 1);
@@ -785,10 +805,14 @@ function* rallyStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
 
 function* spartacusStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
   s.turn.reshuffleAfter = true;
+  const command = yield* chooseCommandStep(s, ctx, side, 'spartacus');
   const faces = rollDice(s, spartacusDiceCount(s, side));
   emitRoll(ctx, 'spartacus', faces, faces.map((f) => f !== 'flag' && f !== 'swords'), null, null);
   if (faces.every((f) => f === 'flag' || f === 'swords')) return [];
-  const a = yield* ask(ctx, { kind: 'spartacus', side, faces }, (a) => (a.kind === 'assign' ? validateSpartacus(s, side, faces, a.ids) : 'Choose the pieces to order.'));
+  const a = yield* ask(
+    ctx, { kind: 'spartacus', side, faces, ...(command !== undefined ? { command } : {}) },
+    (a) => (a.kind === 'assign' ? validateSpartacus(s, side, faces, a.ids, command) : 'Choose the pieces to order.'),
+  );
   return (a as { ids: (string | null)[] }).ids.filter((x): x is string => !!x);
 }
 
@@ -799,8 +823,10 @@ function* ordersStep(s: GameState, ctx: FlowCtx, kind: CardKind | null, mirrored
   const mode = orderMode(s, side, kind);
   let ids: string[] = [];
   if (mode.mode === 'none' || !kind) return;
-  if (mode.mode === 'auto') ids = autoOrders(s, side, kind);
-  else if (mode.mode === 'dice') ids = kind === 'rally' ? yield* rallyStep(s, ctx, side) : yield* spartacusStep(s, ctx, side);
+  if (mode.mode === 'auto') {
+    const command = yield* chooseCommandStep(s, ctx, side, kind);
+    ids = autoOrders(s, side, kind, command);
+  } else if (mode.mode === 'dice') ids = kind === 'rally' ? yield* rallyStep(s, ctx, side) : yield* spartacusStep(s, ctx, side);
   else {
     const ambush = ambushAvailable(s, side, kind);
     const a = (yield* ask(ctx, { kind: 'orders', side, card: kind, mirrored }, (a) => {

@@ -9,7 +9,7 @@ import { TERRAIN_NAMES, isImpassable, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain } from './units';
 import {
   ARMY_LOOKS, BLOCKS, COLS, LEGIONS, OFF_BOARD, ROWS, SPECIAL_RULE_IDS,
-  type AmbushDef, type ArmyLook, type Blocks, type EliteId, type GameState, type HexDir, type HexId, type Leader, type LeaderTrait,
+  type AmbushDef, type ArmyLook, type Blocks, type CommandDef, type EliteId, type GameState, type HexDir, type HexId, type Leader, type LeaderTrait,
   type Legion, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
@@ -29,9 +29,10 @@ export interface ScenarioSetup {
   first: Side;
   banners: number;
   terrain: TerrainSetup[];
-  units: { side: Side; type: UnitType; r: number; c: number; elite?: EliteId }[];
-  /** `traits`: Expansion #1 leader traits (§17.2), e.g. Alexander's `ccBonus`. */
-  leaders: { side: Side; name: string; r: number; c: number; traits?: LeaderTrait[] }[];
+  /** `command`: id of the separate command the unit belongs to (needs `commands`, §18.5). */
+  units: { side: Side; type: UnitType; r: number; c: number; elite?: EliteId; command?: string }[];
+  /** `traits`: Expansion #1 leader traits (§17.2), e.g. Alexander's `ccBonus`. `command`: a leader of that command (§18.5). */
+  leaders: { side: Side; name: string; r: number; c: number; traits?: LeaderTrait[]; command?: string }[];
   reserves: { side: Side; type: UnitType }[];
   reserveLeaders: { side: Side; name: string; traits?: LeaderTrait[] }[];
   /**
@@ -50,6 +51,12 @@ export interface ScenarioSetup {
    * pilum and the march (`julian`). Marius legions in 206-223 for the Romans; the Barbarians and Slaves have none.
    */
   legions?: Partial<Record<Side, Legion>>;
+  /**
+   * Separate commands (210 Picenum, §18.5): one card orders units of one command only. Each command belongs to one side;
+   * units and leaders name theirs with `command`. A piece with no command goes with any. `blocks` recolours the
+   * command's base edges (art only).
+   */
+  commands?: CommandDef[];
   /** Castulo: name of the leader whose loss ends the game. */
   sacredLeader?: { side: Side; name: string };
   /** Starting Command for a side when different from `cards` (Trasimenus Romans start with 2). */
@@ -164,6 +171,34 @@ function checkLegions(legions: unknown) {
     if (side !== 'top' && side !== 'bottom') throw new Error(`legions: unknown side ${side}`);
     if (!known(LEGIONS, legion)) throw new Error(`legions: unknown legion ${String(legion)} (${side})`);
   }
+}
+
+/**
+ * The separate commands of a battle (§18.5), copied and validated: a list of `{ id, name, side, blocks? }` with unique
+ * ids, a known side and block set; none when the scenario gives none.
+ */
+function resolveCommands(setup: ScenarioSetup): CommandDef[] {
+  const list: unknown = setup.commands;
+  if (list === undefined) return [];
+  if (!Array.isArray(list)) throw new Error('commands must be a list');
+  const out: CommandDef[] = [];
+  for (const c of list as Partial<CommandDef>[]) {
+    if (typeof c?.id !== 'string' || !c.id) throw new Error('command needs an id');
+    if (out.some((x) => x.id === c.id)) throw new Error(`duplicate command ${c.id}`);
+    if (c.side !== 'top' && c.side !== 'bottom') throw new Error(`command ${c.id}: unknown side ${String(c.side)}`);
+    if (typeof c.name !== 'string') throw new Error(`command ${c.id}: name must be a string`);
+    if (c.blocks !== undefined && !known(BLOCKS, c.blocks)) throw new Error(`command ${c.id}: unknown blocks ${String(c.blocks)}`);
+    out.push({ id: c.id, name: c.name, side: c.side, ...(c.blocks !== undefined ? { blocks: c.blocks } : {}) });
+  }
+  return out;
+}
+
+/** The command id a piece of `side` names, checked against the battle's commands (`who` and `at` word the error). */
+function checkedCommand(commands: CommandDef[], side: Side, id: string, who: string, at = ''): string {
+  const def = commands.find((c) => c.id === id);
+  if (!def) throw new Error(`${who} is not a command of the battle${at}`);
+  if (def.side !== side) throw new Error(`${who} belongs to the ${def.side} army, not ${side}${at}`);
+  return id;
 }
 
 /** The unit with its side's legion stamped, if it is a type the legion rule covers. */
@@ -308,6 +343,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     noCap[h] = t.ford === 'nocap';
     rampart[h] = rampartMask(t);
   }
+  const commands = resolveCommands(setup);
   let nextId = 1;
   const units: Unit[] = setup.units.map((u) => {
     if (!onBoard(u.r, u.c)) throw new Error(`unit off board ${u.r},${u.c}`);
@@ -321,11 +357,14 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
       }
       unit.elite = u.elite;
     }
+    if (u.command !== undefined) unit.command = checkedCommand(commands, u.side, u.command, `unit command ${String(u.command)}`, ` (${u.r},${u.c})`);
     return withLegion(unit, setup.legions);
   });
   const leaders: Leader[] = setup.leaders.map((l) => {
     if (!onBoard(l.r, l.c)) throw new Error(`leader ${l.name} off board ${l.r},${l.c}`);
-    return withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: hexId(l.r, l.c) }, l.traits);
+    const leader = withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: hexId(l.r, l.c) }, l.traits);
+    if (l.command !== undefined) leader.command = checkedCommand(commands, l.side, l.command, `leader ${l.name}: command ${String(l.command)}`);
+    return leader;
   });
   // Asculum: leaders still to be placed wait off the board (placement order = id order)
   const rules = effectiveRules(setup, options);
@@ -381,6 +420,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     winReason: '',
     special: {
       rules,
+      commands,
       ambush,
       reserveUnits,
       reserveLeaders,
@@ -434,6 +474,7 @@ export function cloneState(s: GameState): GameState {
     special: {
       ...s.special,
       rules: s.special.rules,
+      commands: s.special.commands,
       ambush: s.special.ambush,
       reserveUnits: s.special.reserveUnits.map((u) => ({ ...u })),
       reserveLeaders: s.special.reserveLeaders.map((l) => ({ ...l })),

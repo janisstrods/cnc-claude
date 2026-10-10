@@ -398,6 +398,15 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         return { title: 'Cavalry pursuit', text: 'Your cavalry may move one more hex (purple) before a bonus attack.', buttons: [btn('Stay here', () => answer({ kind: 'hex', hex: null }), { variant: 'secondary' })] };
       case 'bonusCombat':
         return { title: 'Bonus combat', text: 'Click a red target to attack again, or decline.', buttons: [btn('No bonus attack', () => answer({ kind: 'hex', hex: null }), { variant: 'secondary' })] };
+      case 'chooseCommand': {
+        // separate commands (210, §18.5): one card acts for one command
+        const name = (id: string) => s.special.commands.find((c) => c.id === id)?.name ?? id;
+        return {
+          title: 'Which command?',
+          text: 'One card orders one army only. Choose the command this card acts for.',
+          buttons: d.options.map((id, i) => btn(`${name(id)} command`, () => answer({ kind: 'choose', index: i }), { variant: i === 0 ? 'primary' : 'secondary', key: `cmd-${id}` })),
+        };
+      }
       case 'rally':
       case 'spartacus':
         return { title: d.kind === 'rally' ? 'Rally' : 'I Am Spartacus', text: 'Assign the dice in the dialog.', buttons: [] };
@@ -586,7 +595,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
       </HoverTip>
 
       {d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus') && (
-        <AssignDialog state={s} side={human} kind={d.kind} faces={d.faces} onChange={setAssignFocus} onDone={(ids) => answer({ kind: 'assign', ids })} error={view.error} />
+        <AssignDialog state={s} side={human} kind={d.kind} faces={d.faces} command={d.command} onChange={setAssignFocus} onDone={(ids) => answer({ kind: 'assign', ids })} error={view.error} />
       )}
 
       <Modal open={showRules} title="Rules Reference" onClose={() => setShowRules(false)} width={880}>
@@ -667,8 +676,10 @@ const LogPanel = memo(function LogPanel({ log, human }: { log: LogLine[]; human:
   );
 });
 
-function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'spartacus'; faces: DieFace[]; error: string | null; onChange: (ids: string[]) => void; onDone: (ids: (string | null)[]) => void }) {
-  const { state: s, side, faces } = p;
+function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'spartacus'; faces: DieFace[]; command?: string; error: string | null; onChange: (ids: string[]) => void; onDone: (ids: (string | null)[]) => void }) {
+  const { state: s, side, faces, command } = p;
+  // separate commands (§18.5): only the named command's pieces, and those with no command, can be chosen
+  const free = (x: { command?: string }) => command === undefined || x.command === undefined || x.command === command;
   const [ids, setIds] = useState<(string | null)[]>(() => suggest());
   useEffect(() => {
     p.onChange(ids.filter((x): x is string => !!x));
@@ -683,13 +694,13 @@ function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'sparta
   }
   function options(face: DieFace): { id: string; label: string }[] {
     if (p.kind === 'rally') {
-      return rallyCandidates(s, side)
+      return rallyCandidates(s, side, command)
         .filter((u) => face === 'leader' || UNIT_STATS[u.type].cls === face)
         .map((u) => ({ id: u.id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) — ${where(u.hex)}` }));
     }
     if (face === 'flag' || face === 'swords') return [];
-    const units = unitsOf(s, side).filter((u) => face === 'leader' || UNIT_STATS[u.type].cls === face).map((u) => ({ id: u.id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) — ${where(u.hex)}` }));
-    const leaders = face === 'leader' ? leadersOf(s, side).map((l) => ({ id: l.id, label: `Leader ${l.name || ''} — ${where(l.hex)}` })) : [];
+    const units = unitsOf(s, side).filter((u) => free(u) && (face === 'leader' || UNIT_STATS[u.type].cls === face)).map((u) => ({ id: u.id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) — ${where(u.hex)}` }));
+    const leaders = face === 'leader' ? leadersOf(s, side).filter(free).map((l) => ({ id: l.id, label: `Leader ${l.name || ''} — ${where(l.hex)}` })) : [];
     return [...units, ...leaders];
   }
   function suggest(): (string | null)[] {
@@ -699,14 +710,14 @@ function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'sparta
       let chosen: string | null = null;
       for (const o of opts) {
         const trial = [...out, o.id, ...Array(faces.length - i - 1).fill(null)];
-        const err = p.kind === 'rally' ? validateRally(s, side, faces, trial) : validateSpartacus(s, side, faces, trial);
+        const err = p.kind === 'rally' ? validateRally(s, side, faces, trial, command) : validateSpartacus(s, side, faces, trial, command);
         if (!err) { chosen = o.id; break; }
       }
       out.push(chosen);
     }
     return out;
   }
-  const err = p.kind === 'rally' ? validateRally(s, side, faces, ids) : validateSpartacus(s, side, faces, ids);
+  const err = p.kind === 'rally' ? validateRally(s, side, faces, ids, command) : validateSpartacus(s, side, faces, ids, command);
   return (
     <div className="assign-float">
       <div className="assign-title">{p.kind === 'rally' ? 'Rally your troops' : 'I Am Spartacus'}</div>
