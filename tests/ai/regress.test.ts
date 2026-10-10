@@ -8,6 +8,8 @@ import {
 import { SCENARIOS } from '../../src/scenarios';
 import { DIFFICULTY, PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityById, personalityFor, type AiOptions } from '../../src/ai';
 import { orderCandidates } from '../../src/ai/ordering';
+import { closeRivals, makeCtx, type Cand } from '../../src/ai/planner';
+import { Rng } from '../../src/ai/rand';
 import { chooseCavalryExtra } from '../../src/ai/policies';
 import { NEUTRAL_W, weightsFor } from '../../src/ai/values';
 import { Bot, type Strategy } from './bots';
@@ -233,6 +235,24 @@ describe('order selection', () => {
 
   it('Double Time orders the whole linked line', () => {
     expect(offered(outOfReach([[1, 7], [1, 8], [1, 9], [1, 10]]), 'doubleTime')).toContainEqual(['u1', 'u2', 'u3', 'u4']);
+  });
+});
+
+describe('turn planning', () => {
+  const cand = (label: string, vals: number[], retention = 0): Cand => ({
+    card: 0, kind: 'order2C', effective: 'order2C', orders: [], moves: [], label, retention,
+    n: vals.length, sum: vals.reduce((a, v) => a + v, 0), laN: 0, laSum: 0, vals,
+  });
+
+  it('spends leftover samples on an uncertain rival, not on copies of a settled plan', () => {
+    // Seen at Cannae: several ways of holding still score the same in every sample. They filled the top three, so the
+    // leftover budget went on them while advancing plans, cut after a few unlucky rolls, were never sampled again.
+    const ctx = makeCtx('top', NEUTRAL_W, NEUTRAL_W, new Rng(1), DIFFICULTY.tribune, 1, true);
+    const hold = cand('outFlanked [u5] hold', Array(16).fill(-5.139));
+    const holdAll = cand('outFlanked [u5,u1,u6,u7] hold', Array(4).fill(-5.139));
+    const hold3R = cand('order3R [u5] hold', Array(4).fill(-5.139), 0.018);
+    const advance = cand('order3R [u5,u1,u4] base', [-4.6, -5.9, -5.0, -4.7, -5.8, -5.3, -4.9, -5.4]);
+    expect(closeRivals(hold, [hold, holdAll, hold3R, advance], ctx).map((c) => c.label)).toEqual([advance.label]);
   });
 });
 

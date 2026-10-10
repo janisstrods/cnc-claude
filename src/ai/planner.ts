@@ -410,9 +410,25 @@ function closeCall(a: Cand, b: Cand, ctx: PlanCtx): boolean {
   return Math.abs(gap) < 2.5 * (sd / Math.sqrt(m) + 1e-9);
 }
 
+/** A plan whose samples never vary (no dice decided anything): more samples cannot change its estimate. */
+function settled(c: Cand): boolean {
+  return c.n >= 4 && c.vals.every((v) => v === c.vals[0]);
+}
+
+/**
+ * The leader's two best rivals that deserve more samples: uncertain plans, from all candidates, still a close call
+ * with it. Settled plans (several ways of holding still, say) would otherwise fill the top places and take the
+ * budget while rivals cut by the halving after a few unlucky rolls are never sampled again.
+ */
+export function closeRivals(lead: Cand, cands: Cand[], ctx: PlanCtx): Cand[] {
+  const byScore = (a: Cand, b: Cand) => candScore(b, ctx) - candScore(a, ctx);
+  return [...cands].sort(byScore).filter((c) => c !== lead && c.n > 0 && !settled(c) && closeCall(lead, c, ctx)).slice(0, 2);
+}
+
 /**
  * Spend the leftover budget where it matters: re-admit plans cut early whose mean beats the leader, then keep sampling
- * the top plans while they are statistically indistinguishable (within the simulation cap, so deterministic mode holds).
+ * the leader and its close rivals while they are statistically indistinguishable (within the simulation cap, so
+ * deterministic mode holds).
  */
 function topUp(root: GameState, ctx: PlanCtx, cands: Cand[], pool: Cand[]): Cand[] {
   const byScore = (a: Cand, b: Cand) => candScore(b, ctx) - candScore(a, ctx);
@@ -425,19 +441,18 @@ function topUp(root: GameState, ctx: PlanCtx, cands: Cand[], pool: Cand[]): Cand
       pool.push(c);
     }
   }
-  pool.sort(byScore);
-  const top = pool.slice(0, 3);
   for (let guard = 0; guard < 24 && !timeUp(ctx); guard++) {
-    top.sort(byScore);
-    const lead = top[0];
-    const close = top.slice(1).filter((c) => closeCall(lead, c, ctx));
+    pool.sort(byScore);
+    const lead = pool[0];
+    const close = closeRivals(lead, cands, ctx);
     if (!close.length) break;
-    const group = [lead, ...close].filter((c) => c.n < ctx.cfg.topUp);
+    const group = [lead, ...close].filter((c) => !settled(c) && c.n < ctx.cfg.topUp);
     if (!group.length) break;
     const target = Math.min(ctx.cfg.topUp, Math.max(...[lead, ...close].map((c) => c.n)) + 8);
     sampleTo(root, ctx, group, target);
+    for (const c of close) if (!pool.includes(c)) pool.push(c);
   }
-  return [...top, ...pool.filter((c) => !top.includes(c))].sort(byScore);
+  return pool.sort(byScore);
 }
 
 export interface PlanResult {
