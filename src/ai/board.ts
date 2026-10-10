@@ -4,8 +4,8 @@ import { hillGroups, isCamp, isHill, isImpassable, terrainAt, terrainBlocksLOS }
 import { frightAtFirstSight, rampartShields, type StrikeRole } from '../engine/combat';
 import { canShoot, eliteHas, rangeOf } from '../engine/elites';
 import { leaderHas } from '../engine/query';
-import { UNIT_STATS, forbidsTerrain } from '../engine/units';
-import { COLS, ROWS, type GameState, type HexId, type Leader, type Side, type Unit } from '../engine/types';
+import { UNIT_STATS } from '../engine/units';
+import { COLS, ROWS, type GameState, type HexId, type Leader, type Side, type TerrainType, type Unit } from '../engine/types';
 
 export const NHEX = ROWS * COLS;
 const DIST = new Uint8Array(NHEX * NHEX).fill(99);
@@ -14,6 +14,18 @@ for (const a of ALL_HEXES) for (const b of ALL_HEXES) DIST[a * NHEX + b] = dista
 export function hexDist(a: HexId, b: HexId): number {
   if (a < 0 || b < 0) return 99;
   return DIST[a * NHEX + b];
+}
+
+/** Engine rearHexes tabled per side and hex (it builds a fresh array per call; retreat walks ask for it constantly). */
+const REAR: Record<Side, HexId[][]> = { top: [], bottom: [] };
+for (let h = 0; h < NHEX; h++) {
+  REAR.top.push(rearHexes(h, 'top'));
+  REAR.bottom.push(rearHexes(h, 'bottom'));
+}
+
+/** rearHexes(h, side) from the table (do not modify the result). */
+function rearOf(h: HexId, side: Side): readonly HexId[] {
+  return REAR[side][h] ?? rearHexes(h, side);
 }
 
 /** Occupancy lookup for a game state (rebuild after any position change). */
@@ -73,7 +85,7 @@ export function enemyUnitsAdjacent(occ: Occ, h: HexId, side: Side): number {
 export function ignorableOcc(
   s: GameState, occ: Occ, t: Unit, kind: 'close' | 'ranged', striker: Unit | null, role: StrikeRole | null = null,
 ): number {
-  if (frightAtFirstSight(s, t, striker, kind)) return 0;
+  if (striker && frightAtFirstSight(s, t, striker, kind)) return 0;
   const T = UNIT_STATS[t.type];
   let n = 0;
   if (!T.noLeaderBenefit) {
@@ -82,12 +94,12 @@ export function ignorableOcc(
   }
   if (isCamp(s, t.hex) && T.foot) n++;
   if (T.fullStrengthBonus && t.blocks === t.maxBlocks) n++;
-  if (eliteHas(t, 'ignoreFlag')) n++;
+  if (t.elite && eliteHas(t, 'ignoreFlag')) n++;
   if (T.vsMountedIgnoreFlag && kind === 'close' && striker) {
     const st = UNIT_STATS[striker.type];
     if (st.cavalry || st.chariot) n++;
   }
-  if (rampartShields(s, t, striker, kind, role)) n++;
+  if (striker && rampartShields(s, t, striker, kind, role)) n++;
   return n;
 }
 
@@ -107,17 +119,26 @@ export function helmetsOcc(occ: Occ, u: Unit): boolean {
 }
 
 /**
+ * Is hex h terrain that a unit with this `forbiddenTerrain` list (its UNIT_STATS row) may not enter? Mirror of engine
+ * forbidsTerrain; most types forbid nothing, so the list is passed in once per unit instead of looked up per hex.
+ */
+export function terrainForbids(s: GameState, forbidden: readonly TerrainType[], h: HexId): boolean {
+  return forbidden.length > 0 && forbidden.includes(terrainAt(s, h));
+}
+
+/**
  * How many of `need` retreat hexes the unit can actually move (toward its own side).
  * Joining a lone friendly leader completes the retreat.
  */
 export function retreatRoom(s: GameState, occ: Occ, u: Unit, need: number): number {
   if (need <= 0) return 0;
   const hasLeader = !!attachedLeaderOcc(occ, u);
+  const forbidden = UNIT_STATS[u.type].forbiddenTerrain;
   const walk = (cur: HexId, left: number): number => {
     if (left === 0) return 0;
     let best = 0;
-    for (const h of rearHexes(cur, u.side)) {
-      if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || occ.unit[h]) continue;
+    for (const h of rearOf(cur, u.side)) {
+      if (isImpassable(s, h) || terrainForbids(s, forbidden, h) || occ.unit[h]) continue;
       const l = occ.leader[h];
       if (l) {
         if (l.side !== u.side || hasLeader) continue;
@@ -132,21 +153,12 @@ export function retreatRoom(s: GameState, occ: Occ, u: Unit, need: number): numb
   return walk(u.hex, need);
 }
 
-/**
- * Can an enemy unit `e` reach hex `nb` to attack from it (it is free, passable and not terrain `e` may not enter, such
- * as broken ground or marsh for a war machine)?
- */
-export function approachable(s: GameState, occ: Occ, e: Unit, nb: HexId): boolean {
-  if (occ.unit[nb] || isImpassable(s, nb) || forbidsTerrain(e.type, terrainAt(s, nb))) return false;
-  const l = occ.leader[nb];
-  return !(l && l.side !== e.side);
-}
-
 /** Can the unit evade at all (mirror of engine evadeOptions non-emptiness)? */
 export function canEvadeOcc(s: GameState, occ: Occ, u: Unit): boolean {
   const hasLeader = !!attachedLeaderOcc(occ, u);
-  for (const h of rearHexes(u.hex, u.side)) {
-    if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || occ.unit[h]) continue;
+  const forbidden = UNIT_STATS[u.type].forbiddenTerrain;
+  for (const h of rearOf(u.hex, u.side)) {
+    if (isImpassable(s, h) || terrainForbids(s, forbidden, h) || occ.unit[h]) continue;
     const l = occ.leader[h];
     if (l && (l.side !== u.side || hasLeader)) continue;
     return true;
@@ -212,7 +224,7 @@ export function reachOf(u: Unit): number {
 
 /** Skirmisher: shoots and may always evade (LI, LB, LS, LC, LBC; also HWM, see isWarMachine); it stands off and fires. */
 export function isRangedLight(u: Unit): boolean {
-  return canShoot(u) && UNIT_STATS[u.type].evade === 'always';
+  return UNIT_STATS[u.type].evade === 'always' && canShoot(u);
 }
 
 /** War machine (HWM): shoots, but may not battle at all after moving, so it stays back and fires (§15). */
