@@ -1,4 +1,5 @@
 // Valuation constants and personality-derived weights. One banner ~ 1.0 point.
+import { bannerTotal } from '../engine/banners';
 import { leaderHas } from '../engine/query';
 import type { EliteId, GameState, Leader, Side, Unit, UnitType } from '../engine/types';
 import type { Personality } from './personality';
@@ -27,8 +28,10 @@ export const ELITE_WEIGHT: Record<EliteId, number> = {
 };
 
 export const LEADER_VALUE = 0.4;
-/** Alexander (`ccBonus`, +1 close-combat die to his unit) is worth more than an ordinary leader. */
+/** Alexander and Caesar (`ccBonus`, +1 close-combat die to his unit) are worth more than an ordinary leader. */
 const CC_BONUS_LEADER = 1.5;
+/** Spartacus (`spartacusDice`): his side's I Am Spartacus rolls 2 more dice while he lives (§18.3). */
+const SPARTACUS_LEADER = 1.2;
 export const WIN_SCORE = 100;
 /** Cap on the value of the opponent's winning banner used in risk estimates (they are approximate). */
 const WINNING_BANNER = 6;
@@ -54,9 +57,19 @@ export function bannerScore(b: number, T: number): number {
   return v;
 }
 
-/** Value of the next banner the given side would capture. */
+/**
+ * Value of the next banner the given side would capture: the step after its banner total (permanent banners plus the
+ * banners its objectives give it now, §18.4; the permanent banners alone in battles without held banners).
+ */
 export function nextBanner(s: GameState, side: Side): number {
-  return bannerStep(s.players[side].banners + 1, s.bannersToWin);
+  return bannerStep(bannerTotal(s, side) + 1, s.bannersToWin);
+}
+
+/** Value of `n` more banners for a side whose banner total is `total` (the steps total + 1 .. total + n). */
+export function bannersWorth(total: number, n: number, T: number): number {
+  let v = 0;
+  for (let k = 1; k <= n; k++) v += bannerStep(total + k, T);
+  return v;
 }
 
 /**
@@ -74,7 +87,8 @@ export function setViewer(side: Side | null): void {
 
 /** Material worth of a leader on the board (traits included, scenario objectives not). */
 export function leaderWorth(l: Leader): number {
-  return leaderHas(l, 'ccBonus') ? CC_BONUS_LEADER * LEADER_VALUE : LEADER_VALUE;
+  if (leaderHas(l, 'ccBonus')) return CC_BONUS_LEADER * LEADER_VALUE;
+  return leaderHas(l, 'spartacusDice') ? SPARTACUS_LEADER * LEADER_VALUE : LEADER_VALUE;
 }
 
 /**

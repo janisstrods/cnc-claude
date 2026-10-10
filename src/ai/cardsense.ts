@@ -2,11 +2,11 @@
 import { ambushAvailable } from '../engine/flow';
 import { inSection } from '../engine/hex';
 import { leaderHas, leadersOf, unitsOf } from '../engine/query';
-import { canShoot } from '../engine/elites';
+import { canShoot, hasPilum } from '../engine/elites';
 import { UNIT_STATS } from '../engine/units';
 import type { CardKind, GameState, SectionName, Side, Unit } from '../engine/types';
 import { areAdjacent } from '../engine/hex';
-import { rallyCandidates } from '../engine/orders';
+import { rallyCandidates, spartacusDiceCount } from '../engine/orders';
 import { hexDist } from './board';
 import type { Weights } from './values';
 
@@ -14,6 +14,22 @@ function nearestEnemy(s: GameState, u: Unit): number {
   let best = 99;
   for (const v of s.units) if (v.side !== u.side && v.hex >= 0) best = Math.min(best, hexDist(u.hex, v.hex));
   return best;
+}
+
+/**
+ * I Am Spartacus with Spartacus on the board (§18.3): his side rolls Command + 2 dice. The card's worth scales with the
+ * dice (1 without him, so every other battle is unchanged).
+ */
+function spartacusScale(s: GameState, side: Side): number {
+  const c = s.players[side].command;
+  return c > 0 ? spartacusDiceCount(s, side) / c : 1;
+}
+
+/** Darken the Sky for an army of pilum throwers (§18.2): every legion unit in range throws twice. */
+function pilumThrowers(units: Unit[]): number {
+  let n = 0;
+  for (const u of units) if (hasPilum(u)) n++;
+  return n;
 }
 
 const SECTION_OF: Partial<Record<CardKind, [SectionName, number]>> = {
@@ -61,14 +77,19 @@ export function cardRetention(s: GameState, side: Side, kind: CardKind, W: Weigh
       }
       case 'clash': v = 0.45; break;
       case 'counterAttack': v = 0.1; break;
-      case 'darken': v = 0.18 * Math.min(1, countOf(canShoot) / 3); break;
+      case 'darken': {
+        // with the pilum (§18.2) the whole legion line throws twice: worth more the more of it there is
+        const pil = pilumThrowers(units);
+        v = 0.18 * Math.min(1, countOf(canShoot) / 3) * (pil ? 1 + 0.5 * Math.min(1, pil / 6) : 1);
+        break;
+      }
       case 'doubleTime': v = countOf((u) => UNIT_STATS[u.type].foot) >= 2 ? 0.1 : 0.02; break;
       case 'lineCommand': v = 0.16 * Math.min(1, countOf((u) => UNIT_STATS[u.type].foot) / 4); break;
       case 'mountedCharge': v = 0.3 * Math.min(1, countOf((u) => UNIT_STATS[u.type].mounted) / 2); break;
       case 'moveFireMove': v = 0.1 * Math.min(1, countOf((u) => UNIT_STATS[u.type].cls === 'light') / 3); break;
       case 'firstStrike': v = 0.6; break;
       case 'rally': v = 0.1 + 0.12 * Math.min(1, rallyCandidates(s, side).length / 2); break;
-      case 'spartacus': v = 0.25; break;
+      case 'spartacus': v = 0.25 * spartacusScale(s, side); break;
       default: v = 0.05;
     }
   }
@@ -120,7 +141,7 @@ export function quickCardScore(s: GameState, side: Side, kind: CardKind, ben: Ma
     case 'doubleTime': return topN(units.filter((u) => UNIT_STATS[u.type].foot), 4) * 0.9;
     case 'moveFireMove': return topN(units.filter((u) => UNIT_STATS[u.type].cls === 'light'), command) * 0.8;
     case 'rally': return rallyCandidates(s, side).length * 0.12;
-    case 'spartacus': return topN(units, 2);
+    case 'spartacus': return topN(units, Math.round(2 * spartacusScale(s, side)));
     case 'counterAttack': return s.lastCard[side === 'top' ? 'bottom' : 'top'] ? 0.15 : 0;
     case 'firstStrike': return -1;
     default: return 0;

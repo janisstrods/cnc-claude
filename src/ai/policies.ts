@@ -1,11 +1,12 @@
 // Fast decision policies: battle choice, defence, flags, retreats, leader evasion, momentum, bonus combat, rally.
 // Used both for live answers and inside Monte-Carlo simulations (for both sides).
+import { bannerTotal } from '../engine/banners';
 import { cardKind, sectionOrders } from '../engine/cards';
 import { closeCombatDice, retreatPerFlag } from '../engine/combat';
-import { capturableAt } from '../engine/objectives';
-import { neighbours, sectionsOf } from '../engine/hex';
-import { autoOrders, rallyCandidates, validateRally, validateSpartacus } from '../engine/orders';
-import { leaderById, other, unitById, unitsOf } from '../engine/query';
+import { nextCaptureBanners, stopCaptureAt } from '../engine/objectives';
+import { baselineRow, neighbours, rowOf, sectionsOf } from '../engine/hex';
+import { autoOrders, inCommand, rallyCandidates, spartacusDiceCount, validateRally, validateSpartacus } from '../engine/orders';
+import { leaderById, other, unitById } from '../engine/query';
 import { retreatOptions, type ElephantRetreatOption } from '../engine/retreat';
 import { rangeOf } from '../engine/elites';
 import { terrainAt } from '../engine/terrain';
@@ -16,12 +17,13 @@ import {
 import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist, isWarMachine } from './board';
 import { pAnyHelmet } from './dice';
 import {
-  attackOptions, closeAttackEV, closeProfile, dmgValue, evadeEV, leaderAttackEV, momentumValue, standEV, strikeValue, type AttackOpt,
+  attackAnswer, attackNowValue, attackOptions, closeAttackEV, closeProfile, dmgValue, evadeEV, leaderAttackEV, momentumValue, standEV,
+  strikeValue, type AttackOpt,
 } from './estimate';
 import { battered, evaluate } from './evaluate';
 import { pieceBenefits } from './ordering';
 import type { Rng } from './rand';
-import { WIN_SCORE, blockVal, isSacredLeader, leaderVal, nextBanner, unitWeight, type Weights } from './values';
+import { WIN_SCORE, bannersWorth, blockVal, isSacredLeader, leaderVal, nextBanner, unitWeight, type Weights } from './values';
 
 type D<K extends Decision['kind']> = Extract<Decision, { kind: K }>;
 
@@ -182,7 +184,8 @@ export function pickAttack(opts: AttackOpt[], W: Weights, rng?: Rng, noise = 0):
   }
   if (!best) return null;
   if (!must.length) {
-    const thr = best.kind === 'ranged' ? 0.001 : W.attackThreshold - 0.08;
+    // ranged fire and Rolling Fire (offered only when worth its block) need only a positive value
+    const thr = best.kind !== 'close' ? 0.001 : W.attackThreshold - 0.08;
     if (bestScore < thr) return null;
   }
   return best;
@@ -192,7 +195,7 @@ export function pickAttack(opts: AttackOpt[], W: Weights, rng?: Rng, noise = 0):
 export function greedyBattle(s: GameState, W: Weights, rng?: Rng, noise = 0): Answer {
   const best = pickAttack(attackOptions(s, W), W, rng, noise);
   if (!best) return { kind: 'endBattle' };
-  return { kind: 'attack', unit: best.unit, target: best.target };
+  return attackAnswer(best);
 }
 
 // ---------------------------------------------------------------------------
@@ -269,6 +272,15 @@ function evalUnitAt(s: GameState, u: Unit, to: HexId, loss: number, W: Weights, 
   return v;
 }
 
+/**
+ * Blocks unit u loses taking retreat option o: its losses, or every block under last-row retreat (214, §18.5) when the
+ * retreat ends on its own baseline short of hexes without joining a leader (never an evade).
+ */
+export function retreatLoss(s: GameState, u: Unit, o: RetreatOption, evade = false): number {
+  if (evade || o.losses <= 0 || o.attachLeader || s.special.lastRowRetreat !== u.side) return o.losses;
+  return rowOf(o.end) === baselineRow(u.side) ? u.blocks : o.losses;
+}
+
 /** Choose a retreat / evade destination. */
 export function chooseRetreat(s: GameState, d: D<'retreat'>, W: Weights): number {
   const u = unitById(s, d.unit);
@@ -277,7 +289,7 @@ export function chooseRetreat(s: GameState, d: D<'retreat'>, W: Weights): number
   let best = 0;
   let bestV = -Infinity;
   d.options.forEach((o, i) => {
-    let v = evalUnitAt(s, u, o.end, o.losses, W, next);
+    let v = evalUnitAt(s, u, o.end, retreatLoss(s, u, o, d.reason === 'evade'), W, next);
     const eo = o as ElephantRetreatOption;
     if (eo.blockers) {
       const occ = new Occ(s);
@@ -377,7 +389,7 @@ export function chooseIgnoreFlags(s: GameState, d: D<'ignoreFlags'>, W: Weights)
     const opts = retreatOptions(s, u, left * per);
     if (!opts.length) return -Infinity;
     let v = -Infinity;
-    for (const o of opts) v = Math.max(v, evalUnitAt(s, u, o.end, o.losses, W, next));
+    for (const o of opts) v = Math.max(v, evalUnitAt(s, u, o.end, retreatLoss(s, u, o), W, next));
     return v;
   };
   let bestN = d.max;
@@ -445,12 +457,17 @@ function valueAt(s: GameState, u: Unit, hex: HexId, W: Weights, withBonus: boole
 /**
  * Camp capture (Baecula, Gabiene): value of a unit of the capturing side ending its attack on hex h when that is an
  * uncaptured objective camp (the engine credits the camp only where the unit finally stops, so riding on out of it
- * forfeits the banner).
+ * forfeits the banner). The capture scores the objective's next banners (`nextCaptureBanners`: 1 in the base game).
  */
 export function campBanner(s: GameState, u: Unit, h: HexId): number {
-  if (h < 0 || !capturableAt(s, u.side, h)) return 0;
-  if (s.players[u.side].banners + 1 >= s.bannersToWin) return WIN_SCORE;
-  return nextBanner(s, u.side);
+  if (h < 0) return 0;
+  const i = stopCaptureAt(s, u.side, h);
+  if (i < 0) return 0;
+  const n = nextCaptureBanners(s, i);
+  if (n <= 0) return 0;
+  const total = bannerTotal(s, u.side);
+  if (total + n >= s.bannersToWin) return WIN_SCORE;
+  return n === 1 ? nextBanner(s, u.side) : bannersWorth(total, n, s.bannersToWin);
 }
 
 export function chooseMomentum(s: GameState, d: D<'momentum'>, W: Weights, bonusPossible = true): boolean {
@@ -554,9 +571,8 @@ export function spartacusAssign(s: GameState, side: Side, faces: DieFace[], W: W
   const ben = pieceBenefits(s, side, 'spartacus', W);
   const b = (id: string) => ben.get(id) ?? 0;
   // separate commands (§18.5): only the named command's pieces, and those with no command
-  const free = (p: { command?: string }) => command === undefined || p.command === undefined || p.command === command;
-  const units = s.units.filter((u) => u.side === side && u.hex >= 0 && free(u));
-  const leaders = s.leaders.filter((l) => l.side === side && l.hex >= 0 && free(l));
+  const units = s.units.filter((u) => u.side === side && u.hex >= 0 && inCommand(u, command));
+  const leaders = s.leaders.filter((l) => l.side === side && l.hex >= 0 && inCommand(l, command));
   const used = new Set<string>();
   const ids: (string | null)[] = faces.map(() => null);
   faces.forEach((f, i) => {
@@ -592,20 +608,50 @@ export function spartacusAssign(s: GameState, side: Side, faces: DieFace[], W: W
 // ---------------------------------------------------------------------------
 
 /**
- * Which command a card with automatic or dice orders acts for: the one with the most pieces it would affect, the first
- * on a tie. A cheap, legal stand-in until the AI weighs the commands properly (Task 19).
+ * What the turn's card (Clash of Shields, Darken the Sky, Rally, I Am Spartacus) is worth if it orders command `cmd`:
+ * the attacks its units could make under the card (Clash, Darken; the card's modifiers are in force), the blocks it could
+ * rally, or the pieces I Am Spartacus' dice would likely order (about two dice in three order something).
  */
-export function chooseCommandIndex(s: GameState, d: D<'chooseCommand'>): number {
+function commandValue(s: GameState, occ: Occ, side: Side, cmd: string, W: Weights): number {
   const kind = s.turn.effective;
+  let v = 0;
+  if (kind === 'clash' || kind === 'darken') {
+    for (const id of autoOrders(s, side, kind, cmd)) {
+      const u = unitById(s, id);
+      if (u) v += Math.max(0, attackNowValue(s, occ, u, 0, true, false, W));
+    }
+    return v;
+  }
+  if (kind === 'rally') {
+    for (const u of rallyCandidates(s, side, cmd)) {
+      v += blockVal(u) * Math.min(2, u.maxBlocks - u.blocks) * (enemyUnitsAdjacent(occ, u.hex, side) > 0 ? 1.3 : 1);
+    }
+    return v;
+  }
+  const ben = pieceBenefits(s, side, kind, W);
+  const vals: number[] = [];
+  for (const u of s.units) if (u.side === side && u.hex >= 0 && inCommand(u, cmd)) vals.push(Math.max(0, ben.get(u.id) ?? 0));
+  for (const l of s.leaders) if (l.side === side && l.hex >= 0 && inCommand(l, cmd)) vals.push(Math.max(0, ben.get(l.id) ?? 0));
+  vals.sort((a, b) => b - a);
+  const n = Math.ceil((2 / 3) * spartacusDiceCount(s, side));
+  for (let i = 0; i < Math.min(n, vals.length); i++) v += vals[i];
+  return v;
+}
+
+/**
+ * Which command a card with automatic or dice orders acts for (§18.5): the one whose orders are worth most
+ * (`commandValue`), the first on a tie. Positions and the card only: no hidden information, so the turn plan and the
+ * live answer agree.
+ */
+export function chooseCommandIndex(s: GameState, d: D<'chooseCommand'>, W: Weights): number {
+  const occ = new Occ(s);
   let best = 0;
-  let bestN = -1;
+  let bestV = -Infinity;
   d.options.forEach((id, i) => {
-    const n = kind === 'clash' || kind === 'darken' ? autoOrders(s, d.side, kind, id).length
-      : kind === 'rally' ? rallyCandidates(s, d.side, id).length
-        : unitsOf(s, d.side).filter((u) => u.command === id).length;
-    if (n > bestN) {
+    const v = commandValue(s, occ, d.side, id, W);
+    if (v > bestV + 1e-9) {
       best = i;
-      bestN = n;
+      bestV = v;
     }
   });
   return best;
@@ -631,7 +677,7 @@ export function quickRetreat(s: GameState, d: D<'retreat'>): number {
   let bestV = -Infinity;
   d.options.forEach((o, i) => {
     let v = -0.12 * enemyUnitsAdjacent(occ, o.end, u.side) + 0.03 * Math.min(2, friendlyUnitsAdjacentExcept(occ, o.end, u)) -
-      0.05 * marshCount(s, o.path) - o.losses * 0.3;
+      0.05 * marshCount(s, o.path) - retreatLoss(s, u, o, d.reason === 'evade') * 0.3;
     if (o.attachLeader) v += 0.05;
     const eo = o as ElephantRetreatOption;
     if (eo.blockers) for (const bl of eo.blockers) {
@@ -741,7 +787,7 @@ export function reactiveFast(s: GameState, d: Decision, W: Weights, rng: Rng): A
     case 'momentum': return { kind: 'yesno', yes: quickMomentum(s, d, W) };
     case 'cavalryExtra': return { kind: 'hex', hex: quickCavalryExtra(s, d, W) };
     case 'bonusCombat': return { kind: 'hex', hex: chooseBonusCombat(s, d, W) };
-    case 'chooseCommand': return { kind: 'choose', index: chooseCommandIndex(s, d) };
+    case 'chooseCommand': return { kind: 'choose', index: chooseCommandIndex(s, d, W) };
     case 'rally': return { kind: 'assign', ids: rallyAssign(s, d.side, d.faces, d.command) };
     case 'spartacus': return { kind: 'assign', ids: spartacusAssign(s, d.side, d.faces, W, d.command) };
     case 'battle': return greedyBattle(s, W, rng);

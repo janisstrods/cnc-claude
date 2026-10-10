@@ -3,10 +3,11 @@ import { movablePieces, pieceMoves } from '../engine/flow';
 import { nextCaptureBanners, stopCaptureAt } from '../engine/objectives';
 import { attachedLeader, isLeaderId, leaderById, leaderUnit, other, unitById } from '../engine/query';
 import type { MoveTarget } from '../engine/movement';
-import { OFF_BOARD, type Answer, type GameState, type HexId, type Side } from '../engine/types';
+import { OFF_BOARD, type Answer, type GameState, type HexId, type Side, type TerrainType } from '../engine/types';
 import { Occ, hexDist } from './board';
 import { attackNowValue } from './estimate';
 import { evaluate } from './evaluate';
+import { hasHeldObjectives, heldNow } from './goals';
 import type { Rng } from './rand';
 import { WIN_SCORE, type Weights } from './values';
 
@@ -64,6 +65,30 @@ export function scoreOption(s: GameState, id: string, m: MoveTarget | null, stag
     u.hex = m.hex;
     if (l) l.hex = m.hex;
   }
+  // held banners count at once (hold objectives, §18.4): a move onto the last banner wins the battle
+  if (m && hasHeldObjectives(s) && p.banners + heldNow(s, new Occ(s), me) >= s.bannersToWin) {
+    u.hex = old;
+    if (l) l.hex = old;
+    p.banners = bannersBefore;
+    if (captured >= 0) s.special.objState[captured].taken.pop();
+    return WIN_SCORE;
+  }
+  // rampart breakers (223, §18.6): the ramparts the unit enters or passes through become open ground
+  let terrain0: TerrainType[] | null = null;
+  let rampart0: number[] | null = null;
+  if (m && s.special.rampartBreakers === me) {
+    const broken = m.path.slice(1).filter((h) => h >= 0 && s.terrain[h] === 'rampart');
+    if (broken.length) {
+      terrain0 = s.terrain;
+      rampart0 = s.rampart;
+      s.terrain = s.terrain.slice();
+      s.rampart = s.rampart.slice();
+      for (const h of broken) {
+        s.terrain[h] = 'plain';
+        s.rampart[h] = 0;
+      }
+    }
+  }
   let v = evaluate(s, me, opp, W);
   if (stage === 1 && u.hex >= 0) {
     const occ = new Occ(s);
@@ -76,6 +101,10 @@ export function scoreOption(s: GameState, id: string, m: MoveTarget | null, stag
   if (l) l.hex = old;
   p.banners = bannersBefore;
   if (captured >= 0) s.special.objState[captured].taken.pop();
+  if (terrain0) {
+    s.terrain = terrain0;
+    s.rampart = rampart0!;
+  }
   return v + noise;
 }
 

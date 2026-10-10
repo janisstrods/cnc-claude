@@ -1,6 +1,6 @@
 // Fast board helpers for the AI: distance table, occupancy, retreat room, LOS and flag rules mirrored with O(1) lookups.
 import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
-import { hillGroups, isCamp, isHill, isImpassable, terrainAt, terrainBlocksLOS } from '../engine/terrain';
+import { hillGroups, isCamp, isHill, isImpassable, steepClimb, stopsAll, stopsMounted, terrainAt, terrainBlocksLOS } from '../engine/terrain';
 import { frightAtFirstSight, rampartShields, type StrikeRole } from '../engine/combat';
 import { canShoot, eliteHas, rangeOf } from '../engine/elites';
 import { leaderHas } from '../engine/query';
@@ -217,9 +217,74 @@ export function rowsToEnemyEdge(h: HexId, side: Side): number {
   return side === 'bottom' ? rowOf(h) : ROWS - 1 - rowOf(h);
 }
 
-/** Max hexes an enemy unit can move and still close combat with a normal order (warriors' charge included). */
-export function reachOf(u: Unit): number {
-  return UNIT_STATS[u.type].moveBattle;
+/**
+ * Max hexes an enemy unit can move and still close combat with a normal order (warriors' charge included). With `occ`,
+ * Caesar's forced march counts (§18.3: infantry he is attached to moves 2 and battles). The march of the Tenth Legion
+ * and the Julian legions (`canMarch`, §18.2) is 2 hexes without a battle, so it adds nothing to an attack's reach.
+ */
+export function reachOf(u: Unit, occ?: Occ): number {
+  const st = UNIT_STATS[u.type];
+  let r = st.moveBattle;
+  if (occ && st.infantry && r < 2) {
+    const l = attachedLeaderOcc(occ, u);
+    if (l && leaderHas(l, 'forcedMarch')) r = 2;
+  }
+  return r;
+}
+
+/** Rows from hex h to `side`'s own baseline (0 on it). */
+export function rowsToOwnEdge(h: HexId, side: Side): number {
+  return side === 'top' ? rowOf(h) : ROWS - 1 - rowOf(h);
+}
+
+/**
+ * Blocks unit v loses for the retreat hexes it could not take (`need` asked, `r` taken): one per hex, or all of them
+ * under last-row retreat (214, §18.5) when its retreat ends on its own baseline row. `r` = `need` when it joins a lone
+ * leader (retreatRoom), which ends the retreat without losses.
+ */
+export function shortfall(s: GameState, v: Unit, need: number, r: number): number {
+  const n = need - r;
+  if (n <= 0 || s.special.lastRowRetreat !== v.side) return n;
+  return r === rowsToOwnEdge(v.hex, v.side) ? v.blocks : n;
+}
+
+const terrainKinds = new WeakMap<object, Set<TerrainType>>();
+/** Does the battlefield have any hex of terrain `t` (cached per terrain array: a changed hex replaces the array)? */
+export function hasTerrain(s: GameState, t: TerrainType): boolean {
+  let k = terrainKinds.get(s.terrain);
+  if (!k) {
+    k = new Set(s.terrain);
+    terrainKinds.set(s.terrain, k);
+  }
+  return k.has(t);
+}
+
+/**
+ * Hexes unit e could end a move on within `reach` hexes: never into or through another unit or an enemy leader, nor
+ * terrain it may not enter, and no further after a hex whose terrain stops it (ditch, forest, marsh, ford; broken ground
+ * for mounted units; a very steep hill climbed). Used by the threat model where stopping terrain cuts the approach
+ * (212's ditch) instead of the straight-line distance.
+ */
+export function stopAwareReach(s: GameState, occ: Occ, e: Unit, reach: number): Set<HexId> {
+  const st = UNIT_STATS[e.type];
+  const out = new Set<HexId>();
+  let frontier: HexId[] = [e.hex];
+  const seen = new Set<HexId>([e.hex]);
+  for (let step = 0; step < reach && frontier.length; step++) {
+    const next: HexId[] = [];
+    for (const h of frontier) {
+      for (const n of neighbours(h)) {
+        if (seen.has(n) || isImpassable(s, n) || terrainForbids(s, st.forbiddenTerrain, n) || occ.unit[n]) continue;
+        const l = occ.leader[n];
+        if (l && l.side !== e.side) continue;
+        seen.add(n);
+        out.add(n);
+        if (!(stopsAll(s, n) || (st.mounted && stopsMounted(s, n)) || steepClimb(s, h, n))) next.push(n);
+      }
+    }
+    frontier = next;
+  }
+  return out;
 }
 
 /** Skirmisher: shoots and may always evade (LI, LB, LS, LC, LBC; also HWM, see isWarMachine); it stands off and fires. */

@@ -53,6 +53,13 @@ export function personalityById(id: string): Personality {
 }
 
 const BY_NAME: [RegExp, string][] = [
+  // Expansion #2 commanders (first, like Expansion #1's). Unlisted ones take the army default below (Romans the Lion,
+  // the others the Veteran).
+  [/caesar|\bmarius\b|crassus|germanicus|scapula/i, 'strategist'],
+  [/spartacus/i, 'lion'],
+  [/crixus|oenomaus|boiorix|teutobod|aneroestes|britomartus|caepio|mummius|boduognatus/i, 'bull'],
+  [/arminius|vercingetorix|cassivellaunus|caratacus/i, 'fox'],
+  [/glaber|trebonius/i, 'shield'],
   // Expansion #1 commanders (first: some names would otherwise match a base-game pattern)
   [/alexander|pyrrhus|craterus|chandragupta|maurya|decius/i, 'lion'],
   [/epaminondas|seleucus|flamininus|paull?us|callimachus/i, 'strategist'],

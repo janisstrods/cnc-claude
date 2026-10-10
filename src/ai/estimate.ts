@@ -1,13 +1,15 @@
 // Analytic combat estimator: expected value (in banner units) of attacks, battle backs, evades and ranged fire.
-import { battleTargets } from '../engine/flow';
+import { CARD_DEFS } from '../engine/cards';
+import { battleTargets, rollingFirePaths, rollingFireRoutes } from '../engine/flow';
 import { closeCombatDice, rangedDice, retreatPerFlag, swordIgnores, vsMountedIgnores, type StrikeRole } from '../engine/combat';
 import { neighbours } from '../engine/hex';
-import { unitById } from '../engine/query';
+import { other, unitById } from '../engine/query';
+import { isHill } from '../engine/terrain';
 import { canShoot, eliteHas, fireMoveLimit, rangeOf } from '../engine/elites';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType } from '../engine/units';
-import type { GameState, HexId, Leader, Unit } from '../engine/types';
+import type { Answer, GameState, HexId, Leader, Unit } from '../engine/types';
 import {
-  Occ, attachedLeaderOcc, canEvadeOcc, canFireOcc, helmetsOcc, hexDist, ignorableOcc, retreatRoom,
+  Occ, attachedLeaderOcc, canEvadeOcc, canFireOcc, helmetsOcc, hexDist, ignorableOcc, retreatRoom, shortfall,
 } from './board';
 import { binom, pAnyHelmet, strikeDist, type Prof } from './dice';
 import { blockVal, leaderVal, nextBanner, type Weights } from './values';
@@ -97,7 +99,7 @@ export function strikeValue(
       if (fe > 0) {
         const need = fe * per;
         const r = room(need);
-        const tot = h + (need - r);
+        const tot = h + shortfall(s, v, need, r);
         if (tot >= v.blocks) {
           ev += P * full;
           pe += P;
@@ -159,7 +161,7 @@ export function standEV(s: GameState, occ: Occ, a: Unit, t: Unit, n: number, mom
       if (fe > 0) {
         const need = fe * per;
         const r = room(need);
-        const tot = h + (need - r);
+        const tot = h + shortfall(s, t, need, r);
         if (tot >= t.blocks) {
           ev += P * (full + mom);
           pe += P;
@@ -238,11 +240,110 @@ export function rangedEV(s: GameState, occ: Occ, f: Unit, target: HexId, dice: n
 
 export interface AttackOpt {
   unit: string;
+  /** The target hex (Rolling Fire: the first hex of the path). */
   target: HexId;
-  kind: 'close' | 'ranged';
+  kind: 'close' | 'ranged' | 'rolling';
   ev: number;
   pElim: number;
   must: boolean;
+  /** Rolling Fire (210, §18.5): the path the logs roll down. */
+  path?: HexId[];
+}
+
+/** The battle answer that makes this attack. */
+export function attackAnswer(o: AttackOpt): Answer {
+  return o.kind === 'rolling' ? { kind: 'rollingFire', unit: o.unit, path: o.path! } : { kind: 'attack', unit: o.unit, target: o.target };
+}
+
+/** Does `a` make the attack `o`? */
+export function sameAttack(a: Answer, o: AttackOpt): boolean {
+  if (o.kind === 'rolling') return a.kind === 'rollingFire' && a.unit === o.unit && a.path.length === o.path!.length && a.path.every((h, i) => h === o.path![i]);
+  return a.kind === 'attack' && a.unit === o.unit && a.target === o.target;
+}
+
+// ---------------------------------------------------------------------------
+// Rolling Fire (210 Picenum, §18.5)
+// ---------------------------------------------------------------------------
+
+/** Dice rolled against each unit in a Rolling Fire path. */
+const LOG_DICE = 2;
+
+/**
+ * Value unit v loses to the burning logs: 2 dice, only its class symbol hits, every flag counts (none may be ignored),
+ * no battle back. `bannerM`: the banner its enemy would gain if it is eliminated.
+ */
+export function logsDamage(s: GameState, occ: Occ, v: Unit, bannerM: number): number {
+  const D = strikeDist(rangedProf(LOG_DICE));
+  const W1 = LOG_DICE + 1;
+  const per = retreatPerFlag(v, null);
+  const room = roomFn(s, occ, v);
+  let ev = 0;
+  for (let h = 0; h <= LOG_DICE; h++) {
+    for (let f = 0; h + f <= LOG_DICE; f++) {
+      const P = D[h * W1 + f];
+      if (!P) continue;
+      let tot = h;
+      if (f > 0) {
+        const need = f * per;
+        tot += shortfall(s, v, need, room(need));
+      }
+      ev += P * (dmgValue(s, occ, v, Math.min(tot, v.blocks), bannerM) + (f > 0 ? 0.01 : 0));
+    }
+  }
+  return ev;
+}
+
+/**
+ * Value for `u`'s side of rolling logs down `path` from where `u` stands: the expected damage to enemy units in the path
+ * minus that to friendly units, minus the block the rolling unit loses (its elimination gives the enemy a banner). A
+ * lone leader in the path evades (a small gain or loss).
+ */
+export function rollingFireEV(s: GameState, occ: Occ, u: Unit, path: readonly HexId[]): { ev: number; enemies: number } {
+  const foe = other(u.side);
+  const bmFoe = nextBanner(s, foe);
+  const bmOwn = nextBanner(s, u.side);
+  let ev = 0;
+  let enemies = 0;
+  for (const h of path) {
+    const v = occ.unit[h];
+    if (v) {
+      if (v.side === u.side) ev -= logsDamage(s, occ, v, bmFoe);
+      else {
+        ev += logsDamage(s, occ, v, bmOwn);
+        enemies++;
+      }
+      continue;
+    }
+    const l = occ.leader[h];
+    if (l) ev += l.side === u.side ? -0.02 : 0.02;
+  }
+  return { ev: ev - dmgValue(s, occ, u, 1, bmFoe), enemies };
+}
+
+/** Minimum value of a Rolling Fire worth its block: never one that hits no enemy unit. */
+const ROLLING_MIN = 0.02;
+
+/** Best Rolling Fire for `u` from where it stands (any path; the unit must be eligible), or null. */
+function bestRolling(s: GameState, occ: Occ, u: Unit, paths: HexId[][]): { path: HexId[]; ev: number } | null {
+  let best: { path: HexId[]; ev: number } | null = null;
+  for (const p of paths) {
+    const r = rollingFireEV(s, occ, u, p);
+    if (r.enemies === 0 || r.ev < ROLLING_MIN) continue;
+    if (!best || r.ev > best.ev) best = { path: p, ev: r.ev };
+  }
+  return best;
+}
+
+/**
+ * Rolling Fire value of a unit that has not moved, as planned from its hex (moves.ts): a Rolling Fire side's infantry
+ * on a hill, ordered by a card that is not a Tactic card. 0 when it may not roll or no path is worth it.
+ */
+function rollingNow(s: GameState, occ: Occ, u: Unit, moved: number): number {
+  const side = s.special.rollingFire;
+  if (side !== u.side || moved > 0 || !UNIT_STATS[u.type].infantry || !isHill(s, u.hex)) return 0;
+  const kind = s.turn.effective;
+  if (!kind || CARD_DEFS[kind].group === 'tactic') return 0;
+  return bestRolling(s, occ, u, rollingFireRoutes(s, side, u.hex))?.ev ?? 0;
 }
 
 /** All legal attacks for the active side right now, with estimated values. */
@@ -270,6 +371,16 @@ export function attackOptions(s: GameState, W: Weights, occIn?: Occ): AttackOpt[
       out.push({ unit: id, target: t.hex, kind: t.kind, ev: r.ev, pElim: r.pElim, must: op.mustBattle && t.kind === 'close' });
     }
   }
+  // Rolling Fire (210): the best path of each eligible unit, when it hits an enemy and is worth its block
+  if (s.special.rollingFire === s.active) {
+    for (const id in s.turn.ordered) {
+      const paths = rollingFirePaths(s, id);
+      if (!paths.length) continue;
+      const u = unitById(s, id)!;
+      const best = bestRolling(s, occ, u, paths);
+      if (best) out.push({ unit: id, target: best.path[0], kind: 'rolling', ev: best.ev, pElim: 0, must: false, path: best.path });
+    }
+  }
   return out;
 }
 
@@ -280,7 +391,7 @@ export function attackOptions(s: GameState, W: Weights, occIn?: Occ): AttackOpt[
 export function attackNowValue(s: GameState, occ: Occ, u: Unit, moved: number, canBattle: boolean, mustBattle: boolean, W: Weights): number {
   if (!canBattle) return 0;
   const m = s.turn.mods;
-  let best = 0;
+  let best = s.special.rollingFire === u.side ? rollingNow(s, occ, u, moved) : 0;
   let bestClose = -Infinity;
   if (!m.noClose) {
     for (const h of neighbours(u.hex)) {

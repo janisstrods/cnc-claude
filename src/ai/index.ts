@@ -5,6 +5,7 @@
 // determinised clones of the game (the opponent's hand and the deck are re-dealt from unseen cards, dice reseeded
 // from the AI's private RNG), evaluated statically and compared, minus the value of keeping the card for later.
 // Battles use rollouts per candidate attack; reactive decisions use fast expected-value heuristics.
+import { bannerTotal } from '../engine/banners';
 import { CARD_DEFS, cardKind, modsFor, sectionOrders } from '../engine/cards';
 import { ambushAvailable, ambushSections, battleTargets, isRollingFirePath, pieceMoves } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
@@ -17,7 +18,7 @@ import {
   OFF_BOARD, type Answer, type CardKind, type Decision, type EliteId, type GameState, type HexId, type SectionName, type Side, type UnitType,
 } from '../engine/types';
 import { hexDist } from './board';
-import { attackOptions } from './estimate';
+import { attackAnswer, attackOptions } from './estimate';
 import { greedyMoveStep, type MoveCtx } from './moves';
 import { orderCandidates } from './ordering';
 import { PERSONALITIES, personalityById, personalityFor, type Personality } from './personality';
@@ -59,6 +60,8 @@ interface StoredPlan {
   effective: CardKind | null;
   orders: string[] | null;
   ambush?: SectionName;
+  /** The command the plan names when the card asks (separate commands, §18.5). */
+  command?: string;
   moves: Answer[] | null;
   moveIdx: number;
   label: string;
@@ -141,7 +144,7 @@ export function isLegal(s: GameState, d: Decision, a: Answer): boolean {
       return a.kind === 'move' && !!s.turn.ordered[a.piece] && pieceMoves(s, a.piece, d.stage).some((m) => m.hex === a.to);
     case 'battle': {
       if (a.kind === 'endBattle') return !pendingMustBattle(s);
-      if (a.kind === 'rollingFire') return isRollingFirePath(s, a.unit, a.path); // never chosen by the AI yet, only by fallbacks
+      if (a.kind === 'rollingFire') return isRollingFirePath(s, a.unit, a.path); // Rolling Fire (210): one of the unit's legal paths
       if (a.kind !== 'attack') return false;
       const t = battleTargets(s, a.unit).find((x) => x.hex === a.target);
       if (!t) return false;
@@ -222,8 +225,8 @@ function planShape(
 
 function commentCard(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rng, b: Cand): string | undefined {
   const opp = other(me);
-  const mine = s.players[me].banners;
-  const theirs = s.players[opp].banners;
+  const mine = bannerTotal(s, me);
+  const theirs = bannerTotal(s, opp);
   const T = s.bannersToWin;
   const prev = mem.seenBanners;
   mem.seenBanners = { mine, theirs };
@@ -265,9 +268,9 @@ function campLine(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rn
 // tempo and card-keeping memory
 // ---------------------------------------------------------------------------
 
-/** Banners and blocks on the board: changes whenever anything is hurt, destroyed or captured. */
+/** Banners (held ones too) and blocks on the board: changes whenever anything is hurt, destroyed, captured or held. */
 function boardSig(s: GameState): number {
-  let sig = s.players.top.banners * 1000 + s.players.bottom.banners * 100000;
+  let sig = bannerTotal(s, 'top') * 1000 + bannerTotal(s, 'bottom') * 100000;
   for (const u of s.units) if (u.hex >= 0) sig += u.blocks;
   return sig;
 }
@@ -362,7 +365,7 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       const qx = stallPressure(s, P, mem);
       W = applyStall(W, qx, P);
       // match point: search wider (same time budget)
-      if (opts.difficulty === 'tribune' && s.players[me].banners >= s.bannersToWin - 1) {
+      if (opts.difficulty === 'tribune' && bannerTotal(s, me) >= s.bannersToWin - 1) {
         cfg = { ...cfg, kMax: 64, extraVariants: 8, topCards: 6, k0: 8, topUp: 64, maxSims: cfg.maxSims * 2 };
       }
       const ctx = makeCtx(me, W, NEUTRAL_W, rng, cfg, scale, det);
@@ -372,7 +375,7 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       const res = planTurn(s, ctx);
       const b = res.best;
       mem.plan = {
-        turn, side: me, card: b.card, kind: b.kind, effective: b.effective, orders: b.orders, ambush: b.ambush,
+        turn, side: me, card: b.card, kind: b.kind, effective: b.effective, orders: b.orders, ambush: b.ambush, command: b.command,
         moves: b.moves, moveIdx: 0, label: b.label, score: candScore(b, ctx),
       };
       mem.decided = [];
@@ -402,7 +405,7 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
         const b = planTurn(root, ctx).best;
         if (b && b.card === s.turn.card) {
           mem.plan = {
-            turn, side: me, card: b.card, kind: b.kind, effective: b.effective, orders: b.orders, ambush: b.ambush,
+            turn, side: me, card: b.card, kind: b.kind, effective: b.effective, orders: b.orders, ambush: b.ambush, command: b.command,
             moves: b.moves, moveIdx: 0, label: `${b.label} (replanned)`, score: candScore(b, ctx),
           };
           const a: Answer | null = b.ambush ? { kind: 'orders', pieces: [], ambushSection: b.ambush } : b.orders ? { kind: 'orders', pieces: b.orders } : null;
@@ -442,7 +445,7 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
         const pool = must.length ? must : good;
         if (pool.length) {
           const o = rng.pick(pool);
-          return { answer: { kind: 'attack', unit: o.unit, target: o.target } };
+          return { answer: attackAnswer(o) };
         }
       }
       const ctx = makeCtx(me, W, NEUTRAL_W, rng, cfg, scale * 0.3, !!opts.deterministic);
@@ -492,8 +495,12 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       }
       return { answer: { kind: 'hex', hex } };
     }
-    case 'chooseCommand':
-      return { answer: { kind: 'choose', index: chooseCommandIndex(s, d) } };
+    case 'chooseCommand': {
+      // the command the turn plan was made for (the same choice: chooseCommandIndex sees no hidden information)
+      const p = ourPlan();
+      const i = p?.command !== undefined ? d.options.indexOf(p.command) : -1;
+      return { answer: { kind: 'choose', index: i >= 0 ? i : chooseCommandIndex(s, d, W) } };
+    }
     case 'rally':
       return { answer: { kind: 'assign', ids: rallyAssign(s, me, d.faces, d.command) } };
     case 'spartacus':

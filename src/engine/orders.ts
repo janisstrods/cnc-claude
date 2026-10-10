@@ -83,19 +83,19 @@ export const ONE_ARMY = 'One card orders one army only.';
 const NOT_THE_COMMAND = 'That piece is not in the command you named.';
 
 /** Command a unit or leader belongs to; undefined = none, so free to go with any command. */
-function commandOf(s: GameState, id: string): string | undefined {
+export function commandOf(s: GameState, id: string): string | undefined {
   return (isLeaderId(id) ? leaderById(s, id) : unitById(s, id))?.command;
 }
 
 /** Is a piece with this command part of the command named (if any)? A piece with no command always is. */
-const inCommand = (p: { command?: string }, command: string | undefined): boolean =>
+export const inCommand = (p: { command?: string }, command: string | undefined): boolean =>
   command === undefined || p.command === undefined || p.command === command;
 
 /**
- * Do the pieces (and the command already named, if any) belong to more than one command? Pieces with no command, and
- * battles without commands, never clash.
+ * Do the pieces (and the command already named, if any) belong to more than one command? Returns the reason (`ONE_ARMY`)
+ * or null. Pieces with no command, and battles without commands, never clash.
  */
-function commandClash(s: GameState, ids: string[], command?: string): string | null {
+export function commandClash(s: GameState, ids: string[], command?: string): string | null {
   if (!s.special.commands.length) return null;
   let seen = command;
   for (const id of ids) {

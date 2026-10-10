@@ -5,7 +5,7 @@
 //   --det: deterministic AI (simulation counts bound the search). Opt-in regression check: tribune should beat the
 //   greedy bot about 65% or more over 30 games. Strength A/Bs need a same-seed baseline (old-vs-old on the same
 //   seeds): side and seed imbalance in this game is large.
-import { GameDriver, createGame, randomAnswer, type Side } from '../src/engine';
+import { GameDriver, bannerTotal, createGame, randomAnswer, type Side } from '../src/engine';
 import { SCENARIOS } from '../src/scenarios';
 import { chooseAnswer, newMemory, personalityById, personalityFor, type AiMemory, type AiOptions, type Difficulty } from '../src/ai';
 import { weightsFor } from '../src/ai/values';
@@ -97,9 +97,9 @@ for (const job of mine) {
   const w = d.state.winner;
   if (w === job.aSide) aWins++;
   else if (w === bSide) bWins++;
-  const ps = d.state.players;
+  // banner totals: permanent + held (Expansion #2 objectives; the permanent banners elsewhere)
   console.log(`${job.sc} A(${A})=${job.aSide} vs B(${botB || (randomB ? 'random' : B)}) -> ${w === job.aSide ? 'A' : w === bSide ? 'B' : 'none'} ` +
-    `${ps[job.aSide].banners}-${ps[bSide].banners} turns=${d.state.turn.number}${rejects ? ` rejects=${rejects}` : ''}`);
+    `${bannerTotal(d.state, job.aSide)}-${bannerTotal(d.state, bSide)} turns=${d.state.turn.number}${rejects ? ` rejects=${rejects}` : ''}`);
 }
 const avg = (x: number[]) => (x.length ? x.reduce((a, b) => a + b, 0) / x.length : 0);
 const max = (x: number[]) => (x.length ? Math.max(...x) : 0);

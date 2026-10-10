@@ -568,6 +568,14 @@ export function rollingFirePaths(s: GameState, unitId: string): HexId[][] {
   if (op.moved > 0 || op.battlesLeft <= 0 || !op.canBattle) return [];
   const kind = s.turn.effective;
   if (!kind || CARD_DEFS[kind].group === 'tactic') return [];
+  return rollingFireRoutes(s, side, u.hex);
+}
+
+/**
+ * The Rolling Fire paths (§18.5) from hex `from` for a unit of `side`, by terrain alone: the route rules of
+ * `rollingFirePaths` without the checks on the unit, its orders and the card (a pure helper, e.g. for the AI's planning).
+ */
+export function rollingFireRoutes(s: GameState, side: Side, from: HexId): HexId[][] {
   const foe = other(side);
   const open = (h: HexId) => !isHill(s, h) && !isImpassable(s, h);
   const out: HexId[][] = [];
@@ -577,7 +585,7 @@ export function rollingFirePaths(s: GameState, unitId: string): HexId[][] {
     if (!next.length) out.push(path);
     for (const h of next) walk([...path, h]);
   };
-  for (const h of rearHexes(u.hex, foe).filter(open)) walk([h]);
+  for (const h of rearHexes(from, foe).filter(open)) walk([h]);
   return out;
 }
 
@@ -1205,6 +1213,13 @@ export function* turnFlow(s: GameState, ctx: FlowCtx): Gen {
     yield* movePhase(s, ctx, 1);
     if (s.winner) return;
   }
+  yield* battleToEnd(s, ctx);
+}
+
+/** The rest of the active side's turn from its battle phase: the battle, Move-Fire-Move's second move, the turn end. */
+function* battleToEnd(s: GameState, ctx: FlowCtx): Gen {
+  const side = s.active;
+  const t = s.turn;
   t.phase = 'battle';
   yield* battlePhase(s, ctx);
   if (s.winner) return;
@@ -1219,6 +1234,21 @@ export function* turnFlow(s: GameState, ctx: FlowCtx): Gen {
   if (s.winner) return;
   endOfTurn(s, ctx);
   t.phase = 'done';
+}
+
+/**
+ * Continue the active side's turn, already in its movement (`from` 'move') or battle phase (`from` 'battle'), exactly as
+ * `turnFlow` would go on: the rest of the movement, the battle, the turn end. For searches on a copied state (a running
+ * generator cannot be copied); the turn's card, orders and modifiers are taken as they stand.
+ */
+export function* continueTurn(s: GameState, ctx: FlowCtx, from: 'move' | 'battle'): Gen {
+  const t = s.turn;
+  if (from === 'move' && !t.mods.noMove && Object.keys(t.ordered).length) {
+    t.phase = 'move';
+    yield* movePhase(s, ctx, 1);
+    if (s.winner) return;
+  }
+  yield* battleToEnd(s, ctx);
 }
 
 /** Advance to the next player's turn (call after turnFlow completes without a winner). */
