@@ -71,6 +71,7 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
           <p>An unofficial, fan-made digital edition of <i>Commands &amp; Colors: Ancients</i>, designed by Richard Borg and published by GMT Games. Commands &amp; Colors is a trademark of GMT Games LLC. This edition uses original artwork and paraphrased rules text; it is not affiliated with or endorsed by GMT Games.</p>
           <p>Scenario setups follow the base game's 15 battles as documented by the community at commandsandcolors.net.</p>
           <p><b>Expansion #1</b>, <i>Greece &amp; Eastern Kingdoms</i>: its 24 battles (101–124) were transcribed hex by hex from the official battle maps published at commandsandcolors.net (122–124 from GMT's Bonus Pack #2). Its rules are paraphrased, its battle summaries original, and its armies drawn as original artwork.</p>
+          <p><b>Battle histories:</b> original summaries written from the ancient historians (Herodotus, Xenophon, Polybius, Diodorus, Livy, Plutarch, Arrian and others) and modern scholarship, each with its sources. The maps are schematic reconstructions; ancient numbers and details are often uncertain.</p>
           <p><b>Fonts:</b> Cinzel (Natanael Gama) and EB Garamond (Georg Duffner, Octavio Pardo) — SIL Open Font License 1.1.</p>
           <p><b>Icons:</b> game-icons.net by Lorc and Delapouite — CC BY 3.0 (see CREDITS.md for the full list).</p>
           <p><b>Miniatures, terrain, cards and dice:</b> original SVG artwork made for this edition.</p>

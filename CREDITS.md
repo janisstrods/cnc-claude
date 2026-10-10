@@ -1,5 +1,10 @@
 # Credits
 
+## Battle histories
+
+The History slides of each battle (`src/history/battles/`) are original summaries written from the ancient historians
+and modern scholarship; each lists its sources. The battle maps are schematic reconstructions drawn for this edition.
+
 ## Icons — game-icons.net
 
 The icons below come from [game-icons.net](https://game-icons.net)
