@@ -1,5 +1,6 @@
 // Board art for Expansion #1 terrain: the sea is painted only where there is sea (and rivers fade into it only at a
-// mouth), and rampart walls sit on the protected sides of their hexes on normal and flipped boards.
+// mouth), its coast runs between the sea and the land hexes, and rampart walls sit on the protected sides of their hexes
+// and join across neighbouring rampart hexes, on normal and flipped boards.
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -40,6 +41,46 @@ describe('sea and river mouths', () => {
     expect(board('108', false)).not.toContain('class="lakes"');
   });
 
+  /** The beach outline (the sand-filled region under the water, which covers the sea and its beach) as point loops. */
+  function shoreLoops(id: string, flipped: boolean): { x: number; y: number }[][] {
+    const html = board(id, flipped);
+    const at = html.indexOf('class="sea"');
+    expect(at).toBeGreaterThan(-1);
+    const group = html.slice(at, html.indexOf('</g>', at));
+    const m = new RegExp(`<path d="([^"]+)" fill="${P.sand}"`).exec(group);
+    expect(m).not.toBeNull();
+    return m![1].split('M').filter(Boolean).map((sub) => [...sub.matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((q) => ({ x: Number(q[1]), y: Number(q[2]) })));
+  }
+  /** Even-odd point-in-polygon over all loops. */
+  function inside(p: { x: number; y: number }, loops: { x: number; y: number }[][]): boolean {
+    let odd = false;
+    for (const l of loops) {
+      for (let i = 0, j = l.length - 1; i < l.length; j = i++) {
+        const a = l[i];
+        const b = l[j];
+        if (a.y > p.y !== b.y > p.y && p.x < a.x + ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y)) odd = !odd;
+      }
+    }
+    return odd;
+  }
+
+  it.each([
+    ['101', false],
+    ['101', true],
+    ['102', false],
+    ['102', true],
+    ['108', false],
+    ['108', true],
+  ])('%s (flipped %s): the coast runs between the hexes: every sea hex lies inside it, every land hex outside', (id, flipped) => {
+    const loops = shoreLoops(id, flipped);
+    const st = createGame(scenarioById(id).setup, 1);
+    const ctx = boardCtx(st.terrain, st.fords, flipped);
+    const wrong = ctx.hexes.filter((h) => inside(h, loops) !== (h.t === 'sea')).map((h) => `${h.t} ${h.r},${h.c}`);
+    expect(wrong).toEqual([]);
+    expect(ctx.hexes.some((h) => h.t === 'sea')).toBe(true);
+    expect(ctx.hexes.some((h) => h.t !== 'sea')).toBe(true);
+  });
+
   it('draws sea and rampart swatches', () => {
     for (const t of ['sea', 'rampart'] as const) {
       const html = renderToStaticMarkup(createElement(TerrainIcon, { t, size: 44 }));
@@ -49,16 +90,30 @@ describe('sea and river mouths', () => {
 });
 
 describe('rampart walls', () => {
-  /** Every vertex of the breastwork (the palisadeDark 4.4 stroke). */
-  function parapetPoints(id: string, flipped: boolean): { x: number; y: number }[] {
+  /** The breastwork along the crest of every wall (the palisade-coloured crenellation): one subpath per continuous wall. */
+  function breastwork(id: string, flipped: boolean): string {
     const st = createGame(scenarioById(id).setup, 1);
     const el = paintRamparts(boardCtx(st.terrain, st.fords, flipped), st.rampart);
     expect(el).not.toBeNull();
     const html = renderToStaticMarkup(createElement('svg', null, el));
-    const m = new RegExp(`<path d="([^"]+)" fill="none" stroke="${P.palisadeDark}" stroke-width="4.4"`).exec(html);
+    const m = new RegExp(`<path d="([^"]+)" fill="none" stroke="${P.palisade}"`).exec(html);
     expect(m).not.toBeNull();
-    return [...m![1].matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((q) => ({ x: Number(q[1]), y: Number(q[2]) }));
+    return m![1];
   }
+  /** Every vertex of the breastwork. */
+  function parapetPoints(id: string, flipped: boolean): { x: number; y: number }[] {
+    return [...breastwork(id, flipped).matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((q) => ({ x: Number(q[1]), y: Number(q[2]) }));
+  }
+
+  // 102: seven rampart hexes in three walls (the diagonal W+SW pair joins); 118: four hexes in two lines between the camps
+  it.each([
+    ['102', false, 3],
+    ['102', true, 3],
+    ['118', false, 2],
+    ['118', true, 2],
+  ])('%s (flipped %s): the walls of neighbouring rampart hexes join into %i continuous walls', (id, flipped, n) => {
+    expect(breastwork(id, flipped).match(/M/g)).toHaveLength(n);
+  });
 
   it.each([
     ['102', false],

@@ -40,7 +40,11 @@ const along = (a: Pt, b: Pt, d: number): Pt => {
   const u = unit(sub(b, a));
   return { x: a.x + u.x * d, y: a.y + u.y * d };
 };
-const key = (p: Pt) => `${Math.round(p.x * 2)},${Math.round(p.y * 2)}`;
+/**
+ * Where two walls join: on the hexside shared by rampart hexes `a` and `b`, at its end next to the hex (r, c) both walls
+ * face (a hexside has two ends, and a wall can reach each of them).
+ */
+const joinKey = (a: HexInfo, b: HexInfo, x: { r: number; c: number }) => `${Math.min(a.id, b.id)}-${Math.max(a.id, b.id)}@${x.r},${x.c}`;
 
 /** Outward normal of segment a->b (walls run clockwise around their hex, so outward is to the left in screen space). */
 function normal(a: Pt, b: Pt): Pt {
@@ -130,10 +134,11 @@ function wallChains(ctx: PaintCtx, masks: readonly number[], openEdges: boolean)
       // start: the edge before the run (edge s-1, corners s and s+1)
       const pe = across(h, (s + 5) % 6);
       const startOff = !pe.hex && openEdges;
-      if (startOff || continues(pe.hex, h, across(h, s))) {
+      const first = across(h, s);
+      if (startOff || continues(pe.hex, h, first)) {
         const p = along(C(cs), C(s), K / sin60);
         if (startOff) to(along(p, I(cs + 1), -10), true);
-        else run.startKey = key(p);
+        else run.startKey = joinKey(h, pe.hex!, first);
         to(p, true);
       } else {
         to(along(I(cs), I(s), RET), false);
@@ -143,11 +148,12 @@ function wallChains(ctx: PaintCtx, masks: readonly number[], openEdges: boolean)
       // end: the edge after the run (edge s+n, corners s+n+1 and s+n+2)
       const ne = across(h, (s + n) % 6);
       const endOff = !ne.hex && openEdges;
-      if (endOff || continues(ne.hex, h, across(h, (s + n + 5) % 6))) {
+      const last = across(h, (s + n + 5) % 6);
+      if (endOff || continues(ne.hex, h, last)) {
         const p = along(C(ce), C(ce + 1), K / sin60);
         to(p, true);
         if (endOff) to(along(p, I(ce - 1), -10), true);
-        else run.endKey = key(p);
+        else run.endKey = joinKey(h, ne.hex!, last);
       } else {
         to(I(ce), true);
         to(along(I(ce), I(ce + 1), RET), false);
@@ -256,14 +262,15 @@ export function paintRamparts(ctx: PaintCtx, masks: readonly number[], opts: Ram
   const outer = slopeQuads(chains, K + 0.6, K - 4, 1);
   const inner = slopeQuads(chains, K - 9.4, K - 13, -1);
   const shades = [P.earthLight, P.earth, P.earthShade];
+  // the bank and the trodden ground end square at a return, flush with the breastwork (no rounded bulb of earth)
   return (
     <g className="ramparts">
-      <path d={walk} fill="none" stroke={P.dirt} strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" opacity={0.3} />
-      <path d={body} fill="none" stroke="rgba(40,32,18,0.38)" strokeWidth={14} strokeLinecap="round" strokeLinejoin="round" transform="translate(1.3 2.2)" />
+      <path d={walk} fill="none" stroke={P.dirt} strokeWidth={6} strokeLinecap="butt" strokeLinejoin="round" opacity={0.3} />
+      <path d={body} fill="none" stroke="rgba(40,32,18,0.38)" strokeWidth={14} strokeLinecap="butt" strokeLinejoin="round" transform="translate(1.3 2.2)" />
       <path d={ditch} fill="none" stroke={P.ditch} strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
       <path d={ditch} fill="none" stroke={P.palisadeDark} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" opacity={0.55} />
       <path d={lip} fill="none" stroke={P.earthLight} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" opacity={0.8} />
-      <path d={body} fill="none" stroke={P.earth} strokeWidth={13.5} strokeLinecap="round" strokeLinejoin="round" />
+      <path d={body} fill="none" stroke={P.earth} strokeWidth={13.5} strokeLinecap="butt" strokeLinejoin="round" />
       {outer.map((d, i) => (d ? <path key={`o${i}`} d={d} fill={shades[i]} /> : null))}
       {inner.map((d, i) => (d ? <path key={`i${i}`} d={d} fill={shades[i]} opacity={0.85} /> : null))}
       <path d={stakes} fill="none" stroke={P.palisadeDark} strokeWidth={1.5} strokeLinecap="round" />

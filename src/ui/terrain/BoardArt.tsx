@@ -42,10 +42,11 @@ function BoardArtImpl({ terrain, fords, rampart = NO_RAMPARTS, flipped, topLabel
       grid: <HexGrid ctx={ctx} />,
       features: (
         <>
+          {/* the sea first: its beach reaches into the land hexes, and the land features (and rivers) paint over it */}
+          {paintSea(ctx)}
           {paintBroken(ctx)}
           {paintMarsh(ctx)}
           {paintHills(ctx, `url(#${id('tuftA')})`)}
-          {paintSea(ctx)}
           {paintRivers(ctx, id)}
           {paintLakes(ctx)}
           {paintSteep(ctx)}
