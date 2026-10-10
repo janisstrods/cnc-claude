@@ -57,9 +57,10 @@ All 23 battles, one seed each, both side assignments (46 games; Tribune at full 
 | Tribune wins | 16 | 16 | **32 (70%)** |
 | Recruit wins | 7 | 7 | 14 |
 
-The Tribune won both sides of 201, 204–207, 212, 213, 219–221; lost both sides only of 202 (on these seeds; 3-1 in the
-acceptance run). Its losses cluster on the weaker side of a lopsided battle (the Britons in 217 and 218, the Gauls in
-216, the Belgae in 215, the Slaves in 214) and on 222–223 as the Romans. Card decisions averaged 264 ms, at most 825 ms.
+The Tribune won both sides of 201, 204–207, 212, 213 and 219–221, and lost both sides only of 202 (on these seeds; 3-1
+in the acceptance run). Its other losses: as the top army in 209 and 214–218 (four of them on the weaker side of a battle
+flagged below or just under the line), and as the Romans in 203, 208, 210, 211, 222 and 223. Card decisions averaged
+264 ms, at most 825 ms.
 With the acceptance run: **43–19 (69%)**; the Expansion #1 strength check was 75%.
 
 ## Balance: Tribune against Tribune, all 23 battles
