@@ -220,6 +220,7 @@ flag-ignore and still counts as support.
 
 * **Battle picker:** two tabs, "Punic Wars" (base, 1–15) and "Greece & the East" (101–124); the list shows the official
   number; briefing unchanged plus an **Optional rules** row with toggles (Tactical Flexibility).
+  The Tactical Flexibility choice is remembered (browser storage, `cca-options`) and applies to every battle that offers it.
 * **Leader placement phase** (Asculum): prompt "Place your leaders", legal hexes highlighted, one click each; the AI
   places its own.
 * **Hellespont card loss:** log line and toast when a card is lost; the human sees which of their cards went.
