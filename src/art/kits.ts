@@ -726,8 +726,8 @@ const CELTIC: KitDef = {
   bust: { helmet: 'horned', crest: 'none', beard: false, moustache: true, hair: 'long', torc: true, chest: 'mail' },
   // (union over the Gallic, Belgic, British and Slave looks; HCH is the base chariot with Celtic crews)
   iconBox: {
-    MI: [-40, 1.8, -8.2, 10.2], HI: [-40, 1.8, -6.1, 9.7], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31],
-    HWM: [-32, 0.4, -28.1, 21.9], BCH: [-38, 1.4, -27.8, 29.3],
+    MI: [-40, 1.8, -8.2, 10.2], HI: [-40, 1.8, -6.1, 9.7], LC: [-35.9, 0.4, -18.2, 19.3], HC: [-41, 0.6, -20.8, 22.7],
+    HCH: [-39.6, 0.9, -27.8, 31], HWM: [-32, 0.4, -28.1, 21.9], BCH: [-38, 1.4, -27.8, 29.3],
   },
 };
 
@@ -878,8 +878,8 @@ const LATE_ROMAN: KitDef = {
   general: { rider: CLASSIC_GENERAL, horse: WHITE_HORSE },
   bust: { helmet: 'atticOpen', crest: 'horsehair', beard: false },
   iconBox: {
-    MI: [-42.5, 1.8, -6.1, 10.6], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31], HWM: [-39, 1, -29.5, 23.1],
-    BCH: [-38, 1.4, -27.8, 29.3],
+    MI: [-42.5, 1.8, -6.1, 10.6], LC: [-35.9, 0.4, -18.2, 19.3], HC: [-41, 0.6, -20.8, 22.7], HCH: [-39.6, 0.9, -27.8, 31],
+    HWM: [-39, 1, -29.5, 23.1], BCH: [-38, 1.4, -27.8, 29.3],
   },
 };
 
