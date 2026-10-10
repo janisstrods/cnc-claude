@@ -28,7 +28,12 @@ function pct(x: number) {
   return `${Math.round(x * 100)}%`;
 }
 
-export function GameScreen({ controller, onExit }: { controller: GameController; onExit: () => void }) {
+export function GameScreen({ controller, onExit, onRematch }: {
+  controller: GameController;
+  onExit: () => void;
+  /** After the battle: play it again, with the same or switched sides. */
+  onRematch?: (switchSides: boolean) => void;
+}) {
   const view = useSyncExternalStore(controller.subscribe, controller.getView);
   const s = view.display;
   const human = view.humanSide;
@@ -607,7 +612,13 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
             <p className="modal-p">{view.over.reason}.</p>
             <p className="modal-p">Banners — {me.army}: {me.banners} · {them.army}: {them.banners} · Turns played: {s.turn.number}</p>
             <div className="modal-buttons">
-              <Button onClick={onExit}>Return to menu</Button>
+              {onRematch && (
+                <>
+                  <Button title={`Fight this battle again as the ${me.army}`} onClick={() => onRematch(false)}>Rematch</Button>
+                  <Button title={`Fight this battle again as the ${them.army}`} onClick={() => onRematch(true)}>Rematch, switch sides</Button>
+                </>
+              )}
+              <Button variant={onRematch ? 'secondary' : 'primary'} onClick={onExit}>Return to menu</Button>
             </div>
           </div>
         )}

@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { GameOptions, Side } from '../engine';
 import {
-  GameController, clearSaved, devRouteConfig, loadSaved, newSessionConfig, type Difficulty, type SavedGame, type SessionConfig,
+  GameController, clearSaved, devRouteConfig, loadSaved, newSessionConfig, rematchConfig, type Difficulty, type SavedGame,
+  type SessionConfig,
 } from './game/controller';
 import { GameScreen } from './game/GameScreen';
 import { makeOpponent } from './game/makeOpponent';
@@ -62,9 +63,15 @@ export function App() {
   };
 
   if (screen.kind === 'game') {
+    const rematch = (switchSides: boolean) => {
+      const cfg = rematchConfig(screen.controller.config, switchSides);
+      screen.controller.dispose();
+      clearSaved();
+      setScreen({ kind: 'game', controller: startController(cfg) });
+    };
     return (
       <ErrorBoundary onReset={toMenu}>
-        <GameScreen key={screen.controller.config.seed} controller={screen.controller} onExit={toMenu} />
+        <GameScreen key={screen.controller.config.seed} controller={screen.controller} onExit={toMenu} onRematch={rematch} />
       </ErrorBoundary>
     );
   }

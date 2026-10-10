@@ -731,3 +731,16 @@ export function newSessionConfig(scenarioId: string, humanSide: Side, difficulty
   if (options && Object.keys(options).length) cfg.options = { ...options };
   return cfg;
 }
+
+/**
+ * The session for a rematch of a finished battle: same battle, difficulty and optional rules, a fresh seed. With
+ * `switchSides` the human takes the other army and the computer uses its new general's default personality (a
+ * personality picked in the briefing was for the old enemy general); dev opening hands are not carried over.
+ */
+export function rematchConfig(config: SessionConfig, switchSides: boolean): SessionConfig {
+  const side = switchSides ? other(config.humanSide) : config.humanSide;
+  const cfg = newSessionConfig(config.scenarioId, side, config.difficulty, config.options);
+  if (cfg.seed === config.seed) cfg.seed = (config.seed + 1) >>> 0;
+  if (!switchSides && config.personality) cfg.personality = config.personality;
+  return cfg;
+}
