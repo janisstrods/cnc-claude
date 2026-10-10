@@ -2,9 +2,9 @@
 // descriptions shown in tooltips and the rules reference.
 import {
   ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, bannerTotal, baselineRow, battleReady, battleTargets, canMarch,
-  cardKind, closeCombatDice, closeHitChance, commandClash, commandOf, eligiblePieces, inCommand, eliteDef, fireMoveLimit, heldBanners, inSection, isFord, isLeaderId, leaderAt,
+  cardKind, closeCombatDice, closeHitChance, commandClash, commandOf, eligiblePieces, inCommand, eliteDef, fireMoveLimit, heldBanners, inSection, isLeaderId, leaderAt,
   leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces, nextCaptureBanners, orderCommander, orderMode, other, pieceMoves,
-  rangeOf, rangedBaseDice, rangedDice, rollingFirePaths, rowOf, sectionsOf, terrainAt, unitAt, unitById, veryHills,
+  rangeOf, rangedBaseDice, rangedDice, rollingFirePaths, rowOf, sectionsOf, terrainAt, unitAt, unitById,
   type Blocks, type CardKind, type CommandDef, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type Leader,
   type LeaderTrait, type ObjectiveDef, type RetreatOption, type SectionName, type Side, type Unit, type UnitClass, type UnitStats, type UnitType,
 } from '../../engine';
@@ -494,38 +494,6 @@ export function rampartSidesText(mask: number, flipped: boolean): string {
   pair(4, 5, 'lower');
   const list = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0];
   return `its ${list} hexside${n === 1 ? '' : 's'}`;
-}
-
-/**
- * Terrain lines of the hover tooltip for hex `h` (none on open ground). `name` is the terrain's display name. Most
- * terrain shows just "Terrain: <name>"; impassable hills and Expansion #1 terrain add what they do, and a rampart names
- * its protected sides relative to the viewer.
- */
-export function terrainTipLines(s: GameState, h: HexId, flipped: boolean, name: string, art?: string): string[] {
-  const t = terrainAt(s, h);
-  if (t === 'plain') return [];
-  if (t === 'rampart') {
-    const lines = [
-      `Rampart: protects ${rampartSidesText(s.rampart[h], flipped)}`,
-      'Foot here ignore 1 sword and 1 flag from attacks across them (1 flag vs missiles)',
-    ];
-    // rampart breakers (223, §18.6)
-    const breakers = s.special.rampartBreakers;
-    if (breakers) lines.push(`Torn down when a ${s.players[breakers].army} unit enters or passes through it`);
-    return lines;
-  }
-  // very steep hills (223, §18.6)
-  if (t === 'hill' && veryHills(s)) {
-    return ['Terrain: Very Steep Hill', 'A unit climbing onto it stops and may not battle this turn', 'Close combat: uphill max 1 die, downhill 2, hill to hill 3'];
-  }
-  const lines = [`Terrain: ${name}`];
-  if (t === 'sea') lines.push('Impassable; does not block line of sight');
-  if (t === 'steep') lines.push('Impassable; blocks line of sight');
-  if (t === 'river' && isFord(s, h) && s.noCap[h]) lines.push('Stops movement; no dice limits in or out');
-  // a coast played as a ford (217) and the ditch (212), §18.6
-  if (t === 'river' && isFord(s, h) && art === 'coast') lines.push('A fordable river in every respect: stops movement; close combat in or out max 2 dice, firing out max 1');
-  if (t === 'ditch') lines.push('Stops every unit and lone leader entering it; no other effect');
-  return lines;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { bannerTotal, other, type GameState, type Side } from '../../engine';
 import { BannerIcon, Button } from '../kit';
+import { legResult, type LegResult } from './controller';
 
 /** An empty banner slot, drawn for parchment (the kit's empty slot is made for dark leather). */
 function EmptyBanner() {
@@ -11,9 +12,57 @@ function EmptyBanner() {
   );
 }
 
+const OUTCOME = { won: 'Victory', lost: 'Defeat', draw: 'Draw' } as const;
+
+/**
+ * After the second battle of a both-sides match: each battle as the human fought it, the banner totals of the human and
+ * the computer, and who takes the match.
+ */
+function MatchSummary({ state: s, legs }: { state: GameState; legs: LegResult[] }) {
+  const sum = (mine: boolean) => legs.reduce((n, l) => n + l.banners[mine ? l.humanSide : other(l.humanSide)], 0);
+  const you = sum(true);
+  const ai = sum(false);
+  const verdict = you > ai ? `You take the match, ${you} banners to ${ai}`
+    : ai > you ? `The computer takes the match, ${ai} banners to ${you}`
+    : `The match is drawn, ${you} banners each`;
+  return (
+    <section className="match" aria-label="Both sides">
+      <h3 className="match-title">Both sides</h3>
+      <table className="match-table">
+        <thead>
+          <tr><td /><td /><th scope="col">You</th><th scope="col">Computer</th></tr>
+        </thead>
+        <tbody>
+          {legs.map((l, i) => {
+            const outcome = l.winner === 'draw' ? 'draw' : l.winner === l.humanSide ? 'won' : 'lost';
+            return (
+              <tr key={i}>
+                <th scope="row">{i === 0 ? '1st' : '2nd'} battle <small>as {s.players[l.humanSide].army}</small></th>
+                <td className={`match-outcome is-${outcome}`}>{OUTCOME[outcome]}</td>
+                <td className="match-n">{l.banners[l.humanSide]}</td>
+                <td className="match-n">{l.banners[other(l.humanSide)]}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">Total</th>
+            <td />
+            <td className={`match-n${you > ai ? ' is-ahead' : ''}`}>{you}</td>
+            <td className={`match-n${ai > you ? ' is-ahead' : ''}`}>{ai}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <p className="match-verdict">{verdict}.</p>
+    </section>
+  );
+}
+
 /**
  * The end-of-battle dialog's body: why it ended, a banner scoreboard (the human's army first, the winner marked), the
- * turns played, and Rematch / Switch sides / Return to menu.
+ * turns played, after the second battle of a both-sides match the two summed up, and Play again / Switch sides /
+ * Return to menu.
  */
 export function BattleResult(p: {
   state: GameState;
@@ -22,8 +71,10 @@ export function BattleResult(p: {
   onExit: () => void;
   /** After the battle: play it again, with the same or switched sides. */
   onRematch?: (switchSides: boolean) => void;
+  /** This was the second battle of a both-sides match: how the first one ended. */
+  firstLeg?: LegResult;
 }) {
-  const { state: s, human, over, onRematch } = p;
+  const { state: s, human, over, onRematch, firstLeg } = p;
   const me = s.players[human];
   const them = s.players[other(human)];
   const turns = s.turn.number;
@@ -58,10 +109,11 @@ export function BattleResult(p: {
         })}
       </div>
       <p className="victory-turns">{turns} {turns === 1 ? 'turn' : 'turns'} played</p>
+      {firstLeg && firstLeg.humanSide !== human && <MatchSummary state={s} legs={[firstLeg, legResult(s, human, over.winner)]} />}
       <div className="victory-actions">
         {onRematch && (
           <>
-            <Button onClick={() => onRematch(false)}>Rematch<small className="victory-as">as {me.army}</small></Button>
+            <Button onClick={() => onRematch(false)}>Play again<small className="victory-as">as {me.army}</small></Button>
             <Button onClick={() => onRematch(true)}>Switch sides<small className="victory-as">as {them.army}</small></Button>
           </>
         )}

@@ -68,6 +68,31 @@
 .select-list { display: flex; flex-direction: column; min-height: 0; }
 .select-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .select-head h2 { font-family: var(--kit-font-title); font-weight: 400; letter-spacing: .08em; margin: 0; color: var(--kit-bronze-light); font-size: 22px; white-space: nowrap; }
+/* under the battle list, level with To Battle! across the screen */
+.select-list .random-btn.kit-btn { flex: none; margin-top: 8px; }
+.random-btn .kit-btn__label { display: inline-flex; align-items: center; gap: 7px; }
+/* a small ivory battle die; it tumbles onto a new face at every pick */
+.random-die {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 22%;
+  background: radial-gradient(110% 110% at 28% 18%, #fffdf7 0%, #f8f1df 40%, #ebe0c4 78%, #d9caa5 100%);
+  box-shadow: inset 0 -2px 3px rgba(150, 122, 72, .42), inset 0 0 0 1px rgba(120, 95, 55, .45), 0 2px 0 #bba984, 0 3px 4px rgba(0, 0, 0, .45);
+  transform: rotate(-8deg);
+  transition: transform .15s;
+}
+.random-die svg { width: 17px; height: 17px; }
+.random-btn:hover .random-die { transform: rotate(8deg); }
+.random-die.is-rolled { animation: random-die-roll .45s cubic-bezier(.2, .9, .3, 1.2); }
+@keyframes random-die-roll {
+  from { transform: translateY(-6px) rotate(-280deg) scale(.6); }
+  to { transform: rotate(-8deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .random-die, .random-die.is-rolled { transition: none; animation: none; }
+}
 .select-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
 .select-tabs button {
   flex: 1 1 0;

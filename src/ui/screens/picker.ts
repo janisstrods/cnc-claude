@@ -1,6 +1,6 @@
 // Battle picker logic: the two boxes as tabs, and the optional rules a battle offers (with the player's remembered
 // choices). Pure apart from the try/catch-wrapped localStorage helpers.
-import type { GameOptions } from '../../engine';
+import type { GameOptions, Side } from '../../engine';
 import type { Expansion, ScenarioInfo } from '../../scenarios';
 
 export interface PickerTab {
@@ -26,6 +26,21 @@ export function tabForKey(current: Expansion, key: string): Expansion | undefine
   const i = PICKER_TABS.findIndex((t) => t.id === current);
   const j = key === 'ArrowRight' ? (i + 1) % n : key === 'ArrowLeft' ? (i + n - 1) % n : key === 'Home' ? 0 : key === 'End' ? n - 1 : -1;
   return j < 0 ? undefined : PICKER_TABS[j].id;
+}
+
+/**
+ * Random battle: any battle of `all` except the one shown (`currentId`), so a press always changes it, and a side to
+ * command, each equally likely. `rand` returns numbers in [0, 1), like Math.random.
+ */
+export function randomPick(
+  all: readonly ScenarioInfo[],
+  currentId: string,
+  rand: () => number = Math.random,
+): { battle: ScenarioInfo; side: Side } {
+  const others = all.filter((s) => s.id !== currentId);
+  const pool = others.length ? others : all;
+  const battle = pool[Math.min(pool.length - 1, Math.floor(rand() * pool.length))];
+  return { battle, side: rand() < 0.5 ? 'bottom' : 'top' };
 }
 
 const TAB_KEY = 'cca-battle-tab';

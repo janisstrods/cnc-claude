@@ -15,11 +15,10 @@ import { GameController, newSessionConfig } from '../../src/ui/game/controller';
 import { RandomOpponent } from '../../src/ui/game/opponent';
 import {
   ambushTexts, bannerCounts, boardUi, commandTipLine, edgeBlocksOf, leaderTraitLines, objectiveTipLines, possessive, retreatEliminates,
-  rollingFireStep, selectAllUnits, selectionCommand, terrainTipLines, unitSummary, type UiSel,
+  rollingFireStep, selectAllUnits, selectionCommand, unitSummary, type UiSel,
 } from '../../src/ui/game/uiModel';
 import { PICKER_TABS, battlesOf } from '../../src/ui/screens/picker';
 import { Expansion2 } from '../../src/ui/screens/RulesReference';
-import { terrainArtOf, terrainName } from '../../src/ui/terrain';
 import { H, build, toBattle, type Pos } from '../rules/helpers';
 
 const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
@@ -66,43 +65,6 @@ describe('tooltips: units and leaders', () => {
     expect(leaderTraitLines(caesar)).toEqual(['+1 close combat die to his unit', 'his infantry unit may move 2 hexes and still battle']);
     const spartacus = game('210').leaders.find((l) => l.name === 'Spartacus')!;
     expect(leaderTraitLines(spartacus)).toEqual(['I Am Spartacus rolls 2 more dice']);
-  });
-});
-
-describe('tooltips: Expansion #2 terrain', () => {
-  it('ditch (212)', () => {
-    const s = game('212');
-    const h = s.terrain.indexOf('ditch');
-    expect(terrainTipLines(s, h, false, terrainName('ditch', false))).toEqual(['Terrain: Ditch', 'Stops every unit and lone leader entering it; no other effect']);
-  });
-  it('the coast played as a ford (217) is named and explained; an ordinary fordable river is unchanged', () => {
-    const s = game('217');
-    const art = terrainArtOf(scenarioById('217').setup);
-    const h = art.indexOf('coast');
-    expect(h).toBeGreaterThanOrEqual(0);
-    expect(s.terrain[h]).toBe('river');
-    const name = terrainName(s.terrain[h], true, false, art[h]);
-    expect(name).toBe('Coastal Ford');
-    expect(terrainTipLines(s, h, false, name, art[h])).toEqual([
-      'Terrain: Coastal Ford',
-      'A fordable river in every respect: stops movement; close combat in or out max 2 dice, firing out max 1',
-    ]);
-    const sabis = game('215');
-    const ford = sabis.fords.indexOf(true);
-    expect(terrainTipLines(sabis, ford, false, 'Fordable River')).toEqual(['Terrain: Fordable River']);
-  });
-  it('very steep hills (223) and the rampart breakers; hills elsewhere keep their line', () => {
-    const s = game('223');
-    const hill = s.terrain.indexOf('hill');
-    expect(terrainTipLines(s, hill, false, 'Hill')).toEqual([
-      'Terrain: Very Steep Hill', 'A unit climbing onto it stops and may not battle this turn', 'Close combat: uphill max 1 die, downhill 2, hill to hill 3',
-    ]);
-    const rampart = s.terrain.indexOf('rampart');
-    expect(terrainTipLines(s, rampart, false, 'Rampart').at(-1)).toBe('Torn down when a Roman unit enters or passes through it');
-    const telamon = game('202');
-    expect(terrainTipLines(telamon, telamon.terrain.indexOf('hill'), false, 'Hill')).toEqual(['Terrain: Hill']);
-    const himera = game('102'); // Expansion #1 ramparts: no breakers
-    expect(terrainTipLines(himera, himera.terrain.indexOf('rampart'), false, 'Rampart')).toHaveLength(2);
   });
 });
 

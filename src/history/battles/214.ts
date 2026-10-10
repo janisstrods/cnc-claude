@@ -1,0 +1,141 @@
+// 214 Silarus, 71 BC. Top: Slaves (Spartacus); bottom: Romans (Crassus).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '214',
+  context: {
+    war: 'Third Servile War (the war of Spartacus), 73–71 BC',
+    text: [
+      'After the destruction of Castus and Gannicus at Camalatrum, Spartacus fell back towards the mountains of Petelia and routed a Roman force under Quinctius and the quaestor Scrofa that pressed him too hard. According to Plutarch, the success went to his men\'s heads: they refused to retreat any further and forced their leaders to march back through Lucania against Crassus. Appian has him making for Brundisium instead, and turning to fight only when he learned that Lucullus had landed there, probably Marcus Lucullus with his army from Thrace.',
+      "Crassus was just as eager to fight. Rome had voted to send Pompey, back from Spain, to reinforce him, and Crassus wanted to end the war first. Orosius places Spartacus' camp at the headwaters of the Silarus (the Sele); historians look for the battlefield in the upper Sele valley, but the site is not known.",
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Slave army',
+      commanders: ['Spartacus (killed)'],
+      strength: 'Unknown; Livy and Orosius count 60,000 dead, a figure historians treat with caution',
+      forces: 'Runaway slaves and gladiators of many peoples, with some cavalry, armed largely with home-made and captured weapons.',
+    },
+    bottom: {
+      name: 'Romans',
+      commanders: ['Marcus Licinius Crassus (praetor)'],
+      strength: 'Eight legions (Appian), perhaps 30,000–40,000 legionaries, with cavalry and auxiliaries',
+      forces: 'Six legions raised by Crassus and two taken over from the consuls, hardened by his harsh discipline, with cavalry.',
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'hills', points: [[90, 60], [260, 40], [480, 35], [700, 45], [810, 80], [800, 170], [720, 212], [540, 204], [380, 210], [200, 204], [100, 170], [70, 110]] },
+      { kind: 'label', at: [150, 118], text: 'Hills' },
+      { kind: 'camp', at: [440, 88], size: 34, label: "Spartacus' camp" },
+      { kind: 'camp', at: [720, 486], size: 36, label: "Crassus' camp" },
+      { kind: 'camp', at: [830, 562], size: 22 },
+      { kind: 'road', points: [[800, 446], [880, 442], [960, 446]] },
+      { kind: 'label', at: [885, 474], text: 'Unfinished trench' },
+    ],
+    units: [
+      { id: 'r1', side: 'top', kind: 'warband', w: 110, h: 30 },
+      { id: 'r2', side: 'top', kind: 'warband', label: 'Rebel army', w: 110, h: 30 },
+      { id: 'r3', side: 'top', kind: 'warband', w: 110, h: 30 },
+      { id: 'r4', side: 'top', kind: 'warband', w: 110, h: 30 },
+      { id: 'r5', side: 'top', kind: 'warband', w: 110, h: 30 },
+      { id: 'spart', side: 'top', kind: 'warband', label: 'Spartacus', w: 40, h: 20 },
+      { id: 'L1', side: 'bottom', kind: 'foot', label: "Crassus' legions", w: 110, h: 26 },
+      { id: 'L2', side: 'bottom', kind: 'foot', w: 110, h: 26 },
+      { id: 'L3', side: 'bottom', kind: 'foot', w: 110, h: 26 },
+      { id: 'L4', side: 'bottom', kind: 'foot', w: 110, h: 26 },
+      { id: 'work', side: 'bottom', kind: 'foot', label: 'Working parties', w: 90, h: 18 },
+      { id: 'crassus', side: 'bottom', kind: 'foot', label: 'Crassus', w: 46, h: 20 },
+    ],
+    phases: [
+      {
+        title: 'Crassus digs in',
+        caption: "Crassus camps close to the rebels and sets his men to digging a trench. Spartacus' army is camped close by. The battlefield is unknown, and the map is a reconstruction.",
+        at: {
+          r1: [230, 180],
+          r2: [350, 180],
+          r3: [500, 180],
+          r4: [620, 180],
+          r5: [740, 180],
+          spart: [435, 226],
+          L1: [250, 485],
+          L2: [370, 485],
+          L3: [490, 485],
+          L4: [610, 485],
+          work: [850, 404],
+          crassus: [435, 548],
+        },
+      },
+      {
+        title: 'The fight at the trench',
+        caption: 'Rebel bands rush the soldiers at work. Both sides feed in reinforcements and the skirmish swells, until Spartacus, seeing no way to avoid a battle, deploys his entire army.',
+        at: {
+          r5: [830, 342],
+          r4: [680, 330],
+          L4: [680, 400],
+        },
+        arrows: [
+          { side: 'top', points: [[750, 198], [790, 270], [812, 318]] },
+          { side: 'top', points: [[625, 198], [650, 260], [666, 306]] },
+          { side: 'bottom', points: [[620, 472], [650, 440], [668, 418]] },
+        ],
+      },
+      {
+        title: "Spartacus' charge",
+        caption: 'Spartacus stabs his horse: if he wins, he says, he will have plenty of Roman ones. On foot he hacks a path towards Crassus, killing two centurions, but cannot reach him.',
+        at: {
+          r1: [250, 302],
+          r2: [370, 302],
+          r3: [510, 302],
+          L1: [250, 368],
+          L2: [365, 368],
+          L3: [515, 368],
+          spart: [440, 412],
+        },
+        arrows: [
+          { side: 'top', points: [[440, 240], [440, 330], [440, 392]] },
+          { side: 'top', points: [[230, 198], [245, 282]] },
+          { side: 'top', points: [[520, 198], [512, 282]] },
+          { side: 'bottom', points: [[365, 470], [365, 390]] },
+          { side: 'bottom', points: [[500, 470], [512, 390]] },
+        ],
+      },
+      {
+        title: 'Spartacus falls',
+        caption: 'His men give way and flee. According to Appian, Spartacus, speared in the thigh, fights on from one knee until he is surrounded and cut down; his body is never found.',
+        at: {
+          L2: [360, 405],
+          L3: [520, 405],
+        },
+        broken: ['spart'],
+        gone: ['r1', 'r2', 'r3', 'r4', 'r5'],
+        arrows: [
+          { side: 'top', points: [[250, 286], [262, 150], [270, 10]], style: 'rout' },
+          { side: 'top', points: [[370, 286], [348, 150], [330, 10]], style: 'rout' },
+          { side: 'top', points: [[540, 286], [580, 150], [610, 10]], style: 'rout' },
+          { side: 'top', points: [[700, 314], [760, 170], [800, 10]], style: 'rout' },
+          { side: 'top', points: [[860, 326], [920, 180], [960, 20]], style: 'rout' },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'bottom',
+    result: 'Decisive Roman victory',
+    losses: 'Rebels: 60,000 dead by Livy and Orosius, who adds 6,000 captured; probably exaggerated. Romans: c. 1,000 dead (Appian).',
+    text: [
+      "Survivors fled into the mountains, where Crassus hunted them down. Appian says 6,000 prisoners were crucified along the road from Capua to Rome. Some 5,000 others ran into Pompey's army and were wiped out, and Pompey wrote to the senate that Crassus had won a battle but he had pulled the war up by the roots.",
+      'Crassus had ended the war within six months, but a victory over slaves earned him only an ovation, while Pompey triumphed for Spain. The two rivals kept their armies near Rome and were elected consuls together for 70 BC.',
+    ],
+  },
+  sources: [
+    'Plutarch, Life of Crassus 11; Life of Pompey 21',
+    'Appian, Civil Wars 1.120–121',
+    'Florus, Epitome 2.8.12–14',
+    'Livy, Periochae 97',
+    'Orosius, Histories against the Pagans 5.24.6–7',
+  ],
+};
+
+export default history;

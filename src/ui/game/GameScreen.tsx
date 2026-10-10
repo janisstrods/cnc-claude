@@ -1,22 +1,24 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, cardKind, isLeaderId, leaderAt, leaderById, leaderUnit,
-  other, pieceMoves, rallyCandidates, terrainAt, isFord, unitAt, unitById, validateOrders, validateRally, validateSpartacus,
+  other, pieceMoves, rallyCandidates, unitAt, unitById, validateOrders, validateRally, validateSpartacus,
   battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf, sectionsOf, orderMode, orderLimit, rollingFirePaths, inCommand,
   diceOrderPieces, orderDice, validateDiceOrders,
   type Answer, type DieFace, type GameState, type HexId, type RetreatOption, type SectionName, type Side,
 } from '../../engine';
 import { BLOCK_COLORS, UnitIcon, unitTypeName } from '../../art';
 import { BannerTrack, Button, CardBack, CardView, DiceTray, DieView, Modal, Panel } from '../kit';
-import { scenarioArt, terrainName } from '../terrain';
+import { scenarioArt } from '../terrain';
 import { BattleResult } from './BattleResult';
 import { Board } from './Board';
 import type { GameController, LogLine } from './controller';
 import {
   ambushTexts, attackDice, bannerCounts, boardUi, commandBlocks, commandById, commandTipLine, deploymentSide, effectiveKind, expectedHits,
   leaderTraitLines, leadershipHint, objectiveTipLines, pieceHexOf, possessive, retreatEliminates, rollingFireStep, selectAllUnits,
-  terrainTipLines, unitSummary, type UiSel,
+  unitSummary, type UiSel,
 } from './uiModel';
+import { TerrainTipBlock } from './TerrainTipBlock';
+import { terrainTip } from './terrainTips';
 import { RulesReference } from '../screens/RulesReference';
 import { HistoryButton } from '../history/HistoryDialog';
 import { isMuted, setMuted } from '../sound';
@@ -540,10 +542,9 @@ export function GameScreen({ controller, onExit, onRematch }: {
     const h = ui.hoverHex;
     const u = unitAt(s, h);
     const l = leaderAt(s, h);
-    const t = terrainAt(s, h);
-    const terr = terrainTipLines(s, h, flipped, terrainName(t, isFord(s, h), s.noCap[h], hexArt[h]), hexArt[h]);
+    const terr = terrainTip(s, h, flipped, hexArt[h]);
     const obj = objectiveTipLines(s, h);
-    if (!u && !l && !terr.length && !obj.length) return null;
+    if (!u && !l && !terr && !obj.length) return null;
     return { u, l, terr, obj };
   }, [ui.hoverHex, s, flipped, hexArt]);
 
@@ -713,7 +714,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
         )}
         {hoverInfo?.l && <div className="tip-line tip-leader">Leader: {hoverInfo.l.name || 'unnamed'}{leaderUnit(s, hoverInfo.l) ? ' (attached)' : ' (alone)'}</div>}
         {hoverInfo?.l && leaderTraitLines(hoverInfo.l).map((x) => <div key={x} className="tip-line tip-leader">{x}</div>)}
-        {hoverInfo?.terr.map((x) => <div key={x} className="tip-line tip-terrain">{x}</div>)}
+        {hoverInfo?.terr && <TerrainTipBlock tip={hoverInfo.terr} alone={!hoverInfo.u && !hoverInfo.l} />}
         {hoverInfo?.obj.map((x) => <div key={x} className="tip-line tip-objective">{x}</div>)}
       </HoverTip>
 
@@ -737,7 +738,9 @@ export function GameScreen({ controller, onExit, onRematch }: {
       </Modal>
 
       <Modal open={!!view.over} title={view.over ? (view.over.winner === human ? 'Victory!' : view.over.winner === 'draw' ? 'A Draw' : 'Defeat') : ''}>
-        {view.over && <BattleResult state={s} human={human} over={view.over} onExit={onExit} onRematch={onRematch} />}
+        {view.over && <BattleResult
+          state={s} human={human} over={view.over} onExit={onExit} onRematch={onRematch} firstLeg={controller.config.firstLeg}
+        />}
       </Modal>
     </div>
   );

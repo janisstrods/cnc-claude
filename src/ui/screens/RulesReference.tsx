@@ -85,7 +85,7 @@ function Basics() {
         <li>Save strong cards (Clash of Shields, Mounted Charge, Double Time) for the moment many units are in contact.</li>
       </ul>
       <h3>Controls</h3>
-      <p>Click to select; hover a unit for its stats and a card to preview it. Keys: <b>1–6</b> pick a card, <b>Enter</b> confirms the highlighted action, <b>Esc</b> clears a selection. Click the board while the enemy moves to speed up the animation.</p>
+      <p>Click to select; hover a unit for its stats, any hex for what its terrain does, and a card to preview it. Keys: <b>1–6</b> pick a card, <b>Enter</b> confirms the highlighted action, <b>Esc</b> clears a selection. Click the board while the enemy moves to speed up the animation.</p>
     </div>
   );
 }
@@ -153,7 +153,7 @@ function Terrain() {
     ['Forest', 'Stops movement. Only light foot, auxilia and warriors may battle after entering. Close combat in or out: max 2 dice. Ranged fire into it: max 1 die. Blocks line of sight.'],
     ['River', 'Impassable unless the battle says it is fordable.'],
     ['Fordable river', 'Stops movement. Close combat in or out: max 2 dice; firing out: max 1 die (not at the Pinarus, Expansion #1 battle 108).'],
-    ['Marsh', 'Stops movement; roll a die for a lost block on entry. Max 2 dice in close combat. Heavy war machines may not enter.'],
+    ['Marsh', 'Stops movement; a unit leaving it moves only 1 hex. Roll a die for a lost block on entry. Close combat in or out: max 2 dice; firing out: max 1 die. Heavy war machines may not enter.'],
     ['Broken ground', 'Mounted units stop and may not battle that turn. Max 2 dice in close combat. Heavy war machines may not enter.'],
     ['Fortified camp', 'Foot defending ignore one sword and one flag. Units in a camp roll one die fewer. Blocks line of sight.'],
     ['Lake / steep hills', 'Impassable.'],

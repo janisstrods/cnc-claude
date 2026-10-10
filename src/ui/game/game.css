@@ -236,7 +236,7 @@ body {
 .hover-tip {
   position: fixed;
   z-index: 50;
-  width: 280px;
+  width: 300px;
   pointer-events: none;
   background: linear-gradient(180deg, rgba(36, 22, 12, .97), rgba(24, 14, 7, .97));
   border: 1px solid rgba(226, 189, 114, .55);
@@ -251,7 +251,14 @@ body {
 .tip-sub { color: rgba(240, 227, 194, .7); font-style: italic; }
 .tip-line { color: rgba(240, 227, 194, .9); }
 .tip-leader { color: #f3dc9a; margin-top: 3px; }
-.tip-terrain { color: #b9d8a8; margin-top: 3px; }
+/* terrain: swatch, name and its effects, each kind labelled once (Move, Combat, Sight, Battle) */
+.tip-terrain-block.tip-divided { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(226, 189, 114, .25); }
+.tip-terrain-block .tip-head { margin-bottom: 3px; }
+.tip-terrain-name { font-family: var(--kit-font-title); font-size: 13px; color: #cfe3c2; }
+.tip-effects { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; row-gap: 2px; }
+.tip-kind { padding-top: 2px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: rgba(185, 216, 168, .6); white-space: nowrap; }
+.tip-effect { color: #b9d8a8; }
+.tip-effect.tip-battle { color: #f3dc9a; }
 /* Expansion #2: battle objectives on the hex (§18.4) and a unit's separate command (210) */
 .tip-objective { color: #f6d27a; margin-top: 3px; }
 .tip-command { color: #c9d3ee; margin-top: 3px; }
@@ -278,6 +285,26 @@ body {
 .victory-count { font-family: var(--kit-font-title); font-weight: 700; font-size: 18px; text-align: right; color: #5a4630; }
 .victory-row.is-winner .victory-army, .victory-row.is-winner .victory-count { color: #6a1512; font-weight: 700; }
 .victory-turns { margin: 8px 0 16px; text-align: center; font-size: 14px; color: #7a6448; }
+.match {
+  margin: 0 0 16px; padding: 8px 14px 10px; border-radius: 8px;
+  background: rgba(154, 111, 44, .1); box-shadow: inset 0 0 0 1px rgba(154, 111, 44, .3);
+}
+.match-title {
+  margin: 0 0 2px; text-align: center; font-family: var(--kit-font-title); font-size: 13px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: #8a6a3a;
+}
+.match-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.match-table th, .match-table td { padding: 3px 0; }
+.match-table thead th { font-size: 12px; font-weight: 400; color: #7a6448; text-align: right; padding-bottom: 0; }
+.match-table tbody th { text-align: left; font-weight: 400; }
+.match-table th small { font-size: 13px; font-style: italic; color: #7a6448; }
+.match-table .match-outcome { padding: 3px 10px; font-style: italic; color: #5a4630; }
+.match-table .match-outcome.is-won { color: #6a1512; }
+.match-n { width: 4.6em; text-align: right; font-family: var(--kit-font-title); font-weight: 700; font-size: 17px; color: #5a4630; }
+.match-n.is-ahead { color: #6a1512; }
+.match-table tfoot th, .match-table tfoot td { border-top: 1px solid rgba(154, 111, 44, .4); padding-top: 5px; }
+.match-table tfoot th { text-align: left; font-family: var(--kit-font-title); font-weight: 700; font-size: 15px; color: #5a4630; }
+.match-verdict { margin: 6px 0 0; text-align: center; font-size: 16px; font-weight: 700; color: #4a3820; }
 .victory-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 12px; }
 .victory-actions .kit-btn { padding-left: .8em; padding-right: .8em; }
 .victory-actions .kit-btn__label { display: flex; flex-direction: column; align-items: center; }
@@ -287,6 +314,10 @@ body {
   .victory-score { padding: 8px 10px; column-gap: 8px; }
   .victory-banners { gap: 2px; }
   .victory-banner { width: 13px; height: 22px; }
+  .match { padding: 8px 10px 10px; }
+  .match-table th small { display: block; white-space: nowrap; }
+  .match-table .match-outcome { padding: 3px 8px; }
+  .match-table .match-n { width: auto; padding-left: 10px; }
 }
 
 @media (max-width: 1180px) {

@@ -1,0 +1,131 @@
+// 204 Arausio, 105 BC. Top: Cimbri and allies (Boiorix); bottom: Romans (Quintus Servilius Caepio, Gnaeus Mallius Maximus).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '204',
+  context: {
+    war: 'Cimbrian War, 113–101 BC',
+    text: [
+      'Since 113 BC the Cimbri, a people from the far north migrating with their families and wagons, had beaten every Roman army sent against them: Carbo at Noreia, Silanus in Gaul, and Cassius Longinus, who fell to their allies the Tigurini. In 105 BC two Roman armies faced them on the lower Rhone, under the proconsul Quintus Servilius Caepio and the consul Gnaeus Mallius Maximus, a new man without noble ancestors.',
+      "When the Cimbri crushed a force under the consul's legate Marcus Aurelius Scaurus, Mallius called on Caepio for help. The proud aristocrat would not serve under him. He crossed the Rhone at last but camped apart, between the consul and the enemy, and the two generals quarrelled openly. On 6 October the Cimbri, led by their young king Boiorix, met them near Arausio (Orange).",
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Cimbri and allies',
+      commanders: ['Boiorix, king of the Cimbri'],
+      strength: "Unknown; a whole people on the move. Plutarch's 300,000 warriors is surely inflated",
+      forces: 'Germanic warriors on foot and horse, with Ambrones, Teutones and others according to Plutarch and Orosius; wagons carried their families.',
+    },
+    bottom: {
+      name: 'Romans and Italian allies',
+      commanders: ['Quintus Servilius Caepio (proconsul)', 'Gnaeus Mallius Maximus (consul)'],
+      strength: 'Two consular armies; the ancient death tolls imply 70,000–80,000 soldiers, perhaps exaggerated',
+      forces: 'Legions and allied foot and horse in two separate armies and camps, followed by a host of servants and camp followers.',
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'river', points: [[1060, 120], [940, 150], [850, 215], [870, 300], [826, 380], [822, 470], [822, 640]], width: 26, label: 'Rhone' },
+      { kind: 'camp', at: [500, 62], size: 36, label: 'Cimbrian wagons' },
+      { kind: 'camp', at: [300, 432], size: 34, label: "Caepio's camp" },
+      { kind: 'camp', at: [540, 540], size: 30, label: "Mallius' camp" },
+    ],
+    units: [
+      { id: 'chL', side: 'top', kind: 'horse', label: 'Cimbrian horse' },
+      { id: 'c1', side: 'top', kind: 'warband', w: 100 },
+      { id: 'c2', side: 'top', kind: 'warband', label: 'Cimbri', w: 100 },
+      { id: 'c3', side: 'top', kind: 'warband', w: 100 },
+      { id: 'c4', side: 'top', kind: 'warband', w: 100 },
+      { id: 'c5', side: 'top', kind: 'warband', w: 100 },
+      { id: 'cae1', side: 'bottom', kind: 'foot', w: 96 },
+      { id: 'cae2', side: 'bottom', kind: 'foot', label: "Caepio's army", w: 96 },
+      { id: 'cae3', side: 'bottom', kind: 'foot', w: 96 },
+      { id: 'mal1', side: 'bottom', kind: 'foot', w: 96 },
+      { id: 'mal2', side: 'bottom', kind: 'foot', label: "Mallius' army", w: 96 },
+      { id: 'malH', side: 'bottom', kind: 'horse', w: 56 },
+    ],
+    phases: [
+      {
+        title: 'Two armies apart',
+        caption: "Caepio camps apart from the consul, between him and the Cimbri, and refuses to plan the campaign with him. When Cimbrian envoys come asking for land and grain, Caepio sends them away.",
+        at: {
+          chL: [118, 196],
+          c1: [236, 180],
+          c2: [352, 180],
+          c3: [468, 180],
+          c4: [584, 180],
+          c5: [700, 180],
+          cae1: [196, 340],
+          cae2: [300, 340],
+          cae3: [404, 340],
+          mal1: [556, 452],
+          mal2: [662, 452],
+          malH: [756, 456],
+        },
+      },
+      {
+        title: "Caepio's army overrun",
+        caption: "The next day battle is joined. Granius Licinianus says the Cimbri attacked; Livy's summary blames Caepio's rashness. Caepio's army, nearest the enemy, is overwhelmed and its camp taken.",
+        at: {
+          chL: [90, 392],
+          c1: [192, 290],
+          c2: [304, 290],
+          c3: [416, 290],
+          cae1: [190, 372],
+          cae2: [300, 362],
+          cae3: [410, 372],
+        },
+        broken: ['cae1', 'cae2', 'cae3'],
+        arrows: [
+          { side: 'top', points: [[236, 196], [214, 238], [200, 262]] },
+          { side: 'top', points: [[352, 196], [320, 238], [304, 262]] },
+          { side: 'top', points: [[468, 196], [430, 236], [412, 262]] },
+          { side: 'top', points: [[118, 210], [70, 290], [84, 364]] },
+        ],
+      },
+      {
+        title: 'Both camps lost',
+        caption: "The Cimbri turn on the consul's army and destroy it too, and his camp falls. A few escape across the Rhone; the wounded Sertorius swims it in his armour. The sources say little more; the map is a reconstruction.",
+        at: {
+          c1: [300, 432],
+          c2: [176, 372],
+          c3: [540, 540],
+          c4: [575, 395],
+          c5: [690, 395],
+          chL: [366, 540],
+          mal1: [556, 458],
+          mal2: [662, 458],
+          malH: [762, 494],
+        },
+        broken: ['mal1', 'mal2', 'malH'],
+        gone: ['cae1', 'cae2', 'cae3'],
+        arrows: [
+          { side: 'top', points: [[584, 196], [578, 300], [576, 368]] },
+          { side: 'top', points: [[700, 196], [694, 300], [690, 368]] },
+          { side: 'top', points: [[416, 306], [430, 420], [450, 500], [476, 532]] },
+          { side: 'top', points: [[100, 410], [214, 530], [320, 540]] },
+          { side: 'bottom', points: [[782, 508], [846, 546], [916, 560]], style: 'rout' },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'top',
+    result: 'Decisive Cimbrian victory',
+    losses: 'Romans: 80,000 soldiers and 40,000 servants and camp followers by Valerius Antias, at least 70,000 by Rutilius Rufus; Mallius lost two sons. Cimbrian losses unrecorded.',
+    text: [
+      'By its own figures Rome had suffered its worst defeat since Cannae. Orosius says the victors destroyed the spoil as an offering, throwing gold and silver into the Rhone, drowning the horses and hanging prisoners from trees.',
+      'Rome braced for an invasion, but the Cimbri turned away to Spain. Caepio was stripped of his command and property and later died in exile, and Mallius was exiled too. The people elected Gaius Marius consul in his absence, then again every year until 100 BC, and he used the respite to train a new army.',
+    ],
+  },
+  sources: [
+    'Livy, Periochae 67',
+    'Granius Licinianus, book 33',
+    'Cassius Dio, Roman History fr. 91',
+    'Orosius, Histories against the Pagans 5.16.1–7',
+    'Plutarch, Life of Sertorius 3',
+  ],
+};
+
+export default history;

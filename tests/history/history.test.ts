@@ -3,7 +3,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { SCENARIOS, scenarioById } from '../../src/scenarios';
+import { SCENARIOS, scenarioById, type Expansion } from '../../src/scenarios';
 import { MAP_H, MAP_W, hasHistory, historyIds, loadHistory, unitFrames, unitsAtPhase, type BattleHistory, type BattleMap as MapData } from '../../src/history';
 import { validateHistory, words } from '../../src/history/validate';
 import { BattleMap } from '../../src/ui/history/BattleMap';
@@ -14,9 +14,12 @@ beforeAll(async () => {
   for (const id of historyIds()) histories.set(id, await loadHistory(id));
 });
 
+/** Expansions whose battles must all have a history; a newly added expansion joins the list once its histories are written. */
+const COVERED: Expansion[] = ['base', 'exp1', 'exp2'];
+
 describe('coverage', () => {
-  it('every base and Expansion #1 battle has a history', () => {
-    const missing = SCENARIOS.filter((s) => (s.expansion === 'base' || s.expansion === 'exp1') && !hasHistory(s.id)).map((s) => s.id);
+  it('every battle of the covered expansions has a history', () => {
+    const missing = SCENARIOS.filter((s) => COVERED.includes(s.expansion) && !hasHistory(s.id)).map((s) => s.id);
     expect(missing).toEqual([]);
   });
 
@@ -62,6 +65,7 @@ describe('content', () => {
     expect(problems).toMatch(/context.text has 200 words/);
     expect(problems).toMatch(/idle is never placed/);
     expect(problems).toMatch(/date "216"/);
+    expect(validateHistory({ ...h, date: '9 AD' })).toEqual([]);
   });
 
   it('counts words', () => {

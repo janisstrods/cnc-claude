@@ -1,0 +1,117 @@
+// 210 Picenum, 72 BC. Top: Slaves (Spartacus); bottom: Romans (Gellius).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '210',
+  context: {
+    war: 'Third Servile War (the war of Spartacus), 73–71 BC',
+    text: [
+      'In 73 BC about seventy gladiators led by the Thracian Spartacus broke out of a training school at Capua. Runaway slaves and poor herdsmen flocked to them, and they beat every force the praetors sent. For 72 BC the Senate gave the war to both consuls, Lucius Gellius Publicola and Gnaeus Cornelius Lentulus Clodianus.',
+      "Gellius and the praetor Quintus Arrius first destroyed a breakaway band under Crixus near Mount Garganus. Spartacus meanwhile marched north along the Apennines, apparently making for the Alps. Appian says one consul barred his way while the other followed behind. Where they fought is not recorded; Florus puts Lentulus' defeat in the Apennines. The game names the battle after Picenum, where Appian says Spartacus beat the consuls once more.",
+    ],
+  },
+  sides: {
+    top: {
+      name: "Spartacus' rebel army",
+      commanders: ['Spartacus'],
+      strength: 'Tens of thousands; Appian gives 120,000 foot soon afterwards',
+      forces: 'Runaway slaves (Thracians, Gauls, Germans and others) and poor herdsmen, with captured and home-made weapons.',
+    },
+    bottom: {
+      name: 'Romans and Italian allies',
+      commanders: ['Gnaeus Cornelius Lentulus Clodianus (consul)', 'Lucius Gellius Publicola (consul)', 'Quintus Arrius (praetor, with Gellius)'],
+      strength: 'Two consular armies of unknown size; Appian mentions two legions',
+      forces: 'Newly raised legions and allied troops in two separate armies, one under each consul.',
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'hills', points: [[-60, 58], [200, 48], [480, 60], [760, 50], [905, 72], [925, 128], [880, 172], [600, 182], [330, 210], [-60, 200]] },
+      { kind: 'hills', points: [[428, 160], [502, 156], [528, 300], [516, 450], [540, 650], [430, 650], [418, 450], [440, 300]] },
+    ],
+    units: [
+      { id: 's2', side: 'top', kind: 'warband' },
+      { id: 's1', side: 'top', kind: 'warband', label: 'Spartacus' },
+      { id: 's3', side: 'top', kind: 'warband' },
+      { id: 's4', side: 'top', kind: 'warband' },
+      { id: 'len1', side: 'bottom', kind: 'foot', label: 'Lentulus' },
+      { id: 'len2', side: 'bottom', kind: 'foot' },
+      { id: 'gel1', side: 'bottom', kind: 'foot', label: 'Gellius & Arrius' },
+      { id: 'gel2', side: 'bottom', kind: 'foot' },
+    ],
+    phases: [
+      {
+        title: 'Two consuls close in',
+        caption: "Spartacus' host holds the hills. Lentulus bars his road, while Gellius and the praetor Arrius follow on the far side of the ridge, too far off to help. The ground is unknown; the map is a reconstruction.",
+        at: {
+          s2: [150, 125],
+          s1: [280, 125],
+          s3: [215, 178],
+          s4: [345, 178],
+          len1: [180, 455],
+          len2: [310, 455],
+          gel1: [700, 300],
+          gel2: [830, 300],
+        },
+        arrows: [{ side: 'bottom', points: [[1015, 330], [960, 312], [910, 302]] }],
+      },
+      {
+        title: 'Lentulus beaten first',
+        caption: "Spartacus strikes Lentulus before the consuls can join forces. Plutarch says he beats Lentulus' legates and takes all their baggage; Florus places this defeat in the Apennines.",
+        at: {
+          s2: [130, 345],
+          s1: [255, 345],
+          s3: [370, 345],
+          s4: [255, 285],
+          len1: [170, 480],
+          len2: [300, 480],
+        },
+        broken: ['len1', 'len2'],
+        arrows: [
+          { side: 'top', points: [[150, 150], [135, 318]] },
+          { side: 'top', points: [[345, 200], [368, 318]] },
+          { side: 'bottom', points: [[124, 496], [100, 556], [78, 612]], style: 'rout' },
+          { side: 'bottom', points: [[300, 500], [318, 560], [335, 612]], style: 'rout' },
+        ],
+      },
+      {
+        title: 'Then Gellius in turn',
+        caption: 'Spartacus then turns on Gellius and Arrius and routs them as well. Appian says the beaten consular armies scatter in confusion. The sources say little more about either fight.',
+        at: {
+          s4: [570, 245],
+          s1: [700, 235],
+          s3: [830, 235],
+          s2: [570, 305],
+          gel1: [700, 330],
+          gel2: [830, 330],
+        },
+        broken: ['gel1', 'gel2'],
+        gone: ['len1', 'len2'],
+        arrows: [
+          { side: 'top', points: [[270, 280], [420, 222], [628, 208]] },
+          { side: 'top', points: [[380, 360], [460, 330], [505, 310]] },
+          { side: 'bottom', points: [[700, 350], [690, 460], [665, 605]], style: 'rout' },
+          { side: 'bottom', points: [[830, 350], [880, 470], [935, 605]], style: 'rout' },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'top',
+    result: 'Slave victory: both consuls beaten in turn',
+    losses: 'Not recorded. Lentulus lost his baggage, and Spartacus took many prisoners.',
+    text: [
+      'Appian says Spartacus put 300 Roman prisoners to death as an offering to the dead Crixus; Florus speaks of captives made to fight as gladiators at the pyres of fallen rebel leaders. Spartacus marched on north and beat Gaius Cassius Longinus, governor of Cisalpine Gaul, near Mutina.',
+      'Then, for reasons the sources do not make clear, he turned back south instead of crossing the Alps. Appian says he set out for Rome and beat the consuls again in Picenum, then thought better of it and seized the hills around Thurii. The Senate took the war from the consuls and gave it to Marcus Licinius Crassus.',
+    ],
+  },
+  sources: [
+    'Appian, Civil Wars 1.116–117',
+    'Plutarch, Life of Crassus 9',
+    'Livy, Periochae 96',
+    'Florus, Epitome 2.8',
+    'Barry Strauss, The Spartacus War (2009)',
+  ],
+};
+
+export default history;

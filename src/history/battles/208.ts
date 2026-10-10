@@ -1,0 +1,120 @@
+// 208 Mt Vesuvius, 73 BC. Top: Slave army (Spartacus); bottom: Romans (Gaius Claudius Glaber).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '208',
+  context: {
+    war: 'Third Servile War (the war of Spartacus), 73–71 BC',
+    text: [
+      'In 73 BC some seventy gladiators, mostly Gauls and Thracians, broke out of the training school of Lentulus Batiatus at Capua. Led by the Thracian Spartacus and the Gauls Crixus and Oenomaus, they seized wagons carrying gladiators\' weapons, beat off a force sent from Capua and took refuge on Vesuvius, then a dormant volcano whose summit was overgrown with wild vines. Runaway slaves soon came to join them.',
+      'Rome treated it as banditry rather than war. The praetor Gaius Claudius Glaber marched south with some 3,000 men raised in haste. Finding that only one narrow, difficult path led up to the rebels, he camped across it and waited for hunger to do the rest.',
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Gladiators and runaway slaves',
+      commanders: ['Spartacus', 'Crixus', 'Oenomaus'],
+      strength: 'Some 70–78 gladiators and an unknown number of runaways; Florus claims over 10,000',
+      forces: "Escaped gladiators, mostly Thracians and Gauls, and runaway slaves, armed with gladiators' gear and captured weapons.",
+    },
+    bottom: {
+      name: 'Romans',
+      commanders: ['Gaius Claudius Glaber (praetor; "Clodius" in Plutarch)'],
+      strength: 'c. 3,000 (Plutarch)',
+      forces: 'Men levied in haste on the march (Appian), not a regular army.',
+    },
+  },
+  map: {
+    terrain: [
+      {
+        kind: 'hills',
+        points: [
+          [-60, -60], [1060, -60], [1060, 50], [810, 46], [800, 190], [790, 320], [720, 342], [650, 250], [628, 116],
+          [540, 118], [420, 118], [330, 112], [300, 180], [300, 300], [236, 404], [140, 424], [-60, 392],
+        ],
+      },
+      { kind: 'woods', points: [[90, 14], [190, 8], [214, 52], [150, 74], [80, 56]], label: 'wild vines' },
+      { kind: 'woods', points: [[850, 70], [930, 64], [950, 112], [892, 134], [840, 110]] },
+      { kind: 'woods', points: [[760, 430], [870, 420], [890, 470], [820, 500], [750, 470]] },
+      { kind: 'road', points: [[450, 100], [470, 150], [480, 196]], label: 'the only path' },
+      { kind: 'camp', at: [490, 272], size: 70 },
+      { kind: 'label', at: [690, 64], text: 'Vesuvius' },
+      { kind: 'label', at: [362, 318], text: "Glaber's camp" },
+      { kind: 'label', at: [150, 300], text: 'Cliffs' },
+      { kind: 'label', at: [725, 214], text: 'Cliffs' },
+    ],
+    units: [
+      { id: 'g1', side: 'top', kind: 'warband', w: 100, h: 28 },
+      { id: 'g2', side: 'top', kind: 'warband', label: 'Spartacus & gladiators', w: 100, h: 28 },
+      { id: 'g3', side: 'top', kind: 'warband', label: 'Runaway slaves', w: 100, h: 28 },
+      { id: 'guard', side: 'bottom', kind: 'foot', label: 'Guard on the path', w: 80, h: 22 },
+      { id: 'c1', side: 'bottom', kind: 'foot', w: 90, h: 26 },
+      { id: 'c2', side: 'bottom', kind: 'foot', label: "Glaber's levies", w: 90, h: 26 },
+    ],
+    phases: [
+      {
+        title: 'Trapped on Vesuvius',
+        caption: "The rebels hold the top of the mountain. Glaber's 3,000 men camp across the foot of the one narrow, difficult path, since sheer cliffs guard every other side, and wait for hunger to force a surrender.",
+        at: {
+          g1: [215, 62],
+          g2: [380, 74],
+          g3: [565, 66],
+          guard: [480, 204],
+          c1: [455, 262],
+          c2: [525, 292],
+        },
+      },
+      {
+        title: 'Down the vine ladders',
+        caption: 'The rebels twist the wild vines into long ladders and climb down an unguarded cliff; one man stays above to lower their weapons. The sources do not say on which side; the map shows one possibility.',
+        at: {
+          g1: [150, 528],
+          g2: [290, 550],
+          g3: [440, 554],
+        },
+        arrows: [
+          { side: 'top', points: [[210, 82], [90, 130], [40, 280], [50, 420], [70, 496]] },
+          { side: 'top', points: [[360, 98], [250, 140], [150, 210], [110, 340], [150, 430], [205, 488]] },
+        ],
+      },
+      {
+        title: 'The camp is taken',
+        caption: 'Coming round the mountain, the rebels fall on the unsuspecting Romans from an unexpected quarter. The soldiers break and flee, and their camp is taken and plundered. Details are unknown; the map is a reconstruction.',
+        at: {
+          g1: [330, 420],
+          g2: [490, 286],
+          g3: [640, 380],
+          guard: [585, 196],
+          c1: [745, 424],
+          c2: [860, 330],
+        },
+        broken: ['guard', 'c1', 'c2'],
+        arrows: [
+          { side: 'top', points: [[160, 508], [230, 470], [280, 440]] },
+          { side: 'top', points: [[300, 530], [400, 460], [440, 390], [470, 322]] },
+          { side: 'top', points: [[450, 534], [540, 470], [600, 410]] },
+          { side: 'bottom', points: [[780, 440], [860, 488], [930, 530]], style: 'rout' },
+          { side: 'bottom', points: [[905, 340], [960, 380], [1010, 410]], style: 'rout' },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'top',
+    result: 'Rebel victory',
+    losses: 'Not recorded. The Romans fled and lost their camp; Glaber is not heard of again.',
+    text: [
+      "The victory turned a gladiators' breakout into a war. Herdsmen and shepherds of the district, hardy men, flocked to Spartacus, some armed as foot soldiers and others used as scouts. Rome next sent the praetor Publius Varinius, whose subordinates Furius and Cossinius, and then Varinius himself, were beaten in turn; Varinius even lost his lictors and his horse.",
+      'Within a year the rebels numbered tens of thousands and ranged across southern Italy. The war lasted until 71 BC, when Marcus Crassus destroyed Spartacus\' army in Lucania.',
+    ],
+  },
+  sources: [
+    'Plutarch, Life of Crassus 8–9',
+    'Appian, Civil Wars 1.116',
+    'Florus, Epitome 2.8',
+    'Frontinus, Stratagems 1.5.21',
+    'Barry Strauss, The Spartacus War (2009)',
+  ],
+};
+
+export default history;
