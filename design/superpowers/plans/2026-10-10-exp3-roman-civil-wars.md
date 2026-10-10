@@ -106,31 +106,81 @@ cosmetic: no elite.
 
 ---
 
-## Phase B — Engine (after the Expansion #2 release; branch `exp3-roman-civil-wars`)
+## Phase B — Engine (branch `exp3-roman-civil-wars`, worktree `.claude/worktrees/exp3`, from release v1.4.0 d1ceece)
 
-- **B1 Types scaffold + rules reference §20:** looks `sullan`, `samnite`, `sertorian`, `pompeian`, `caesarian`,
-  `helvetii`, `numidian`, `pontic` (temporary art fallbacks); TerrainType `wall`; §18 additions (Julian legions details,
-  walls, hill under, steep slopes, reinforcements, forced placement, dice orders, immobile, hand growth, leader exits,
-  ship markers) and §20 battles 301–319.
-- **B2 Julian legions with Caesar** (already supported by `canMarch` + `forcedMarch`): tests only — Julian MI moves 2
-  without battle; with Caesar 2 and battle; pilum after 1 hex, not after 2; "both armies" stamps both sides.
-- **B3 Hand growth:** `handGrowth: { side, to }` replaces `trasimenusHand` (golden 006 unchanged) and covers 313.
-- **B4 Objectives for Expansion #3:** capture `marker` (any terrain, nothing removed but the marker), majority with a
-  single side (309), exit `leadersScore` (lone leaders may exit from the listed hexes; a unit with its leader scores
-  2), side-edge exits (311), camp removal leaving a hill when `hill` is set (308).
-- **B5 Walls and hills:** terrain `wall` (§ rulings Exp3 Q3: entry only from adjacent and stop; leaving moves 1 and
-  stops; mounted/HWM barred, may attack only if adjacent at turn start; cap 2 both ways (+bonuses); defender ignores 1
-  sword and may ignore 1 flag (ranged: 1 flag); defender strikes first unless the attacker is on a wall; blocks LOS
-  except along connected wall hexes); impassable walls/towns = `steep` (+art); `GameState.hillUnder: boolean[]` (hill
-  rules apply too); rule `steepSlopes` (no move/advance/retreat/evade forest→hill, no close combat across).
-- **B6 Reinforcements and forced placement:** `ambush.entryHexes`, `noMove` (may battle, fires with 2 dice),
-  `attachLeader`; `placeUnits` with a `placeUnit` decision at the start of the next Roman turn (delayed while blocked).
-- **B7 Dice orders (310):** side `orders: 'dice'`: no hand, no draw; turn = roll `orderDice`; resolve flag faces
-  (own unit retreats one unignorable flag) and swords faces (own unit loses a block) first, then symbol/helmet orders;
-  then move and battle; opponent may First Strike; Counter Attack copying nothing orders nothing. Decisions for the
-  victim and order choices (the Numidian player makes all of them).
-- **B8 Immobile units and leader commands (304):** `Unit.immobile`; Leadership card on a commanded leader (verify
-  Task 8 behaviour, add tests).
+Each task: TDD from `design/rules-reference.md` (§18 additions and §20, written in B1), golden fixtures unchanged,
+Expansion #1/#2 tests unchanged, `npm test` + `npm run typecheck` before committing, explicit-path commits.
+
+### Task B1: Types scaffold, art fallbacks, rules reference §18 additions and §20
+- `ARMY_LOOKS` += `sullan`, `samnite`, `sertorian`, `pompeian`, `caesarian`, `helvetii`, `numidian`, `pontic`; temporary
+  `LOOKS` entries reuse `marian` (sullan, pompeian, caesarian), `gallic` (helvetii), `carthaginian` (numidian),
+  `antigonid` (pontic), `syracusan` (samnite), `celtic`/`gallic` (sertorian). `TerrainType` += `'wall'` (temporary art:
+  the rampart/steep painters; `TERRAIN_NAMES.wall = 'City Wall'`). Exhaustive records compile; all pins unchanged.
+- Rules reference: §18 gains Julian legions details, hand growth, objectives additions (marker captures, single-side
+  majority, leader exits, hill left by a removed camp), city walls, impassable walls/towns, hill under, steep slopes,
+  reinforcements with fixed entry, forced placement, dice orders, immobile units; §20 lists 301–319 (format of §19),
+  from `design/exp3-survey.md`, `design/exp3-rulings.md` and the verified data in `design/exp3-data/`.
+
+### Task B2: Hand growth (generalised Trasimenus)
+- `ScenarioSetup.handGrowth?: { side: Side; to: number }` → `special.handGrowth`; in `endOfTurn`, while that side's
+  Command is below `to`, it draws 2 and its Command rises by 1 (event `command`). 006 migrates from rule
+  `trasimenusHand` (removed from `SPECIAL_RULE_IDS`) to `handGrowth: { side: 'bottom', to: 4 }` in EXTRA — identical
+  events (golden rnd-006-16). Tests: 006 behaviour unchanged; 313 bottom 2 → 3 → 4 → 5 then normal draws.
+
+### Task B3: Objectives for Expansion #3 and Julian legions with Caesar
+- `capture.marker?: 'ship'`: capture hexes of any (passable) terrain; nothing is removed (the marker is just taken).
+- `majority` with a single side in `sides` (309): that side holds the banners while it has strictly more units on the
+  hexes than the enemy.
+- `exit.leadersScore` (317): a lone leader of that side on a listed hex may exit (leader move to `OFF_BOARD`, 1 banner,
+  removed, not eliminated); a unit exiting with its attached leader scores 2. Side-edge exit hexes (311) are allowed.
+- A removed camp (or wall) whose hex has a hill under it becomes `hill`, not plain (needs B4's hill under; implement
+  the hook here behind `hillUnder`, tested in B4).
+- Julian legions with Caesar: tests only (march + forced march already exist): Julian MI moves 2 without battle; with
+  Caesar 2 and battle; pilum after 1 hex, not after 2; `legions` for both sides stamps both.
+
+### Task B4: City walls, impassable walls/towns, hill under, steep slopes
+- `GameState.hillUnder: boolean[]` (shared by cloneState like terrain; `setTerrain` keeps it); setup `hill: true` only
+  on `camp` and `wall` hexes; `isHill(s, h)` = hill terrain or hill under (caps, LOS hill groups, veryHills).
+- Terrain `wall` (rulings Exp3 Q3): foot units (not war machines) and lone leaders may enter only by a move that
+  starts adjacent to the wall hex, and stop there; a unit that starts its move on a wall moves at most 1 hex and stops;
+  retreating/evading foot pass and are not stopped; mounted units and war machines may not enter, retreat or evade onto
+  it, and may close combat a unit on it only if they began the turn adjacent (`ordered.startHex` adjacent); close combat
+  into or out of a wall: max 2 dice (card/leader bonuses add); a defender on a wall ignores 1 sword and may ignore 1 flag
+  in close combat, 1 flag against ranged fire; a defender on a wall strikes first (as with the First Strike card,
+  without the card, ccBack dice capped) unless the attacker is itself on a wall hex — if that strike eliminates the
+  attacker or makes it retreat the attack is cancelled, otherwise the attack follows and there is no battle back; walls
+  block line of sight except when firer, target and every wall hex between belong to one connected wall group (hill-group
+  logic).
+- Impassable walls and towns are `steep` with an art variant (engine unchanged; data `art: 'wall' | 'town'`).
+- Rule `steepSlopes` (308): across a hexside between a hill (incl. hill under) and a forest, no move, momentum advance,
+  retreat or evade from the forest up to the hill, and no close combat either way; downhill movement and ranged fire are
+  allowed.
+
+### Task B5: Reinforcements with fixed entry and forced placement (308)
+- `ambush.entryHexes?: [r,c][]`: entry on those hexes instead of the enemy baseline section (the `ambushSection` answer
+  is still sent; any section is accepted); `ambush.noMove?: true`: entered units may not move beyond their entry hex but
+  may battle, and fire as units that did not move (2 dice); `ambush.attachLeader`: the reserve leader is placed with one
+  of the entered units (as Mago today).
+- `placeUnits?: { side, type, hexes, after: 'ambush' }[]`: after the ambush has been released, at the start of `side`'s
+  next turn (before its card) the player must place the unit on an empty listed hex (decision `placeUnit` with
+  `options`, answered with `hex`); if every hex is occupied, it waits for a later turn start. The unit exists off board
+  until placed (validated: not in `reserves`).
+
+### Task B6: Dice orders (310)
+- `SideSetup.orders?: 'dice'`, `orderDice?: number` (with `cards: 0`): that side holds no cards and never draws. Its
+  turn: emit `turnStart` and turn-start objectives; roll `orderDice` dice (roll purpose `'diceOrders'`); for each flag
+  face the side chooses one of its units (decision `diceVictim` {face:'flag', options}) that retreats one flag with no
+  flag ignored (blocks lost if it cannot); for each swords face it chooses a unit that loses 1 block; then decision
+  `diceOrders` {faces} answered with `assign` ids: each class symbol orders one unit of that class, a helmet orders a
+  leader together with his attached unit; unusable faces are lost. Then the normal move and battle phases (mods =
+  default). The opponent may still play First Strike; its Counter Attack copies nothing (orders nothing). The Numidian
+  player makes every choice (spec). `randomAnswer` and AI legality handle the new decisions (policy in Phase F).
+
+### Task B7: Immobile units and leader commands
+- `Unit.immobile` from data (306): never moves or momentum-advances (no move targets, no advance), but is ordered,
+  fires, battles and battles back; retreats normally and stays immobile.
+- 304: leaders carrying a `command`: a Leadership card on such a leader orders only his command (Task 8 of Expansion #2
+  implemented this; add 304-shaped tests).
 
 ## Phase C — Data import (B1–B8 done): loader `'exp3'`, copy verified data, `exp3-texts.ts`, manifest, `exp3.test.ts`.
 
