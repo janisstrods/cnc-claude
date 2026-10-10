@@ -3,7 +3,8 @@
 Condensed from the official rules (commandsandcolors.net, 5th+ edition wording). This file is the
 authoritative spec for the engine, tests and AI. Where the official text is ambiguous the chosen
 interpretation is marked **[Interp]**. §1–§14 describe the base game; §15–§17 add Expansion #1
-(Greece & Eastern Kingdoms) and override §1–§14 where they say so.
+(Greece & Eastern Kingdoms) and override §1–§14 where they say so. §18–§19 add Expansion #2 (Rome & the Barbarians);
+§18 and §20 add Expansion #3 (The Roman Civil Wars; the four Epic battles are out of scope).
 
 ## 1. Board
 
@@ -542,9 +543,11 @@ block colours. Fordable rivers use the §4/§7/§9.6 rules, except 108 (§16).
 
 ## 18. Expansions #2 and #3: units, abilities, objectives and terrain
 
-Used by the Expansion #2 battles (§19) and, later, Expansion #3. Paraphrased from the GMT living rules 2009 ("LR"), the
-Expansion 2/3 rule texts as transcribed on commandsandcolors.net and the rulings research in `design/exp2-rulings.md`
-("X2 Qn") and `design/exp3-rulings.md` ("X3 Qn"). Everything in §1–§17 applies unless stated here.
+Used by the Expansion #2 battles (§19) and the Expansion #3 battles (§20). Paraphrased from the GMT living rules 2009
+("LR"), the Expansion 2/3 rule texts as transcribed on commandsandcolors.net and the rulings research in
+`design/exp2-rulings.md` ("X2 Qn") and `design/exp3-rulings.md` ("X3 Qn", the rows of its Decisions table). Everything in
+§1–§17 applies unless stated here. §18.1–§18.6 grew with Expansion #2 and gain Expansion #3 additions in place (marked
+"Expansion #3"); §18.7–§18.11 are new with Expansion #3.
 
 ### 18.1 Barbarian light chariot (BCH)
 
@@ -571,8 +574,22 @@ Expansion 2/3 rule texts as transcribed on commandsandcolors.net and the rulings
   1 hex, then may fire.
 * **March** (a movement ability): the unit may move 2 hexes if it does not battle that turn; it may still move 1 and
   battle. With Double Time: 2 hexes and battle, never 3 (X2 Q3).
-* **Marius legions** (scenario rule, X2 Q2): every MI and HI of the named side has the pilum. 206–223 for the Romans.
-* **Julian legions** (Expansion #3): pilum + march for every MI and HI of the named side(s).
+* **Marius legions** (scenario rule, X2 Q2, X3 Q1): every MI and HI of the named side has the pilum (the 2009 rules and the
+  designer's FAQ name HI as well as MI, although the website text names only MI). 206–223 for the Romans; 301–305 for
+  **both** armies (below).
+* **Julian legions** (Expansion #3, X3 Q1): the pilum **and** the march for every MI and HI of the named side(s). Nothing
+  else about the unit changes: an MI still rolls 4 dice, an HI 5 and retreats 1 hex.
+  * **Scope.** The scenario data names the side(s) (`legions`); the block colour and the troops' nationality play no part.
+    "For both armies" means every MI and HI of both sides, including the non-Roman ones: the Samnite MI of 301 and the
+    Sertorian MI and HI of 302–305 (Marius), the Numidian MI and HI of 312 and the Pompeian HI with King Juba in 318
+    (Julian). **[Interp]**: no source rules on it; GMT wrote "for the Romans" where it meant one side, and the 2009 rules
+    describe the legions as the Roman state's. "For the Romans" (316, 317) and the Roman-only battles 306–308 name only the
+    Caesarian side (in 306–308 the barbarian armies have no MI or HI); 310 uses no legion rule at all.
+  * **March in play.** A Julian unit that moves 2 hexes may not battle at all: no close combat and no fire. Cards: Line
+    Command allows 1 hex only, so no march (the unit may then fire); Double Time lets it move 2 and close combat, never 3
+    (and Double Time forbids ranged combat anyway). With Caesar attached it may move 2 and close combat (§18.3).
+  * The "Legio X" labels printed on the 306–308 maps are cosmetic: there is no Tenth Legion elite in these battles, and
+    every Julian HI already has that unit's abilities (X3 Q20).
 * **Tenth Legion** (elite `tenthLegion`, HI; 215 ×2, 217): pilum + march; otherwise an ordinary HI (5 dice, retreat 1, no
   flag-ignore, no helmet hits). The two 215 units are ordered and fight separately (X2 Q3).
 * An elite with its own ranged weapon (the Immortals, §17.1) keeps its 2/1 dice; the 1-die rule is the pilum's alone.
@@ -584,6 +601,10 @@ Expansion 2/3 rule texts as transcribed on commandsandcolors.net and the rulings
   machine) that has Caesar attached when it begins its move may move 2 hexes and still battle. Terrain stops, Line
   Command's 1 hex and the marsh start limit still apply; Double Time stays at 2; a pilum unit still cannot fire after 2
   hexes. A unit that only joins Caesar during its move gets nothing that turn (Designer, X2 Q4).
+* **Caesar in Expansion #3** (306–309, 314–319; X3 Q2): the traits are unchanged. His +1 die is part of every close combat
+  of his unit, including the strike a defender makes first from a city wall (§18.7) **[Interp]**; it is added after the
+  caps (a wall's cap of 2 becomes 3). A Julian MI or HI with Caesar attached when its move begins moves 2 and still close
+  combats, but never fires after a 2-hex move (warriors already move 2 and battle); Double Time adds no third hex.
 * **Spartacus** (`spartacusDice`): while he is on the board, his side's I Am Spartacus roll uses Command + 2 dice, also
   when a Counter Attack copies the card. Everything else on the card is unchanged; the other side never gets the bonus
   (X2 Q5).
@@ -605,11 +626,25 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
     permanent. `together: n` (211): nothing until n listed hexes are occupied at once; then 1 banner and every listed hex
     is taken.
   * `remove`: a taken camp (or rampart standing in for a camp, 215) is removed and the hex becomes open ground.
+    **Expansion #3:** a camp (or wall) with a hill under it (§18.7) leaves a **hill**, not open ground (308, X3 Q6, Q7).
+  * **Banner sequences in Expansion #3** (X3 Q6, Q8): 308 Romans on the three Gallic camps 0, 1, 1 (the first camp scores
+    nothing, each of the other two 1; 2 at most); 309, each side over the two enemy camps 0, 1 (1 banner once **both**
+    enemy camps are removed). 301, 306, 308 (Gauls, one camp) and 316 give 1 each. All permanent.
+  * **Ship markers** (313, `marker: 'ship'`, X3 Q11): the capture hexes are sea-coast hexes (fords, §18.6) with a spare-block
+    marker on them. A marker is not a unit: it blocks nothing and is in nobody's way. At the start of its turn, before its
+    card, a side with a unit on a marker hex takes it: 1 permanent banner, the marker is removed and the terrain does not
+    change. Pompeians take the markers at (0,8)–(0,11) (Caesarian transports), Caesarians those at (0,0)–(0,3) (Pompeian
+    landing beaches). The hexes may have any passable terrain, not only camps. **[Interp]** that the markers do not block.
 * **Hold** (`hold`; 204, 213, 214, 222): 1 banner per listed hex a unit of that side stands on (up to a maximum),
   counted continuously: gained the moment a unit enters, lost when it leaves or is eliminated, regained later (Designer,
-  X2 Q9a).
+  X2 Q9a). Expansion #3 uses it for the 308 wall hexes and large-camp ramparts and the 311 Pompeian camp (nothing is
+  removed; X3 Q6, Q10).
 * **Majority** (`majority`; 202 hills): at the end of every player turn the side with more units on the listed hexes
   holds the banners; a tie (or none on either side) gives them to nobody (X2 Q9b).
+  * **Single-side majority** (309 hillock, `sides` with one side, `when: 'always'`; X3 Q8): only the listed side can hold
+    the banner: it holds it while it has **strictly more** units on the hexes than the enemy (1–0 is enough), and loses
+    it the moment that stops being true (Designer). It is checked after every change of position or removal, not only at
+    the end of a turn. Enemy units on the hexes count against it; lone leaders never count.
 * **Section clear** (`sectionClear`; 219): at the end of that side's turn, each section with no enemy unit scores 1 held
   banner; it is lost the moment an enemy unit stands in that section. A unit on a boundary hex is in both sections
   (X2 Q9c).
@@ -631,6 +666,17 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
   as their 2-hex move is a charge into close combat **[Interp]**); it scores 1 permanent banner and is removed (not
   eliminated: no banner for the enemy). An attached leader leaves with it and scores nothing more (X2 Q14). Some exits
   allow only foot units (212).
+  * **Expansion #3 exits** (311, 314, 317; X3 Q10, Q12, Q14). The unit filter `units: 'cavalry'` (311) means LC, MC, HC
+    (and LBC); chariots and elephants are not cavalry. The listed hexes may lie on a side edge (311: (4,0), (5,0), off the
+    left edge) or on the baseline (314: (8,0)–(8,4); 317: all of row 0). A unit need not stop on the exit hex first, and
+    the route that brought it there does not matter. Exits happen only by ordered movement, never by retreat or evade.
+    One banner **per exiting unit** **[Interp]** (the Castulo convention).
+  * **314:** the page's "Roman left section" is the Caesarian left-section **baseline**; leaving by a side edge does not
+    count (Designer erratum, X3 Q12).
+  * **Leader exits** (317, `leadersScore`; X3 Q14): each unit **and each leader** that leaves scores 1 banner. A lone
+    leader on a listed hex may exit as part of his move (up to 3 hexes, the exit step counting as one). A unit that exits
+    with its attached leader scores **2** (one for the unit, one for the leader) **[Interp]**, the plain reading of
+    "each". Exited pieces are removed from play, not eliminated: the enemy scores nothing for them.
 
 ### 18.5 Ambush reserves, separate commands, Rolling Fire, last-row retreat
 
@@ -648,6 +694,18 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
     names a command counts as a piece of it, so a card that orders him orders only that command. Clash of Shields, Darken
     the Sky, Rally and I Am Spartacus ask `chooseCommand` (before any dice are rolled) when their eligible units belong
     to more than one command; with eligible units in one command nothing is asked. Battles without commands are unchanged.
+  * **304 Valentia (Expansion #3, X3 Q16; Designer for the core):** the Sertorians have Herennius' command (right and
+    centre) and Perpenna's (left, light-blue blocks on the map); units never change command. Unlike 210 **both leaders carry
+    a command**. The player names one command for each card he plays. **[Interp]** for the details:
+    * Section cards order only units (and the leader) of that command in the section; troop and tactic cards (Order Light,
+      Medium, Heavy or Mounted Troops, Line Command, Double Time, Clash of Shields, Darken the Sky, Mounted Charge,
+      Move-Fire-Move, Rally, I Am Spartacus results) order or rally only units of that command.
+    * If the chosen command has no unit of the type a card names, the card's "1 unit of your choice" alternative applies
+      within that command.
+    * A Leadership card must name a leader of the chosen command, and its chain includes only that command's units; a
+      leader may be ordered alone only for his own command. A Counter Attack is played for one chosen command too.
+    * Not restricted: First Strike (it is not an order) and leader effects (helmets, flag ignoring, support, Rally
+      adjacency). The Romans are unaffected.
 * **Rolling Fire** (210, the Slaves; X2 Q6, path length **[Interp]**): a Slave infantry unit on a hill, ordered by a
   card that is not a Tactic card (a Counter Attack copying a section or troop card qualifies), that has not moved, may
   use its battle to roll burning logs downhill, even when adjacent to an enemy.
@@ -700,6 +758,142 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
     the cavalry extra hex, a retreat or an evade of a unit of that side, every rampart hex it entered becomes plain
     (`setTerrain`; the start hex is not entered). Units only: lone leaders and the other side never remove them. The
     `terrainChanged` event follows the `move`, `advance`, `retreat` or `evade` event.
+
+### 18.7 Expansion #3 terrain: city walls, towns, hills under camps and walls, steep slopes
+
+* **Scalable city wall** (terrain `wall`; 308 Gergovia, 309 Ilerda; X3 Q3, Q6). The rule text is the same in the living
+  rules and the Expansion 3 and 6 pages (the later one adds the two clarifications marked "later wording"). Only **foot
+  units** (LI, LB, LS, AX, WA, MI, HI, not war machines) and lone leaders can use a wall.
+  * **Entering.** A foot unit or lone leader may enter a wall hex only by a move that **begins on a hex next to it**, and
+    the move ends there. A piece that begins its move on a wall hex moves at most 1 hex that turn. Walking along a wall is
+    no easier: every wall-to-wall step is a full move. A retreating or evading foot unit or leader passes through or onto
+    wall hexes without stopping (no special rule beyond the usual occupied-hex limits).
+  * **Barred.** Mounted units (cavalry, chariots, elephants, camels) and war machines treat a wall hex as impassable: no
+    move, retreat, evade or momentum advance onto it (the advance is later wording). A foot unit's momentum advance onto a
+    wall hex its own attack vacated is not forbidden, so it is allowed **[Interp]**; it ends there like any entry.
+  * **Attacking a wall unit.** A mounted unit or war machine may close combat a unit standing on a wall hex only if it
+    **began the turn next to that wall hex** (later wording: next to the enemy unit it attacks); moving up to it first does
+    not qualify. Foot units attack as usual.
+  * **Dice.** In any close combat in which either combatant stands on a wall hex (attack, bonus combat, battle back, first
+    strike) the roller has at most **2 dice**. Card and leader bonus dice (§4: Clash of Shields, Mounted Charge, I Am
+    Spartacus, Alexander, Caesar) are added after the cap. Ranged combat has no wall cap, and there is no −1 die as on a
+    camp.
+  * **Defender.** A foot unit **defending** on a wall hex (against an attack or bonus combat from any adjacent hex) ignores
+    1 sword and may ignore 1 flag in close combat, and may ignore 1 flag against ranged fire; these are in addition to the
+    other flag ignores (§10, cumulative). The ignores protect only a defender: a unit attacking out of a wall gets none,
+    and the battle back against it is unprotected **[Interp]** (as for ramparts, §16). A lone leader on a wall gains
+    neither the ignores nor the first strike **[Interp]**.
+  * **Defender strikes first.** A unit defending on a wall hex that does not (or cannot) evade battles **before** the
+    attacker rolls, as if it had played First Strike, unless the attacker itself stands on a wall hex. No card is needed,
+    offered or used. Order: (1) the defender rolls its battle-back dice (cap 2, helmets count with a leader, plus leader
+    bonuses such as Caesar's); (2) if the attacker is eliminated or must retreat out of its hex, the attack is over and the
+    attacker rolls nothing; (3) if it survives in its hex, **including when it could not complete a retreat and lost blocks
+    instead**, it attacks normally (cap 2 plus bonuses); (4) the defender never battles back afterwards. This applies to
+    every close combat against the wall unit, the initial attack and each bonus combat. An attacker whose roll vacates the
+    hex keeps its momentum advance and bonus combat; the first-striking defender cannot advance.
+  * **Line of sight.** A wall hex blocks line of sight like any blocking hex between firer and target, **except** when the
+    firer, the target and every wall hex between them belong to one connected group of wall hexes (units on the same wall
+    seeing along it; the same idea as the hill group, §8). The wall hex a target stands on never blocks (§8).
+  * **Not stated, so not applied:** nothing stops a foot unit from battling on the turn it climbs onto a wall (unlike a
+    forest); a wall has no −1 die (unlike a camp).
+* **Impassable walls and towns** (301 Wall of Rome, 303 Lauron, 304 Valentia; X3 Q4). Terrain `steep` with the drawing hint
+  `art: 'wall'` or `'town'`: the `steep` rules unchanged (impassable for movement, retreat, evade and leaders; blocks line
+  of sight; nothing can stand on it). **[Interp]**: the scenario pages say only "impassable"; the tiles are GMT's fortified
+  city walls, which also block line of sight. The art hint is ignored by the engine.
+* **Hill under a camp or wall** (308; data `hill: true` on a `camp` or `wall` hex; X3 Q6). The hex has both terrains.
+  * It counts as a hill (`isHill` = hill terrain or a hill under it) for the close-combat hill caps (§4, either combatant's
+    hex), for the "same connected hill" line-of-sight rule (§8) and for rule `veryHills` (§18.6; not used in 308), and as
+    a hill hexside in the steep slopes below. It does not change movement.
+  * The camp rules apply as well (−1 die, a foot unit ignores 1 sword and may ignore 1 flag, blocks line of sight) or the
+    wall rules (above; its cap of 2 is never above a hill cap, so the hill changes no dice there).
+  * **Camp −1 against the hill cap:** the engine's order (§4) takes the cap first, then the camp's −1; the site FAQ takes
+    the −1 first (a full-strength warrior in a camp on a hill, hill to hill: 4 − 1 = 3). Decision: keep the engine's order
+    (4 capped to 3, minus 1 = 2), so base battle 011 does not change (X3 Q19, spec).
+  * Camp and wall hexes block line of sight **even between two units on the same hill mass** (Designer, X3 Q6); the along-
+    the-wall exception above still holds.
+  * A removed camp (or wall) leaves a hill (§18.4).
+* **Steep slopes** (308, rule `steepSlopes`; X3 Q5). Across every hexside between a **hill-like hex** (a hill, or a camp or
+  wall with a hill under it) and a **forest** hex:
+  * From the forest up to the hill: no move, momentum advance, retreat or evade. A retreat step onto it is a retreat hex
+    that cannot be taken (1 block lost).
+  * From the hill down into the forest: allowed (move, retreat, evade).
+  * **No close combat either way** (no attack, bonus combat, battle back or First Strike): a unit across such a hexside from
+    an enemy can neither attack it nor be attacked by it from there. Ranged combat and line of sight are not affected.
+  * Leaders are treated like units **[Interp]** (the text says "units").
+  * The hexsides come from the terrain (the 308 map has 12), not from data.
+* Engine (X3 Q3–Q6): `wall` is a terrain type; `hillUnder[hex]` is a per-hex flag beside the terrain array (copy-on-write
+  like it; `setTerrain` keeps it); `hill: true` is accepted in data only on `camp` and `wall`; `steepSlopes` is a rule id.
+
+### 18.8 Hand growth (006 Trasimenus, 313 Brindisi Raid)
+
+The generalised Trasimenus rule (X3 Q11): scenario data `handGrowth: { side, to }`.
+* At the end of each of that side's turns, **while its Command (hand size) is below `to`**, it draws 2 cards instead of 1
+  and its Command rises by 1. Once it has reached `to`, it draws 1 as usual.
+* 006: the Romans, `to: 4`: Command 2 → 3 → 4, draws 2 after turns 1 and 2 (unchanged from §14). 313: the Caesarians
+  start with 2 cards and `to: 5`: Command 2 → 3 → 4 → 5, draws 2 after each of their first three turns, then 1 (the page:
+  play 1 and draw 2 until the hand holds 5).
+* Cards that count Command (§12, I Am Spartacus dice, Rally) use the current value.
+* The test reads the current Command: the other ways Command changes (a lost leader in 112, §17.4) are not used in either
+  battle. Nothing else about drawing, discarding or First Strike changes.
+
+### 18.9 Reinforcements with fixed entry hexes and forced placement (308)
+
+The ambush reserve of §18.5 with three options (X3 Q6; the card-trigger and release rules are those of §18.5):
+* **Fixed entry hexes** (`ambush.entryHexes`): the units enter on those hexes, one unit per **empty** hex, instead of on the
+  enemy baseline hexes of the card's section. In 308 the five hexes are (3,0)–(7,0) (the map's G1–G5). The section the card
+  names is irrelevant: the engine still asks for it and accepts any. The trigger is **any** Leadership card (Inspired
+  Leadership of any section, Leadership Any Section; a Counter Attack copying one counts), allowed from the first turn
+  (`afterOwnTurns: 0`).
+* **The card is used for the entry only** **[Interp]** (the Trebbia convention): it orders no other unit; the entering
+  units are the ones it orders. Units that find no empty hex stay off the board and may enter with a later Leadership card
+  **[Interp]**; the enemy may block the hexes.
+* **No further move** (`ambush.noMove`): placement is not movement. The entered units may not move this turn, but may
+  **battle**: they fire as units that did not move (**2 dice**; Designer relayed, X3 Q6) or close combat, and may momentum
+  advance and make a bonus combat after a close combat that vacates a hex **[Interp]** (the rule forbids moving, and GMT
+  names "advance" separately where it means it). From the next turn they are ordinary units and retreat toward their own
+  side.
+* **Attached leader** (`ambush.attachLeader`): the reserve leader (Vercingetorix) is placed with one of the entered units,
+  the player's choice, and moves with it as an attached leader.
+* **Forced placement** (`placeUnits`: `{ side, type, hexes, after: 'ambush' }`): once the ambush has been released, at the
+  start of that side's **next turn, before its card**, the player **must** place the named off-board unit on an empty
+  listed hex (decision `placeUnit`, options = the empty hexes, answered with a hex). In 308 the Roman MI goes on one of the
+  baseline hexes (8,0)–(8,4) (his left section; column 4 is on the dotted line and counts). The placed unit is then an
+  ordinary unit and that turn's card may order it. If every listed hex is occupied, the placement waits for the start of the
+  first later turn at which one is free **[Interp]**. It is triggered once, by the first Gallic entry. Until placed, the unit
+  exists off the board (it is not one of the `reserves`).
+
+### 18.10 Dice orders (310 Utica P1)
+
+The Numidian side holds no cards and orders its units by rolling dice (X3 Q9; the page frames the battle as solo play).
+Data: side `cards: 0`, `orders: 'dice'`, `orderDice: 2`; the roll purpose is `diceOrders`.
+* **User decision (spec): the Numidian player makes every choice for its own side**, human or computer, including the
+  victims of its own flag and swords faces. (The research suggested the Caesarian side chooses those victims; it was
+  overruled.)
+* **Turn.** The Numidian side never draws, holds no hand and plays no card, and cannot play First Strike. At the start of
+  its turn (turn-start objectives first) it rolls 2 dice. A Caesarian Counter Attack has no card to copy and so no effect.
+  The Caesarian side plays and draws as usual.
+* **Faces, in this order** **[Interp]**:
+  1. **Flag** (decision `diceVictim`, face flag): the side chooses any one of its units, even one that cannot retreat or is on
+     its baseline. It retreats as for **one flag** (§10, its normal retreat distance, toward the Numidian edge) with
+     **no flag ignored**; each hex it cannot take costs 1 block; the leader casualty check applies.
+  2. **Swords** (decision `diceVictim`, face swords): the side chooses a unit that loses 1 block (leader casualty check as
+     usual). Units eliminated this way, and a killed leader, give the Caesarians banners as usual.
+  3. **Class faces** (decision `diceOrders`, answered with `assign`): each green (light), blue (medium) or red (heavy)
+     face orders **one unit of that class** of the player's choice, in any section; two equal dice order two different units.
+     A face with no eligible unit is lost (no "one unit of your choice" fallback).
+  4. **Helmet:** orders the leader Saburra with his attached unit, or Saburra alone; a second helmet is lost.
+* Then the normal move and battle phases follow for the ordered units, with no card modifiers.
+* No legion rule applies (X3 Q1).
+
+### 18.11 Immobile units (306 Bibracte)
+
+* **Immobile** (`immobile: true` on a unit in the data, `Unit.immobile`; X3 Q15): the unit never moves and never makes a
+  momentum advance, and so makes no bonus combat that depends on one. It may still be ordered (an order is spent on it),
+  fire, close combat and battle back as an ordinary unit, and is still a unit for support, flag ignoring and objectives.
+* It **retreats normally** when flags force it (hexes it cannot take cost blocks as usual) **[Interp]**: GMT lists moving
+  and retreating separately, and names "advance" separately from "move". After a retreat it **stays immobile**
+  **[Interp]**. In 306 the two units are Roman AX in the Roman camps; AX never evade.
+* A leader may move onto it and attach; the unit still cannot move.
 
 ## 19. Expansion #2 battles (201–223)
 
@@ -782,3 +976,132 @@ army is pre-Marian: the Romans use red blocks drawn with the base `roman` look a
   **Very steep hills** on every hill hex (§18.6, X2 Q12). **Rampart breakers:** the 6 Briton-held ramparts (facing the
   bottom) become open ground when a Roman unit enters or passes through one (move, advance, retreat or evade); Britons
   never remove them.
+
+## 20. Expansion #3 battles (301–319)
+
+Banner targets, hands, first player and unit lists are scenario data (`src/scenarios/data/3xx.json`, imported from the
+verified hex-by-hex transcriptions in `design/exp3-data/`, with the transcription notes and the verifiers' report beside
+them); only rules are listed here, using the mechanics of §18 (decisions: `design/exp3-rulings.md`, "X3 Qn"; per-battle
+survey: `design/exp3-survey.md`). The four Epic battles (EPIC01–04) are out of scope: they need a separate two-board
+mode. In the civil-war battles the top army is on grey Roman blocks (`gry`) and the bottom army on red (`rom`), told apart
+in play by look as well as block colour; 306–308 have the Barbarians (green `bar`) on top, 316 the Pontic army on tan
+(`eas`). "Roman", "Caesarian", "Julian" and so on name armies and rules, not block colours: the legion rule is stated per
+side in the data (`legions`), never through the army's name.
+
+| # | Battle | Top army (blocks, look, hand) | Bottom army (blocks, look, hand) | Moves first | Banners | Legions |
+|---|---|---|---|---|---|---|
+| 301 | Colline Gate (82 BC) | Samnite (`gry`, `samnite`), 5 cards | Roman (`rom`, `sullan`), 6 cards | top | 5 | Marius, both |
+| 302 | Baetis River (80 BC) | Sertorian (`gry`, `sertorian`), 5 cards | Roman (`rom`, `sullan`), 4 cards | top | 6 | Marius, both |
+| 303 | Lauron (76 BC) | Sertorian (`gry`, `sertorian`), 6 cards | Roman (`rom`, `pompeian`), 5 cards | top | 7 | Marius, both |
+| 304 | Valentia (75 BC) | Sertorian (`gry`, `sertorian`), 4 cards | Roman (`rom`, `pompeian`), 5 cards | bottom | 6 | Marius, both |
+| 305 | Sucro (75 BC) | Sertorian (`gry`, `sertorian`), 6 cards | Roman (`rom`, `pompeian`), 5 cards | bottom | 6 | Marius, both |
+| 306 | Bibracte (58 BC) | Helvetian (`bar`, `helvetii`), 4 cards | Roman (`rom`, `caesarian`), 6 cards | top | 7 | Julian, bottom only |
+| 307 | Plain of Alsace (58 BC) | Germanic (`bar`, `germanic`), 4 cards | Roman (`rom`, `caesarian`), 6 cards | bottom | 7 | Julian, bottom only |
+| 308 | Gergovia (52 BC) | Gallic (`bar`, `gallic`), 5 cards | Roman (`rom`, `caesarian`), 5 cards | bottom | 8 | Julian, bottom only |
+| 309 | Ilerda (49 BC) | Pompeian (`gry`, `pompeian`), 5 cards | Caesarian (`rom`, `caesarian`), 6 cards | top | 7 | Julian, both |
+| 310 | Utica P1 Delaying Action (49 BC) | Numidian (`gry`, `numidian`), dice orders | Caesarian (`rom`, `caesarian`), 6 cards | bottom | 4 | none |
+| 311 | Utica P2 The Valley (49 BC) | Pompeian (`gry`, `pompeian`), 5 cards | Caesarian (`rom`, `caesarian`), 5 cards | top | 5 | Julian, both |
+| 312 | Bagradas River (49 BC) | Numidian (`gry`, `numidian`), 5 cards | Caesarian (`rom`, `caesarian`), 5 cards | top | 5 | Julian, both |
+| 313 | Brindisi Raid (48 BC) | Pompeian (`gry`, `pompeian`), 5 cards | Caesarian (`rom`, `caesarian`), 2 cards, growing to 5 | top | 6 | Julian, both |
+| 314 | Dyrrhachium (48 BC) | Pompeian (`gry`, `pompeian`), 5 cards | Caesarian (`rom`, `caesarian`), 5 cards | top | 6 | Julian, both |
+| 315 | Pharsalus (48 BC) | Pompeian (`gry`, `pompeian`), 4 cards | Caesarian (`rom`, `caesarian`), 6 cards | top | 7 | Julian, both |
+| 316 | Zela (47 BC) | Pontic (`eas`, `pontic`), 4 cards | Caesarian (`rom`, `caesarian`), 6 cards | top | 7 | Julian, bottom only |
+| 317 | Ruspina (46 BC) | Numidian (`gry`, `numidian`), 5 cards | Caesarian (`rom`, `caesarian`), 6 cards | top | 5 | Julian, bottom only |
+| 318 | Thapsus (46 BC) | Pompeian (`gry`, `pompeian`), 5 cards | Caesarian (`rom`, `caesarian`), 6 cards | top | 7 | Julian, both |
+| 319 | Munda (45 BC) | Pompeian (`gry`, `pompeian`), 4 cards | Caesarian (`rom`, `caesarian`), 6 cards | bottom | 8 | Julian, both |
+
+Decisions that bind the data (the spec, `design/superpowers/specs/2026-10-10-exp2-exp3-rome-design.md`, overrides the
+research where they differ):
+* **310:** the Numidian side makes **every** choice for its own dice orders (§18.10).
+* **314:** the Pompeian army has **LI 2 and LB 1** (the map), not the table's LI 1 and LB 2 (X3 Q12, **[Interp]**).
+* **315:** the Caesarian army has **3 leaders** (Caesar, Antony, Calvinus: the map), not the table's 4 (X3 Q13,
+  **[Interp]**; no source gives a hex for a fourth).
+* **Camp −1 against terrain caps:** the engine's order (caps, then −1) is kept in every battle (§4, X3 Q19).
+* Epic battles: not implemented.
+
+* **301 Colline Gate (82 BC):** Marius legions for both armies, so the Samnite MI have the pilum too (§18.2, X3 Q1
+  **[Interp]**). The Wall of Rome is ten `steep` hexes with wall art along row 7, (7,0)–(7,3) and (7,6)–(7,11): impassable
+  and blocking line of sight (§18.7, X3 Q4); the angled corner pieces on (7,3) and (7,6) flank the two-hex gap (7,4)/(7,5)
+  where a Roman MI and AX stand. Objective: `capture` for the **Romans only**, `turnStart`, `remove`, over the two Samnite
+  camps (0,4) and (0,8): a Roman unit on a camp at the start of the Roman turn, before its card, takes it for 1 permanent
+  banner and the camp is removed (X3 Q7). The Samnites capture nothing.
+* **302 Baetis River (80 BC):** Marius legions for both armies (the two Sertorian HI have the pilum, X3 Q1). The Baetis is
+  fordable (11 river hexes with `ford`, down the left side); two Sertorian LI start standing in it. Four forest hexes.
+  No other rules.
+* **303 Lauron (76 BC):** Marius legions for both armies. Lauron, the four hexes (2,3), (2,4), (3,2), (3,3), is an
+  impassable town: `steep` with town art (§18.7, X3 Q4). Herennius' ambush force (2 WA, LI, 2 AX and Herennius, on the
+  bottom-right hills, inside the Roman half) is **ordinary on-board units** that may be ordered from turn 1 and retreat
+  toward the Sertorian (top) edge; nothing new (X3 Q17). Ten hills: one in the top centre, nine in the bottom-right corner.
+* **304 Valentia (75 BC):** Marius legions for both armies. Valentia, (3,7), (3,8), (4,7), (4,8), is an impassable town
+  (`steep`, town art). **Two Sertorian commands** (§18.5, X3 Q16): Herennius' (grey blocks: MC, LS 2, LB, AX 3, MI 3 and
+  Herennius) and Perpenna's (light-blue `grk` blocks: LC, MI 4 and Perpenna); each card is played for one chosen command;
+  both leaders carry a command. The Romans move first.
+* **305 Sucro (75 BC):** Marius legions for both armies. Eleven empty hills (seven top left, four top right). No other
+  rules.
+* **306 Bibracte (58 BC):** Julian legions for the Romans (the Helvetii have no MI or HI), Caesar (§18.3). **Immobile
+  recruits** (§18.11, X3 Q15): the two Roman AX in the Roman camps (8,4) and (8,5) never move or advance but fight and battle
+  back. Objectives: `capture` for **both** sides, `turnStart`, `remove`, 1 permanent banner per camp: the Romans over the two
+  Helvetian camps (0,4) and (0,6), the Helvetii over the two Roman camps (taking them first means driving the recruits
+  out). Twenty-one hills (a ridge across the Roman half) and five forest hexes. The "Legio X" labels are cosmetic (X3 Q20).
+* **307 Plain of Alsace (58 BC):** Julian legions for the Romans, Caesar. All plain; no other rules.
+* **308 Gergovia (52 BC):** Julian legions for the Romans, Caesar. The most involved battle (X3 Q3–Q6, Q19):
+  * **Terrain.** Scalable city walls (`wall`, each with a hill under it) on (0,5)–(0,9), two Gallic LB standing on them
+    (§18.7); three Gallic camps on hills, (2,5), (2,7), (2,9), each with a Gallic WA; 20 further hills (including the entry
+    hexes (4,0), (5,0), (6,0)); ten forest hexes flanking the hill mass; five broken-ground hexes on row 5; one ordinary
+    Roman camp at (7,5); the Roman large camp, three `rampart` hexes (6,12), (7,11), (8,11) protecting their W and NW sides
+    (**[Interp]** from the art) and held by Roman HWM, LI, HWM. Rule `steepSlopes` (§18.7) covers the 12 hill-like/forest
+    hexsides. Camps and walls on the plateau block line of sight even between units on the same hill mass.
+  * **Gallic reinforcements** (§18.9): AX 2, WA 2 and Vercingetorix are off board. They enter on any Leadership card, from
+    the Gauls' first turn, on the empty hexes among (3,0)–(7,0), one unit per hex, Vercingetorix attached to one of them.
+    They may not move that turn but may battle, firing with 2 dice.
+  * **Roman reinforcement** (§18.9): after the Gauls have entered, at the start of the next Roman turn, before his card,
+    the Roman player must place his off-board MI on an empty hex of (8,0)–(8,4) (waiting while all are occupied).
+  * **Objectives.** `capture` for the Romans over the three Gallic camps, `turnStart`, `remove`, banners 0, 1, 1 (the first
+    camp removed scores nothing; each removed camp leaves a **hill**). `capture` for the Gauls over the Roman camp (7,5),
+    1 banner, removed. `hold` for the Romans over the five wall hexes: 1 temporary banner per wall hex a Roman unit stands
+    on (up to 5). `hold` for the Gauls over the three large-camp rampart hexes: 1 temporary banner per hex a Gallic unit
+    stands on (up to 3). Held banners are lost when the unit leaves or is eliminated (§18.4).
+* **309 Ilerda (49 BC):** Julian legions for both armies, Caesar. The Pompeians move first. Ilerda's walls, (0,10), (1,9),
+  (2,10), are scalable (`wall`, no hill; a Pompeian LB and AX start on two of them); the plain hex (1,10) behind them is the
+  town. The river down the right edge, nine hexes, is impassable. Six hills: the **hillock** (3,4), (3,5), (3,6) in the
+  centre section and three by the river. Camps: Pompeian (0,3), (0,4), Caesarian (8,3), (8,4). Objectives (X3 Q7, Q8):
+  `capture` for **both** sides, `turnStart`, `remove`, banners 0, 1: the first enemy camp taken scores nothing and removing
+  **both** scores 1 permanent banner; `majority` for the Caesarians only over the hillock, `always`, 1 banner while they have
+  strictly more units there than the Pompeians, lost otherwise (§18.4).
+* **310 Utica P1 Delaying Action (49 BC):** no legion rule. **Dice orders** for the Numidians (§18.10): no hand, 2 order dice
+  each turn; the Numidian player makes every choice (spec). The Caesarians have 6 cards and move first. The river, eight
+  hexes from the top centre to the right edge, is impassable; three hills on the left. Four banners. The page is a solo
+  battle; here either side may be human or computer.
+* **311 Utica P2 The Valley (49 BC):** Julian legions for both armies. Two hill ridges (rows 3 and 6) flank the valley; 24
+  hills in all; the Pompeian camp is at (0,5). Objectives (X3 Q10): `exit` for the Pompeians, **cavalry only** (LC, MC, HC),
+  from (4,0) or (5,0) off the left edge: 1 permanent banner per unit, which is removed; `hold` for the Caesarians over the
+  Pompeian camp, 1 temporary banner while a Caesarian unit stands on it (the camp is not removed). P1 and P2 are independent.
+* **312 Bagradas River (49 BC):** Julian legions for both armies, so the Numidian MI and HI have the pilum and march too
+  (§18.2, X3 Q1 **[Interp]**). Three hills at the top right. There is no river on the map despite the name; no other rules.
+* **313 Brindisi Raid (48 BC):** Julian legions for both armies. **Hand growth** (§18.8): the Caesarians start with 2 cards
+  and `to: 5`. The sea-coast hexes (0,0)–(0,3) and (0,8)–(0,11) are played as **fords** (sea art, §18.6, X3 Q11). Objectives:
+  **ship markers** (§18.4): `capture` for the Pompeians over (0,8)–(0,11) (Caesarian transports) and for the Caesarians over
+  (0,0)–(0,3) (Pompeian landing beaches), `turnStart`, 1 permanent banner each, marker removed. The Brindisi ramparts: (0,6)
+  and (1,6) protect W and SW, the corner (2,7) W, SW and SE, and (2,8)–(2,12) are `faces: 'bottom'`; the four Caesarian
+  units on them (LI 3, AX 1) retreat toward the Caesarian (bottom) edge (**[Interp]** for the edges, read from the art). A
+  row of 12 hills across row 5; four ordinary camps (6,3), (6,5), (6,7), (6,9) with no objective: Antony and Fufius each
+  start alone in one (legal lone leaders). The Pompeians move first.
+* **314 Dyrrhachium (48 BC):** Julian legions for both armies, Caesar. Caesar's line: ten ramparts on row 4, (4,1), (4,3),
+  (4,5)–(4,12), `faces: 'top'`, with three gaps on the left; nine hills in the bottom-right corner. Objective: `exit` for
+  the Pompeians over the Caesarian left-section baseline **(8,0)–(8,4)**, any unit, 1 permanent banner, removed; the side
+  edges do not count (Designer erratum, X3 Q12). The Pompeian army has **LI 2 and LB 1** (map).
+* **315 Pharsalus (48 BC):** Julian legions for both armies, Caesar. The seven hills in the top-right corner are impassable
+  (`steep`); one marsh hex at (4,0). The Caesarians have **3 leaders** (map); their WA is a red Roman one standing behind
+  Caesar. No other rules.
+* **316 Zela (47 BC):** Julian legions for the **Romans only** (the Pontic MI 4 and HI 2 have none, X3 Q1), Caesar. The
+  Pontic army is on tan blocks. Objectives: `capture` for both sides, `turnStart`, `remove`, 1 permanent banner per camp:
+  the Caesarians over the three Pontic camps (0,5), (0,6), (0,8), the Pontic army over the Caesarian camp (8,5).
+* **317 Ruspina (46 BC):** Julian legions for the Romans only, Caesar. Objective: `exit` for the Caesarians over the whole
+  Numidian baseline (row 0), `leadersScore` (§18.4): every unit and every leader that leaves scores 1, a unit leaving with
+  its attached leader 2, and a lone leader may exit too (X3 Q14). All plain; the Caesarians start in a compact block in the
+  centre.
+* **318 Thapsus (46 BC):** Julian legions for both armies, so Juba's HI has the pilum and march too (X3 Q1 **[Interp]**),
+  Caesar. Two Pompeian elephants. Nine marsh hexes in a band down the left (the standard marsh, §7) and seven sea hexes down
+  the right edge, impassable and not blocking line of sight (X3 Q21).
+* **319 Munda (45 BC):** Julian legions for both armies, Caesar. A two-row ridge of 19 hills across the Pompeian position
+  (rows 1–2). The Caesarians move first. No other rules.
