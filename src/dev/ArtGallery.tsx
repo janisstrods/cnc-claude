@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
 import { hexPoints, HEX_W, HEX_R } from '../ui/geometry';
 import { BLOCK_COLORS, LEADER_ATTACH_OFFSET, LOOKS, LeaderToken, UnitIcon, UnitToken, paletteFor, unitTypeName } from '../art';
-import { EliteCtx, crewFigure } from '../art/foot';
+import { crewFigure } from '../art/foot';
 import { FacingRightCtx } from '../art/parts';
 import { BasePlate } from '../art/token';
 import { SCENARIOS } from '../scenarios';
@@ -103,12 +103,11 @@ function Row({ title, note, children }: { title: string; note?: string; children
   );
 }
 
-/** A unit token, with its elite applied to the figures too (UnitToken itself only draws the elite standard). */
+/** A unit token at full strength unless `blocks` is given (UnitToken draws the elite's own figures and its standard). */
 function Token({ type, look, blockColor, blocks, facing = 'right', elite, dimmed }: {
   type: UnitType; look: ArmyLook; blockColor: Blocks; blocks?: number; facing?: 'left' | 'right'; elite?: EliteId; dimmed?: boolean;
 }) {
-  const tok = <UnitToken type={type} look={look} blockColor={blockColor} blocks={blocks ?? MAX[type]} maxBlocks={MAX[type]} facing={facing} elite={elite} dimmed={dimmed} />;
-  return elite ? <EliteCtx.Provider value={elite}>{tok}</EliteCtx.Provider> : tok;
+  return <UnitToken type={type} look={look} blockColor={blockColor} blocks={blocks ?? MAX[type]} maxBlocks={MAX[type]} facing={facing} elite={elite} dimmed={dimmed} />;
 }
 
 interface BoardUnit { r: number; c: number; type: UnitType; look: ArmyLook; blocks: number; facing: 'left' | 'right'; leader?: boolean; dimmed?: boolean; elite?: EliteId }
@@ -219,6 +218,33 @@ const GREEK_BOARD: BoardUnit[] = [
   { r: 2, c: 5, type: 'AX', look: 'phocian', blocks: 4, facing: 'right' },
   { r: 2, c: 6, type: 'LI', look: 'phocian', blocks: 4, facing: 'right' },
 ];
+
+/** Mounted and big units of Expansion #1: Gaugamela (Persians, Scythians, Macedonians), Magnesia (Seleucids), Hydaspes. */
+const BIG_BOARD: BoardUnit[] = [
+  { r: 0, c: 0, type: 'HCH', look: 'persian', blocks: 2, facing: 'right' },
+  { r: 0, c: 1, type: 'LBC', look: 'persian', blocks: 3, facing: 'right' },
+  { r: 0, c: 2, type: 'HC', look: 'persian', blocks: 3, facing: 'right', leader: true },
+  { r: 0, c: 3, type: 'EL', look: 'persian', blocks: 2, facing: 'right' },
+  { r: 0, c: 4, type: 'MC', look: 'persian', blocks: 3, facing: 'right' },
+  { r: 0, c: 5, type: 'LBC', look: 'scythian', blocks: 3, facing: 'right' },
+  { r: 0, c: 6, type: 'LC', look: 'persian', blocks: 2, facing: 'right' },
+  { r: 1, c: 0, type: 'LC', look: 'macedonian', blocks: 3, facing: 'left' },
+  { r: 1, c: 1, type: 'MC', look: 'macedonian', blocks: 3, facing: 'left', elite: 'companions', leader: true },
+  { r: 1, c: 2, type: 'MC', look: 'macedonian', blocks: 3, facing: 'left' },
+  { r: 1, c: 3, type: 'HC', look: 'macedonian', blocks: 3, facing: 'left' },
+  { r: 1, c: 4, type: 'LBC', look: 'macedonian', blocks: 3, facing: 'left' },
+  { r: 1, c: 5, type: 'HWM', look: 'macedonian', blocks: 2, facing: 'left' },
+  { r: 2, c: 0, type: 'CAM', look: 'seleucid', blocks: 3, facing: 'right' },
+  { r: 2, c: 1, type: 'HC', look: 'seleucid', blocks: 3, facing: 'right' },
+  { r: 2, c: 2, type: 'EL', look: 'seleucid', blocks: 2, facing: 'right', leader: true },
+  { r: 2, c: 3, type: 'HCH', look: 'seleucid', blocks: 1, facing: 'right' },
+  { r: 2, c: 4, type: 'HWM', look: 'roman', blocks: 2, facing: 'left' },
+  { r: 2, c: 5, type: 'EL', look: 'indian', blocks: 2, facing: 'left' },
+  { r: 2, c: 6, type: 'HCH', look: 'indian', blocks: 2, facing: 'left' },
+];
+
+/** Looks that field a type in their battles (gallery order). */
+const fielding = (t: UnitType) => LOOK_ORDER.filter((look) => USES[look]?.types.has(t));
 
 /** Block colours: the side-coloured base edge on the board, a standard and the captured-banner cloth. */
 function BlockSwatches() {
@@ -342,6 +368,7 @@ export default function ArtGallery() {
         <BoardSample units={BASE_BOARD} lone={{ r: 1, c: 6, look: 'roman', name: 'Scipio', facing: 'left' }} />
         <BoardSample units={EXP_BOARD} lone={{ r: 1, c: 6, look: 'macedonian', name: 'Alexander', facing: 'left' }} />
         <BoardSample units={GREEK_BOARD} lone={{ r: 1, c: 6, look: 'theban', name: 'Epaminondas', facing: 'left' }} />
+        <BoardSample units={BIG_BOARD} lone={{ r: 1, c: 6, look: 'macedonian', name: 'Alexander', facing: 'left' }} />
       </Row>
 
       <Row title="Block colours" note="Base edge, standard and captured-banner cloth of each block set, and on the board.">
@@ -377,7 +404,7 @@ export default function ArtGallery() {
         );
       })}
 
-      <Row title="Elites" note="Each elite next to its army's ordinary unit (Companions are mounted: drawn with the cavalry art).">
+      <Row title="Elites" note="Each elite next to its army's ordinary unit.">
         {ELITES.flatMap(({ elite, look, type, label }) => {
           const art = { look, blockColor: blocksOf(look) };
           return [
@@ -385,6 +412,39 @@ export default function ArtGallery() {
             <Hex key={elite} label={label}><Token type={type} {...art} elite={elite} /></Hex>,
           ];
         })}
+      </Row>
+
+      <Row title="Cavalry by kit" note="LC (javelins), LBC (drawn bow and gorytos), MC and HC of each Expansion #1 kit; the Companions next to an ordinary Macedonian MC; Seleucid cataphracts; Roman HC (Pydna).">
+        {(['macedonian', 'persian', 'scythian', 'indian'] as ArmyLook[]).flatMap((look) =>
+          (['LC', 'LBC', 'MC', 'HC'] as UnitType[]).map((t) => (
+            <Hex key={`${look}${t}`} scale={1.5} label={`${LOOK_LABEL[look]} ${t}`}><Token type={t} look={look} blockColor={blocksOf(look)} /></Hex>
+          )))}
+        <Hex scale={1.5} label="Macedon MC"><Token type="MC" look="macedonian" blockColor="grk" /></Hex>
+        <Hex scale={1.5} label="Companions (MC)"><Token type="MC" look="macedonian" blockColor="grk" elite="companions" /></Hex>
+        <Hex scale={1.5} label="Seleucid HC (cataphracts)"><Token type="HC" look="seleucid" blockColor="eas" /></Hex>
+        <Hex scale={1.5} label="Seleucid LBC"><Token type="LBC" look="seleucid" blockColor="eas" /></Hex>
+        <Hex scale={1.5} label="Seleucid LC"><Token type="LC" look="seleucid" blockColor="eas" /></Hex>
+        <Hex scale={1.5} label="Roman HC"><Token type="HC" look="roman" blockColor="rom" /></Hex>
+      </Row>
+
+      <Row title="Elephants" note="Every army that fields elephants: Indian howdahs, Successor towers (Seleucid armoured headpiece, Ptolemaic forest elephants), Rome's captured elephants, Carthage.">
+        {fielding('EL').map((look) => (
+          <Hex key={look} scale={1.5} label={LOOK_LABEL[look]}><Token type="EL" look={look} blockColor={blocksOf(look)} /></Hex>
+        ))}
+      </Row>
+
+      <Row title="Chariots, camels, war machines" note="Scythed four-horse chariots (Persia, Seleucids), the big Indian chariot, the base-game chariot; Arab camel archers (Magnesia); bolt-throwers (Jaxartes, Beneventum).">
+        {fielding('HCH').map((look) => (
+          <Hex key={look} scale={1.5} label={`${LOOK_LABEL[look]} HCH`}><Token type="HCH" look={look} blockColor={blocksOf(look)} /></Hex>
+        ))}
+        {fielding('CAM').map((look) => (
+          <Hex key={`c${look}`} scale={1.5} label={`${LOOK_LABEL[look]} CAM`}><Token type="CAM" look={look} blockColor={blocksOf(look)} /></Hex>
+        ))}
+        {fielding('HWM').map((look) => (
+          <Hex key={`w${look}`} scale={1.5} label={`${LOOK_LABEL[look]} HWM`}><Token type="HWM" look={look} blockColor={blocksOf(look)} /></Hex>
+        ))}
+        <Hex scale={1.5} label="CAM 1/3"><Token type="CAM" look="seleucid" blockColor="eas" blocks={1} /></Hex>
+        <Hex scale={1.5} label="HWM 1/2, left"><Token type="HWM" look="roman" blockColor="rom" blocks={1} facing="left" /></Hex>
       </Row>
 
       <Row title="Every kit, every type" note="One look per kit with all fifteen unit types (also the types its armies never field).">

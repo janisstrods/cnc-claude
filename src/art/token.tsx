@@ -6,7 +6,9 @@ import { FootFigure, footKit } from './foot';
 import { MountedFigure } from './mounted';
 import { ElephantFigure } from './elephant';
 import { ChariotFigure } from './chariot';
-import { FacingRightCtx, OL } from './parts';
+import { CamelFigure } from './camel';
+import { MachineFigure } from './machine';
+import { Emblem, FacingRightCtx, OL, makeFig } from './parts';
 
 export type Facing = 'left' | 'right';
 
@@ -30,20 +32,13 @@ export function unitTypeName(t: UnitType): string {
 
 export const CLASS_COLORS: Record<UnitClassName, string> = { light: '#2f9e44', medium: '#2a6fd8', heavy: '#d0302a' };
 
-// TODO(Task 16): stand-in miniatures until the horse-archer, camel and war-machine figures are drawn.
-const FIGURE_STAND_IN: Partial<Record<UnitType, UnitType>> = { LBC: 'LC', CAM: 'MC', HWM: 'HI' };
-
-/** The unit type whose miniature is drawn for `t`. */
-function figureType(t: UnitType): UnitType {
-  return FIGURE_STAND_IN[t] ?? t;
-}
-
-type Kind = 'foot' | 'horse' | 'elephant' | 'chariot';
-export function figureKind(type: UnitType): Kind {
-  const t = figureType(type);
-  if (t === 'LC' || t === 'MC' || t === 'HC') return 'horse';
+type Kind = 'foot' | 'horse' | 'camel' | 'elephant' | 'chariot' | 'machine';
+export function figureKind(t: UnitType): Kind {
+  if (t === 'LC' || t === 'MC' || t === 'HC' || t === 'LBC') return 'horse';
+  if (t === 'CAM') return 'camel';
   if (t === 'EL') return 'elephant';
   if (t === 'HCH') return 'chariot';
+  if (t === 'HWM') return 'machine';
   return 'foot';
 }
 
@@ -73,22 +68,30 @@ const BIG_SLOTS: Record<number, Slot[]> = {
   2: [{ x: -9, y: 6.5, s: 0.94 }, { x: 6, y: 19, s: 1.06 }],
   1: [{ x: 1, y: 18.5, s: 1.1 }],
 };
+// War machines are long and low: the rear engine stands further back so its frame and bolt clear the front crew.
+const MACHINE_SLOTS: Record<number, Slot[]> = {
+  2: [{ x: -11, y: 4.5, s: 0.92 }, { x: 8, y: 19, s: 1.02 }],
+  1: [{ x: 3, y: 18.5, s: 1.06 }],
+};
 
 function slotsFor(type: UnitType, n: number): Slot[] {
   const k = figureKind(type);
-  if (k === 'horse') return HORSE_SLOTS[Math.max(1, Math.min(3, n))];
+  if (k === 'horse' || k === 'camel') return HORSE_SLOTS[Math.max(1, Math.min(3, n))];
+  if (k === 'machine') return MACHINE_SLOTS[Math.max(1, Math.min(2, n))];
   if (k === 'elephant' || k === 'chariot') return BIG_SLOTS[Math.max(1, Math.min(2, n))];
   const light = type === 'LI' || type === 'LB' || type === 'LS';
   return (light ? LIGHT_SLOTS : FOOT_SLOTS)[Math.max(1, Math.min(4, n))];
 }
 
-/** One miniature of the given type in its local frame (facing right, feet at 0,0). */
-export function Miniature({ type, p, i }: { type: UnitType; p: Palette; i: number }) {
+/** One miniature of the given type in its local frame (facing right, feet at 0,0); `elite` gives elites their figures. */
+export function Miniature({ type, p, i, elite }: { type: UnitType; p: Palette; i: number; elite?: EliteId }) {
   const k = figureKind(type);
-  if (k === 'horse') return <MountedFigure type={figureType(type)} p={p} i={i} />;
+  if (k === 'horse') return <MountedFigure type={type} p={p} i={i} elite={elite} />;
+  if (k === 'camel') return <CamelFigure p={p} i={i} />;
   if (k === 'elephant') return <ElephantFigure p={p} i={i} />;
   if (k === 'chariot') return <ChariotFigure p={p} i={i} />;
-  return <FootFigure kit={footKit(type, p.kit, i)} p={p} i={i} />;
+  if (k === 'machine') return <MachineFigure p={p} i={i} />;
+  return <FootFigure kit={footKit(type, p.kit, i)} p={p} i={i} elite={elite} />;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -168,9 +171,12 @@ export function ClassSymbol({ cls, white, x, y, s = 1 }: { cls: UnitClassName; w
   return <rect x={x - 3.2 * s} y={y - 3.2 * s} width={6.4 * s} height={6.4 * s} fill={c} stroke={st} strokeWidth={sw} />;
 }
 
-export function Badge({ type, blocks, maxBlocks, sacred }: { type: UnitType; blocks: number; maxBlocks: number; sacred?: boolean }) {
+/** Class symbol, type and strength pips under the figures; `elite`: gold rim. */
+export function Badge({ type, blocks, maxBlocks, elite }: { type: UnitType; blocks: number; maxBlocks: number; elite?: boolean }) {
   const cls = UNIT_CLASS[type];
   const white = type === 'AX' || type === 'WA';
+  // the wide letters of CAM and HWM need a tighter label to clear the pips
+  const compact = type === 'CAM' || type === 'HWM';
   const cyB = 30.8;
   const pw = 4.6;
   const right = 19.4;
@@ -186,16 +192,16 @@ export function Badge({ type, blocks, maxBlocks, sacred }: { type: UnitType; blo
   }
   return (
     <g>
-      <rect x={-23.4} y={24.4} width={46.8} height={12.8} rx={3.4} fill="#17110c" fillOpacity={0.93} stroke={sacred ? '#e9bf4f' : '#6b5638'} strokeWidth={sacred ? 1.2 : 0.7} />
+      <rect x={-23.4} y={24.4} width={46.8} height={12.8} rx={3.4} fill="#17110c" fillOpacity={0.93} stroke={elite ? '#e9bf4f' : '#6b5638'} strokeWidth={elite ? 1.2 : 0.7} />
       <ClassSymbol cls={cls} white={white} x={-17.8} y={cyB} s={1.08} />
       <text
         x={-11.6}
         y={cyB + 3.3}
         fontFamily="Cinzel, 'Trajan Pro', Georgia, serif"
         fontWeight={700}
-        fontSize={type.length > 2 ? 8 : 9.4}
+        fontSize={compact ? 7.3 : type.length > 2 ? 8 : 9.4}
         fill="#fbf1d6"
-        letterSpacing={type.length > 2 ? -0.3 : 0.1}
+        letterSpacing={compact ? -0.5 : type.length > 2 ? -0.3 : 0.1}
       >
         {type}
       </text>
@@ -205,9 +211,12 @@ export function Badge({ type, blocks, maxBlocks, sacred }: { type: UnitType; blo
 }
 
 // ---------------------------------------------------------------------------------------------
-// Sacred band marker: golden standard with laurel wreath, planted at the back left of the base.
+// Elite marker: golden standard with a laurel wreath, planted at the back left of the base. Its plaque carries the
+// army's device (the Carthaginian disc and crescent for the Sacred Band of Carthage).
 
-export function SacredStandard({ p }: { p: Palette }) {
+const STANDARD_FIG = new WeakMap<Palette, ReturnType<typeof makeFig>>();
+
+export function EliteStandard({ p }: { p: Palette }) {
   // Laurel leaves along two arcs around (0, -42).
   const leaves: JSX.Element[] = [];
   for (let k = 0; k < 4; k++) {
@@ -228,14 +237,30 @@ export function SacredStandard({ p }: { p: Palette }) {
       <path d="M0 0 L0 -37.6" stroke={p.goldShade} strokeWidth={1} />
       <path d="M-3.8 -31.5 L5.4 -31.5 L5.4 -20.5 L3.1 -22.2 L0.8 -20.5 L-1.5 -22.2 L-3.8 -20.5 Z" fill={p.gold} stroke={OL} strokeWidth={0.6} strokeLinejoin="round" />
       <path d="M-3.8 -31.5 L-1.6 -31.5 L-1.6 -21.6 L-3.8 -20.5 Z" fill={p.goldShade} opacity={0.6} />
-      <circle cx={0.8} cy={-27.6} r={1.25} fill={p.banner} />
-      <path d="M-1.3 -25.7 A 2.1 1.9 0 0 0 2.9 -25.7 A 1.7 1.3 0 0 1 -1.3 -25.7 Z" fill={p.banner} />
+      <PlaqueDevice p={p} />
       <path d="M-4.8 -31.5 L6.4 -31.5" stroke={OL} strokeWidth={1.7} strokeLinecap="round" />
       <path d="M-4.8 -31.5 L6.4 -31.5" stroke={p.gold} strokeWidth={0.8} strokeLinecap="round" />
       <g fill={p.gold} stroke={OL} strokeWidth={0.35}>{leaves}</g>
       <circle cx={0} cy={-42} r={1.5} fill={p.gold} stroke={OL} strokeWidth={0.5} />
     </g>
   );
+}
+
+/** The army's device on the elite standard's plaque, in the side colour on gold. */
+function PlaqueDevice({ p }: { p: Palette }) {
+  const device = p.style.device;
+  if (device === 'carthage') {
+    return (
+      <>
+        <circle cx={0.8} cy={-27.6} r={1.25} fill={p.banner} />
+        <path d="M-1.3 -25.7 A 2.1 1.9 0 0 0 2.9 -25.7 A 1.7 1.3 0 0 1 -1.3 -25.7 Z" fill={p.banner} />
+      </>
+    );
+  }
+  if (device === 'wreath') return <circle cx={0.8} cy={-26.6} r={1.6} fill={p.banner} />;
+  let f = STANDARD_FIG.get(p);
+  if (!f) STANDARD_FIG.set(p, (f = makeFig(p, 0)));
+  return <Emblem kind={device} cx={0.8} cy={-26.4} s={0.82} f={f} c={p.banner} bg={p.gold} />;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -249,7 +274,7 @@ export interface UnitTokenProps {
   blocks: number;
   maxBlocks: number;
   facing: Facing;
-  /** Elite preset: draws the gold standard and a gold badge rim. */
+  /** Elite preset: its own figures (Sacred Bands, Silver Shields, Immortals, Companions, ...), the gold standard and a gold badge rim. */
   elite?: EliteId;
   dimmed?: boolean;
 }
@@ -266,7 +291,7 @@ function UnitTokenImpl({ type, look, blockColor, blocks, maxBlocks, facing, elit
       <g opacity={dimmed ? 0.6 : undefined} style={dimmed ? { filter: 'saturate(0.3) brightness(0.95)' } : undefined}>
       <BasePlate p={p} />
       <FacingRightCtx.Provider value={facing === 'right'}>
-      {elite && <SacredStandard p={p} />}
+      {elite && <EliteStandard p={p} />}
       {slots.map((sl, k) => {
         const idx = full.findIndex((q) => q.x === sl.x && q.y === sl.y);
         const i = idx >= 0 ? idx : k;
@@ -274,7 +299,7 @@ function UnitTokenImpl({ type, look, blockColor, blocks, maxBlocks, facing, elit
           <g key={k}>
             <ellipse cx={sl.x * flip + 1.6} cy={sl.y + 0.4} rx={figureKind(type) === 'foot' ? 7.5 * sl.s : 15 * sl.s} ry={2.2 * sl.s} fill="#1a1208" opacity={0.42} />
             <g transform={`translate(${sl.x * flip} ${sl.y}) scale(${sl.s * flip} ${sl.s})`}>
-              <Miniature type={type} p={p} i={i} />
+              <Miniature type={type} p={p} i={i} elite={elite} />
             </g>
           </g>
         );
@@ -282,7 +307,7 @@ function UnitTokenImpl({ type, look, blockColor, blocks, maxBlocks, facing, elit
       </FacingRightCtx.Provider>
       </g>
       <g opacity={dimmed ? 0.8 : undefined}>
-      <Badge type={type} blocks={n} maxBlocks={maxBlocks} sacred={!!elite} />
+      <Badge type={type} blocks={n} maxBlocks={maxBlocks} elite={!!elite} />
       </g>
     </g>
   );

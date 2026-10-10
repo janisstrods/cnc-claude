@@ -1,10 +1,14 @@
-// Heavy chariot: two-horse team, spoked wheel, driver and warrior. Facing right, ground at y = 0.
+// Heavy chariots. Facing right, ground at y = 0.
+// Base kits (Punic, Greek, Roman): two-horse team, spoked wheel, driver and warrior.
+// Expansion #1: the four-horse scythed chariots of Persia and the Successors, the large Indian chariot with archers,
+// and a light two-horse chariot for the steppe kit.
 import { darken, lighten } from './color';
+import { figurePalette } from './foot';
 import type { Palette } from './palettes';
-import { Arm, Body, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, makeFig } from './parts';
-import { Horse } from './mounted';
+import { Arm, Body, Emblem, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, dots, makeFig } from './parts';
+import { HalfFigure, Horse, crewDress, lookOf, type CrewAction, type CrewDress } from './mounted';
 
-export function ChariotFigure({ p, i }: { p: Palette; i: number }) {
+function BaseChariot({ p, i }: { p: Palette; i: number }) {
   const h1 = p.horses[(i + 1) % p.horses.length];
   const h2 = p.horses[(i + 2) % p.horses.length];
   const driver = makeFig(p, i + 1);
@@ -70,3 +74,172 @@ export function ChariotFigure({ p, i }: { p: Palette; i: number }) {
   );
 }
 
+// ---------------------------------------------------------------------------------------------
+// Expansion #1
+
+interface CrewSpot {
+  action: CrewAction;
+  dress: CrewDress;
+  x: number;
+  y: number;
+  s: number;
+  aim?: number;
+  i: number;
+}
+
+interface ChariotKit {
+  horses: 2 | 4;
+  /** Long blades on the wheel hubs and under the axle. */
+  scythed: boolean;
+  /** Bronze chamfrons and peytrals on the team (Xenophon's armoured chariot horses). */
+  barded: boolean;
+  /** Box from x0 to x1, top edge `top` (bottom at -8.4); wheel radius. */
+  box: { x0: number; x1: number; top: number };
+  wheel: number;
+  /** Far to near (draw order). */
+  crew: CrewSpot[];
+  bow: 'self' | 'scythian';
+}
+
+function chariotKit(p: Palette, i: number): ChariotKit {
+  const look = lookOf(p);
+  if (p.kit === 'indian') {
+    // Porus' heavy chariots: four horses, six men; drawn with two archers and the driver
+    const d = (k: number) => crewDress('indian', k);
+    return {
+      horses: 4, scythed: false, barded: false, box: { x0: -25, x1: -3.6, top: -20.8 }, wheel: 7.4, bow: 'self',
+      crew: [
+        { action: 'javelin', dress: d(i + 3), x: -19.8, y: -19.4, s: 0.94, i: i + 3 },
+        { action: 'reins', dress: d(i + 1), x: -7.4, y: -18.6, s: 0.94, i: i + 1 },
+        { action: 'bow', dress: d(i + 2), x: -14.2, y: -19, s: 0.96, aim: -16, i: i + 2 },
+      ],
+    };
+  }
+  if (p.kit === 'scythian') {
+    const d = (k: number) => crewDress('scythian', k);
+    return {
+      horses: 2, scythed: false, barded: false, box: { x0: -20, x1: -4.4, top: -18.6 }, wheel: 6.6, bow: 'scythian',
+      crew: [
+        { action: 'reins', dress: d(i + 1), x: -6.6, y: -17.2, s: 0.95, i: i + 1 },
+        { action: 'bow', dress: d(i + 2), x: -13.6, y: -17.8, s: 1, aim: -14, i: i + 2 },
+      ],
+    };
+  }
+  // the scythed chariot: one armoured driver behind high sides (a Persian in his hood, a Successor's in a crested helmet)
+  const driver: CrewDress = p.kit === 'persian'
+    ? { torso: 'scale', helmet: 'tiara', crest: 'none', longSleeve: true, beard: true }
+    : { torso: 'scale', helmet: 'phrygian', crest: 'horsehair', longSleeve: look === 'seleucid' };
+  return {
+    horses: 4, scythed: true, barded: true, box: { x0: -19.6, x1: -4.4, top: -20.4 }, wheel: 6.8, bow: 'scythian',
+    crew: [{ action: 'whip', dress: driver, x: -9.4, y: -18.2, s: 1, i: i + 1 }],
+  };
+}
+
+const r2 = (n: number) => n.toFixed(2);
+
+function KitChariot({ p, i }: { p: Palette; i: number }) {
+  const ck = chariotKit(p, i);
+  const coats = p.horses;
+  const h1 = coats[(i + 1) % coats.length];
+  const h2 = coats[(i + 2) % coats.length];
+  const { x0, x1, top } = ck.box;
+  const wr = ck.wheel;
+  const wx = (x0 + x1) / 2 + 0.4;
+  const wy = -wr - 0.2;
+  const nSpokes = ck.horses === 4 ? 8 : 6;
+  const spokes = Array.from({ length: nSpokes }, (_, k) => {
+    const a = (k * Math.PI) / nSpokes;
+    const dx = Math.cos(a) * wr;
+    const dy = Math.sin(a) * wr;
+    return `M${r2(wx - dx)} ${r2(wy - dy)} L${r2(wx + dx)} ${r2(wy + dy)}`;
+  });
+  const metal = p.metal;
+  const team = ck.horses === 4
+    ? [
+      { x: 15.6, y: -5, s: 0.86, h: h2, dk: 0.32 },
+      { x: 13.6, y: -3.4, s: 0.89, h: h1, dk: 0.2 },
+    ]
+    : [{ x: 13.6, y: -2.6, s: 0.92, h: h2, dk: 0.15 }];
+  const nearTeam = ck.horses === 4
+    ? [
+      { x: 11.6, y: -1.6, s: 0.92, h: h2, dk: 0.06 },
+      { x: 9.4, y: 0, s: 0.95, h: h1, dk: 0 },
+    ]
+    : [{ x: 9.6, y: 0, s: 0.95, h: h1, dk: 0 }];
+  const bodyPath = `M${x0} ${top} C${x0 + 6} ${top - 0.8} ${x1 - 4} ${top - 0.8} ${x1} ${top + 0.6} C${x1 + 1} ${top + 4} ${x1 + 1.2} ${-12} ${x1 + 0.4} -8.4 L${x0 + 0.4} -8.4 C${x0 - 0.6} -11.8 ${x0 - 0.6} ${top + 4} ${x0} ${top} Z`;
+  const pat = p.pattern ?? p.gold;
+  const driverX = (ck.crew.find((c) => c.action === 'reins' || c.action === 'whip') ?? ck.crew[0]).x;
+  const device = p.style.emblems[0];
+  const blade = (dir: 1 | -1) => {
+    const a = wx + dir * 1.4;
+    return `M${r2(a)} ${r2(wy - 0.5)} C${r2(a + dir * 4)} ${r2(wy - 1.2)} ${r2(a + dir * 8)} ${r2(wy - 0.6)} ${r2(a + dir * 10.6)} ${r2(wy + 1.6)} C${r2(a + dir * 7.6)} ${r2(wy + 0.9)} ${r2(a + dir * 4)} ${r2(wy + 0.9)} ${r2(a)} ${r2(wy + 0.6)} Z`;
+  };
+  return (
+    <>
+      {/* far horses */}
+      {team.map((t, k) => (
+        <g key={`f${k}`} transform={`translate(${t.x} ${t.y}) scale(${t.s})`}>
+          <Horse coat={darken(t.h.coat, t.dk)} shade={darken(t.h.shade, t.dk)} mane={t.h.mane} pose={k % 2 ? 1 : 0}
+            barding={ck.barded} metal={darken(metal, t.dk)} metalShade={p.metalShade} />
+        </g>
+      ))}
+      {/* far wheel hint */}
+      <ellipse cx={wx + 3.2} cy={wy - 1.6} rx={2} ry={wr * 0.95} fill="none" stroke={p.woodShade} strokeWidth={1.2} opacity={0.8} />
+      {/* crew, far to near */}
+      {ck.crew.map((c, k) => {
+        const f = makeFig(figurePalette(p, c.i), c.i);
+        return (
+          <g key={`c${k}`} transform={`translate(${c.x} ${c.y}) scale(${c.s})`}>
+            <HalfFigure dress={c.dress} action={c.action} f={f} bow={ck.bow} aim={c.aim} />
+          </g>
+        );
+      })}
+      {/* near horses */}
+      {nearTeam.map((t, k) => (
+        <g key={`n${k}`} transform={`translate(${t.x} ${t.y}) scale(${t.s})`}>
+          <Horse coat={darken(t.h.coat, t.dk)} shade={darken(t.h.shade, t.dk)} mane={t.h.mane} pose={1}
+            barding={ck.barded} metal={metal} metalShade={p.metalShade} light={k === nearTeam.length - 1 ? lighten(t.h.coat, 0.35) : undefined} />
+        </g>
+      ))}
+      {/* pole & reins */}
+      <Line2 d={`M${x1 + 0.4} -9.6 L13.6 -14.2`} w={1.0} c={p.woodShade} ow={0.5} />
+      <path d={`M${driverX + 2} -21 Q6 -23 22.4 -18.6`} fill="none" stroke="#3a2416" strokeWidth={0.5} />
+      {/* chariot box */}
+      <Shape d={bodyPath} f={p.saddle} />
+      <Paint d={`M${x0} ${top} C${x0 + 1.2} ${top - 0.2} ${x0 + 2.6} ${top - 0.3} ${x0 + 3.8} ${top - 0.4} C${x0 + 3.4} ${top + 3.4} ${x0 + 3.4} -11.8 ${x0 + 4} -8.4 L${x0 + 0.4} -8.4 C${x0 - 0.6} -11.8 ${x0 - 0.6} ${top + 4} ${x0} ${top} Z`} f={p.saddleShade} mx={(x0 + x1) / 2} />
+      <Hi d={`M${x0 + 0.4} ${top + 0.8} C${x0 + 6} ${top} ${x1 - 4} ${top} ${x1 - 0.4} ${top + 1.1}`} c={p.gold} w={1.0} o={1} />
+      <Hi d={`M${x0 + 0.6} -9.4 L${x1} -9.4`} c={p.gold} w={0.8} o={1} />
+      {ck.scythed && (device === 'none'
+        ? <path d={dots([[x0 + 3.2, top + 3.6], [x0 + 6.6, top + 3.8], [x0 + 10, top + 3.8], [x0 + 13.2, top + 3.6]], 0.62)} fill={pat} />
+        : <Emblem kind={device} cx={(x0 + x1) / 2 - 0.6} cy={top + 3.9} s={0.78} f={makeFig(p, 0)} c={p.shieldEmblem} bg={p.saddle} />)}
+      {p.kit === 'indian' && (
+        <g>
+          {/* railing posts of the big Indian car */}
+          <Hi d={`M${x0 + 5.4} ${top + 1} L${x0 + 5.4} -9.6 M${x0 + 10.8} ${top + 1} L${x0 + 10.8} -9.6 M${x0 + 16.2} ${top + 1} L${x0 + 16.2} -9.6`} c={p.gold} w={0.7} o={0.95} />
+        </g>
+      )}
+      {/* wheel */}
+      <circle cx={wx} cy={wy} r={wr} fill="none" stroke={OL} strokeWidth={2.4} />
+      <circle cx={wx} cy={wy} r={wr} fill="none" stroke={p.wood} strokeWidth={1.2} />
+      <path d={spokes.join(' ')} stroke={p.woodShade} strokeWidth={0.6} />
+      <circle cx={wx} cy={wy} r={1.5} fill={metal} stroke={OL} strokeWidth={0.5} />
+      <Hi d={`M${r2(wx - 4.4)} ${r2(wy - 4.6)} A ${wr - 0.2} ${wr - 0.2} 0 0 1 ${r2(wx + 3)} ${r2(wy - 5.8)}`} c={lighten(p.wood, 0.4)} w={0.5} />
+      {ck.scythed ? (
+        <g>
+          {/* scythes on the hub, forward and back, and blades under the axle */}
+          <path d={`${blade(1)} ${blade(-1)}`} fill={p.ironLight} stroke={OL} strokeWidth={0.5} strokeLinejoin="round" />
+          <Hi d={`M${r2(wx + 2.4)} ${r2(wy - 0.2)} C${r2(wx + 6)} ${r2(wy - 0.6)} ${r2(wx + 9)} ${r2(wy - 0.2)} ${r2(wx + 11.2)} ${r2(wy + 1.2)}`} c={lighten(p.ironLight, 0.5)} w={0.35} o={0.9} />
+          <path d={`M${r2(x0 + 2)} -8.4 C${r2(x0 + 1)} -6 ${r2(x0 - 1.2)} -4.8 ${r2(x0 - 3.6)} -4.4 C${r2(x0 - 1.4)} -5.8 ${r2(x0 - 0.2)} -7 ${r2(x0 + 0.4)} -8.4 Z`} fill={p.ironLight} stroke={OL} strokeWidth={0.45} strokeLinejoin="round" />
+        </g>
+      ) : (
+        <Line2 d={`M${r2(wx + 1.4)} ${r2(wy)} L${r2(wx + 3.4)} ${r2(wy + 0.4)}`} w={1.1} c={p.metal} ow={0.4} />
+      )}
+    </>
+  );
+}
+
+/** One chariot miniature: the base game's for the Punic, Greek and Roman kits, an Expansion #1 chariot otherwise. */
+export function ChariotFigure({ p, i }: { p: Palette; i: number }) {
+  if (p.kit === 'roman' || p.kit === 'punic' || p.kit === 'greek') return <BaseChariot p={p} i={i} />;
+  return <KitChariot p={p} i={i} />;
+}
