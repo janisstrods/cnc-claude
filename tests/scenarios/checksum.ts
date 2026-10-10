@@ -1,6 +1,7 @@
 // Fingerprints of a built battle, so the manifest notices any change to the verified map data: terrain tallies (what is
-// on the board, rivers split by crossing, rampart edges) and two checksums, one over every terrain hex and one over every
-// unit and leader position. The tallies explain a failure; the checksums catch moves that leave every count unchanged.
+// on the board, rivers split by crossing, rampart edges) and two checksums, one over every terrain hex (with the hills
+// under camps and walls) and one over every unit and leader position. The tallies explain a failure; the checksums catch
+// moves that leave every count unchanged.
 import { colOf, rowOf, type GameState, type TerrainType } from '../../src/engine';
 
 export interface TerrainTally {
@@ -13,7 +14,7 @@ export interface TerrainTally {
 }
 
 export interface Checksums {
-  /** Every non-plain terrain hex with its ford flag or rampart edges. */
+  /** Every non-plain terrain hex with its ford flag or rampart edges, and the hill under a camp or wall (308). */
   terrain: string;
   /** Every unit (side, type, hex, elite) and leader (side, name, hex, traits). */
   pieces: string;
@@ -51,13 +52,16 @@ export function terrainTally(s: GameState): TerrainTally {
   return tally;
 }
 
-/** The lines the terrain checksum is taken over: `type:r,c` plus the crossing of a river or the edge mask of a rampart. */
+/**
+ * The lines the terrain checksum is taken over: `type:r,c` plus the crossing of a river or the edge mask of a rampart, and
+ * `:hill` for a camp or wall with a hill under it (Expansion #3; no earlier battle has one, so their checksums are as before).
+ */
 export function terrainLines(s: GameState): string[] {
   const lines: string[] = [];
   s.terrain.forEach((t, h) => {
     if (t === 'plain' || t === 'void') return;
     const extra = t === 'river' ? `:${s.noCap[h] ? 'nocap' : s.fords[h] ? 'ford' : 'blocked'}` : t === 'rampart' ? `:m${s.rampart[h]}` : '';
-    lines.push(`${t}:${at(h)}${extra}`);
+    lines.push(`${t}:${at(h)}${extra}${s.hillUnder[h] ? ':hill' : ''}`);
   });
   return lines.sort();
 }

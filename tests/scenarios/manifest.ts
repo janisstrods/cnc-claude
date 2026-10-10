@@ -32,9 +32,11 @@ export interface BattleManifest {
   placeLeaders?: [Side, string][];
   /** Units on the board per side and type. */
   units: PerSide<Partial<Record<UnitType, number>>>;
-  /** Units and leaders that start off the board (the ambush force of 206), per side. */
+  /** Units and leaders that start off the board (the ambush force of 206, the Gallic reinforcements of 308), per side. */
   reserves?: { units: PerSide<Partial<Record<UnitType, number>>>; leaders: PerSide<string[]> };
-  /** Legion rule per side (Marius' legions, 206-223). */
+  /** Units that wait off the board for a forced placement (308's Roman MI, §18.9), not among the reserves: [side, type]. */
+  placeUnits?: [Side, UnitType][];
+  /** Legion rule per side (Marius' legions, 206-223 and 301-305; Julian legions, 306-319 but 310). */
   legions?: Partial<Record<Side, Legion>>;
   /** Elite units: [side, preset, unit type], in file order. */
   elites: [Side, EliteId, UnitType][];
@@ -789,5 +791,328 @@ export const MANIFEST_EXP2: Record<string, BattleManifest> = {
     elites: [], rules: ['veryHills'],
     terrain: { types: { hill: 16, rampart: 6, river: 15 }, rivers: { ford: 15, blocked: 0, nocap: 0 }, ramparts: { hexes: 6, edges: 12 } },
     checksum: { terrain: '4bcb6cc3', pieces: '24d09fa1' },
+  },
+};
+
+/**
+ * Expected setup of each Expansion #3 battle (301-319, The Roman Civil Wars), checked by exp3.test.ts. The entries were
+ * generated from the imported scenario files (the verified transcriptions; design/exp3-data/transcription-notes.md and
+ * verification.md, design/exp3-scenario-notes.md). Every value was then checked by hand against rules-reference §20 (armies,
+ * blocks, looks, hands, first player, banners, legions, terrain, leaders) and the unit tables of design/exp3-survey.md
+ * (units and leaders per side, counting 308's reinforcements and forced placement). They agree, except where the spec's
+ * fixed decisions follow the map against the page table (§20):
+ * - 314 Dyrrhachium: the Pompeians field LI 2 and LB 1 (the table: LI 1, LB 2).
+ * - 315 Pharsalus: the Caesarians have 3 leaders, Caesar, Antony and Calvinus (the table: 4).
+ * - 310 Utica P1: the Numidians hold no cards (`cards: 0`) and order by 2 dice (§18.10).
+ * Terrain counts follow the maps; several are above or below the survey's "about N" (308 hills, 310 river, 314 and 319 hills;
+ * see the transcription notes). The civil-war armies are named by party (Pompeian, Caesarian, Sertorian...); "Roman" is the
+ * army name of the Sullan, Pompeian and Caesarian armies of 301-308, which fight non-Roman or rebel enemies. Leader names
+ * the maps leave out are cosmetic picks (design/exp3-scenario-notes.md).
+ */
+export const MANIFEST_EXP3: Record<string, BattleManifest> = {
+  '301': {
+    name: 'Colline Gate', year: '82 BC', banners: 5, first: 'top',
+    armies: { top: 'Samnite', bottom: 'Roman' },
+    commanders: { top: 'Pontius', bottom: 'Sulla' },
+    cards: { top: 5, bottom: 6 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'samnite', bottom: 'sullan' },
+    leaders: { top: ['Pontius'], bottom: ['Crassus', 'Sulla'] },
+    units: {
+      top: { LS: 1, AX: 6, MI: 2, MC: 2 },
+      bottom: { LS: 2, AX: 1, MI: 6, MC: 2 },
+    },
+    legions: { top: 'marius', bottom: 'marius' },
+    elites: [], rules: [],
+    terrain: { types: { camp: 2, steep: 10 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '45f4a1da', pieces: '0913150b' },
+  },
+  '302': {
+    name: 'Baetis River', year: '80 BC', banners: 6, first: 'top',
+    armies: { top: 'Sertorian', bottom: 'Roman' },
+    commanders: { top: 'Quintus Sertorius', bottom: 'Lucius Fufidius' },
+    cards: { top: 5, bottom: 4 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'sertorian', bottom: 'sullan' },
+    leaders: { top: ['Hirtuleius', 'Sertorius', 'Herennius'], bottom: ['Domitius', 'Fufidius'] },
+    units: {
+      top: { LI: 6, LB: 2, LS: 2, AX: 2, HI: 2, LC: 1, MC: 1 },
+      bottom: { LB: 2, LS: 2, WA: 2, MI: 6 },
+    },
+    legions: { top: 'marius', bottom: 'marius' },
+    elites: [], rules: [],
+    terrain: { types: { river: 11, forest: 4 }, rivers: { ford: 11, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: 'ef45b6f5', pieces: 'f028db28' },
+  },
+  '303': {
+    name: 'Lauron', year: '76 BC', banners: 7, first: 'top',
+    armies: { top: 'Sertorian', bottom: 'Roman' },
+    commanders: { top: 'Quintus Sertorius', bottom: 'Pompey' },
+    cards: { top: 6, bottom: 5 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'sertorian', bottom: 'pompeian' },
+    leaders: { top: ['Perpenna', 'Sertorius', 'Herennius'], bottom: ['Afranius', 'Petreius', 'Pompey'] },
+    units: {
+      top: { LI: 1, LB: 1, LS: 2, AX: 4, WA: 2, MI: 1, HI: 2, LC: 1, MC: 2 },
+      bottom: { LB: 1, LS: 1, MI: 9, MC: 2 },
+    },
+    legions: { top: 'marius', bottom: 'marius' },
+    elites: [], rules: [],
+    terrain: { types: { steep: 4, hill: 10 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '53114493', pieces: '0b52de7d' },
+  },
+  '304': {
+    name: 'Valentia', year: '75 BC', banners: 6, first: 'bottom',
+    armies: { top: 'Sertorian', bottom: 'Roman' },
+    commanders: { top: 'Herennius & Perpenna', bottom: 'Pompey' },
+    cards: { top: 4, bottom: 5 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'sertorian', bottom: 'pompeian' },
+    leaders: { top: ['Perpenna', 'Herennius'], bottom: ['Memmius', 'Pompey', 'Afranius'] },
+    units: {
+      top: { LB: 1, LS: 2, AX: 3, MI: 7, LC: 1, MC: 1 },
+      bottom: { LB: 1, LS: 2, MI: 8, MC: 2 },
+    },
+    legions: { top: 'marius', bottom: 'marius' },
+    elites: [], rules: [],
+    terrain: { types: { steep: 4 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '72990ec5', pieces: '5e952e43' },
+  },
+  '305': {
+    name: 'Sucro', year: '75 BC', banners: 6, first: 'bottom',
+    armies: { top: 'Sertorian', bottom: 'Roman' },
+    commanders: { top: 'Quintus Sertorius', bottom: 'Pompey' },
+    cards: { top: 6, bottom: 5 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'sertorian', bottom: 'pompeian' },
+    leaders: { top: ['Sertorius', 'Perpenna', 'Manlius'], bottom: ['Afranius', 'Pompey', 'Memmius'] },
+    units: {
+      top: { LI: 2, LS: 2, AX: 3, MI: 5, HI: 2, LC: 1, MC: 1 },
+      bottom: { LB: 1, LS: 2, MI: 9, MC: 2 },
+    },
+    legions: { top: 'marius', bottom: 'marius' },
+    elites: [], rules: [],
+    terrain: { types: { hill: 11 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '3fa5b978', pieces: 'a7234fa5' },
+  },
+  '306': {
+    name: 'Bibracte', year: '58 BC', banners: 7, first: 'top',
+    armies: { top: 'Helvetian', bottom: 'Roman' },
+    commanders: { top: 'Divico', bottom: 'Julius Caesar' },
+    cards: { top: 4, bottom: 6 }, blocks: { top: 'bar', bottom: 'rom' },
+    looks: { top: 'helvetii', bottom: 'caesarian' },
+    leaders: { top: ['Divico', 'Nammeius'], bottom: ['Labienus', 'Considius', 'Julius Caesar'] },
+    units: {
+      top: { LI: 2, AX: 7, WA: 9, MC: 3 },
+      bottom: { LI: 2, LB: 2, AX: 4, MI: 4, HI: 2, MC: 2, HWM: 1 },
+    },
+    legions: { bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: { camp: 4, forest: 5, hill: 21 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '11aae258', pieces: 'f2008e4a' },
+  },
+  '307': {
+    name: 'Plain of Alsace', year: '58 BC', banners: 7, first: 'bottom',
+    armies: { top: 'Germanic', bottom: 'Roman' },
+    commanders: { top: 'Ariovistus', bottom: 'Julius Caesar' },
+    cards: { top: 4, bottom: 6 }, blocks: { top: 'bar', bottom: 'rom' },
+    looks: { top: 'germanic', bottom: 'caesarian' },
+    leaders: { top: ['Ariovistus'], bottom: ['Julius Caesar', 'Crassus'] },
+    units: {
+      top: { LI: 5, AX: 3, WA: 9, MC: 3 },
+      bottom: { LI: 4, LB: 2, AX: 3, MI: 7, HI: 2, MC: 3 },
+    },
+    legions: { bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: {}, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '811c9dc5', pieces: '85cf53a4' },
+  },
+  '308': {
+    name: 'Gergovia', year: '52 BC', banners: 8, first: 'bottom',
+    armies: { top: 'Gallic', bottom: 'Roman' },
+    commanders: { top: 'Vercingetorix', bottom: 'Julius Caesar' },
+    cards: { top: 5, bottom: 5 }, blocks: { top: 'bar', bottom: 'rom' },
+    looks: { top: 'gallic', bottom: 'caesarian' },
+    leaders: { top: ['Critognatus', 'Vercassivellaunus'], bottom: ['Sextius', 'Julius Caesar', 'Manucius'] },
+    units: {
+      top: { LB: 2, LS: 1, AX: 5, WA: 6, MC: 2 },
+      bottom: { LI: 2, LB: 2, WA: 2, MI: 7, HI: 2, MC: 2, HWM: 2 },
+    },
+    reserves: { units: { top: { AX: 2, WA: 2 }, bottom: {} }, leaders: { top: ['Vercingetorix'], bottom: [] } },
+    placeUnits: [['bottom', 'MI']],
+    legions: { bottom: 'julian' },
+    elites: [], rules: ['magoAmbush', 'steepSlopes'],
+    terrain: { types: { forest: 10, hill: 20, wall: 5, camp: 4, broken: 5, rampart: 3 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 3, edges: 6 } },
+    checksum: { terrain: '5c45637f', pieces: '0917e8fd' },
+  },
+  '309': {
+    name: 'Ilerda', year: '49 BC', banners: 7, first: 'top',
+    armies: { top: 'Pompeian', bottom: 'Caesarian' },
+    commanders: { top: 'Afranius', bottom: 'Julius Caesar' },
+    cards: { top: 5, bottom: 6 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'pompeian', bottom: 'caesarian' },
+    leaders: { top: ['Afranius', 'Vibullius', 'Petreius'], bottom: ['Plancus', 'Fabius', 'Julius Caesar'] },
+    units: {
+      top: { LB: 2, AX: 2, MI: 5, HI: 4, MC: 2 },
+      bottom: { LS: 1, AX: 2, MI: 4, HI: 6, MC: 2 },
+    },
+    legions: { top: 'julian', bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: { camp: 4, wall: 3, river: 9, hill: 6 }, rivers: { ford: 0, blocked: 9, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '3f26cf84', pieces: '3770486e' },
+  },
+  '310': {
+    name: 'Utica P1 Delaying Action', year: '49 BC', banners: 4, first: 'bottom',
+    armies: { top: 'Numidian', bottom: 'Caesarian' },
+    commanders: { top: 'Saburra', bottom: 'Marcius Rufus' },
+    cards: { top: 0, bottom: 6 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'numidian', bottom: 'caesarian' },
+    leaders: { top: ['Saburra'], bottom: ['Marcius Rufus'] },
+    units: {
+      top: { LB: 1, AX: 2, MI: 3, HI: 1, LC: 3, MC: 3 },
+      bottom: { LC: 2, MC: 4 },
+    },
+    elites: [], rules: [],
+    terrain: { types: { river: 8, hill: 3 }, rivers: { ford: 0, blocked: 8, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: 'ac920c70', pieces: '3f9677e2' },
+  },
+  '311': {
+    name: 'Utica P2 The Valley', year: '49 BC', banners: 5, first: 'top',
+    armies: { top: 'Pompeian', bottom: 'Caesarian' },
+    commanders: { top: 'Varus', bottom: 'Curio' },
+    cards: { top: 5, bottom: 5 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'pompeian', bottom: 'caesarian' },
+    leaders: { top: ['Varus', 'Quintilius'], bottom: ['Curio', 'Rebilus'] },
+    units: {
+      top: { LI: 1, LB: 2, AX: 2, MI: 3, HI: 1, LC: 2, MC: 1 },
+      bottom: { LS: 2, AX: 3, MI: 4, HI: 1, LC: 1, MC: 2 },
+    },
+    legions: { top: 'julian', bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: { camp: 1, hill: 24 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '7efb5624', pieces: '332c8a82' },
+  },
+  '312': {
+    name: 'Bagradas River', year: '49 BC', banners: 5, first: 'top',
+    armies: { top: 'Numidian', bottom: 'Caesarian' },
+    commanders: { top: 'Saburra', bottom: 'Curio' },
+    cards: { top: 5, bottom: 5 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'numidian', bottom: 'caesarian' },
+    leaders: { top: ['Juba', 'Saburra'], bottom: ['Curio', 'Domitius'] },
+    units: {
+      top: { LB: 2, AX: 4, WA: 2, MI: 1, HI: 1, LC: 3, MC: 4 },
+      bottom: { LS: 2, AX: 2, MI: 4, HI: 1, MC: 1 },
+    },
+    legions: { top: 'julian', bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: { hill: 3 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '8d2fcb5b', pieces: '240e397b' },
+  },
+  '313': {
+    name: 'Brindisi Raid', year: '48 BC', banners: 6, first: 'top',
+    armies: { top: 'Pompeian', bottom: 'Caesarian' },
+    commanders: { top: 'Libo', bottom: 'Antony' },
+    cards: { top: 5, bottom: 2 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'pompeian', bottom: 'caesarian' },
+    leaders: { top: ['Libo'], bottom: ['Antony', 'Fufius'] },
+    units: {
+      top: { LB: 1, AX: 4, MI: 6 },
+      bottom: { LI: 3, AX: 1, MI: 8, MC: 2 },
+    },
+    legions: { top: 'julian', bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: { river: 8, rampart: 8, hill: 12, camp: 4 }, rivers: { ford: 8, blocked: 0, nocap: 0 }, ramparts: { hexes: 8, edges: 17 } },
+    checksum: { terrain: '7143fa09', pieces: '94459ba0' },
+  },
+  '314': {
+    name: 'Dyrrhachium', year: '48 BC', banners: 6, first: 'top',
+    armies: { top: 'Pompeian', bottom: 'Caesarian' },
+    commanders: { top: 'Pompey', bottom: 'Julius Caesar' },
+    cards: { top: 5, bottom: 5 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'pompeian', bottom: 'caesarian' },
+    leaders: { top: ['Pompey', 'Titus Pulio'], bottom: ['Marcellinus', 'Antony', 'Julius Caesar'] },
+    units: {
+      top: { LI: 2, LB: 1, AX: 1, MI: 7, HI: 2, MC: 1, HWM: 1 },
+      bottom: { LI: 1, LB: 1, LS: 2, MI: 3, HI: 5, MC: 1 },
+    },
+    legions: { top: 'julian', bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: { rampart: 10, hill: 9 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 10, edges: 20 } },
+    checksum: { terrain: '8cdb6f70', pieces: 'fa9adf4b' },
+  },
+  '315': {
+    name: 'Pharsalus', year: '48 BC', banners: 7, first: 'top',
+    armies: { top: 'Pompeian', bottom: 'Caesarian' },
+    commanders: { top: 'Pompey', bottom: 'Julius Caesar' },
+    cards: { top: 4, bottom: 6 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'pompeian', bottom: 'caesarian' },
+    leaders: { top: ['Lentulus', 'Pompey', 'Labienus'], bottom: ['Antony', 'Calvinus', 'Julius Caesar'] },
+    units: {
+      top: { LB: 3, AX: 5, MI: 5, HI: 3, MC: 4 },
+      bottom: { LB: 1, LS: 1, AX: 1, WA: 1, MI: 1, HI: 6, LC: 1, MC: 1 },
+    },
+    legions: { top: 'julian', bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: { steep: 7, marsh: 1 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: 'ae0d1061', pieces: '17773399' },
+  },
+  '316': {
+    name: 'Zela', year: '47 BC', banners: 7, first: 'top',
+    armies: { top: 'Pontic', bottom: 'Caesarian' },
+    commanders: { top: 'Pharnaces', bottom: 'Julius Caesar' },
+    cards: { top: 4, bottom: 6 }, blocks: { top: 'eas', bottom: 'rom' },
+    looks: { top: 'pontic', bottom: 'caesarian' },
+    leaders: { top: ['Dromichaetes', 'Pharnaces', 'Aristion'], bottom: ['Calvinus', 'Vinicianus', 'Julius Caesar'] },
+    units: {
+      top: { LI: 4, AX: 2, MI: 4, HI: 2, LC: 2, HC: 2, HCH: 2 },
+      bottom: { LB: 3, AX: 2, MI: 3, HI: 3, LC: 2, MC: 2 },
+    },
+    legions: { bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: { camp: 4 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '10077021', pieces: 'e565d755' },
+  },
+  '317': {
+    name: 'Ruspina', year: '46 BC', banners: 5, first: 'top',
+    armies: { top: 'Numidian', bottom: 'Caesarian' },
+    commanders: { top: 'Titus Labienus', bottom: 'Julius Caesar' },
+    cards: { top: 5, bottom: 6 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'numidian', bottom: 'caesarian' },
+    leaders: { top: ['Petreius', 'Labienus'], bottom: ['Saserna', 'Julius Caesar'] },
+    units: {
+      top: { LI: 6, LB: 2, LC: 2, MC: 5 },
+      bottom: { LB: 1, MI: 4, HI: 2, MC: 1 },
+    },
+    legions: { bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: {}, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '811c9dc5', pieces: '64cf9023' },
+  },
+  '318': {
+    name: 'Thapsus', year: '46 BC', banners: 7, first: 'top',
+    armies: { top: 'Pompeian', bottom: 'Caesarian' },
+    commanders: { top: 'Scipio', bottom: 'Julius Caesar' },
+    cards: { top: 5, bottom: 6 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'pompeian', bottom: 'caesarian' },
+    leaders: { top: ['Petreius', 'Juba', 'Scipio'], bottom: ['Domitius', 'Rebilus', 'Julius Caesar'] },
+    units: {
+      top: { LI: 3, LB: 2, AX: 3, MI: 3, HI: 1, LC: 4, MC: 2, EL: 2 },
+      bottom: { LB: 2, LS: 2, MI: 7, HI: 2, MC: 2 },
+    },
+    legions: { top: 'julian', bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: { marsh: 9, sea: 7 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: '9f81cbc1', pieces: '11577cf2' },
+  },
+  '319': {
+    name: 'Munda', year: '45 BC', banners: 8, first: 'bottom',
+    armies: { top: 'Pompeian', bottom: 'Caesarian' },
+    commanders: { top: 'Gnaeus Pompey', bottom: 'Julius Caesar' },
+    cards: { top: 4, bottom: 6 }, blocks: { top: 'gry', bottom: 'rom' },
+    looks: { top: 'pompeian', bottom: 'caesarian' },
+    leaders: { top: ['Labienus', 'Gnaeus Pompeius'], bottom: ['Pedius', 'Maximus', 'Julius Caesar'] },
+    units: {
+      top: { LI: 4, LB: 2, AX: 6, MI: 3, HI: 2, MC: 2 },
+      bottom: { LB: 2, LS: 1, AX: 2, MI: 4, HI: 3, MC: 4 },
+    },
+    legions: { top: 'julian', bottom: 'julian' },
+    elites: [], rules: [],
+    terrain: { types: { hill: 19 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
+    checksum: { terrain: 'b75bdad3', pieces: '3fdd9589' },
   },
 };
