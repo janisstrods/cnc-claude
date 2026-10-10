@@ -7,8 +7,8 @@ import {
 } from '../../engine';
 import { BLOCK_COLORS, UnitIcon, unitTypeName } from '../../art';
 import { BannerTrack, Button, CardBack, CardView, DiceTray, DieView, Modal, Panel } from '../kit';
-import { terrainName } from '../terrain';
-import { Board, scenarioArt } from './Board';
+import { scenarioArt, terrainName } from '../terrain';
+import { Board } from './Board';
 import type { GameController, LogLine } from './controller';
 import {
   ambushTexts, attackDice, bannerCounts, boardUi, commandBlocks, commandById, commandTipLine, deploymentSide, effectiveKind, expectedHits,
@@ -95,7 +95,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
 
   const answer = (a: Answer) => controller.answer(a);
   // the battle's hex art (217's coast played as a ford) and the leader of its ambush reserve (005, 206)
-  const hexArt = useMemo(() => scenarioArt(controller.scenario.id), [controller]);
+  const hexArt = scenarioArt(controller.scenario.id);
   const ambushLeader = controller.scenario.setup.reserveLeaders[0]?.name;
 
   const bui = useMemo(() => {
@@ -165,7 +165,10 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         if (ui.selPiece && ui.rollPath) {
           // Rolling Fire: extend the path; it is sent as soon as it is complete
           const { next } = rollingFireStep(s, ui.selPiece, ui.rollPath);
-          if (!next.includes(h)) return;
+          if (!next.includes(h)) {
+            controller.notice('Choose one of the highlighted hexes.');
+            return;
+          }
           const path = [...ui.rollPath, h];
           if (rollingFireStep(s, ui.selPiece, path).complete) answer({ kind: 'rollingFire', unit: ui.selPiece, path });
           else setUi({ ...ui, rollPath: path });
@@ -715,8 +718,10 @@ function HoverTip({ active, children }: { active: boolean; children: React.React
   const place = useCallback(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.left = `${Math.min(pos.current.x + 18, window.innerWidth - Math.max(300, el.offsetWidth + 8))}px`;
-    el.style.top = `${Math.max(4, Math.min(pos.current.y + 18, window.innerHeight - Math.max(220, el.offsetHeight + 8)))}px`;
+    // read both sizes before writing either style, so the browser lays the tip out once
+    const { offsetWidth: w, offsetHeight: h } = el;
+    el.style.left = `${Math.min(pos.current.x + 18, window.innerWidth - Math.max(300, w + 8))}px`;
+    el.style.top = `${Math.max(4, Math.min(pos.current.y + 18, window.innerHeight - Math.max(220, h + 8)))}px`;
   }, []);
   useEffect(() => {
     const on = (e: MouseEvent) => {

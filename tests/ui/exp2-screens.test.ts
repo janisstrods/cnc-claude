@@ -367,7 +367,7 @@ describe('controller log lines', () => {
     }
   });
 
-  it('a camp razed and a rampart torn down: logged, and the board shows the new terrain', async () => {
+  it('a rampart torn down (223) is logged, flashed and shown as open ground', async () => {
     const { c, animate } = await settled('223', 'bottom');
     try {
       const s0 = c.driver.state;
@@ -382,16 +382,42 @@ describe('controller log lines', () => {
     } finally {
       c.dispose();
     }
+  });
+
+  it('a captured camp (215) is razed, also the Roman camp that is drawn as a rampart', async () => {
     const camp = await settled('215', 'bottom');
     try {
       const s0 = camp.c.driver.state;
-      const after = cloneState(s0);
-      after.terrain = [...after.terrain];
-      after.terrain[H(1, 0)] = 'plain';
-      await camp.animate({ t: 'terrainChanged', hex: H(1, 0), terrain: 'plain' }, after);
-      expect(lastLog(camp.c)).toBe('The camp is razed: open ground now.');
+      expect(s0.terrain[H(1, 0)]).toBe('camp');
+      expect(s0.terrain[H(7, 4)]).toBe('rampart'); // the unfinished Roman camp
+      for (const hex of [H(1, 0), H(7, 4)]) {
+        const after = cloneState(s0);
+        after.terrain = [...after.terrain];
+        after.terrain[hex] = 'plain';
+        await camp.animate({ t: 'terrainChanged', hex, terrain: 'plain' }, after);
+        expect(lastLog(camp.c)).toBe('The camp is razed: open ground now.');
+        expect(camp.c.view.display.terrain[hex]).toBe('plain');
+        expect(camp.c.view.flashes.some((f) => f.hex === hex && f.text === 'Razed'), `${hex} flash`).toBe(true);
+        expect(camp.c.view.flashes.some((f) => f.hex === hex && f.text === 'Torn down'), `${hex} not torn down`).toBe(false);
+      }
     } finally {
       camp.c.dispose();
+    }
+  });
+
+  it('a notice (Rolling Fire: a click off the highlighted hexes) shows once, however often it is asked for', async () => {
+    const { c } = await settled('210', 'top');
+    try {
+      const text = 'Choose one of the highlighted hexes.';
+      c.notice(text);
+      expect(c.view.toast).toMatchObject({ text, kind: 'notice' });
+      const id = c.view.toast?.id;
+      c.notice(text);
+      expect(c.view.toast?.id).toBe(id);
+      c.notice('Another notice');
+      expect(c.view.toast?.text).toBe(text); // waits for the first to run its time
+    } finally {
+      c.dispose();
     }
   });
 });

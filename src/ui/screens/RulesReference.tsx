@@ -13,11 +13,12 @@ export const EXP1_UNIT_TYPES: readonly UnitType[] = ['LBC', 'CAM', 'HWM'];
 /** Unit types new in Expansion #2 (§18; defined in uiModel): described in the Expansion #2 tab, not in the base Units list. */
 export { EXP2_UNIT_TYPES };
 const BASE_UNIT_TYPES = UNIT_TYPES.filter((t) => !EXP1_UNIT_TYPES.includes(t) && !EXP2_UNIT_TYPES.includes(t));
-/** Elite presets new in Expansion #2 (§18.2): in the Expansion #2 tab; every other preset is in the Expansion #1 tab. */
+/** Elite presets of Expansion #1 (§17.1): in the Expansion #1 tab. A new preset must be added to exactly one of the two lists. */
+export const EXP1_ELITES: readonly EliteId[] = ['carthSacredBand', 'thebanSacredBand', 'silverShields', 'companions', 'immortals', 'bowAuxilia'];
+/** Elite presets new in Expansion #2 (§18.2): in the Expansion #2 tab. */
 export const EXP2_ELITES: readonly EliteId[] = ['tenthLegion'];
-const EXP1_ELITES = (Object.keys(ELITES) as EliteId[]).filter((id) => !EXP2_ELITES.includes(id));
-/** Figure look of each expansion unit card (an army that fields it). */
-const EXP1_LOOK: Partial<Record<UnitType, [ArmyLook, Blocks]>> = {
+/** Figure look of each expansion unit card (an army that fields it): Expansion #1's and Expansion #2's new unit types. */
+const EXPANSION_UNIT_LOOK: Partial<Record<UnitType, [ArmyLook, Blocks]>> = {
   LBC: ['scythian', 'eas'], CAM: ['seleucid', 'grk'], HWM: ['macedonian', 'grk'], BCH: ['briton', 'bar'],
 };
 
@@ -96,7 +97,7 @@ export function UnitCards({ types }: { types: readonly UnitType[] }) {
       {types.map((t) => {
         const st = UNIT_STATS[t];
         const [statsLine, notesLine] = unitCardLines(t);
-        const [look, blocks] = EXP1_LOOK[t] ?? ['roman', 'rom'];
+        const [look, blocks] = EXPANSION_UNIT_LOOK[t] ?? ['roman', 'rom'];
         return (
           <div key={t} className="unit-card">
             <svg width={64} height={64} viewBox="-30 -34 60 60">

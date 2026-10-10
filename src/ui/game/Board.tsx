@@ -1,8 +1,7 @@
 import { memo, useMemo } from 'react';
 import { ALL_HEXES, leaderUnit, rowOf, colOf, type GameState, type HexId, type Leader, type Side, type Unit } from '../../engine';
 import { BLOCK_COLORS, LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
-import { scenarioById } from '../../scenarios';
-import { BoardArt, ObjectiveMarkers, terrainArtOf } from '../terrain';
+import { BoardArt, ObjectiveMarkers, scenarioArt } from '../terrain';
 import { BOARD_H, BOARD_W, HEX_R, hexCenterId, hexPoints } from '../geometry';
 import type { Flash } from './controller';
 import { commandBlocks, commandById, edgeBlocksOf } from './uiModel';
@@ -140,16 +139,11 @@ const UnitLayer = memo(function UnitLayer(p: {
   );
 });
 
-/** Art hints of a battle's hexes (217's coast played as a ford), from its scenario setup: the game state drops them. */
-export function scenarioArt(scenarioId: string): (string | undefined)[] {
-  return terrainArtOf(scenarioById(scenarioId).setup);
-}
-
 export function Board(p: BoardProps) {
   const { state, flipped } = p;
   const top = flipped ? 'bottom' : 'top';
   const bottom = flipped ? 'top' : 'bottom';
-  const hexArt = useMemo(() => scenarioArt(state.scenarioId), [state.scenarioId]);
+  const hexArt = scenarioArt(state.scenarioId);
   const steepHills = state.special.rules.includes('veryHills');
   const art = useMemo(
     () => (

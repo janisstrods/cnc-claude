@@ -1,5 +1,6 @@
 // Battlefield / terrain art for Commands & Colors: Ancients (original procedural SVG).
 import { COLS, ROWS } from '../../engine/types';
+import { scenarioById } from '../../scenarios';
 import type { PaintTerrain } from './hexmath';
 
 export { BoardArt, boardArtPropsEqual } from './BoardArt';
@@ -30,6 +31,21 @@ export function terrainArtOf(setup: { terrain: readonly TerrainArtEntry[] }): (s
     if (art !== undefined) out[e.r * COLS + e.c] = art;
   }
   return out;
+}
+
+const scenarioArtCache = new Map<string, readonly (string | undefined)[]>();
+
+/**
+ * `terrainArtOf` of a battle's setup, computed once per battle: the game state drops the art hints, so the board and the
+ * game screen's tooltips both read them from here. The array is shared, so it must not be changed.
+ */
+export function scenarioArt(scenarioId: string): readonly (string | undefined)[] {
+  let art = scenarioArtCache.get(scenarioId);
+  if (!art) {
+    art = terrainArtOf(scenarioById(scenarioId).setup);
+    scenarioArtCache.set(scenarioId, art);
+  }
+  return art;
 }
 
 /**

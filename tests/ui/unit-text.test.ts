@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ELITES, UNIT_STATS, UNIT_TYPES, type Leader, type LeaderTrait, type Unit, type UnitStats, type UnitType } from '../../src/engine';
 import { leaderTraitLines, unitCardLines, unitSummary } from '../../src/ui/game/uiModel';
-import { EXP1_UNIT_TYPES, EXP2_ELITES, EXP2_UNIT_TYPES, Expansion, Expansion2, Units } from '../../src/ui/screens/RulesReference';
+import { EXP1_ELITES, EXP1_UNIT_TYPES, EXP2_ELITES, EXP2_UNIT_TYPES, Expansion, Expansion2, Units } from '../../src/ui/screens/RulesReference';
 
 const unit = (t: UnitType, extra: Partial<Unit> = {}): Unit =>
   ({ id: 'u1', side: 'top', type: t, hex: 0, blocks: UNIT_STATS[t].blocks, maxBlocks: UNIT_STATS[t].blocks, ...extra }) as Unit;
@@ -211,6 +211,8 @@ describe('rules reference unit cards', () => {
   it('the Expansion #1 tab lists every Expansion #1 elite preset and both leader traits; the Tenth Legion is in the Expansion #2 tab', () => {
     const text = renderToStaticMarkup(createElement(Expansion)).replace(/<[^>]*>/g, ' ');
     expect([...EXP2_ELITES]).toEqual(['tenthLegion']);
+    // every preset is listed in exactly one expansion tab
+    expect([...EXP1_ELITES, ...EXP2_ELITES].sort()).toEqual(Object.keys(ELITES).sort());
     for (const e of Object.values(ELITES)) {
       if (EXP2_ELITES.includes(e.id)) expect(text, e.id).not.toContain(e.name);
       else expect(text, e.id).toContain(e.name);

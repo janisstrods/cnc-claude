@@ -432,6 +432,15 @@ export class GameController {
     else this.showToast(text, kind, ms);
   }
 
+  /**
+   * Tell the human, on the board, why a click did nothing (a short notice toast). The same notice is never stacked, so a
+   * player who keeps clicking does not queue it up.
+   */
+  notice(text: string) {
+    if (this.view.toast?.text === text || this.toastQueue.some((q) => q.text === text)) return;
+    this.toast(text, 'notice', 2000);
+  }
+
   private showToast(text: string, kind: 'turn' | 'notice', ms: number) {
     const toast = { id: seq++, text, kind };
     this.set({ toast });
@@ -645,11 +654,14 @@ export class GameController {
         break;
       }
       case 'terrainChanged': {
-        // a captured camp removed (§18.4) or a rampart torn down (223): the hex is open ground now
+        // a captured camp removed (§18.4) or a rampart torn down (223): the hex is open ground now. A capture objective's
+        // hex is a camp even when it is drawn as a rampart (215's Roman camp): it is razed, not torn down.
         const was = before.terrain[e.hex];
-        const what = was === 'camp' ? 'camp' : was === 'rampart' ? 'rampart' : TERRAIN_NAMES[was].toLowerCase();
-        this.flash(e.hex, was === 'rampart' ? 'Torn down' : 'Razed', 'info');
-        this.addLog({ text: `The ${what} ${was === 'rampart' ? 'is torn down' : 'is razed'}: open ground now.`, kind: 'info' });
+        const isCamp = was === 'camp' || before.special.objectives.some((o) => o.kind === 'capture' && o.remove && o.hexes.includes(e.hex));
+        const tornDown = was === 'rampart' && !isCamp;
+        const what = isCamp ? 'camp' : TERRAIN_NAMES[was].toLowerCase();
+        this.flash(e.hex, tornDown ? 'Torn down' : 'Razed', 'info');
+        this.addLog({ text: `The ${what} ${tornDown ? 'is torn down' : 'is razed'}: open ground now.`, kind: 'info' });
         this.set({ display: after });
         await sleep(this.dur(450));
         break;
