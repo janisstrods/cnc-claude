@@ -4,6 +4,12 @@
 import { COLS, ROWS, type TerrainType } from '../../engine/types';
 import { BOARD_H, BOARD_MARGIN, BOARD_W, HEX_R, HEX_W, ROW_H } from '../geometry';
 
+/**
+ * Terrain the painters know: the engine's `TerrainType`, plus the Expansion #2 `ditch` (§18.6) until the engine type
+ * has it (plan Task 10); then this is just `TerrainType`.
+ */
+export type PaintTerrain = TerrainType | 'ditch';
+
 export interface Pt {
   x: number;
   y: number;
@@ -98,7 +104,7 @@ export interface HexInfo {
   c: number;
   x: number;
   y: number;
-  t: TerrainType;
+  t: PaintTerrain;
   ford: boolean;
 }
 
@@ -110,7 +116,7 @@ export interface PaintCtx {
   /** Centre of any hex (virtual ones included). */
   center(r: number, c: number): Pt;
   /** Terrain at a point; off-board points take the terrain of the nearest board hex. */
-  terrainAt(x: number, y: number): TerrainType;
+  terrainAt(x: number, y: number): PaintTerrain;
   /** Area painters may sample (whole board incl. frame). */
   bounds: Rect;
   /** Distance a feature extends past the playing area (rivers run under the frame). */
@@ -119,7 +125,7 @@ export interface PaintCtx {
   lonePorts?: [Dir, Dir];
 }
 
-export function boardCtx(terrain: TerrainType[], fords: boolean[], flipped: boolean): PaintCtx {
+export function boardCtx(terrain: readonly PaintTerrain[], fords: readonly boolean[], flipped: boolean): PaintCtx {
   const hexes: HexInfo[] = [];
   const byId = new Map<number, HexInfo>();
   for (let r = 0; r < ROWS; r++) {
@@ -154,7 +160,7 @@ export function boardCtx(terrain: TerrainType[], fords: boolean[], flipped: bool
 }
 
 /** Context describing a single hex centred on (0, 0) (legend/tooltip icons). */
-export function iconCtx(t: TerrainType, ford: boolean): PaintCtx {
+export function iconCtx(t: PaintTerrain, ford: boolean): PaintCtx {
   const o = vCenter(0, 0, false);
   const h: HexInfo = { id: 0, r: 0, c: 0, x: 0, y: 0, t, ford };
   const inHex = (x: number, y: number) => {
