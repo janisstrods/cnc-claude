@@ -144,7 +144,7 @@ export function isLegal(s: GameState, d: Decision, a: Answer): boolean {
       return a.kind === 'move' && !!s.turn.ordered[a.piece] && pieceMoves(s, a.piece, d.stage).some((m) => m.hex === a.to);
     case 'battle': {
       if (a.kind === 'endBattle') return !pendingMustBattle(s);
-      if (a.kind === 'rollingFire') return isRollingFirePath(s, a.unit, a.path); // never chosen by the AI yet, only by fallbacks
+      if (a.kind === 'rollingFire') return isRollingFirePath(s, a.unit, a.path); // Rolling Fire (210): one of the unit's legal paths
       if (a.kind !== 'attack') return false;
       const t = battleTargets(s, a.unit).find((x) => x.hex === a.target);
       if (!t) return false;
