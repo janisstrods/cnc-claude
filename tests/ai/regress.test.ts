@@ -13,6 +13,7 @@ import { Rng } from '../../src/ai/rand';
 import { chooseCavalryExtra } from '../../src/ai/policies';
 import { NEUTRAL_W, weightsFor } from '../../src/ai/values';
 import { Bot, type Strategy } from './bots';
+import { failOnAiErrors } from './no-ai-errors';
 
 const H = (r: number, c: number) => hexId(r, c);
 
@@ -79,6 +80,8 @@ afterEach(() => {
   forceDice([]);
   vi.useRealTimers();
 });
+
+failOnAiErrors();
 
 describe('tempo against a passive opponent', () => {
   it('Akragas: Carthage (Himilco, the Shield) attacks a turtling opponent within 30 turns', () => {

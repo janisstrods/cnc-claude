@@ -3,19 +3,21 @@
 // deterministic (tribune in deterministic mode, fixed seeds, constructed positions).
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  CARD_LIST, GameDriver, OFF_BOARD, UNIT_STATS, UNIT_TYPES, cloneState, createGame, distance, forceDice, hexId, sectionsOf, type ArmyLook,
-  type Blocks, type Decision, type EliteId, type GameEvent, type GameState, type LeaderTrait, type ScenarioSetup, type Side,
-  type SpecialRuleId, type TerrainSetup, type UnitType,
+  CARD_LIST, GameDriver, OFF_BOARD, UNIT_STATS, UNIT_TYPES, cloneState, closeCombatDice, createGame, distance, forceDice, helmetsCount, hexId,
+  other, sectionsOf, type ArmyLook, type Blocks, type Decision, type EliteId, type GameEvent, type GameState, type LeaderTrait,
+  type ScenarioSetup, type Side, type SpecialRuleId, type TerrainSetup, type UnitType,
 } from '../../src/engine';
 import { SCENARIOS } from '../../src/scenarios';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
-import { Occ } from '../../src/ai/board';
+import { Occ, helmetsOcc } from '../../src/ai/board';
 import { evaluate, rawFeatures, singleUnitRisk, type EvalBreakdown } from '../../src/ai/evaluate';
-import { closeAttackEV, evadeEV } from '../../src/ai/estimate';
+import { backDamage, closeAttackEV, evadeEV } from '../../src/ai/estimate';
 import { orderCandidates } from '../../src/ai/ordering';
 import { defendChoice, greedyBattle } from '../../src/ai/policies';
 import { NEUTRAL_W, isSacredLeader, leaderLossCost, leaderVal, leaderWorth, setViewer, unitWeight } from '../../src/ai/values';
+import { safePlacement } from '../../src/ai/sim';
 import { troopName } from '../../src/ai/voice';
+import { failOnAiErrors } from './no-ai-errors';
 
 const H = (r: number, c: number) => hexId(r, c);
 
@@ -59,6 +61,7 @@ function setHand(s: GameState, side: Side, kinds: string[]) {
   const hand: number[] = [];
   for (const k of kinds) {
     const id = CARD_LIST.findIndex((x, i) => x === k && !used.has(i));
+    if (id < 0) throw new Error(`setHand: no card of kind '${k}' left in the deck`);
     used.add(id);
     hand.push(id);
   }
@@ -108,6 +111,7 @@ function aiTurn(s: GameState, seed: number): { d: GameDriver; events: GameEvent[
 type Defend = Extract<Decision, { kind: 'defend' }>;
 
 afterEach(() => forceDice([]));
+failOnAiErrors();
 
 // ---------------------------------------------------------------------------------------------------------------------
 // heavy war machines (§15)
@@ -502,6 +506,17 @@ describe('Asculum leader placement', () => {
       expect(sectionsOf(hex, 'bottom'), `${sec} hand`).toContain(sec);
     }
   });
+
+  it('the fallback placement picks an own unit without a leader, else the first offered hex', () => {
+    const s = position({
+      units: [{ side: 'bottom', type: 'MI', at: [6, 4] }, { side: 'bottom', type: 'HI', at: [6, 6] }, { side: 'top', type: 'MI', at: [2, 6] }],
+      leaders: [{ side: 'bottom', name: 'Decius', at: [6, 4] }],
+    });
+    const d = (options: number[]): Extract<Decision, { kind: 'placeLeader' }> => ({ kind: 'placeLeader', side: 'bottom', leader: 'L9', options });
+    // an empty hex, an enemy unit, an own unit that already has a leader, then a free own unit
+    expect(safePlacement(s, d([H(7, 6), H(2, 6), H(6, 4), H(6, 6)]))).toBe(H(6, 6));
+    expect(safePlacement(s, d([H(7, 6), H(6, 4)]))).toBe(H(7, 6));
+  });
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -541,6 +556,94 @@ describe('elites and leader traits', () => {
     const withHim = orderCandidates(s, 'bottom', 'leadershipAny', NEUTRAL_W, 3).filter((c) => c.pieces.includes(s.leaders[0].id));
     expect(withHim.length).toBeGreaterThan(0);
     for (const c of withHim) expect([...c.pieces].sort()).toEqual([s.leaders[0].id, 'u1'].sort());
+  });
+
+  it('a satrap\'s helmets hit only for his own unit, not its neighbours (helmetsOcc mirrors helmetsCount)', () => {
+    const s = position({
+      top: MAC, bottom: PER,
+      units: [{ side: 'bottom', type: 'MC', at: [6, 6] }, { side: 'bottom', type: 'MC', at: [6, 5] }, { side: 'top', type: 'MI', at: [3, 6] }],
+      leaders: [{ side: 'bottom', name: 'Spithridates', at: [6, 6], traits: ['attachedOnly'] }],
+    });
+    const [own, neighbour] = s.units;
+    const helmets = (u: typeof own) => {
+      const occ = new Occ(s);
+      expect(helmetsOcc(occ, u), u.id).toBe(helmetsCount(s, u));
+      return helmetsOcc(occ, u);
+    };
+    expect(helmets(own)).toBe(true);
+    expect(helmets(neighbour)).toBe(false);
+    // an ordinary leader in his place helps the neighbour too
+    s.leaders[0].traits = [];
+    expect(helmets(neighbour)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Roman Tactical Flexibility (§17.3) in the AI's combat estimate
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe('Tactical Flexibility in the combat estimate', () => {
+  it('an unsupported non-Roman HI battling back at a Roman MI rolls 3 dice: less battle-back damage, a better attack', () => {
+    const units: Pos['units'] = [{ side: 'bottom', type: 'MI', at: [5, 6] }, { side: 'top', type: 'HI', at: [4, 6] }];
+    const est = (rules: SpecialRuleId[]) => {
+      const s = position({ units, rules });
+      s.active = 'bottom';
+      const occ = new Occ(s);
+      const [mi, hi] = s.units;
+      return {
+        dice: closeCombatDice(s, hi, mi, { role: 'back', fullAtStart: true, ordered: false }),
+        back: backDamage(s, occ, hi, mi),
+        attack: closeAttackEV(s, occ, mi, hi, 'attack', true, NEUTRAL_W).ev,
+      };
+    };
+    const tf = est(['tacticalFlexibility']);
+    const plain = est([]);
+    expect([tf.dice, plain.dice]).toEqual([3, 5]);
+    expect(tf.back).toBeLessThan(plain.back);
+    expect(tf.attack).toBeGreaterThan(plain.attack);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// information hiding on Expansion #1 decisions
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe('information hiding', () => {
+  /**
+   * The same position with what `me` cannot see changed: the opponent holds other cards (re-dealt from the deck), the
+   * deck is in another order and the dice generator is elsewhere.
+   */
+  const hidden = (s0: GameState, me: Side): GameState => {
+    const s = cloneState(s0);
+    const opp = other(me);
+    const n = s.players[opp].hand.length;
+    const pool = [...s.deck, ...s.players[opp].hand];
+    s.players[opp].hand = pool.slice(0, n);
+    s.deck = pool.slice(n).reverse();
+    s.rng = (s.rng ^ 0x5bd1e995) >>> 0;
+    s.rngCalls += 37;
+    expect(s.players[opp].hand).not.toEqual(s0.players[opp].hand);
+    return s;
+  };
+
+  const same = (scId: string, seed: number, kind: Decision['kind']) => {
+    const sc = SCENARIOS.find((x) => x.id === scId)!;
+    const s = createGame(sc.setup, seed);
+    const d = new GameDriver(s).pending!;
+    expect(d.kind).toBe(kind);
+    const opts: AiOptions = { ...detOpts(d.side, seed), personality: personalityFor(sc.setup[d.side].commander, sc.setup[d.side].army) };
+    const a1 = chooseAnswer(s, d, opts, newMemory()).answer;
+    const a2 = chooseAnswer(hidden(s, d.side), d, opts, newMemory()).answer;
+    expect(isLegal(s, d, a1)).toBe(true);
+    expect(a2).toEqual(a1);
+  };
+
+  it('117 Asculum: the first leader placement does not depend on the opponent\'s hand, the deck or the dice', () => {
+    same('117', 3, 'placeLeader');
+  });
+
+  it('112 Hellespont: the first card played does not depend on the opponent\'s hand, the deck or the dice', () => {
+    same('112', 5, 'playCard');
   });
 });
 

@@ -9,8 +9,11 @@ import { AiClient } from '../../src/ai/client';
 import { greedyMoveStep } from '../../src/ai/moves';
 import { chooseLeaderEvade, defendChoice, greedyBattle } from '../../src/ai/policies';
 import { NEUTRAL_W } from '../../src/ai/values';
+import { failOnAiErrors } from './no-ai-errors';
 
 const H = (r: number, c: number) => hexId(r, c);
+
+failOnAiErrors();
 
 interface Pos {
   units?: { side: Side; type: UnitType; at: [number, number]; blocks?: number }[];
