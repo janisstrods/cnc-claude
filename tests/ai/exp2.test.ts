@@ -476,6 +476,27 @@ describe('last-row retreat, very steep hills, Caesar and Spartacus', () => {
     expect(risk(['veryHills'])).toBeLessThan(0.7 * risk([]));
   });
 
+  it('212: a ditch stops a warband short of a charge it could make over open ground', () => {
+    const risk = (ditch: boolean) => {
+      const s = position({
+        top: SLAVE,
+        terrain: ditch ? [5, 6, 7].map((c) => ({ r: 2, c, t: 'ditch' as const })) : [],
+        units: [{ side: 'bottom', type: 'MI', at: [4, 6] }, { side: 'top', type: 'WA', at: [1, 6] }],
+      });
+      return singleUnitRisk(s, new Occ(s), s.units[0], NEUTRAL_W);
+    };
+    expect(risk(false)).toBeGreaterThan(0.02);
+    expect(risk(true)).toBe(0);
+  });
+
+  it('Barbarian chariots threaten more at full strength (+1 die)', () => {
+    const risk = (blocks: number) => {
+      const s = position({ units: [{ side: 'bottom', type: 'MI', at: [6, 6] }, { side: 'top', type: 'BCH', at: [5, 6], blocks }] });
+      return singleUnitRisk(s, new Occ(s), s.units[0], NEUTRAL_W);
+    };
+    expect(risk(3)).toBeGreaterThan(risk(2) * 1.2);
+  });
+
   it('Caesar\'s forced march: his infantry threatens a unit three hexes off', () => {
     const risk = (traits: LeaderTrait[]) => {
       const s = position({
