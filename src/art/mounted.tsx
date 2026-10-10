@@ -1,11 +1,11 @@
 // Horses and riders (LC, MC, HC, LBC, leaders), and the half-figures that crew elephants, chariots and camels.
 // Facing right, hooves at y = 0.
 import { useContext } from 'react';
-import type { UnitType } from '../engine/types';
+import type { EliteId, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
 import { WoadBody, WoadFace, figurePalette, woadOf, type CrewDress } from './foot';
 import { KITS, type MountKit } from './kits';
-import type { ArtEliteId, EmblemKind, Kit, LookPalette, Palette } from './palettes';
+import type { EmblemKind, Kit, LookPalette, Palette } from './palettes';
 import {
   Arm, Body, FacingRightCtx, Head, Hi, Line2, OL, Paint, Shape, Shield, Spear, dots, makeFig,
   type Crest, type Fig, type Hair, type Helmet, type ShieldKind, type Torso,
@@ -486,7 +486,7 @@ export function lookMount(type: UnitType, p: Palette, i: number): MountKit {
 }
 
 /** The mount of a horse archer (any kit) or of a kit-drawn cavalry figure; base cavalry is drawn in `MountedFigure`. */
-function kitMount(type: UnitType, p: Palette, i: number, elite: ArtEliteId | undefined): Mount {
+function kitMount(type: UnitType, p: Palette, i: number, elite: EliteId | undefined): Mount {
   const light = type === 'LC' || type === 'LBC';
   const pose = light ? 1 + (i % 2) : type === 'HC' ? 2 * (i % 2) : i % 3;
   const coat = type === 'HC' ? 1 : light ? 2 : 0;
@@ -508,7 +508,7 @@ function companionsPalette(p: Palette): Palette {
 }
 
 /** A mounted figure of an Expansion #1 kit, or a horse archer of any kit. */
-function KitMounted({ type, p: armyP, i, elite }: { type: UnitType; p: Palette; i: number; elite?: ArtEliteId }) {
+function KitMounted({ type, p: armyP, i, elite }: { type: UnitType; p: Palette; i: number; elite?: EliteId }) {
   const fp = figurePalette(armyP, i);
   const p = elite === 'companions' ? companionsPalette(fp) : fp;
   const f = makeFig(p, i);
@@ -552,7 +552,7 @@ function KitMounted({ type, p: armyP, i, elite }: { type: UnitType; p: Palette; 
 }
 
 /** One mounted miniature (LC, MC, HC, LBC). `elite` gives the Companions their own figures. */
-export function MountedFigure({ type, p, i, elite }: { type: UnitType; p: Palette; i: number; elite?: ArtEliteId }) {
+export function MountedFigure({ type, p, i, elite }: { type: UnitType; p: Palette; i: number; elite?: EliteId }) {
   const cavalry = KITS[p.kit].cavalry;
   if (type === 'LBC' || cavalry.drawing !== 'base') return <KitMounted type={type} p={p} i={i} elite={elite} />;
   const f = makeFig(p, i);

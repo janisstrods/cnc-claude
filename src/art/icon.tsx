@@ -1,8 +1,8 @@
 // UnitIcon: a single representative miniature for panels and tooltips.
 import { memo } from 'react';
-import type { ArmyLook, Blocks, UnitType } from '../engine/types';
+import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
 import { KITS, type IconBox } from './kits';
-import { paletteFor, type ArtEliteId } from './palettes';
+import { paletteFor } from './palettes';
 import { FacingRightCtx } from './parts';
 import { baseCavalry } from './mounted';
 import { Miniature, figureKind } from './token';
@@ -33,13 +33,13 @@ const BOX: Record<UnitType, Box> = {
 
 // Elites whose own figure (in its army's kit) reaches more than 1 unit beyond the type's box: the Companions (plumes, drawn
 // 1.04 times larger), the Immortals (guard spear) and the Mauryan bow auxilia (longbow).
-const ELITE_BOX: Partial<Record<ArtEliteId, Partial<Record<UnitType, Box>>>> = {
+const ELITE_BOX: Partial<Record<EliteId, Partial<Record<UnitType, Box>>>> = {
   companions: { MC: [-45.3, 0.5, -20.4, 22.2] },
   immortals: { MI: [-42, 1.8, -9.6, 11] },
   bowAuxilia: { AX: [-41.6, 0.4, -9.6, 17.4] },
 };
 
-function UnitIconImpl({ type, look, blockColor, size, elite }: { type: UnitType; look: ArmyLook; blockColor: Blocks; size: number; elite?: ArtEliteId }) {
+function UnitIconImpl({ type, look, blockColor, size, elite }: { type: UnitType; look: ArmyLook; blockColor: Blocks; size: number; elite?: EliteId }) {
   const p = paletteFor(look, blockColor);
   // an elite's own figure (base cavalry stays the base figure whatever its elite)
   const eliteBox = elite && !(figureKind(type) === 'horse' && baseCavalry(type, p.kit)) ? ELITE_BOX[elite]?.[type] : undefined;
@@ -63,6 +63,6 @@ const UnitIconMemo = memo(UnitIconImpl);
  * One representative miniature (facing right), centred on (0,0) and scaled to fit a `size` x `size` box. `elite` draws
  * the elite's own figure (e.g. a Companion instead of an ordinary Macedonian MC).
  */
-export function UnitIcon(props: { type: UnitType; look: ArmyLook; blockColor: Blocks; size: number; elite?: ArtEliteId }): JSX.Element {
+export function UnitIcon(props: { type: UnitType; look: ArmyLook; blockColor: Blocks; size: number; elite?: EliteId }): JSX.Element {
   return <UnitIconMemo {...props} />;
 }

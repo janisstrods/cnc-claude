@@ -1,4 +1,4 @@
-import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
+import type { ArmyLook, Blocks, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
 import type { CrewDress, FootKit, FootLook } from './foot';
 import type { BustDef, ElephantDef, HorseCoat, MountKit } from './kits';
@@ -7,12 +7,6 @@ import type { Crest, Helmet } from './parts';
 
 /** Figure kit: the shapes (helmets, shields, torsos, mounts) an army's miniatures are built from. */
 export type Kit = 'roman' | 'punic' | 'greek' | 'macedonian' | 'persian' | 'scythian' | 'indian' | 'celtic' | 'germanic' | 'lateRoman';
-
-/**
- * The elite presets that have art: the engine's `EliteId`, plus the Tenth Legion until the engine's Expansion #2 types
- * (plan Task 5) add it to `EliteId` on this branch; then this is just `EliteId`.
- */
-export type ArtEliteId = EliteId | 'tenthLegion';
 
 /** Cloth colours of a captured banner (the victory banner track). */
 export interface BannerCloth {

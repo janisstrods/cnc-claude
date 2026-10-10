@@ -1,7 +1,7 @@
 // UnitToken: base plate + miniatures + class badge + strength pips, centred on (0,0) of a pointy-top hex (R = 50).
 import { memo, type ReactNode } from 'react';
-import type { ArmyLook, Blocks, UnitType } from '../engine/types';
-import { paletteFor, type ArtEliteId, type Palette } from './palettes';
+import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
+import { paletteFor, type Palette } from './palettes';
 import { FootFigure, footKit } from './foot';
 import { MountedFigure } from './mounted';
 import { ElephantFigure } from './elephant';
@@ -93,7 +93,7 @@ function slotsFor(type: UnitType, n: number): Slot[] {
 }
 
 /** One miniature of the given type in its local frame (facing right, feet at 0,0); `elite` gives elites their figures. */
-export function Miniature({ type, p, i, elite }: { type: UnitType; p: Palette; i: number; elite?: ArtEliteId }) {
+export function Miniature({ type, p, i, elite }: { type: UnitType; p: Palette; i: number; elite?: EliteId }) {
   const k = figureKind(type);
   if (k === 'horse') return <MountedFigure type={type} p={p} i={i} elite={elite} />;
   if (k === 'camel') return <CamelFigure p={p} i={i} />;
@@ -226,7 +226,7 @@ export function Badge({ type, blocks, maxBlocks, elite }: { type: UnitType; bloc
 const STANDARD_FIG = new WeakMap<Palette, Fig>();
 
 /** Elites whose gold marker carries an eagle and the numeral X instead of the laurel wreath and the army's device. */
-const EAGLE_ELITES: ReadonlySet<ArtEliteId> = new Set<ArtEliteId>(['tenthLegion']);
+const EAGLE_ELITES: ReadonlySet<EliteId> = new Set<EliteId>(['tenthLegion']);
 
 /** The marker's frame: the shadow, the pole, the plaque (with `plaque` on it), the cross bar, and `top` above the bar. */
 function MarkerFrame({ plaque, top, p, tag }: { plaque: ReactNode; top: ReactNode; p: Palette; tag?: string }) {
@@ -245,7 +245,7 @@ function MarkerFrame({ plaque, top, p, tag }: { plaque: ReactNode; top: ReactNod
   );
 }
 
-export function EliteStandard({ p, elite }: { p: Palette; elite?: ArtEliteId }) {
+export function EliteStandard({ p, elite }: { p: Palette; elite?: EliteId }) {
   if (elite && EAGLE_ELITES.has(elite)) return <EagleMarker p={p} />;
   // Laurel leaves along two arcs around (0, -42).
   const leaves: JSX.Element[] = [];
@@ -328,7 +328,7 @@ export interface UnitTokenProps {
   maxBlocks: number;
   facing: Facing;
   /** Elite preset: its own figures (Sacred Bands, Silver Shields, Immortals, Companions, ...), the gold standard and a gold badge rim. */
-  elite?: ArtEliteId;
+  elite?: EliteId;
   dimmed?: boolean;
 }
 

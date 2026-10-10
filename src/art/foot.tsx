@@ -1,8 +1,8 @@
 // Foot soldier miniatures (LI, LB, LS, AX, WA, MI, HI) and war-machine crews. Drawn facing right, feet at (0,0), ~30 units tall.
-import type { UnitType } from '../engine/types';
+import type { EliteId, UnitType } from '../engine/types';
 import { darken, lighten } from './color';
 import { KITS } from './kits';
-import { TRIBAL_HAIR, TRIBAL_SKIN, type ArtEliteId, type EmblemKind, type Kit, type LookPalette, type Palette } from './palettes';
+import { TRIBAL_HAIR, TRIBAL_SKIN, type EmblemKind, type Kit, type LookPalette, type Palette } from './palettes';
 import {
   Arm, Body, Head, Hi, Line2, LegsEl, OL, Paint, Shape, Shield, Spear, dots, makeFig,
   type Crest, type Fig, type Hair, type Helmet, type Legs, type ShieldKind, type Torso,
@@ -93,7 +93,7 @@ export interface EliteLook {
 const robe = (c: string): Partial<LookPalette> => ({ tunic: c, tunicShade: darken(c, 0.34), tunicLight: lighten(c, 0.3) });
 
 /** How the elite foot units differ from their army's ordinary figures. */
-export const ELITE_FOOT: Partial<Record<ArtEliteId, EliteLook>> = {
+export const ELITE_FOOT: Partial<Record<EliteId, EliteLook>> = {
   // Carthage's Sacred Band (base game): white crests and gilded shield rims, otherwise the Punic hoplite.
   carthSacredBand: { palette: { crest: '#f1e8d2', crestShade: '#bfb294', crestAlt: '#6a2374', shieldRim: '#e9bf4f' } },
   // Thebes' Sacred Band: crimson shields with a gilded club, tall white crests.
@@ -137,7 +137,7 @@ export const ELITE_FOOT: Partial<Record<ArtEliteId, EliteLook>> = {
 const figPalettes = new WeakMap<Palette, Map<string, Palette>>();
 
 /** The palette one figure is painted with: the army's, the elite's changes, then the per-figure variant. */
-export function figurePalette(p: Palette, i: number, elite?: ArtEliteId): Palette {
+export function figurePalette(p: Palette, i: number, elite?: EliteId): Palette {
   const el = elite ? ELITE_FOOT[elite] : undefined;
   const variants = el?.variants ?? p.style.variants;
   const n = variants ? i % variants.length : 0;
@@ -153,7 +153,7 @@ export function figurePalette(p: Palette, i: number, elite?: ArtEliteId): Palett
 }
 
 /** The kit after the look's per-type override (perhaps another kit's figure) and the elite's. */
-export function lookKit(kit: FootKit, p: Palette, i: number, elite?: ArtEliteId): FootKit {
+export function lookKit(kit: FootKit, p: Palette, i: number, elite?: EliteId): FootKit {
   const o = kit.unit ? p.style.foot?.[kit.unit] : undefined;
   const lo = Array.isArray(o) ? o[i % o.length] : o;
   const eo = elite ? ELITE_FOOT[elite]?.foot : undefined;
@@ -278,7 +278,7 @@ function Pomegranate({ x, y, p }: { x: number; y: number; p: Palette }) {
  * One foot miniature. `kit` comes from `footKit`; the look's per-type overrides and paint variants are applied here, and
  * so is the unit's `elite` (`UnitToken` passes it down through `Miniature`).
  */
-export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit; p: Palette; i: number; elite?: ArtEliteId }) {
+export function FootFigure({ kit: baseKit, p: armyP, i, elite }: { kit: FootKit; p: Palette; i: number; elite?: EliteId }) {
   const p = figurePalette(armyP, i, elite);
   const kit = lookKit(baseKit, armyP, i, elite);
   const f: Fig = kit.tribal ? makeFig(p, i, TRIBAL_SKIN, TRIBAL_HAIR) : makeFig(p, i);

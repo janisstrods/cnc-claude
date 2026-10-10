@@ -3,8 +3,8 @@
 import { describe, expect, it } from 'vitest';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { ArmyLook, Blocks, UnitType } from '../../src/engine/types';
-import { LEADER_LOOKS, LOOKS, leaderLook, paletteFor, type ArtEliteId, type EmblemKind, type Palette } from '../../src/art/palettes';
+import type { ArmyLook, Blocks, EliteId, UnitType } from '../../src/engine/types';
+import { LEADER_LOOKS, LOOKS, leaderLook, paletteFor, type EmblemKind, type Palette } from '../../src/art/palettes';
 import { KITS } from '../../src/art/kits';
 import { LeaderToken, UnitIcon, UnitToken } from '../../src/art';
 import { ELITE_FOOT, FootFigure, figurePalette, footKit, lookKit, type FootKit } from '../../src/art/foot';
@@ -20,7 +20,7 @@ const FOOT: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI'];
 const BARBARIANS: ArmyLook[] = ['gallic', 'belgic', 'briton', 'germanic', 'slave'];
 const EXP2: ArmyLook[] = [...BARBARIANS, 'marian'];
 const blocksOf = (look: ArmyLook): Blocks => (look === 'marian' ? 'rom' : 'bar');
-const token = (type: UnitType, look: ArmyLook, extra: { elite?: ArtEliteId; facing?: 'left' | 'right' } = {}) =>
+const token = (type: UnitType, look: ArmyLook, extra: { elite?: EliteId; facing?: 'left' | 'right' } = {}) =>
   svg(h(UnitToken, { type, look, blockColor: blocksOf(look), blocks: MAX[type] ?? 4, maxBlocks: MAX[type] ?? 4, facing: extra.facing ?? 'right', elite: extra.elite }));
 
 /** The foot figure of a look as drawn: the kit's, then the look's override for the type and figure (perhaps another kit's). */
@@ -151,13 +151,13 @@ describe('Expansion #2 looks', () => {
 
   it('the Barbarian armies read apart from the Romans they fight by their tunics, shields and painted shields (dE >= 20)', () => {
     type Swatch = 'tunic' | 'shield' | 'paint';
-    const swatches = (look: ArmyLook, elites: ArtEliteId[] = []): Record<Swatch, string[]> => {
+    const swatches = (look: ArmyLook, elites: EliteId[] = []): Record<Swatch, string[]> => {
       const p = paletteFor(look, blocksOf(look));
       const all: Palette[] = [0, 1, 2, 3].flatMap((i) => [figurePalette(p, i), ...elites.map((e) => figurePalette(p, i, e))]);
       return { tunic: all.map((q) => q.tunic), shield: all.map((q) => q.shield), paint: all.map((q) => q.paint) };
     };
     // 201-205 against the base-game Romans, 206-223 against the Marian legions (with the Tenth Legion)
-    const battles: [ArmyLook, ArmyLook, ArtEliteId[]][] = [
+    const battles: [ArmyLook, ArmyLook, EliteId[]][] = [
       ['gallic', 'roman', []], ['germanic', 'roman', []], ['slave', 'roman', []],
       ['germanic', 'marian', ['tenthLegion']], ['slave', 'marian', ['tenthLegion']], ['belgic', 'marian', ['tenthLegion']],
       ['gallic', 'marian', ['tenthLegion']], ['briton', 'marian', ['tenthLegion']],

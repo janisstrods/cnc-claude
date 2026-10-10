@@ -3,11 +3,10 @@
 // #/gallery/art/figures/<look>[/TYPE,TYPE..[/<elite>]] (single figures, much enlarged),
 // #/gallery/art/boxes/<look,look..>/<TYPE,TYPE..> (measured icon boxes of figure i = 2, for KitDef.iconBox)
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { ArmyLook, Blocks, UnitType } from '../engine/types';
+import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
 import { hexPoints, HEX_W, HEX_R } from '../ui/geometry';
 import { BLOCK_COLORS, LEADER_ATTACH_OFFSET, LOOKS, LeaderToken, UnitIcon, UnitToken, paletteFor, unitTypeName } from '../art';
 import { crewFigure } from '../art/foot';
-import type { ArtEliteId } from '../art/palettes';
 import { FacingRightCtx } from '../art/parts';
 import { BasePlate, Miniature, figureKind } from '../art/token';
 import { SCENARIOS } from '../scenarios';
@@ -48,7 +47,7 @@ interface LookUse {
   blocks: Blocks;
   types: Set<UnitType>;
   commander: string;
-  elites: { type: UnitType; elite: ArtEliteId }[];
+  elites: { type: UnitType; elite: EliteId }[];
 }
 
 /** What each look fields across all scenarios: its block set, unit types, a commander's name and its elites. */
@@ -86,7 +85,7 @@ const USES = { ...EXP2, ...lookUses() } as Record<string, LookUse>;
 const blocksOf = (look: ArmyLook): Blocks => USES[look]?.blocks ?? 'grk';
 
 /** Every elite preset with the look and unit type it belongs to. */
-const ELITES: { elite: ArtEliteId; look: ArmyLook; type: UnitType; label: string }[] = [
+const ELITES: { elite: EliteId; look: ArmyLook; type: UnitType; label: string }[] = [
   { elite: 'carthSacredBand', look: 'carthaginian', type: 'HI', label: 'Carthaginian Sacred Band' },
   { elite: 'thebanSacredBand', look: 'theban', type: 'MI', label: 'Theban Sacred Band' },
   { elite: 'silverShields', look: 'eumenes', type: 'HI', label: 'Silver Shields' },
@@ -132,14 +131,14 @@ function Row({ title, note, children }: { title: string; note?: string; children
 
 /** A unit token at full strength unless `blocks` is given (UnitToken draws the elite's own figures and its standard). */
 function Token({ type, look, blockColor, blocks, facing = 'right', elite, dimmed, edgeBlocks }: {
-  type: UnitType; look: ArmyLook; blockColor: Blocks; blocks?: number; facing?: 'left' | 'right'; elite?: ArtEliteId; dimmed?: boolean; edgeBlocks?: Blocks;
+  type: UnitType; look: ArmyLook; blockColor: Blocks; blocks?: number; facing?: 'left' | 'right'; elite?: EliteId; dimmed?: boolean; edgeBlocks?: Blocks;
 }) {
   return <UnitToken type={type} look={look} blockColor={blockColor} edgeBlocks={edgeBlocks} blocks={blocks ?? MAX[type]} maxBlocks={MAX[type]} facing={facing} elite={elite} dimmed={dimmed} />;
 }
 
 interface BoardUnit {
   r: number; c: number; type: UnitType; look: ArmyLook; blocks: number; facing: 'left' | 'right'; leader?: boolean; dimmed?: boolean;
-  elite?: ArtEliteId; edge?: Blocks; name?: string;
+  elite?: EliteId; edge?: Blocks; name?: string;
 }
 
 /** A small battle line at true board scale (1 SVG unit = 1 px) to judge readability. */
@@ -423,7 +422,7 @@ function Figures() {
   const parts = window.location.hash.split('/');
   const look = (parts[4] && parts[4] in LOOKS ? parts[4] : 'roman') as ArmyLook;
   const list = (parts[5] ?? 'WA,AX,MI,HI').split(',') as UnitType[];
-  const elite = (parts[6] || undefined) as ArtEliteId | undefined;
+  const elite = (parts[6] || undefined) as EliteId | undefined;
   const p = paletteFor(look, blocksOf(look));
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 10, background: '#e3d3ad' }}>
