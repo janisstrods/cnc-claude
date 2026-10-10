@@ -1,8 +1,15 @@
-// Expansion #3 units (rules-reference §18.2, §18.3, §20): Julian legions (the pilum and the march, for one or both armies)
-// and Caesar's forced march. The engine for both exists since Expansion #2; these tests pin the Expansion #3 readings.
+// Expansion #3 units (rules-reference §18.2, §18.3, §18.5, §18.11, §20): Julian legions (the pilum and the march, for one
+// or both armies) and Caesar's forced march, whose engine exists since Expansion #2 (these tests pin the Expansion #3
+// readings); the immobile recruits of 306 Bibracte; and 304 Valentia's two Sertorian commands, whose leaders both carry one.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { battleTargets, canFireAt, canMarch, hasPilum, pieceMoves, type LeaderTrait, type UnitType } from '../../src/engine';
-import { H, build, combatDice, ev, forceDice, must, n, play, toBattle, type Pos } from './helpers';
+import {
+  GameDriver, OFF_BOARD, battleTargets, canFireAt, canMarch, cloneState, createGame, hasPilum, movablePieces, pieceMoves, unitMoves,
+  validateOrders, type LeaderTrait, type UnitType,
+} from '../../src/engine';
+import { scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
+import valentiaJson from '../../design/exp3-data/304.json';
+import bibracteJson from '../../design/exp3-data/306.json';
+import { H, build, combatDice, ev, forceDice, giveCard, must, n, noFirstStrike, passTurn, play, setupOf, toBattle, u, type Pos } from './helpers';
 
 beforeEach(() => forceDice([]));
 
@@ -183,5 +190,191 @@ describe('Julian legions with Caesar (§18.3)', () => {
       must(d, { kind: 'attack', unit: 'u1', target: H(2, 6) });
       expect(combatDice(ev(d), 'ranged')).toBe(1);
     });
+  });
+});
+
+describe('immobile units (306 Bibracte, §18.11, X3 Q15)', () => {
+  /** u1: a Roman AX recruit; u2: a Gallic MI two hexes away (target of its fire); u3: a Roman MI elsewhere. */
+  const recruits = (extra: Partial<Pos> = {}): Pos => ({
+    units: [bottom('AX', [5, 6], { immobile: true }), top('MI', [3, 6]), bottom('MI', [7, 1])],
+    ...extra,
+  });
+
+  describe('scenario data', () => {
+    it('`immobile: true` marks the unit; others carry no such field; cloneState keeps it', () => {
+      const s = build(recruits());
+      expect(s.units.map((x) => x.immobile)).toEqual([true, undefined, undefined]);
+      expect('immobile' in s.units[1]).toBe(false);
+      expect(cloneState(s).units[0].immobile).toBe(true);
+      expect('immobile' in build(recruits({ units: [bottom('AX', [5, 6], { immobile: false })] })).units[0]).toBe(false);
+    });
+
+    it('rejects a value that is not true or false, and an immobile piece off the board', () => {
+      const bad = (p: Pos) => () => createGame(setupOf(p), 1);
+      expect(bad(recruits({ units: [bottom('AX', [5, 6], { immobile: 'yes' as unknown as boolean })] })))
+        .toThrow(/^unit immobile at 5,6 must be true or false \(qa\)$/);
+      const reserves = [{ side: 'bottom', type: 'AX', immobile: true }] as unknown as Pos['reserves'];
+      expect(bad(recruits({ rules: ['magoAmbush'], reserves })))
+        .toThrow(/^reserve unit AX: immobile is only for units on the board \(qa\)$/);
+    });
+  });
+
+  it('may be ordered (the order is spent on it) but has nowhere to move, not even with Double Time or an exit', () => {
+    // an enemy next to it keeps the turn open (it may close combat)
+    const engaged = recruits({ units: [bottom('AX', [5, 6], { immobile: true }), top('MI', [4, 6])] });
+    for (const kind of ['order4C', 'doubleTime', 'lineCommand'] as const) {
+      const d = play(build(engaged), kind, ['u1']);
+      expect([kind, d.pending?.kind, Object.keys(d.state.turn.ordered)]).toEqual([kind, 'battle', ['u1']]);
+      expect(pieceMoves(d.state, 'u1')).toEqual([]);
+      expect(unitMoves(d.state, 'u1')).toEqual([]);
+      expect(movablePieces(d.state, 1)).toEqual([]);
+    }
+    // on an exit hex (the enemy baseline) it may not step off the board either; an ordinary auxilia may
+    const onExit = (immobile: boolean) => recruits({
+      units: [bottom('AX', [0, 6], { immobile }), top('MI', [2, 2])], objectives: [{ kind: 'exit', side: 'bottom', hexes: [[0, 6]] }],
+    });
+    expect(pieceMoves(play(build(onExit(true)), 'order4C', ['u1']).state, 'u1')).toEqual([]);
+    expect(pieceMoves(play(build(onExit(false)), 'order4C', ['u1']).state, 'u1').some((m) => m.hex === OFF_BOARD)).toBe(true);
+    // the same unit without the flag moves
+    expect(pieceMoves(play(build(recruits({ units: [bottom('AX', [5, 6]), top('MI', [3, 6])] })), 'order4C', ['u1']).state, 'u1').length).toBeGreaterThan(0);
+  });
+
+  it('fires as a unit that did not move: 2 dice', () => {
+    const d = play(build(recruits()), 'order4C', ['u1']);
+    expect(d.pending?.kind).toBe('battle'); // nothing could move
+    expect(battleTargets(d.state, 'u1')).toEqual([{ hex: H(3, 6), kind: 'ranged' }]);
+    ev(d);
+    forceDice(n('heavy', 2));
+    must(d, { kind: 'attack', unit: 'u1', target: H(3, 6) });
+    expect(combatDice(ev(d), 'ranged', 'u1')).toBe(2);
+  });
+
+  it('close combats, but never momentum advances (so no bonus combat); an ordinary auxilia does', () => {
+    const fight = (immobile: boolean) => {
+      const s = build({ units: [bottom('AX', [5, 6], { immobile }), top('MI', [4, 6]), top('MI', [4, 8])] });
+      s.units[1].blocks = 1;
+      const d = play(s, 'order4C', ['u1']);
+      if (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
+      forceDice(n('medium', 3));
+      must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+      expect(u(d, 'u2')).toBeUndefined();
+      return d;
+    };
+    const still = fight(true);
+    expect(still.pending?.kind).not.toBe('momentum');
+    expect(u(still, 'u1')!.hex).toBe(H(5, 6));
+    expect(fight(false).pending).toMatchObject({ kind: 'momentum', unit: 'u1', hex: H(4, 6) });
+  });
+
+  it('battles back as usual', () => {
+    const d = play(build(recruits({ first: 'top', units: [bottom('AX', [5, 6], { immobile: true }), top('MI', [4, 6])] })), 'order4C', ['u2']);
+    if (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
+    ev(d);
+    forceDice([...n('heavy', 4), ...n('light', 3)]); // the MI misses the light auxilia; the auxilia battles back
+    must(d, { kind: 'attack', unit: 'u2', target: H(5, 6) });
+    expect(combatDice(ev(d), 'battleBack', 'u1')).toBe(3);
+  });
+
+  it('retreats normally when a flag forces it, and stays immobile afterwards', () => {
+    const d = play(build(recruits({ first: 'top', units: [bottom('AX', [5, 6], { immobile: true }), top('MI', [4, 6])] })), 'order4C', ['u2']);
+    if (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
+    forceDice(['flag', ...n('heavy', 3)]);
+    must(d, { kind: 'attack', unit: 'u2', target: H(5, 6) });
+    if (d.pending?.kind === 'retreat') must(d, { kind: 'choose', index: 0 });
+    const ax = u(d, 'u1')!;
+    expect(ax.hex === H(6, 6) || ax.hex === H(6, 7)).toBe(true);
+    expect(ax.immobile).toBe(true);
+    while (d.pending?.kind === 'battle' || d.pending?.kind === 'momentum') {
+      must(d, d.pending.kind === 'battle' ? { kind: 'endBattle' } : { kind: 'yesno', yes: false });
+    }
+    const card = giveCard(d.state, 'bottom', 'order4C');
+    must(d, { kind: 'playCard', card });
+    must(d, { kind: 'orders', pieces: ['u1'] });
+    expect(pieceMoves(d.state, 'u1')).toEqual([]);
+  });
+
+  it('a leader may move onto it and attach; the unit still cannot move', () => {
+    const d = play(build(recruits({ leaders: [{ side: 'bottom', name: 'Legate', at: [6, 6] }] })), 'order4C', ['u1', 'L4']);
+    expect(pieceMoves(d.state, 'L4').find((m) => m.hex === H(5, 6))).toMatchObject({ attachesTo: 'u1' });
+    ev(d);
+    must(d, { kind: 'move', piece: 'L4', to: H(5, 6) });
+    expect(ev(d)).toContainEqual({ t: 'attach', leader: 'L4', unit: 'u1' });
+    expect(pieceMoves(d.state, 'u1')).toEqual([]);
+  });
+
+  it('306 itself: the two recruits in the Roman camps are immobile, no other unit is', () => {
+    const json = { ...(bibracteJson as unknown as ScenarioJson), expansion: 'exp2' as const };
+    const s = createGame(scenarioFromJson(json).setup, 1);
+    expect(s.units.filter((x) => x.immobile).map((x) => [x.side, x.type, x.hex])).toEqual([
+      ['bottom', 'AX', H(8, 4)], ['bottom', 'AX', H(8, 5)],
+    ]);
+  });
+});
+
+describe('304 Valentia: both Sertorian leaders carry a command (§18.5, X3 Q16)', () => {
+  const MIXED = 'One card orders one army only.';
+  const COMMANDS: Pos['commands'] = [
+    { id: 'herennius', name: 'Herennius', side: 'top' }, { id: 'perpenna', name: 'Perpenna', side: 'top', blocks: 'grk' },
+  ];
+  const her = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}) => top(type, at, { command: 'herennius', ...extra });
+  const per = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}) => top(type, at, { command: 'perpenna', ...extra });
+  /** u1 MI (2,5) and u2 AX (2,6) of Herennius; u3 MI (2,7) and u4 MI (2,8) of Perpenna; u5 a Roman MI. */
+  const units = [her('MI', [2, 5]), her('AX', [2, 6]), per('MI', [2, 7]), per('MI', [2, 8]), bottom('MI', [6, 6])];
+  const err = (s: ReturnType<typeof build>, kind: 'leadershipAny' | 'inspiredC', pieces: string[]) => validateOrders(s, 'top', kind, pieces);
+
+  it('a Leadership card on a leader orders only his own command', () => {
+    // Herennius with u1, Perpenna with u4 (L6, L7)
+    const s = build({ commands: COMMANDS, first: 'top', units, leaders: [
+      { side: 'top', name: 'Herennius', at: [2, 5], command: 'herennius' }, { side: 'top', name: 'Perpenna', at: [2, 8], command: 'perpenna' },
+    ] });
+    expect(err(s, 'leadershipAny', ['L6', 'u1', 'u2'])).toBeNull();
+    expect(err(s, 'leadershipAny', ['L6', 'u1', 'u2', 'u3'])).toBe(MIXED);
+    expect(err(s, 'leadershipAny', ['L7', 'u4', 'u3'])).toBeNull();
+    expect(err(s, 'leadershipAny', ['L7', 'u4', 'u3', 'u2'])).toBe(MIXED);
+  });
+
+  it('a lone leader is ordered alone or with his own command only, never with the other leader', () => {
+    // lone Herennius (3,5) next to u2; lone Perpenna (3,6) next to u2 and u3 (L6, L7)
+    const s = build({ commands: COMMANDS, first: 'top', units, leaders: [
+      { side: 'top', name: 'Herennius', at: [3, 5], command: 'herennius' }, { side: 'top', name: 'Perpenna', at: [3, 6], command: 'perpenna' },
+    ] });
+    expect(err(s, 'leadershipAny', ['L6'])).toBeNull();
+    expect(err(s, 'leadershipAny', ['L7'])).toBeNull();
+    expect(err(s, 'leadershipAny', ['L6', 'u2'])).toBeNull();
+    expect(err(s, 'leadershipAny', ['L6', 'u2', 'u3'])).toBe(MIXED);
+    expect(err(s, 'leadershipAny', ['L7', 'u3'])).toBeNull();
+    expect(err(s, 'leadershipAny', ['L7', 'u2'])).toBe(MIXED);
+    expect(err(s, 'leadershipAny', ['L6', 'L7'])).toBe(MIXED);
+  });
+
+  it('Rally names one command; a leader of the other command still counts for the adjacency', () => {
+    // u1 (Herennius' MI, damaged) carries Herennius; u3 (Perpenna's MI, damaged) stands next to him only; Perpenna is far off
+    const s = build({ commands: COMMANDS, first: 'top', units: [
+      her('MI', [2, 5], { blocks: 2 }), her('AX', [2, 6]), per('MI', [2, 4], { blocks: 2 }), per('MI', [0, 11]), bottom('MI', [6, 6]),
+    ], leaders: [
+      { side: 'top', name: 'Herennius', at: [2, 5], command: 'herennius' }, { side: 'top', name: 'Perpenna', at: [0, 11], command: 'perpenna' },
+    ] });
+    forceDice(['medium', ...n('flag', 4)]);
+    const d = play(s, 'rally');
+    expect(d.pending).toEqual({ kind: 'chooseCommand', side: 'top', options: ['herennius', 'perpenna'] });
+    must(d, { kind: 'choose', index: 1 });
+    expect(d.answer({ kind: 'assign', ids: ['u1', null, null, null, null] })).toBe(false);
+    must(d, { kind: 'assign', ids: ['u3', null, null, null, null] });
+    expect(u(d, 'u3')!.blocks).toBe(3);
+  });
+
+  it('304 itself: each leader commands his own wing, and the Romans are free', () => {
+    const json = { ...(valentiaJson as unknown as ScenarioJson), expansion: 'exp2' as const };
+    const s = createGame(scenarioFromJson(json).setup, 1);
+    const at = (r: number, c: number) => s.units.find((x) => x.hex === H(r, c))!.id;
+    const leader = (name: string) => s.leaders.find((l) => l.name === name)!;
+    const [herennius, perpenna] = [leader('Herennius'), leader('Perpenna')];
+    expect([herennius.command, perpenna.command]).toEqual(['herennius', 'perpenna']);
+    expect(validateOrders(s, 'top', 'leadershipAny', [herennius.id, at(2, 5), at(2, 4), at(2, 6)])).toBeNull();
+    expect(validateOrders(s, 'top', 'leadershipAny', [perpenna.id, at(1, 10), at(1, 9), at(0, 10)])).toBeNull();
+    expect(validateOrders(s, 'top', 'leadershipAny', [perpenna.id, at(1, 10), at(1, 9), at(2, 6)])).not.toBeNull();
+    const romans = s.units.filter((x) => x.side === 'bottom').map((x) => x.id);
+    expect(s.units.filter((x) => x.side === 'bottom').every((x) => x.command === undefined)).toBe(true);
+    expect(validateOrders(s, 'bottom', 'orderMedium', romans.filter((id) => s.units.find((x) => x.id === id)!.type === 'MI').slice(0, 3))).toBeNull();
   });
 });

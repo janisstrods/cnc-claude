@@ -29,8 +29,11 @@ export interface ScenarioSetup {
   first: Side;
   banners: number;
   terrain: TerrainSetup[];
-  /** `command`: id of the separate command the unit belongs to (needs `commands`, §18.5). */
-  units: { side: Side; type: UnitType; r: number; c: number; elite?: EliteId; command?: string }[];
+  /**
+   * `command`: id of the separate command the unit belongs to (needs `commands`, §18.5). `immobile: true`: the unit never
+   * moves or momentum advances (306 Bibracte, §18.11).
+   */
+  units: { side: Side; type: UnitType; r: number; c: number; elite?: EliteId; command?: string; immobile?: boolean }[];
   /** `traits`: Expansion #1 leader traits (§17.2), e.g. Alexander's `ccBonus`. `command`: a leader of that command (§18.5). */
   leaders: { side: Side; name: string; r: number; c: number; traits?: LeaderTrait[]; command?: string }[];
   reserves: { side: Side; type: UnitType }[];
@@ -283,7 +286,10 @@ function checkIds(setup: ScenarioSetup) {
     if (t.hill !== undefined && typeof t.hill !== 'boolean') throw new Error(`terrain hill at ${t.r},${t.c} must be true or false (not ${String(t.hill)})`);
     if (t.hill && !HILL_UNDER_TERRAIN.includes(t.t)) throw new Error(`a hill under ${t.t} at ${t.r},${t.c}: only a camp or wall may stand on a hill`);
   }
-  for (const u of setup.units) if (!has(UNIT_STATS, u.type)) throw new Error(`unknown unit type ${String(u.type)} at ${u.r},${u.c}`);
+  for (const u of setup.units) {
+    if (!has(UNIT_STATS, u.type)) throw new Error(`unknown unit type ${String(u.type)} at ${u.r},${u.c}`);
+    if (u.immobile !== undefined && typeof u.immobile !== 'boolean') throw new Error(`unit immobile at ${u.r},${u.c} must be true or false`);
+  }
   for (const u of setup.reserves) if (!has(UNIT_STATS, u.type)) throw new Error(`unknown unit type ${String(u.type)} in reserve`);
   // separate commands (§18.5) are for the pieces on the board only: a command anywhere else would be lost silently
   const offBoard: [string, { type?: string; name?: string; command?: unknown }[]][] = [
@@ -293,6 +299,10 @@ function checkIds(setup: ScenarioSetup) {
     for (const p of list) {
       if (p.command !== undefined) throw new Error(`${what} ${p.type ?? p.name}: command ${String(p.command)} is only for pieces on the board`);
     }
+  }
+  // immobile units (§18.11) start on the board: the flag on a reserve would be lost silently
+  for (const p of setup.reserves as { type: string; immobile?: unknown }[]) {
+    if (p.immobile !== undefined) throw new Error(`reserve unit ${p.type}: immobile is only for units on the board`);
   }
 }
 
@@ -520,6 +530,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
       unit.elite = u.elite;
     }
     if (u.command !== undefined) unit.command = checkedCommand(commands, u.side, u.command, `unit command ${String(u.command)}`, ` (${u.r},${u.c})`);
+    if (u.immobile) unit.immobile = true;
     return withLegion(unit, setup.legions);
   });
   const leaders: Leader[] = setup.leaders.map((l) => {

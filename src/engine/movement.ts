@@ -72,11 +72,11 @@ export interface UnitMoveOptions {
 
 /**
  * All hexes an ordered unit may move to this turn, with the shortest path and whether it may battle afterwards.
- * Does not include the start hex.
+ * Does not include the start hex. None for an immobile unit (§18.11).
  */
 export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = {}): MoveTarget[] {
   const u = unitById(s, unitId);
-  if (!u) return [];
+  if (!u || u.immobile) return []; // an immobile unit (306, §18.11) never moves
   const mods = s.turn.mods;
   const fromReserve = !!opts.entryHexes;
   const startHex = u.hex;

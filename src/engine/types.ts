@@ -73,6 +73,11 @@ export interface Unit {
   legion?: Legion;
   /** Id of the separate command the unit belongs to (`ScenarioSpecial.commands`, 210 Picenum, §18.5); absent outside one. */
   command?: string;
+  /**
+   * Immobile (306 Bibracte's recruits, §18.11): the unit never moves and never momentum advances, but is ordered, fires,
+   * battles and battles back, and retreats normally (staying immobile). Absent for every other unit.
+   */
+  immobile?: boolean;
 }
 
 /**

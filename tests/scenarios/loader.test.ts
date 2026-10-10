@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { ALL_HEXES, OFF_BOARD, createGame, hexId, isHill, neighbours, steepSlope, type ObjectiveSetup } from '../../src/engine';
 import { scenarioById, scenarioFromJson, scenariosFromFiles, type ScenarioJson } from '../../src/scenarios';
 import gergovia from '../../design/exp3-data/308.json';
+import bibracte from '../../design/exp3-data/306.json';
+import valentia from '../../design/exp3-data/304.json';
 
 const H = (r: number, c: number) => hexId(r, c);
 
@@ -370,6 +372,42 @@ describe('Expansion #3 reinforcements through the loader (design/exp3-data/308.j
     setup.ambush!.entryHexes![0][0] = 8;
     setup.placeUnits![0].hexes[0][1] = 9;
     setup.placeUnits![0].type = 'HI';
+    expect(j).toEqual(keep);
+  });
+});
+
+describe('Expansion #3 units and commands through the loader (design/exp3-data/306.json, 304.json)', () => {
+  // staged for import, read as Expansion #2 files (see above)
+  const read = (j: unknown): ScenarioJson => ({ ...(JSON.parse(JSON.stringify(j)) as ScenarioJson), expansion: 'exp2' });
+
+  it('306: the two recruits keep `immobile` in the setup and the state (§18.11)', () => {
+    const sc = scenarioFromJson(read(bibracte));
+    expect(sc.setup.units.filter((u) => u.immobile).map((u) => [u.side, u.type, u.r, u.c])).toEqual([['bottom', 'AX', 8, 4], ['bottom', 'AX', 8, 5]]);
+    const s = createGame(sc.setup, 1);
+    expect(s.units.filter((u) => u.immobile).map((u) => [u.type, u.hex])).toEqual([['AX', H(8, 4)], ['AX', H(8, 5)]]);
+    expect(s.units.filter((u) => !u.immobile)).toHaveLength(s.units.length - 2);
+  });
+
+  it('304: both leaders keep their command, the units theirs, and the commands their blocks (§18.5)', () => {
+    const sc = scenarioFromJson(read(valentia));
+    expect(sc.setup.leaders.filter((l) => l.side === 'top').map((l) => [l.name, l.command])).toEqual([['Perpenna', 'perpenna'], ['Herennius', 'herennius']]);
+    const s = createGame(sc.setup, 1);
+    expect(s.special.commands).toEqual([
+      { id: 'herennius', name: 'Herennius', side: 'top' }, { id: 'perpenna', name: 'Perpenna', side: 'top', blocks: 'grk' },
+    ]);
+    expect(s.leaders.map((l) => [l.name, l.command])).toEqual([
+      ['Perpenna', 'perpenna'], ['Herennius', 'herennius'], ['Memmius', undefined], ['Pompey', undefined], ['Afranius', undefined],
+    ]);
+    const count = (c: string) => s.units.filter((u) => u.command === c).length;
+    expect([count('herennius'), count('perpenna'), s.units.filter((u) => u.side === 'top' && !u.command).length]).toEqual([10, 5, 0]);
+  });
+
+  it('the setup is a copy: changing a unit or leader leaves the JSON data alone', () => {
+    const j = read(bibracte);
+    const keep = JSON.parse(JSON.stringify(j));
+    const { setup } = scenarioFromJson(j);
+    setup.units.find((u) => u.immobile)!.immobile = false;
+    setup.leaders[0].command = 'x';
     expect(j).toEqual(keep);
   });
 });

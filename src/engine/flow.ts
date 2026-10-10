@@ -748,10 +748,10 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
 
 function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attack' | 'bonus', adv: AdvanceTrack): Gen {
   if (s.winner || !isEmptyHex(s, hex) || isImpassable(s, hex)) return;
-  // war machines never advance (§15), and no unit advances into terrain it may not enter (a mounted unit onto a city wall,
-  // §18.7; a foot unit's advance onto a wall is allowed and ends there) or up a steep slope (308; unreachable, since no
-  // close combat crosses one)
-  if (UNIT_STATS[u.type].noMomentum || forbidsTerrain(u.type, terrainAt(s, hex)) || steepSlopeUp(s, u.hex, hex)) return;
+  // war machines and immobile units (306, §18.11) never advance (§15), and no unit advances into terrain it may not enter (a
+  // mounted unit onto a city wall, §18.7; a foot unit's advance onto a wall is allowed and ends there) or up a steep slope
+  // (308; unreachable, since no close combat crosses one)
+  if (UNIT_STATS[u.type].noMomentum || u.immobile || forbidsTerrain(u.type, terrainAt(s, hex)) || steepSlopeUp(s, u.hex, hex)) return;
   const op = s.turn.ordered[u.id];
   const fromT = terrainAt(s, u.hex);
   if ((fromT === 'marsh' || isFord(s, u.hex)) && op?.enteredHexThisTurn) return;

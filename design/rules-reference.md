@@ -923,6 +923,8 @@ Data: side `cards: 0`, `orders: 'dice'`, `orderDice: 2`; the roll purpose is `di
   and retreating separately, and names "advance" separately from "move". After a retreat it **stays immobile**
   **[Interp]**. In 306 the two units are Roman AX in the Roman camps; AX never evade.
 * A leader may move onto it and attach; the unit still cannot move.
+* Engine: `immobile` is true or false on a board unit (a reserve unit may not carry it); `unitMoves` gives an immobile unit
+  no target (so no exit either) and `momentum` asks nothing for it. Orders, combat and retreats are untouched.
 
 ## 19. Expansion #2 battles (201–223)
 
