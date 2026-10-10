@@ -236,7 +236,7 @@ body {
 .hover-tip {
   position: fixed;
   z-index: 50;
-  width: 280px;
+  width: 300px;
   pointer-events: none;
   background: linear-gradient(180deg, rgba(36, 22, 12, .97), rgba(24, 14, 7, .97));
   border: 1px solid rgba(226, 189, 114, .55);
