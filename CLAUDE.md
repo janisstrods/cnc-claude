@@ -8,13 +8,13 @@ Browser game: TypeScript + Vite + React, pure rules engine in `src/engine`, AI i
 |---|---|
 | `npm install` | Install dependencies |
 | `npm run dev` | Dev server on http://localhost:5173 (launch config `dev`) |
-| `npm test` | All Vitest tests (engine, rules, scenarios, art, terrain, UI, AI, golden games; ~1180 tests, ~80 s) |
+| `npm test` | All Vitest tests (engine, rules, scenarios, art, terrain, UI, AI, golden games; ~1950 tests, ~2–4 min) |
 | `npm run typecheck` | `tsc --noEmit -p .` |
 | `npm run build` | Type-check, then build the static site into `docs/` |
 
 Slow opt-in AI matches: `npx vite-node scripts/ai-match.ts -- --a tribune --b recruit --games 2` (see the file header for flags).
 Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scripts/ai-balance.ts -- --scenarios 101,110 --games 2`
-(see the file header; results are logged in `design/exp1-ai-balance.md`).
+(see the file header; results are logged in `design/exp1-ai-balance.md` and, for 201–223, `design/exp2-ai-balance.md`).
 
 ## Publishing (GitHub Pages)
 
@@ -33,7 +33,8 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
 
 ## Development shortcuts
 
-- Battles: `001`–`015` (base game) and `101`–`124` (Expansion #1, *Greece & Eastern Kingdoms*), data in `src/scenarios/data/<id>.json`.
+- Battles: `001`–`015` (base game), `101`–`124` (Expansion #1, *Greece & Eastern Kingdoms*) and `201`–`223` (Expansion #2,
+  *Rome & the Barbarians*), data in `src/scenarios/data/<id>.json`.
 - Dev-only routes: `#/play/<scenario>/<top|bottom>/<recruit|tribune|consul>[/<seed>]` (e.g. `#/play/109/top/tribune`) and `#/gallery/art|terrain|kit|history`.
 - In dev, `window.__cca` is the GameController. `__cca.autoAnswer()` plays a random legal move for the human, and `__cca.setSpeed(4)` speeds up animations.
 
@@ -41,9 +42,16 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
 
 - `design/rules-reference.md` is the authoritative condensed rules. Rules tests in `tests/rules` are written from it.
   §15–§17 cover Expansion #1 (new units; sea, rampart and uncapped fords; elites, leader traits and scenario rules).
+  §18 covers the Expansion #2/#3 mechanics (Barbarian chariot, pilum, march and legions, Caesar, Spartacus, battle
+  objectives, ambush reserves, separate commands, Rolling Fire, ditch, very steep hills) and §19 the battles 201–223.
 - `design/exp1-*.md`: Expansion #1 scenario survey (`exp1-survey.md`), rulings research (`exp1-rulings.md`),
   scenario transcription notes (`exp1-scenario-notes.md`) and AI calibration and balance log (`exp1-ai-balance.md`).
-- `design/superpowers/` holds the original design spec and implementation plan.
+- `design/exp2-*.md` and `design/exp3-*.md`: the same survey / rulings / notes / balance documents for Expansions #2
+  and #3. Expansion #3 (301–319) is planned in `design/superpowers/plans/2026-10-10-exp3-roman-civil-wars.md`.
+- `design/superpowers/` holds the design specs and implementation plans.
+- Battle objectives (camp captures, held banners, majority, section clear, exits) are data (`objectives` in the scenario
+  JSON) handled by `src/engine/objectives.ts`, `held.ts` and `banners.ts`; victory counts `bannerTotal` (permanent +
+  held). Terrain may change during play only through `setTerrain` (copy-on-write; `cloneState` shares the arrays).
 
 ## Battle histories
 
