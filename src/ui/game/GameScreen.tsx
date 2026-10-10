@@ -8,6 +8,7 @@ import {
 import { UnitIcon, unitTypeName } from '../../art';
 import { BannerTrack, Button, CardBack, CardView, DiceTray, DieView, Modal, Panel } from '../kit';
 import { terrainName } from '../terrain';
+import { BattleResult } from './BattleResult';
 import { Board } from './Board';
 import type { GameController, LogLine } from './controller';
 import {
@@ -607,21 +608,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
       </Modal>
 
       <Modal open={!!view.over} title={view.over ? (view.over.winner === human ? 'Victory!' : view.over.winner === 'draw' ? 'A Draw' : 'Defeat') : ''}>
-        {view.over && (
-          <div className="victory">
-            <p className="modal-p">{view.over.reason}.</p>
-            <p className="modal-p">Banners — {me.army}: {me.banners} · {them.army}: {them.banners} · Turns played: {s.turn.number}</p>
-            <div className="modal-buttons">
-              {onRematch && (
-                <>
-                  <Button title={`Fight this battle again as the ${me.army}`} onClick={() => onRematch(false)}>Rematch</Button>
-                  <Button title={`Fight this battle again as the ${them.army}`} onClick={() => onRematch(true)}>Rematch, switch sides</Button>
-                </>
-              )}
-              <Button variant={onRematch ? 'secondary' : 'primary'} onClick={onExit}>Return to menu</Button>
-            </div>
-          </div>
-        )}
+        {view.over && <BattleResult state={s} human={human} over={view.over} onExit={onExit} onRematch={onRematch} />}
       </Modal>
     </div>
   );

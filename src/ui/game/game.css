@@ -259,8 +259,30 @@ body {
 .assign-row { display: flex; gap: 12px; align-items: center; }
 .assign-row select { flex: 1; padding: 5px; font-family: inherit; font-size: 15px; background: #fbf3dc; border: 1px solid #b0823a; border-radius: 4px; }
 .assign-none { color: #7a6448; font-style: italic; }
-.victory { min-width: min(360px, 100%); }
-.victory .modal-buttons { flex-wrap: wrap; }
+.victory { min-width: min(400px, 100%); }
+.victory-reason { margin: 0 0 12px; text-align: center; font-style: italic; font-size: 17px; }
+.victory-score {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 12px; row-gap: 6px;
+  padding: 10px 14px; border-radius: 8px; background: rgba(154, 111, 44, .1); box-shadow: inset 0 0 0 1px rgba(154, 111, 44, .3);
+}
+.victory-row { display: contents; }
+.victory-army { font-size: 16px; white-space: nowrap; }
+.victory-army small { font-size: 13px; color: #7a6448; }
+.victory-banners { display: flex; flex-wrap: wrap; gap: 3px; }
+.victory-banner { display: block; }
+.victory-count { font-family: var(--kit-font-title); font-weight: 700; font-size: 18px; text-align: right; color: #5a4630; }
+.victory-row.is-winner .victory-army, .victory-row.is-winner .victory-count { color: #6a1512; font-weight: 700; }
+.victory-turns { margin: 8px 0 16px; text-align: center; font-size: 14px; color: #7a6448; }
+.victory-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 12px; }
+.victory-actions .kit-btn { padding-left: .8em; padding-right: .8em; }
+.victory-actions .kit-btn__label { display: flex; flex-direction: column; align-items: center; }
+.victory-as { margin-top: 2px; font-family: var(--kit-font-body); font-weight: 400; font-style: italic; font-size: 14px; letter-spacing: 0; opacity: .88; }
+.victory-menu { grid-column: 1 / -1; }
+@media (max-width: 480px) {
+  .victory-score { padding: 8px 10px; column-gap: 8px; }
+  .victory-banners { gap: 2px; }
+  .victory-banner { width: 13px; height: 22px; }
+}
 
 @media (max-width: 1180px) {
   .game-root { grid-template-columns: 1fr 260px; }
