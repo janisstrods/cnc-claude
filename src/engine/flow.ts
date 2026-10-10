@@ -347,7 +347,10 @@ function* walkPath(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, kind
   if (opt.attachLeader) {
     ctx.emit({ t: 'attach', leader: opt.attachLeader, unit: u.id });
   }
-  // the held banners are brought up to date by the caller, after the move's own losses (hexes passed through never count)
+  // the held banners are brought up to date by the caller, after the move's own losses (hexes passed through never count).
+  // Known exceptions (no shipped battle has them: no marsh or elephant where banners are held): a leader killed by the marsh
+  // check of an intermediate hex scores while the unit stands there, and an elephant's blocked retreat settles its banners
+  // before the elephant's own losses (rules-reference §18.4).
   return false;
 }
 

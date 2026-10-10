@@ -619,6 +619,9 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
 * **[Interp]** A retreat, evade or momentum advance is counted where it ends, after its own losses: blocks lost for
   retreat hexes it could not take, a marsh check where it ends, a war machine abandoned after its evade. A unit
   eliminated there never held the hex (no held banner and no win for its side; the enemy scores the unit).
+  Two known engine exceptions, unreachable in the shipped battles (none has marsh or elephants where banners are held):
+  a leader killed by the marsh check of an intermediate retreat or evade hex scores while the unit stands on that hex,
+  and an elephant's blocked retreat settles its banners before the elephant's own losses.
 * **[Interp]** Every banner scored (a unit or leader eliminated, an exit, a capture) first brings the held banners up to
   date, so an exit or capture that also changes a held objective counts the held change first: a unit leaving a hold hex
   or a `majority` 'always' hex to exit or to take a camp loses that held banner before its own banner counts. A total
