@@ -5,10 +5,11 @@
 //    the last commit that still had `Faction`.
 // 2. The base armies render byte-identically to the art before Expansion #1 (pinned SVG hash).
 // 3. The Expansion #1 looks: all 19 looks and 4 block sets exist, armies that meet look different, elites differ.
+// 4. Opposing armies are told apart by the colours of their figures (tunics, shields), not only by the base edge.
 import { describe, expect, it } from 'vitest';
 import baselineJson from './palette-baseline.json';
 import { createGame } from '../../src/engine';
-import type { ArmyLook, Blocks, EliteId, UnitType } from '../../src/engine/types';
+import type { ArmyLook, Blocks, EliteId, Side, UnitType } from '../../src/engine/types';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { BLOCK_COLORS, LOOKS, blockColors, lookDef, paletteFor, type Kit } from '../../src/art/palettes';
@@ -111,6 +112,99 @@ describe('every base scenario seats its armies in the old colours', () => {
       }
     });
   }
+});
+
+describe('opposing armies are told apart by their colours, not only by the base edge', () => {
+  // CIE76 colour difference: sRGB '#rrggbb' -> linear -> XYZ (D65) -> Lab, then the Euclidean distance. About 2.3 is the
+  // smallest difference the eye notices; 20 or more reads as a different colour at a glance, even at board size.
+  const MIN_DELTA_E = 20;
+  function lab(hex: string): [number, number, number] {
+    const [r, g, b] = [1, 3, 5].map((i) => {
+      const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    const x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047;
+    const y = 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
+    const z = (0.0193339 * r + 0.119192 * g + 0.9503041 * b) / 1.08883;
+    const f = (t: number) => (t > 216 / 24389 ? Math.cbrt(t) : ((24389 / 27) * t + 16) / 116);
+    return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+  }
+  const deltaE = (a: string, b: string) => {
+    const [l1, a1, b1] = lab(a);
+    const [l2, a2, b2] = lab(b);
+    return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
+  };
+  it('the colour difference matches reference values', () => {
+    expect(deltaE('#ffffff', '#ffffff')).toBe(0);
+    expect(lab('#ffffff')[0]).toBeCloseTo(100, 1);
+    expect(lab('#000000')[0]).toBeCloseTo(0, 5);
+    expect(deltaE('#ff0000', '#00ff00')).toBeCloseTo(170.6, 0);
+    expect(deltaE('#b8232b', '#a8281f')).toBeLessThan(8); // the old Antigonid tunic against the Roman red
+  });
+
+  type Swatch = 'tunic' | 'shield' | 'paint';
+  const SWATCHES: Swatch[] = ['tunic', 'shield', 'paint'];
+  type Scenario = (typeof SCENARIOS)[number];
+
+  /**
+   * The tunic, shield and light-troop shield ("paint") colours the figures of a side are really painted with in a scenario:
+   * the army's palette, each per-figure variant (Persian robes, Phocian mercenaries, Mauryan saffron) and the foot elites it fields.
+   */
+  function effective(sc: Scenario, side: Side): Record<Swatch, string[]> {
+    const p = paletteFor(sc.setup[side].look, sc.setup[side].blocks);
+    const elites = new Set<EliteId>();
+    for (const u of sc.setup.units) if (u.side === side && u.elite && ELITE_FOOT[u.elite]) elites.add(u.elite);
+    const palettes = [0, 1, 2, 3].flatMap((i) => [figurePalette(p, i), ...[...elites].map((e) => figurePalette(p, i, e))]);
+    return Object.fromEntries(SWATCHES.map((k) => [k, [...new Set(palettes.map((q) => q[k]))]])) as Record<Swatch, string[]>;
+  }
+  /** The closest pair of colours, one from each list. */
+  function closest(as: string[], bs: string[]): { de: number; a: string; b: string } {
+    let best = { de: Infinity, a: '', b: '' };
+    for (const a of as) for (const b of bs) {
+      const de = deltaE(a, b);
+      if (de < best.de) best = { de, a, b };
+    }
+    return best;
+  }
+
+  for (const sc of SCENARIOS) {
+    it(`${sc.id} ${sc.name}: tunics, shields and light-troop shields differ by dE >= ${MIN_DELTA_E}`, () => {
+      const top = effective(sc, 'top');
+      const bottom = effective(sc, 'bottom');
+      const tooClose = SWATCHES.map((k) => ({ k, ...closest(top[k], bottom[k]) }))
+        .filter((c) => c.de < MIN_DELTA_E)
+        .map((c) => `${sc.setup.top.look} against ${sc.setup.bottom.look}: ${c.k} ${c.a} vs ${c.b} is only dE ${c.de.toFixed(1)}`);
+      expect(tooClose).toEqual([]);
+    });
+  }
+
+  it('the Epirote and Antigonid armies are not Roman red, nor any other Successor look', () => {
+    const others = ALL_LOOKS.filter((l) => KITS[l] === 'macedonian' || l === 'roman');
+    for (const look of ['epirote', 'antigonid'] as const) {
+      const mine = paletteFor(look, 'grk');
+      for (const other of others.filter((l) => l !== look)) {
+        const o = paletteFor(other, 'grk');
+        for (const k of ['tunic', 'shield'] as const) {
+          expect(deltaE(mine[k], o[k]), `${look} ${k} against ${other}`).toBeGreaterThanOrEqual(MIN_DELTA_E);
+        }
+      }
+      // body and cloak colours stay clear of the Roman red as well
+      const roman = paletteFor('roman', 'rom');
+      for (const k of ['tunic', 'cloak', 'paint'] as const) {
+        expect(deltaE(mine[k], roman[k]), `${look} ${k} against Rome`).toBeGreaterThanOrEqual(MIN_DELTA_E);
+      }
+    }
+  });
+
+  it('the light troops of the Epirote and Antigonid armies always wear a cap (a cue the bare-headed Romans lack)', () => {
+    for (const look of ['epirote', 'antigonid'] as const) {
+      const foot = LOOKS[look].style.foot ?? {};
+      for (const type of ['LI', 'LB', 'LS'] as const) {
+        const o = foot[type];
+        expect(Array.isArray(o) ? o : [o], `${look} ${type}`).toSatisfy((l: ({ helmet?: string } | undefined)[]) => l.every((x) => x?.helmet === 'kausia' || x?.helmet === 'petasos'));
+      }
+    }
+  });
 });
 
 const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));

@@ -71,28 +71,26 @@ function figOf(p: Palette): Fig {
 
 /** Pole-top ornament of the standard at (x, y). */
 function FinialEl({ p, kind, x, y }: { p: Palette; kind: Finial; x: number; y: number }) {
-  const x2 = x;
-  const y2 = y;
   if (kind === 'star' || kind === 'royalEagle' || kind === 'wheel' || kind === 'trident' || kind === 'stag') {
     const s = kind === 'wheel' ? 0.62 : 0.7;
     return (
       <g>
-        <Line2 d={`M${x2} ${y2 + 1} L${x2} ${y2 - 1.2}`} w={0.8} c={p.gold} ow={0.45} />
+        <Line2 d={`M${x} ${y + 1} L${x} ${y - 1.2}`} w={0.8} c={p.gold} ow={0.45} />
         {kind === 'royalEagle'
-          ? <RoyalEagle p={p} x={x2} y={y2 - 2.6} />
-          : <Emblem kind={kind} cx={x2} cy={y2 - 2.8} s={s} f={figOf(p)} c={p.gold} bg={p.goldShade} />}
+          ? <RoyalEagle p={p} x={x} y={y - 2.6} />
+          : <Emblem kind={kind} cx={x} cy={y - 2.8} s={s} f={figOf(p)} c={p.gold} bg={p.goldShade} />}
       </g>
     );
   }
   if (kind === 'spearhead') {
     return (
       <g>
-        <path d={`M${x2} ${y2 - 5} L${x2 + 1.2} ${y2 - 1.4} L${x2 + 0.5} ${y2 + 0.4} L${x2 - 0.5} ${y2 + 0.4} L${x2 - 1.2} ${y2 - 1.4} Z`} fill={p.gold} stroke={OL} strokeWidth={0.45} strokeLinejoin="round" />
-        <Hi d={`M${x2} ${y2 - 4.2} L${x2} ${y2 - 0.2}`} c={p.goldShade} w={0.35} o={1} />
+        <path d={`M${x} ${y - 5} L${x + 1.2} ${y - 1.4} L${x + 0.5} ${y + 0.4} L${x - 0.5} ${y + 0.4} L${x - 1.2} ${y - 1.4} Z`} fill={p.gold} stroke={OL} strokeWidth={0.45} strokeLinejoin="round" />
+        <Hi d={`M${x} ${y - 4.2} L${x} ${y - 0.2}`} c={p.goldShade} w={0.35} o={1} />
       </g>
     );
   }
-  return <BaseFinial p={p} kind={kind} x2={x2} y2={y2} />;
+  return <BaseFinial p={p} kind={kind} x2={x} y2={y} />;
 }
 
 /** The golden eagle with spread wings on the Persian royal standard. */
@@ -192,7 +190,7 @@ export function MountedGeneral({ p }: { p: Palette }) {
   return (
     <g>
       <g transform={`scale(${HORSE_GEOM.scale})`}>
-        <Horse coat={horse.coat} shade={horse.shade} mane={horse.mane} pose={2} cloth={g ? gp.saddle : p.saddle} clothTrim={p.gold} light={lighten(horse.coat, 0.5)} />
+        <Horse coat={horse.coat} shade={horse.shade} mane={horse.mane} pose={2} cloth={gp.saddle} clothTrim={p.gold} light={lighten(horse.coat, 0.5)} />
       </g>
       <g transform={`translate(${HORSE_GEOM.seatX} ${HORSE_GEOM.seatY})`}>
         <Rider kit={rider} f={f} standard={<Standard p={p} x1={-3.8} y1={6} x2={-0.9} y2={-40} />} />

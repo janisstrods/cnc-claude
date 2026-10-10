@@ -425,24 +425,30 @@ const MACEDONIAN = look({
   cap: '#ece2c8', pattern: '#e8c040',
 });
 
-/** Philip V / Perseus: polished bronze phalanx shields with the embossed Macedonian pattern, red cloaks. */
+/**
+ * Philip V / Perseus: deep petrol-blue tunics and cloaks under polished bronze phalanx shields with the embossed
+ * Macedonian pattern; light troops carry cream shields and always wear a cream cap. Nothing on the body is Roman red.
+ */
 const ANTIGONID = look({
-  tunic: '#a8281f', trim: '#ecdcae', trousers: '#6b4a32', cloak: '#a8281f',
+  tunic: '#1c4062', trim: '#ecdcae', trousers: '#6b4a32', cloak: '#1a3a5c',
   shield: '#cf9d46', shieldRim: '#9a6a26', shieldEmblem: '#7a4a18',
-  paint: '#a8281f', paintEmblem: '#f0d48a',
-  crest: '#b8261f', crestAlt: '#f2ead4',
+  paint: '#e8dcc0', paintEmblem: '#1c4062',
+  crest: '#efe8d4', crestAlt: '#1c4062',
   skin: GREEK_SKIN, hair: GREEK_HAIR, horses: HORSES_MACEDONIAN,
-  cap: '#a8281f', pattern: '#ecdcae',
+  cap: '#ece2c8', pattern: '#ecdcae',
 });
 
-/** Pyrrhus of Epirus: red tunics, white shields with Zeus' thunderbolt. */
+/**
+ * Pyrrhus of Epirus: natural-linen tunics with red trim, white shields with Zeus' thunderbolt, bronze helmets. Red is only
+ * trim, crests and the caps of the light troops (who carry tan shields); the cloaks are plum, so no body colour is Roman red.
+ */
 const EPIROTE = look({
-  tunic: '#b3231f', trim: '#f0e8d6', trousers: '#6b4a32', cloak: '#b3231f',
-  shield: '#eee6d4', shieldRim: '#b8873a', shieldEmblem: '#b3231f',
-  paint: '#b3231f', paintEmblem: '#f0e8d6',
-  crest: '#f2ead8', crestAlt: '#b3231f',
+  tunic: '#d4c49a', trim: '#a8231f', trousers: '#6b4a32', cloak: '#7a2250',
+  shield: '#eee6d4', shieldRim: '#b8873a', shieldEmblem: '#a8231f',
+  paint: '#b4894e', paintEmblem: '#f0e8d6',
+  crest: '#f2ead8', crestAlt: '#a8231f',
   skin: GREEK_SKIN, hair: GREEK_HAIR, horses: HORSES_MACEDONIAN,
-  cap: '#f0e8d6', pattern: '#b3231f',
+  cap: '#a8231f', pattern: '#a8231f',
 });
 
 /** Craterus' veterans: deep oxblood red with gold. */
@@ -497,10 +503,10 @@ const PTOLEMAIC = look({
 
 // --- The Eastern kingdoms -------------------------------------------------------------------
 
-/** Achaemenid Persia: felt tiaras, robes of yellow, purple and red, wicker spara shields, bows. */
+/** Achaemenid Persia: felt tiaras, robes of yellow, Tyrian purple and red, straw-coloured wicker spara shields, bows. */
 const PERSIAN = look({
   tunic: '#d8a22a', trim: '#5e2a7a', trousers: '#5e2a7a', cloak: '#5e2a7a',
-  shield: '#c8a66a', shieldRim: '#6a4424', shieldEmblem: '#8a6a38',
+  shield: '#dccb94', shieldRim: '#6a4424', shieldEmblem: '#8a6a38',
   paint: '#b08a50', paintEmblem: '#6a4424',
   metal: ['#d0a24a', '#8e6420', '#f4dc94'], crest: '#5e2a7a', crestAlt: '#f0d070',
   skin: PERSIAN_SKIN, hair: PERSIAN_HAIR, horses: HORSES_EAST, saddle: '#7a2a5a',
@@ -527,11 +533,11 @@ const INDIAN = look({
   cap: '#f2eee2', pattern: '#b8302e',
 });
 
-/** The Mauryan empire: saffron and ochre. */
+/** The Mauryan empire: saffron-orange and terracotta (the Seleucids they face are gold). */
 const MAURYAN = look({
-  tunic: '#e0902a', trim: '#8a1e2a', trousers: '#6b4a32', cloak: '#8a1e2a',
+  tunic: '#d8661f', trim: '#8a1e2a', trousers: '#6b4a32', cloak: '#8a1e2a',
   shield: '#c8963e', shieldRim: '#6a3a1e', shieldEmblem: '#6a3a1e',
-  paint: '#c8963e', paintEmblem: '#6a3a1e',
+  paint: '#8c6236', paintEmblem: '#6a3a1e',
   metal: ['#d4a648', '#8e6620', '#f6de96'], crest: '#8a1e2a', crestAlt: '#f2e6c8',
   skin: INDIAN_SKIN, hair: INDIAN_HAIR, horses: HORSES_EAST, saddle: '#8a1e2a',
   cap: '#f2e6c8', pattern: '#8a1e2a',
@@ -568,6 +574,8 @@ export interface LookDef {
 const EASTERN_LIGHTS: FootLook = { helmet: 'tiara', legs: 'trousers', longSleeve: true };
 const EGYPTIAN: FootLook = { helmet: 'nemes', torso: 'bare', legs: 'bare', sleeve: false };
 const PELTAST: FootLook = { shield: 'pelta', helmet: 'thracian', crest: 'none', shieldScale: 1, torso: 'tunic' };
+/** Skirmishers who always wear a cap: the cue that sets the Epirote and Antigonid light troops apart from the bare-headed Roman velites. */
+const CAPPED_LIGHTS: Partial<Record<UnitType, FootLook>> = { LI: { helmet: 'kausia' }, LB: { helmet: 'petasos' }, LS: { helmet: 'petasos' } };
 
 /** Every army look: its kit, swatches and style. */
 export const LOOKS: Record<ArmyLook, LookDef> = {
@@ -633,12 +641,12 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
   },
   antigonid: {
     kit: 'macedonian', palette: ANTIGONID,
-    style: { emblems: ['macShield'], device: 'macShield', finial: 'spearhead', foot: { MI: { shield: 'thureos' } } },
+    style: { emblems: ['macShield'], device: 'macShield', finial: 'spearhead', foot: { ...CAPPED_LIGHTS, MI: { shield: 'thureos' } } },
   },
   epirote: {
     kit: 'macedonian', palette: EPIROTE,
     // Pyrrhus' helmet with its tall crest and goat horns (Plutarch)
-    style: { emblems: ['thunderbolt'], device: 'thunderbolt', finial: 'eagle', general: { crest: 'horns' } },
+    style: { emblems: ['thunderbolt'], device: 'thunderbolt', finial: 'eagle', general: { crest: 'horns' }, foot: CAPPED_LIGHTS },
   },
   craterus: {
     kit: 'macedonian', palette: CRATERUS,
@@ -672,7 +680,7 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
       emblems: ['none'], device: 'wingedDisc', finial: 'royalEagle',
       variants: [
         {},
-        { ...tunicOf('#5e2a7a'), ...trousersOf('#c8962a'), ...capOf('#e8c060') },
+        { ...tunicOf('#8a2c68'), ...trousersOf('#c8962a'), ...capOf('#e8c060') },
         { ...tunicOf('#a8282a'), ...trousersOf('#3a3a6a'), ...capOf('#ece0c4') },
         { ...tunicOf('#e0c070'), ...trousersOf('#a8282a'), ...capOf('#7a3a8a') },
       ],
@@ -703,7 +711,7 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
     kit: 'indian', palette: MAURYAN,
     style: {
       emblems: ['none'], device: 'meru', finial: 'wheel', standard: 'parasol',
-      variants: [{}, { ...tunicOf('#c88a3a'), ...capOf('#e0902a') }, { ...tunicOf('#efe6d0'), ...capOf('#e0902a') }, { ...tunicOf('#d8a040') }],
+      variants: [{}, { ...tunicOf('#b04a1c'), ...capOf('#e0902a') }, { ...tunicOf('#efe6d0'), ...capOf('#e0902a') }, { ...tunicOf('#9c5a2a') }],
       general: { horse: { coat: '#ece6da', shade: '#b0a690', mane: '#8a7e6a' } },
     },
   },

@@ -249,7 +249,8 @@ function indianKit(type: UnitType, i: number): FootKit {
 // ---------------------------------------------------------------------------------------------
 // Elites and per-figure paint
 
-interface EliteLook {
+/** How an elite's foot figures differ from their army's ordinary ones: swatches, per-figure paint, and the kit. */
+export interface EliteLook {
   palette?: Partial<LookPalette>;
   /** Replaces the look's per-figure paint variants. */
   variants?: Partial<LookPalette>[];
@@ -281,7 +282,7 @@ export const ELITE_FOOT: Partial<Record<EliteId, EliteLook>> = {
   // The Immortals of the Susa friezes: patterned court robes, fillets, gold pomegranate spear butts, bow and quiver.
   immortals: {
     palette: { pattern: '#f2d06a' },
-    variants: [robe('#e0b440'), robe('#ece2c6'), robe('#6a2e86'), robe('#d8a22a')],
+    variants: [robe('#e0b440'), robe('#ece2c6'), robe('#8a2c68'), robe('#d8a22a')],
     foot: {
       torso: 'robe', helmet: 'fillet', hair: 'long', beard: true, shield: 'none', weapon: 'guardSpear', butt: 'pomegranate',
       back: 'quiver', bowSlung: true, spare: undefined, legs: 'bare',
@@ -292,8 +293,9 @@ export const ELITE_FOOT: Partial<Record<EliteId, EliteLook>> = {
 };
 
 /**
- * The elite of the unit being drawn, for figures whose caller does not pass `elite` itself (UnitToken passes it once it
- * knows about elites; the art gallery wraps tokens in a provider). The `elite` prop of `FootFigure` wins.
+ * The elite of the unit being drawn, for callers that cannot hand it to `FootFigure` as a prop (the art gallery wraps
+ * whole tokens in a provider). The production route is the `elite` prop: `UnitToken` passes the unit's elite down through
+ * `Miniature`. When both are given, the prop wins.
  */
 export const EliteCtx = createContext<EliteId | undefined>(undefined);
 
@@ -383,7 +385,8 @@ function Pomegranate({ x, y, p }: { x: number; y: number; p: Palette }) {
 
 /**
  * One foot miniature. `kit` comes from `footKit`; the look's per-type overrides and paint variants are applied here, and
- * so is the unit's `elite` (prop, or `EliteCtx`).
+ * so is the unit's `elite`: pass it as the `elite` prop (what `UnitToken` does); `EliteCtx` is the alternative for callers
+ * that cannot, and the prop wins over it.
  */
 export function FootFigure({ kit: baseKit, p: armyP, i, elite: eliteProp }: { kit: FootKit; p: Palette; i: number; elite?: EliteId }) {
   const ctxElite = useContext(EliteCtx);
@@ -427,7 +430,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite: eliteProp }: { ki
       const x1 = -5.4;
       const y1 = 1.0;
       const x2 = 9.2 + lean * 0.5;
-      const y2 = -47;
+      const y2 = -43;
       const t = (y1 + 15) / (y1 - y2);
       behind = <Spear x1={x1} y1={y1} x2={x2} y2={y2} f={f} w={1.0} blade={4.8} bladeW={1.3} butt />;
       farArm = <Arm s={farShoulder} e={[-3.6, -16.4]} h={[x1 + (x2 - x1) * t, -15]} f={f} sleeve={sleeve} />;
@@ -513,15 +516,7 @@ export function FootFigure({ kit: baseKit, p: armyP, i, elite: eliteProp }: { ki
     farArm = <Arm s={farShoulder} e={fwd ? [-4.4, -25.2] : [-5.2, -24.6]} h={[hx, hy]} f={f} sleeve={sleeve} long={long} />;
   } else if (w === 'bow') {
     const scy = kit.bow === 'scythian';
-    behind = kit.back === 'gorytos' ? null : (
-      <g>
-        <Shape d="M-6.6 -23.4 L-4.1 -24.3 L-1.6 -11.6 L-4.1 -10.8 Z" f={p.leather} sw={0.6} />
-        <Hi d="M-5.6 -23.4 L-3 -11.2" c={p.leatherShade} w={0.6} />
-        <g stroke={p.linen} strokeWidth={0.9} strokeLinecap="round">
-          <path d="M-5.9 -24.2 L-7.4 -27.4 M-4.9 -24.6 L-5.7 -28 M-6.6 -23.8 L-8.6 -26.4" />
-        </g>
-      </g>
-    );
+    behind = kit.back === 'gorytos' ? null : <Quiver p={p} />;
     farArm = <Arm s={farShoulder} e={[-6, -21.6]} h={[-0.2, -22.6]} f={f} sleeve={sleeve} long={long} />;
     front = scy ? (
       <g>

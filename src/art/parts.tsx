@@ -711,6 +711,36 @@ function HelmBody({ f, helmet, crest }: { f: Fig; helmet: Helmet; crest: Crest }
 }
 
 /** The Expansion #1 helmets and cloth headgear. */
+/** The Persian royal diadem: a white band with slanted blue stripes (Plutarch's blue-and-white fillet), at the kidaris' foot. */
+const DIADEM_BLUE = '#2a5aa8';
+const DIADEM_WHITE = '#f4f0e4';
+const DIADEM = (() => {
+  // lower edge follows the tiara's base, the upper edge runs 1.5 above it (x pulled in by the cone's taper)
+  const lo: [number, number][] = [[-2.9, -25.3], [-1, -25.79], [1.08, -26.03], [3.12, -26], [4.9, -25.7]];
+  const up: [number, number][] = [[-2.71, -26.8], [-1, -27.29], [1.08, -27.53], [3.12, -27.5], [4.7, -27.2]];
+  const at = (pts: [number, number][], x: number) => {
+    for (let k = 0; k < pts.length - 1; k++) {
+      const [x0, y0] = pts[k];
+      const [x1, y1] = pts[k + 1];
+      if (x <= x1) return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+    }
+    return pts[pts.length - 1][1];
+  };
+  const f = (n: number) => n.toFixed(2);
+  const outline = `M${lo.map(([x, y]) => `${f(x)} ${f(y)}`).join(' L')} L${[...up].reverse().map(([x, y]) => `${f(x)} ${f(y)}`).join(' L')} Z`;
+  // slanted stripes: each starts on the lower edge and ends 0.9 further along the upper edge
+  const stripes = [-1.9, 0.1, 2.1]
+    .map((x) => {
+      const a = [x, at(lo, x)];
+      const b = [x + 1.1, at(lo, x + 1.1)];
+      const c = [x + 2, at(up, x + 2)];
+      const d = [x + 0.9, at(up, x + 0.9)];
+      return `M${[a, b, c, d].map(([px, py]) => `${f(px)} ${f(py)}`).join(' L')} Z`;
+    })
+    .join(' ');
+  return { outline, stripes };
+})();
+
 function NewHelm({ f, helmet, crest, crestEl }: { f: Fig; helmet: Helmet; crest: Crest; crestEl: ReactNode }) {
   const { p } = f;
   const cloth = p.cap ?? p.linen;
@@ -761,14 +791,17 @@ function NewHelm({ f, helmet, crest, crestEl }: { f: Fig; helmet: Helmet; crest:
     );
   }
   if (helmet === 'kidaris') {
-    // the upright royal tiara with a diadem
+    // the Great King's upright tiara: a tall cone that narrows towards a flat top, the blue-and-white royal diadem round
+    // its foot and the ribbon ends trailing behind
     return (
       <>
-        <Shape d="M-2.6 -25.4 L-2.7 -32.4 C-0.4 -33.2 2.6 -33.2 4.8 -32.4 L4.6 -25.8 C2.6 -26.2 -0.6 -26 -2.6 -25.4 Z" f={cloth} />
-        <Paint d="M-2.6 -25.4 L-2.7 -32.4 C-2 -32.6 -1.2 -32.8 -0.4 -32.9 L-0.6 -25.8 C-1.3 -25.7 -2 -25.6 -2.6 -25.4 Z" f={clothShade} o={0.8} />
-        <Line2 d="M-2.6 -26.4 C-0.6 -27 2.4 -27.1 4.6 -26.7" w={0.9} c={p.gold} ow={0.4} />
-        <Hi d="M-2.6 -31.6 C-0.4 -32.4 2.6 -32.4 4.7 -31.6" c={band} w={0.6} o={1} />
-        <ellipse cx={1.1} cy={-32.7} rx={3.75} ry={0.65} fill={lighten(cloth, 0.2)} stroke={OL} strokeWidth={0.5} />
+        <Shape d="M-2.8 -26.2 C-3.6 -25.6 -4.6 -24.6 -5.1 -23.2 L-4.1 -23.2 L-3.5 -23.9 L-2.6 -23.6 Z" f={DIADEM_BLUE} sw={0.5} />
+        <Shape d="M-2.9 -25.3 C-2.7 -28 -2.3 -30.6 -2 -32.4 L4 -32.4 C4.3 -30.6 4.7 -28 4.9 -25.7 C2.8 -26.3 -0.6 -26.1 -2.9 -25.3 Z" f={cloth} />
+        <Paint d="M-2.9 -25.3 C-2.7 -28 -2.3 -30.6 -2 -32.4 L-0.7 -32.4 C-1 -30.4 -1.2 -28 -1.1 -25.9 C-1.7 -25.8 -2.3 -25.6 -2.9 -25.3 Z" f={clothShade} o={0.8} />
+        <Hi d="M3.1 -31.8 C3.3 -30.4 3.6 -28.8 3.9 -27.6" c={lighten(cloth, 0.4)} w={0.5} o={0.8} />
+        <ellipse cx={1} cy={-32.4} rx={3} ry={0.6} fill={lighten(cloth, 0.2)} stroke={OL} strokeWidth={0.5} />
+        <Shape d={DIADEM.outline} f={DIADEM_WHITE} sw={0.5} />
+        <path d={DIADEM.stripes} fill={DIADEM_BLUE} />
       </>
     );
   }
