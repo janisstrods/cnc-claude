@@ -66,21 +66,23 @@
 .select-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
 .select-tabs button {
   flex: 1 1 0;
-  padding: 7px 8px;
+  padding: 6px 6px;
   font-family: var(--kit-font-title);
-  font-size: 13.5px;
+  font-size: 13px;
   letter-spacing: .04em;
   color: rgba(240, 227, 194, .8);
   background: rgba(20, 12, 6, .55);
   border: 1px solid rgba(226, 189, 114, .25);
   border-radius: 8px;
   cursor: pointer;
-  white-space: nowrap;
+  /* three boxes share the 330px list column: a long label wraps onto a second line */
+  line-height: 1.2;
+  text-wrap: balance;
 }
 .select-tabs button:hover { border-color: rgba(226, 189, 114, .55); }
 .select-tabs button:focus-visible { outline: 2px solid var(--kit-gold); outline-offset: 2px; }
 .select-tabs button.active { color: #fbe7a6; border-color: var(--kit-gold); background: linear-gradient(180deg, rgba(142, 27, 27, .6), rgba(60, 30, 14, .7)); }
-.select-tabs small { font-family: var(--kit-font-body); font-size: 12px; opacity: .65; margin-left: 2px; }
+.select-tabs small { display: block; font-family: var(--kit-font-body); font-size: 12px; opacity: .65; }
 .select-scroll {
   overflow-y: auto;
   display: flex;

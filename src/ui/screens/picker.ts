@@ -8,10 +8,11 @@ export interface PickerTab {
   label: string;
 }
 
-/** Picker tabs in display order: the base game (001–015), then Expansion #1 (101–124). */
+/** Picker tabs in display order: the base game (001–015), Expansion #1 (101–124), then Expansion #2 (201–223). */
 export const PICKER_TABS: readonly PickerTab[] = [
   { id: 'base', label: 'Punic Wars' },
   { id: 'exp1', label: 'Greece & the East' },
+  { id: 'exp2', label: 'Rome & the Barbarians' },
 ];
 
 /** The battles of one tab, in the order given (the scenario list is sorted by id). */

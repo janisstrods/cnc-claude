@@ -44,12 +44,14 @@ const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i)
 // ---------------------------------------------------------------------------------------------
 
 describe('battle picker tabs', () => {
-  it('two tabs: the base game (001–015), then Expansion #1 (101–124), each in id order', () => {
-    expect(PICKER_TABS.map((t) => [t.id, t.label])).toEqual([['base', 'Punic Wars'], ['exp1', 'Greece & the East']]);
+  it('three tabs: the base game (001–015), Expansion #1 (101–124), then Expansion #2 (201–223), each in id order', () => {
+    expect(PICKER_TABS.map((t) => [t.id, t.label])).toEqual([['base', 'Punic Wars'], ['exp1', 'Greece & the East'], ['exp2', 'Rome & the Barbarians']]);
     expect(ids(battlesOf(SCENARIOS, 'base'))).toEqual(range(1, 15));
     expect(ids(battlesOf(SCENARIOS, 'exp1'))).toEqual(range(101, 124));
-    // every battle is in exactly one tab (Expansion #2 gets its own tab with the new screens)
-    expect(PICKER_TABS.reduce((n, t) => n + battlesOf(SCENARIOS, t.id).length, 0)).toBe(SCENARIOS.filter((s) => s.expansion !== 'exp2').length);
+    // every battle is in exactly one tab
+    expect(SCENARIOS).toHaveLength(62);
+    expect(PICKER_TABS.reduce((n, t) => n + battlesOf(SCENARIOS, t.id).length, 0)).toBe(SCENARIOS.length);
+    for (const sc of SCENARIOS) expect(PICKER_TABS.filter((t) => battlesOf(SCENARIOS, t.id).includes(sc)), sc.id).toHaveLength(1);
   });
 
   it('remembers the last tab; unknown values and missing storage fall back to the base game', () => {
@@ -65,11 +67,13 @@ describe('battle picker tabs', () => {
 
   it('arrow keys step through the tabs (wrapping), Home and End jump; other keys do nothing', () => {
     expect(tabForKey('base', 'ArrowRight')).toBe('exp1');
-    expect(tabForKey('exp1', 'ArrowRight')).toBe('base');
-    expect(tabForKey('base', 'ArrowLeft')).toBe('exp1');
+    expect(tabForKey('exp1', 'ArrowRight')).toBe('exp2');
+    expect(tabForKey('exp2', 'ArrowRight')).toBe('base');
+    expect(tabForKey('base', 'ArrowLeft')).toBe('exp2');
     expect(tabForKey('exp1', 'ArrowLeft')).toBe('base');
+    expect(tabForKey('exp2', 'ArrowLeft')).toBe('exp1');
     expect(tabForKey('exp1', 'Home')).toBe('base');
-    expect(tabForKey('base', 'End')).toBe('exp1');
+    expect(tabForKey('base', 'End')).toBe('exp2');
     for (const k of ['Enter', ' ', 'ArrowDown', 'a']) expect(tabForKey('base', k), k).toBeUndefined();
   });
 
@@ -78,11 +82,11 @@ describe('battle picker tabs', () => {
     m.set('cca-battle-tab', 'exp1');
     const html = renderToStaticMarkup(createElement(ScenarioSelect, { onBack: () => {}, onStart: () => {} }));
     const tabs = [...html.matchAll(/<button[^>]*role="tab"[^>]*>/g)].map((x) => x[0]);
-    expect(tabs).toHaveLength(2);
+    expect(tabs).toHaveLength(3);
     const attr = (el: string, a: string) => new RegExp(`${a}="([^"]*)"`).exec(el)?.[1];
-    expect(tabs.map((t) => attr(t, 'aria-selected'))).toEqual(['false', 'true']);
-    expect(tabs.map((t) => attr(t, 'tabindex'))).toEqual(['-1', '0']);
-    expect(tabs.map((t) => attr(t, 'aria-controls'))).toEqual(['battle-list', 'battle-list']);
+    expect(tabs.map((t) => attr(t, 'aria-selected'))).toEqual(['false', 'true', 'false']);
+    expect(tabs.map((t) => attr(t, 'tabindex'))).toEqual(['-1', '0', '-1']);
+    expect(tabs.map((t) => attr(t, 'aria-controls'))).toEqual(['battle-list', 'battle-list', 'battle-list']);
     expect(html).toMatch(/role="tablist" aria-label="Battles"/);
     const panel = /<div[^>]*role="tabpanel"[^>]*>/.exec(html)![0];
     expect(attr(panel, 'id')).toBe('battle-list');
@@ -371,7 +375,7 @@ describe('undo during deployment (117 Asculum)', () => {
 });
 
 describe('dev route', () => {
-  it('starts every battle, base game and Expansion #1', () => {
+  it('starts every battle: base game, Expansion #1 and Expansion #2', () => {
     for (const sc of SCENARIOS) {
       const cfg = devRouteConfig(`#/play/${sc.id}/top/consul/42`)!;
       expect(cfg, sc.id).toMatchObject({ scenarioId: sc.id, humanSide: 'top', difficulty: 'consul', seed: 42 });
