@@ -1,12 +1,13 @@
 // Movement: reachable hexes for ordered units and leaders (rules-reference §7).
-import { inSection, neighbours, onBaseline, rowOf } from './hex';
+import { inSection, neighbours } from './hex';
+import { exitHexes } from './objectives';
 import { attachedLeader, enemyPieceAdjacent, leaderAt, leaderById, unitAt, unitById } from './query';
 import { isImpassable, stopsAll, stopsMounted, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain, forestFighter, isLightFoot } from './units';
 import { OFF_BOARD, type GameState, type HexId, type OrderMods, type SectionName, type Side, type Unit } from './types';
 
 export interface MoveTarget {
-  hex: HexId; // destination (OFF_BOARD = exits the battlefield, Castulo only)
+  hex: HexId; // destination (OFF_BOARD = exits the battlefield: exit objectives, 010 Castulo)
   dist: number; // hexes moved
   path: HexId[]; // from start (inclusive) to destination (inclusive)
   canBattle: boolean;
@@ -132,15 +133,15 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
 
   results.delete(startHex);
 
-  // Castulo: Roman (bottom) units may exit off the Carthaginian (top) baseline from centre or Roman-right hexes.
-  if (s.special.rules.includes('castulo') && u.side === 'bottom' && !fromReserve) {
+  // Exit objectives (010 Castulo): stepping off the board from a listed edge hex is one more hex of movement, from the
+  // start hex or a hex reached without joining a leader (not from terrain that stopped the unit there).
+  const exits = fromReserve ? [] : exitHexes(s, u);
+  if (exits.length) {
     let bestExit: MoveTarget | null = null;
     const candidates: { hex: HexId; dist: number; path: HexId[] }[] = [];
-    if (rowOf(startHex) === 0) candidates.push({ hex: startHex, dist: opts.alreadyMoved ?? 0, path: [startHex] });
-    for (const t of results.values()) if (rowOf(t.hex) === 0 && !t.attachesTo) candidates.push(t);
+    if (exits.includes(startHex)) candidates.push({ hex: startHex, dist: opts.alreadyMoved ?? 0, path: [startHex] });
+    for (const t of results.values()) if (exits.includes(t.hex) && !t.attachesTo) candidates.push(t);
     for (const t of candidates) {
-      if (!onBaseline(t.hex, 'top')) continue;
-      if (!(inSection(t.hex, 'bottom', 'center') || inSection(t.hex, 'bottom', 'right'))) continue;
       if (t.hex !== startHex && (stopsAll(s, t.hex) || (st.mounted && stopsMounted(s, t.hex)))) continue;
       if (t.dist + 1 > lim.max) continue;
       if (!bestExit || t.dist + 1 < bestExit.dist) {

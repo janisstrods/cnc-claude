@@ -1,5 +1,6 @@
 // Movement planning: score each reachable hex of an ordered piece by the resulting position plus the attack it enables.
-import { capturableCamp, movablePieces, pieceMoves } from '../engine/flow';
+import { movablePieces, pieceMoves } from '../engine/flow';
+import { nextCaptureBanners, stopCaptureAt } from '../engine/objectives';
 import { attachedLeader, isLeaderId, leaderById, leaderUnit, other, unitById } from '../engine/query';
 import type { MoveTarget } from '../engine/movement';
 import { OFF_BOARD, type Answer, type GameState, type HexId, type Side } from '../engine/types';
@@ -47,23 +48,18 @@ export function scoreOption(s: GameState, id: string, m: MoveTarget | null, stag
   const l = old >= 0 ? attachedLeader(s, u) : undefined;
   const p = s.players[me];
   const bannersBefore = p.banners;
-  let campPushed = false;
+  // capture objective that takes the destination hex (its state records the capture until undone below), or -1
+  let captured = -1;
   if (m) {
-    if (m.hex === OFF_BOARD) {
-      // Castulo exit: banner, unit (and leader) leave
-      p.banners += 1;
+    if (m.hex !== OFF_BOARD) captured = stopCaptureAt(s, me, m.hex);
+    if (m.hex === OFF_BOARD || captured >= 0) {
+      // an exit objective (1 banner; the unit and its leader leave) or a captured hex
+      p.banners += captured >= 0 ? nextCaptureBanners(s, captured) : 1;
       if (p.banners >= s.bannersToWin) {
         p.banners = bannersBefore;
         return WIN_SCORE;
       }
-    } else if (capturableCamp(s, me, m.hex)) {
-      p.banners += 1;
-      if (p.banners >= s.bannersToWin) {
-        p.banners = bannersBefore;
-        return WIN_SCORE;
-      }
-      s.special.campsCaptured.push(m.hex);
-      campPushed = true;
+      if (captured >= 0) s.special.objState[captured].taken.push(m.hex);
     }
     u.hex = m.hex;
     if (l) l.hex = m.hex;
@@ -79,7 +75,7 @@ export function scoreOption(s: GameState, id: string, m: MoveTarget | null, stag
   u.hex = old;
   if (l) l.hex = old;
   p.banners = bannersBefore;
-  if (campPushed) s.special.campsCaptured.pop();
+  if (captured >= 0) s.special.objState[captured].taken.pop();
   return v + noise;
 }
 

@@ -158,10 +158,11 @@ export interface TurnState {
 }
 
 /**
- * Scenario special rules (§14, §17). Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112 Hellespont),
- * `frightAtFirstSight` (116 Heraclea), `leaderPlacement` (117 Asculum: leaders are placed before the first turn),
- * `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3) and `campCapture` (a side gains a banner for
- * stopping on listed camp hexes: 011 Baecula, 114 Gabiene). Scenario data is validated against this list.
+ * Scenario special rules (§14, §17). `castulo` (010): losing the sacred leader (`ScenarioSetup.sacredLeader`) loses the
+ * battle; Castulo's exit is a battle objective. Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112
+ * Hellespont), `frightAtFirstSight` (116 Heraclea), `leaderPlacement` (117 Asculum: leaders are placed before the first
+ * turn) and `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3). Camp capture (011 Baecula, 114
+ * Gabiene) is a battle objective (`ObjectiveDef`), not a rule. Scenario data is validated against this list.
  */
 export const SPECIAL_RULE_IDS = [
   'sacredBand',
@@ -169,7 +170,6 @@ export const SPECIAL_RULE_IDS = [
   'trasimenusHand',
   'beneventumHand',
   'castulo',
-  'campCapture',
   'leaderLossCostsCard',
   'allLeadersSuddenDeath',
   'frightAtFirstSight',
@@ -179,13 +179,41 @@ export const SPECIAL_RULE_IDS = [
 /** A scenario special rule (see SPECIAL_RULE_IDS). */
 export type SpecialRuleId = (typeof SPECIAL_RULE_IDS)[number];
 
-/** Camp-capture objective (rule `campCapture`): units of `side` stopping on one of `hexes` gain a banner, once per camp. */
-export interface CampCapture {
-  side: Side;
-  /** Camp hexes that can be captured, ascending. */
-  hexes: HexId[];
-  /** Log line when a camp falls. */
-  text: string;
+/**
+ * A battle objective (§18.4), resolved from scenario data (`ObjectiveSetup` in setup.ts) with every default filled in.
+ * Objectives give banners on top of eliminated units and leaders; only units count, never lone leaders.
+ * - `capture`: `side` takes each of `hexes` once (camps): `when: 'stop'` = a unit ends its move or its close-combat
+ *   sequence there; `'turnStart'` = a unit stands there at the start of that side's turn. The n-th capture scores
+ *   `banners[n - 1]` (the last value repeats); `together: n` = nothing until n listed hexes are occupied at once, then
+ *   every listed hex is taken; `remove` = a taken hex becomes open ground. `hexes` ascending.
+ * - `hold`: 1 held banner per listed hex a unit of `side` stands on, at most `max`.
+ * - `majority`: the side of `sides` with more units on `hexes` holds `banners` (`turnEnd`: decided at each turn end;
+ *   `always`: at once).
+ * - `sectionClear`: at the end of `side`'s turn each section without an enemy unit scores 1 held banner, lost when an
+ *   enemy unit enters it.
+ * - `exit`: a unit of `side` (`units` filter) on one of `hexes` (board-edge hexes) may move off the board as one more
+ *   hex: 1 banner, the unit and its attached leader are removed (not eliminated). In `text`, `{unit}` is the unit's name.
+ * `text` is the log line (the `held` event reason for held banners).
+ */
+export type ObjectiveDef =
+  | { kind: 'capture'; side: Side; hexes: HexId[]; when: 'stop' | 'turnStart'; banners: number[]; together: number;
+      remove: boolean; text: string }
+  | { kind: 'hold'; side: Side; hexes: HexId[]; max: number; text: string }
+  | { kind: 'majority'; sides: Side[]; hexes: HexId[]; banners: number; when: 'turnEnd' | 'always'; text: string }
+  | { kind: 'sectionClear'; side: Side; text: string }
+  | { kind: 'exit'; side: Side; hexes: HexId[]; units: 'any' | 'foot' | 'cavalry'; leadersScore: boolean; text: string };
+
+/** The objective of one kind. */
+export type ObjectiveOf<K extends ObjectiveDef['kind']> = Extract<ObjectiveDef, { kind: K }>;
+
+/** Play state of one objective (`ScenarioSpecial.objState[i]` belongs to `objectives[i]`). */
+export interface ObjectiveState {
+  /** capture: hexes captured so far, in order. */
+  taken: HexId[];
+  /** hold / majority / sectionClear: banners this objective gives each side right now. */
+  held: Record<Side, number>;
+  /** sectionClear: sections currently scored. */
+  sections: SectionName[];
 }
 
 export interface ScenarioSpecial {
@@ -197,10 +225,10 @@ export interface ScenarioSpecial {
   reserveReleased: boolean;
   /** Turns completed per side (used by hand-growth rules and Mago). */
   turnsDone: Record<Side, number>;
-  /** Camp-capture objective (Baecula, Gabiene); null without the `campCapture` rule. */
-  campCapture: CampCapture | null;
-  /** Camp hexes already captured. */
-  campsCaptured: HexId[];
+  /** Battle objectives (§18.4; empty in most battles). Never changed during play: `cloneState` shares the array. */
+  objectives: ObjectiveDef[];
+  /** State of each objective, by index (`cloneState` copies it). */
+  objState: ObjectiveState[];
   /** Castulo: id of Publius Scipio. */
   sacredLeaderId: string | null;
   beneventumBonusGiven: boolean;
@@ -281,7 +309,7 @@ export type Answer =
   | { kind: 'playCard'; card: number }
   /** pieces: unit and/or leader ids. ambushSection: Trebbia - release Mago's force in that section instead. */
   | { kind: 'orders'; pieces: string[]; ambushSection?: SectionName }
-  | { kind: 'move'; piece: string; to: HexId } // to = OFF_BOARD only for Castulo exits
+  | { kind: 'move'; piece: string; to: HexId } // to = OFF_BOARD only for exit objectives (010 Castulo)
   | { kind: 'endMove' }
   | { kind: 'attack'; unit: string; target: HexId }
   | { kind: 'endBattle' }
@@ -325,7 +353,12 @@ export type GameEvent =
   | { t: 'advance'; id: string; path: HexId[] }
   | { t: 'rampage'; id: string }
   | { t: 'rallied'; id: string; blocks: number }
+  /** `total`: the side's banner total (permanent + held, `bannerTotal`). */
   | { t: 'banner'; side: Side; total: number; reason: string }
+  /** A side's held banners (hold, majority, section clear objectives) changed: `held` now, `total` = its banner total. */
+  | { t: 'held'; side: Side; held: number; total: number; reason: string }
+  /** A hex's terrain changed during play (a captured camp removed, §18.4). */
+  | { t: 'terrainChanged'; hex: HexId; terrain: TerrainType }
   | { t: 'draw'; side: Side }
   | { t: 'reshuffle' }
   | { t: 'command'; side: Side; command: number }

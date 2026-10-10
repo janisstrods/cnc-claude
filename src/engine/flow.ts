@@ -1,11 +1,12 @@
 // Turn flow as a generator: yields Decisions, receives Answers (rules-reference §5-§13).
-import { CARD_DEFS, cardKind, defaultMods, mirrorKind, modsFor } from './cards';
+import { CARD_DEFS, cardKind, defaultMods, drawCard, mirrorKind, modsFor } from './cards';
 import {
   canFireAt, closeCombatDice, helmetsCount, ignorableFlags, rangedDice, retreatPerFlag, scoreClassOnly, scoreClose,
   swordIgnores, vsMountedIgnores, type StrikeRole,
 } from './combat';
 import { ALL_HEXES, areAdjacent, neighbours, rowOf } from './hex';
 import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './movement';
+import { bannerTotal, captureOnStop, exitUnit, gainBanner } from './objectives';
 import {
   autoOrders, orderMode, rallyCandidates, validateOrders, validateRally, validateSpartacus,
 } from './orders';
@@ -48,50 +49,6 @@ function log(s: GameState, ctx: FlowCtx, text: string, side?: Side) {
 
 function emitRoll(ctx: FlowCtx, purpose: RollPurpose, faces: DieFace[], scoring: boolean[], by: string | null, against: string | null) {
   ctx.emit({ t: 'roll', purpose, faces, scoring, by, against });
-}
-
-/**
- * `side` draws one card (reshuffling the discards into an empty deck). Hellespont (§17.4): while the side owes cards for
- * lost leaders (`cardDebt`), any draw pays off one owed card instead of drawing (the end-of-turn draw, the First Strike
- * draw, Trasimenus' and Beneventum's extra draws alike).
- */
-function drawCard(s: GameState, ctx: FlowCtx, side: Side) {
-  if (s.special.cardDebt[side] > 0) {
-    s.special.cardDebt[side]--;
-    log(s, ctx, `The ${s.players[side].army} army draws no card: it lost a leader.`, side);
-    return;
-  }
-  if (s.deck.length === 0) {
-    if (s.discard.length === 0) return;
-    s.deck = s.discard;
-    s.discard = [];
-    shuffle(s, s.deck);
-    ctx.emit({ t: 'reshuffle' });
-  }
-  s.players[side].hand.push(s.deck.pop()!);
-  ctx.emit({ t: 'draw', side });
-}
-
-export function gainBanner(s: GameState, ctx: FlowCtx, side: Side, reason: string) {
-  if (s.winner) return;
-  const p = s.players[side];
-  p.banners++;
-  ctx.emit({ t: 'banner', side, total: p.banners, reason });
-  if (p.banners >= s.bannersToWin) {
-    s.winner = side;
-    s.winReason = `${p.army} captured ${p.banners} banners`;
-    ctx.emit({ t: 'victory', winner: side, reason: s.winReason });
-    return;
-  }
-  // 2nd Beneventum: the Romans grow to 6 cards on their 3rd banner.
-  if (s.special.rules.includes('beneventumHand') && isRomanArmy(s, side) && p.banners === 3 && !s.special.beneventumBonusGiven) {
-    s.special.beneventumBonusGiven = true;
-    p.command = 6;
-    ctx.emit({ t: 'command', side, command: 6 });
-    log(s, ctx, `Gracchus rallies his volunteers: the ${p.army} player now holds 6 command cards.`, side);
-    drawCard(s, ctx, side);
-    drawCard(s, ctx, side);
-  }
 }
 
 /**
@@ -140,15 +97,15 @@ function leaderLost(s: GameState, ctx: FlowCtx, l: Leader, reason: string, text:
  * banners one by one, then the Hellespont rules for each leader lost in the batch (banners resolve first, §17.4).
  */
 function settleBanners(s: GameState, ctx: FlowCtx, b: BannerBatch, reason: string, drawReason: string) {
-  const before = { top: s.players.top.banners, bottom: s.players.bottom.banners };
+  const before = { top: bannerTotal(s, 'top'), bottom: bannerTotal(s, 'bottom') };
   const add = { top: b.gains.filter((x) => x === 'top').length, bottom: b.gains.filter((x) => x === 'bottom').length };
   const winTop = before.top + add.top >= s.bannersToWin && add.top > 0;
   const winBottom = before.bottom + add.bottom >= s.bannersToWin && add.bottom > 0;
   if (winTop && winBottom) {
     s.players.top.banners += add.top;
     s.players.bottom.banners += add.bottom;
-    ctx.emit({ t: 'banner', side: 'top', total: s.players.top.banners, reason: drawReason });
-    ctx.emit({ t: 'banner', side: 'bottom', total: s.players.bottom.banners, reason: drawReason });
+    ctx.emit({ t: 'banner', side: 'top', total: bannerTotal(s, 'top'), reason: drawReason });
+    ctx.emit({ t: 'banner', side: 'bottom', total: bannerTotal(s, 'bottom'), reason: drawReason });
     s.winner = 'draw';
     s.winReason = 'Both armies broke at the same moment';
     ctx.emit({ t: 'victory', winner: 'draw', reason: s.winReason });
@@ -312,20 +269,6 @@ function* marshCheckUnit(s: GameState, ctx: FlowCtx, u: Unit, leaderChecked: { d
     leaderCheck(s, ctx, l, 2);
   }
   return false;
-}
-
-/** Camp capture (011 Baecula, 114 Gabiene): would a unit of `side` stopping on hex `h` capture a camp now? */
-export function capturableCamp(s: GameState, side: Side, h: HexId): boolean {
-  const cc = s.special.campCapture;
-  return !!cc && s.special.rules.includes('campCapture') && cc.side === side && cc.hexes.includes(h) && !s.special.campsCaptured.includes(h);
-}
-
-/** A unit stops on a camp hex of the camp-capture objective: 1 banner, once per camp. */
-function captureCamp(s: GameState, ctx: FlowCtx, u: Unit) {
-  if (!capturableCamp(s, u.side, u.hex)) return;
-  s.special.campsCaptured.push(u.hex);
-  log(s, ctx, s.special.campCapture!.text, u.side);
-  gainBanner(s, ctx, u.side, 'camp captured');
 }
 
 /** Move a unit (and attached leader) to hex h without checks. */
@@ -930,12 +873,10 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
   op.mustBattle = target.mustBattle;
   if (ldr && t.ordered[ldr.id]) t.ordered[ldr.id].moveDone = true;
   if (to === OFF_BOARD) {
-    // Castulo: exit off the Carthaginian baseline for a banner.
+    // an exit objective (010 Castulo): the unit walks to its exit hex and steps off the board for a banner
     ctx.emit({ t: 'move', id, path: target.path });
-    s.units = s.units.filter((x) => x.id !== u.id);
-    if (ldr) s.leaders = s.leaders.filter((x) => x.id !== ldr.id);
-    log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} breaks through and exits the battlefield!`, u.side);
-    gainBanner(s, ctx, u.side, 'unit exited');
+    relocate(s, u, target.path[target.path.length - 2]);
+    exitUnit(s, ctx, u);
     return;
   }
   relocate(s, u, to);
@@ -952,7 +893,7 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
   if (terrainAt(s, to) === 'marsh') {
     if (yield* marshCheckUnit(s, ctx, u, { done: false })) return;
   }
-  captureCamp(s, ctx, u);
+  captureOnStop(s, ctx, u);
 }
 
 function validateMove(s: GameState, a: Answer, stage: 1 | 2): string | null {
@@ -1027,8 +968,8 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
       op.battlesLeft = 0;
       op.mustBattle = false;
       yield* closeCombat(s, ctx, u, a.target, 'attack');
-      // Camp capture: a camp counts only where the attacking unit finally stops.
-      if (!s.winner && unitById(s, u.id)) captureCamp(s, ctx, u);
+      // Capture objectives: a camp counts only where the attacking unit finally stops.
+      if (!s.winner && unitById(s, u.id)) captureOnStop(s, ctx, u);
     }
   }
 }

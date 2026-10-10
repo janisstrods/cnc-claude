@@ -2,7 +2,7 @@
 // Used both for live answers and inside Monte-Carlo simulations (for both sides).
 import { cardKind, sectionOrders } from '../engine/cards';
 import { closeCombatDice, retreatPerFlag } from '../engine/combat';
-import { capturableCamp } from '../engine/flow';
+import { capturableAt } from '../engine/objectives';
 import { neighbours, sectionsOf } from '../engine/hex';
 import { rallyCandidates, validateRally, validateSpartacus } from '../engine/orders';
 import { leaderById, other, unitById } from '../engine/query';
@@ -448,7 +448,7 @@ function valueAt(s: GameState, u: Unit, hex: HexId, W: Weights, withBonus: boole
  * forfeits the banner).
  */
 export function campBanner(s: GameState, u: Unit, h: HexId): number {
-  if (h < 0 || !capturableCamp(s, u.side, h)) return 0;
+  if (h < 0 || !capturableAt(s, u.side, h)) return 0;
   if (s.players[u.side].banners + 1 >= s.bannersToWin) return WIN_SCORE;
   return nextBanner(s, u.side);
 }

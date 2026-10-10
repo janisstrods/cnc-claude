@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   GameDriver, UNIT_STATS, UNIT_TYPES, baseSwordIgnores, closeCombatDice, createGame, frightAtFirstSight, ignorableFlags,
   pieceMoves, randomAnswer, swordIgnores, tacticalFlexibility,
-  type GameEvent, type GameState, type ScenarioSetup, type Side, type Unit, type UnitType,
+  type GameEvent, type GameState, type ScenarioSetup, type Side, type SpecialRuleId, type Unit, type UnitType,
 } from '../../src/engine';
 import { Occ, ignorableOcc } from '../../src/ai/board';
 import { campBanner } from '../../src/ai/policies';
@@ -772,17 +772,17 @@ describe('tacticalFlexibility (§17.3)', () => {
 
 /** Gabiene-style: the top side captures the listed camp at (7,11); (7,1) is a camp that is not listed. */
 const GABIENE: Pos = {
-  rules: ['campCapture'], campCapture: { side: 'top', hexes: [[7, 11]] }, first: 'top', topArmy: 'Antigonid', bottomArmy: 'Eumenid',
+  objectives: [{ kind: 'capture', side: 'top', hexes: [[7, 11]] }], first: 'top', topArmy: 'Antigonid', bottomArmy: 'Eumenid',
   terrain: [{ at: [7, 11], t: 'camp' }, { at: [7, 1], t: 'camp' }],
 };
 
-describe('campCapture (114 Gabiene, 011 Baecula)', () => {
+describe('camp capture objective (114 Gabiene, 011 Baecula)', () => {
   it('a unit of the capturing side ending its move on the listed camp gains 1 banner, once', () => {
     const s = build({ ...GABIENE, units: [{ side: 'top', type: 'MI', at: [6, 11] }, { side: 'top', type: 'MI', at: [6, 12] }] });
     const d = play(s, 'orderMedium', ['u1']);
     must(d, { kind: 'move', piece: 'u1', to: H(7, 11) });
     expect(d.state.players.top.banners).toBe(1);
-    expect(d.state.special.campsCaptured).toEqual([H(7, 11)]);
+    expect(d.state.special.objState[0].taken).toEqual([H(7, 11)]);
     while (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
     passTurn(d); // bottom
     const card = giveCard(d.state, 'top', 'orderMedium');
@@ -829,26 +829,29 @@ describe('campCapture (114 Gabiene, 011 Baecula)', () => {
     expect(dr.state.players.top.banners).toBe(0);
   });
 
-  it('setup: hexes default to every camp on the board; the hexes must be camps; rule and data go together', () => {
-    const all = createGame(setupOf({ ...GABIENE, campCapture: { side: 'bottom' } }), 1);
-    expect(all.special.campCapture).toMatchObject({ side: 'bottom', hexes: [H(7, 1), H(7, 11)] });
-    expect(() => createGame(setupOf({ ...GABIENE, campCapture: { side: 'top', hexes: [[6, 6]] } }), 1)).toThrow(/camp/);
-    expect(() => createGame(setupOf({ ...GABIENE, campCapture: undefined }), 1)).toThrow(/campCapture/);
-    expect(() => createGame(setupOf({ ...GABIENE, rules: [] }), 1)).toThrow(/campCapture/);
-    expect(createGame(setupOf({}), 1).special.campCapture).toBeNull();
+  it('setup: hexes default to every camp on the board; the hexes must be camps; the old campCapture rule is gone', () => {
+    const all = createGame(setupOf({ ...GABIENE, objectives: [{ kind: 'capture', side: 'bottom' }] }), 1);
+    expect(all.special.objectives).toMatchObject([{ kind: 'capture', side: 'bottom', hexes: [H(7, 1), H(7, 11)] }]);
+    expect(() => createGame(setupOf({ ...GABIENE, objectives: [{ kind: 'capture', side: 'top', hexes: [[6, 6]] }] }), 1)).toThrow(/camp/);
+    expect(() => createGame(setupOf({ ...GABIENE, rules: ['campCapture' as SpecialRuleId] }), 1)).toThrow(/unknown special rule campCapture/);
+    expect(createGame(setupOf({}), 1).special.objectives).toEqual([]);
   });
 
   it('011 Baecula: the Romans (bottom) capture any of the three Carthaginian camps; the setup is otherwise unchanged', () => {
     const sc = scenarioById('011');
-    expect(sc.setup.rules).toEqual(['campCapture']);
-    expect(sc.setup.campCapture?.side).toBe('bottom');
+    expect(sc.setup.rules).toEqual([]);
+    expect(sc.setup.objectives).toEqual([{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }]);
     const s = createGame(sc.setup, 1);
     expect(s.players.bottom.army).toBe('Roman');
-    expect(s.special.campCapture).toEqual({ side: 'bottom', hexes: [H(1, 4), H(1, 6), H(1, 8)], text: 'The Romans storm a Carthaginian camp!' });
+    expect(s.special.objectives).toEqual([{
+      kind: 'capture', side: 'bottom', hexes: [H(1, 4), H(1, 6), H(1, 8)], when: 'stop', banners: [1], together: 0, remove: false,
+      text: 'The Romans storm a Carthaginian camp!',
+    }]);
     expect(s.terrain.flatMap((t, h) => (t === 'camp' ? [h] : []))).toEqual([H(1, 4), H(1, 6), H(1, 8)]);
     expect(s.units).toHaveLength(sc.setup.units.length);
     // no other base scenario has a camp objective (114 Gabiene's is checked in tests/scenarios/exp1.test.ts)
-    for (const x of SCENARIOS) if (x.id !== '011' && x.id !== '114') expect([x.id, x.setup.campCapture]).toEqual([x.id, undefined]);
+    const captures = (x: (typeof SCENARIOS)[number]) => (x.setup.objectives ?? []).filter((o) => o.kind === 'capture');
+    for (const x of SCENARIOS) if (x.id !== '011' && x.id !== '114') expect([x.id, captures(x)]).toEqual([x.id, []]);
   });
 
   it('the AI values the camp for the capturing side only', () => {
@@ -856,7 +859,7 @@ describe('campCapture (114 Gabiene, 011 Baecula)', () => {
     expect(campBanner(s, s.units[0], H(7, 11))).toBeGreaterThan(0);
     expect(campBanner(s, s.units[0], H(7, 1))).toBe(0);
     expect(campBanner(s, s.units[1], H(7, 11))).toBe(0);
-    s.special.campsCaptured.push(H(7, 11));
+    s.special.objState[0].taken.push(H(7, 11));
     expect(campBanner(s, s.units[0], H(7, 11))).toBe(0);
   });
 });

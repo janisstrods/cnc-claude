@@ -8,12 +8,13 @@ export * from './cards';
 export * from './query';
 export * from './setup';
 export * from './movement';
+export * from './objectives';
 export * from './orders';
 export * from './combat';
 export * from './retreat';
 export {
-  gameFlow, turnFlow, nextTurn, battleTargets, closeTargets, pieceMoves, movablePieces, battleReady, ambushAvailable, ambushSections, gainBanner,
-  capturableCamp, placementOptions,
+  gameFlow, turnFlow, nextTurn, battleTargets, closeTargets, pieceMoves, movablePieces, battleReady, ambushAvailable, ambushSections,
+  placementOptions,
 } from './flow';
 export type { BattleTarget, Gen } from './flow';
 export * from './driver';

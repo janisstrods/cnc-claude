@@ -18,8 +18,8 @@ export interface Pos {
   bottomArmy?: string;
   sacredLeader?: ScenarioSetup['sacredLeader'];
   initialCommand?: ScenarioSetup['initialCommand'];
-  /** Camp-capture objective (rule `campCapture`, §14 / §17.4). */
-  campCapture?: ScenarioSetup['campCapture'];
+  /** Battle objectives (camp capture, exits, §18.4). */
+  objectives?: ScenarioSetup['objectives'];
   /** Scenario options (Tactical Flexibility, §17.3). */
   options?: ScenarioSetup['options'];
   /** Leaders placed before the first turn, in placement order (rule `leaderPlacement`, 117 Asculum, §17.4). */
@@ -44,7 +44,7 @@ export function setupOf(p: Pos): ScenarioSetup {
     rules: p.rules ?? [],
     sacredLeader: p.sacredLeader,
     initialCommand: p.initialCommand,
-    campCapture: p.campCapture,
+    objectives: p.objectives,
     options: p.options,
     placeLeaders: p.placeLeaders,
   };

@@ -1,5 +1,6 @@
 // The 60-card Command deck. Texts are paraphrased summaries of each card's effect.
-import type { CardDef, CardKind, OrderMods, SectionName } from './types';
+import { shuffle } from './rng';
+import type { CardDef, CardKind, FlowCtx, GameState, OrderMods, SectionName, Side } from './types';
 
 const sec = (n: number, s: SectionName, word: string): string =>
   `Issue an order to ${n} units or leaders in the ${word} section.`;
@@ -125,6 +126,28 @@ export const CARD_LIST: CardKind[] = (() => {
 
 export function cardKind(id: number): CardKind {
   return CARD_LIST[id];
+}
+
+/**
+ * `side` draws one card (reshuffling the discards into an empty deck). Hellespont (§17.4): while the side owes cards for
+ * lost leaders (`cardDebt`), any draw pays off one owed card instead of drawing (the end-of-turn draw, the First Strike
+ * draw, Trasimenus' and Beneventum's extra draws alike).
+ */
+export function drawCard(s: GameState, ctx: FlowCtx, side: Side) {
+  if (s.special.cardDebt[side] > 0) {
+    s.special.cardDebt[side]--;
+    ctx.emit({ t: 'log', text: `The ${s.players[side].army} army draws no card: it lost a leader.`, side });
+    return;
+  }
+  if (s.deck.length === 0) {
+    if (s.discard.length === 0) return;
+    s.deck = s.discard;
+    s.discard = [];
+    shuffle(s, s.deck);
+    ctx.emit({ t: 'reshuffle' });
+  }
+  s.players[side].hand.push(s.deck.pop()!);
+  ctx.emit({ t: 'draw', side });
 }
 
 /** Section cards: number of orders per section (from the player's own point of view). */

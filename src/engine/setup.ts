@@ -3,12 +3,13 @@ import { CARD_LIST, defaultMods } from './cards';
 import { HEX_DIRS, hexId, onBoard } from './hex';
 import { shuffle } from './rng';
 import { ELITES, type EliteDef } from './elites';
+import { newObjectiveState, resolveObjectives } from './objectives';
 import { LEADER_TRAITS } from './query';
 import { TERRAIN_NAMES, isImpassable, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain } from './units';
 import {
   ARMY_LOOKS, BLOCKS, COLS, OFF_BOARD, ROWS, SPECIAL_RULE_IDS,
-  type ArmyLook, type Blocks, type CampCapture, type EliteId, type GameState, type HexDir, type HexId, type Leader, type LeaderTrait,
+  type ArmyLook, type Blocks, type EliteId, type GameState, type HexDir, type HexId, type Leader, type LeaderTrait,
   type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
@@ -43,17 +44,28 @@ export interface ScenarioSetup {
   sacredLeader?: { side: Side; name: string };
   /** Starting Command for a side when different from `cards` (Trasimenus Romans start with 2). */
   initialCommand?: Partial<Record<Side, number>>;
-  /**
-   * Camp-capture objective (needs rule `campCapture`; 011 Baecula, 114 Gabiene): a unit of `side` that ends its move on
-   * one of `hexes` (every camp hex on the board when omitted) gains 1 banner, once per camp. `text`: the log line.
-   */
-  campCapture?: { side: Side; hexes?: [number, number][]; text?: string };
+  /** Battle objectives (§18.4): camp capture (011 Baecula, 114 Gabiene), exits (010 Castulo) and the like. */
+  objectives?: ObjectiveSetup[];
   /**
    * Optional rules this scenario offers, with their default (Tactical Flexibility in 120, 121, 124, §17.3). A player's
    * choice is passed to `createGame` as `GameOptions`.
    */
   options?: GameOptions;
 }
+
+/**
+ * A battle objective as scenario data (resolved into `ObjectiveDef`, see there). Hexes are `[r, c]`. Defaults:
+ * `capture` — `hexes` every camp on the board, `when: 'stop'`, `banners: [1]`, `together: 0`, `remove: false`, `text`
+ * "The <army> army captures a <enemy army> camp!"; `hold` — `max` the number of hexes; `exit` — `units: 'any'`,
+ * `leadersScore: false`, `text` "<army> {unit} breaks through and exits the battlefield!".
+ */
+export type ObjectiveSetup =
+  | { kind: 'capture'; side: Side; hexes?: [number, number][]; when?: 'stop' | 'turnStart'; banners?: number[];
+      together?: number; remove?: boolean; text?: string }
+  | { kind: 'hold'; side: Side; hexes: [number, number][]; max?: number; text?: string }
+  | { kind: 'majority'; sides: Side[]; hexes: [number, number][]; banners: number; when: 'turnEnd' | 'always'; text?: string }
+  | { kind: 'sectionClear'; side: Side; text?: string }
+  | { kind: 'exit'; side: Side; hexes: [number, number][]; units?: 'any' | 'foot' | 'cavalry'; leadersScore?: boolean; text?: string };
 
 /** Optional rules chosen for a game. Only rules the scenario offers (`ScenarioSetup.options`) can be switched. */
 export interface GameOptions {
@@ -123,28 +135,6 @@ function effectiveRules(setup: ScenarioSetup, options: GameOptions | undefined):
   const out: SpecialRuleId[] = rules.filter((r) => r !== 'tacticalFlexibility');
   if (on) out.push('tacticalFlexibility');
   return out;
-}
-
-/** Resolve and validate the camp-capture objective against the terrain (null without the `campCapture` rule). */
-function campCaptureOf(setup: ScenarioSetup, rules: SpecialRuleId[], terrain: TerrainType[], players: GameState['players']): CampCapture | null {
-  const cc = setup.campCapture;
-  const ruled = rules.includes('campCapture');
-  if (!cc && !ruled) return null;
-  if (!cc) throw new Error(`rule campCapture needs scenario data campCapture (${setup.id})`);
-  if (!ruled) throw new Error(`campCapture data needs the campCapture rule (${setup.id})`);
-  if (cc.side !== 'top' && cc.side !== 'bottom') throw new Error(`campCapture: unknown side ${String(cc.side)} (${setup.id})`);
-  let hexes: HexId[];
-  if (cc.hexes) {
-    hexes = cc.hexes.map(([r, c]) => {
-      if (!onBoard(r, c) || terrain[hexId(r, c)] !== 'camp') throw new Error(`campCapture hex ${r},${c} is not a camp (${setup.id})`);
-      return hexId(r, c);
-    });
-    hexes = [...new Set(hexes)].sort((a, b) => a - b);
-  } else hexes = terrain.flatMap((t, h) => (t === 'camp' ? [h] : []));
-  if (!hexes.length) throw new Error(`campCapture needs at least one camp hex (${setup.id})`);
-  const enemy = cc.side === 'top' ? 'bottom' : 'top';
-  const text = cc.text ?? `The ${players[cc.side].army} army captures a ${players[enemy].army} camp!`;
-  return { side: cc.side, hexes, text };
 }
 
 const known = (list: readonly string[], v: unknown): boolean => typeof v === 'string' && list.includes(v);
@@ -329,8 +319,8 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
       reserveSide: reserveUnits[0]?.side ?? reserveLeaders[0]?.side ?? null,
       reserveReleased: false,
       turnsDone: { top: 0, bottom: 0 },
-      campCapture: null,
-      campsCaptured: [],
+      objectives: [],
+      objState: [],
       sacredLeaderId: sacred,
       beneventumBonusGiven: false,
       leadersAtStart: leaderCount(setup),
@@ -341,7 +331,8 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     nextId,
   };
   checkPositions(setup, s);
-  s.special.campCapture = campCaptureOf(setup, rules, terrain, s.players);
+  s.special.objectives = resolveObjectives(setup, terrain, s.players);
+  s.special.objState = s.special.objectives.map(newObjectiveState);
   for (const side of [setup.first, setup.first === 'top' ? 'bottom' : 'top'] as Side[]) {
     const p = s.players[side];
     for (let i = 0; i < p.command; i++) p.hand.push(s.deck.pop()!);
@@ -375,7 +366,8 @@ export function cloneState(s: GameState): GameState {
       reserveUnits: s.special.reserveUnits.map((u) => ({ ...u })),
       reserveLeaders: s.special.reserveLeaders.map((l) => ({ ...l })),
       turnsDone: { ...s.special.turnsDone },
-      campsCaptured: [...s.special.campsCaptured],
+      objectives: s.special.objectives,
+      objState: s.special.objState.map((o) => ({ taken: [...o.taken], held: { ...o.held }, sections: [...o.sections] })),
       leadersAtStart: { ...s.special.leadersAtStart },
       unplaced: [...s.special.unplaced],
       leadersEliminated: { ...s.special.leadersEliminated },

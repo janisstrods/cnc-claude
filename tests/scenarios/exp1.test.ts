@@ -219,9 +219,12 @@ describe('battle-specific setup', () => {
 
   it("114 Gabiene: Antigonus' army (top) gains a banner for Eumenes' camp at (8,12)", () => {
     const s = game('114');
-    expect(s.special.campCapture).toEqual({ side: 'top', hexes: [H(8, 12)], text: "Antigonus' troops seize Eumenes' baggage camp!" });
+    expect(s.special.objectives).toEqual([{
+      kind: 'capture', side: 'top', hexes: [H(8, 12)], when: 'stop', banners: [1], together: 0, remove: false,
+      text: "Antigonus' troops seize Eumenes' baggage camp!",
+    }]);
     expect(s.terrain.flatMap((t, h) => (t === 'camp' ? [h] : []))).toEqual([H(8, 12)]);
-    expect(SCENARIOS.filter((sc) => sc.setup.campCapture).map((sc) => sc.id)).toEqual(['011', '114']);
+    expect(SCENARIOS.filter((sc) => sc.setup.objectives?.some((o) => o.kind === 'capture')).map((sc) => sc.id)).toEqual(['011', '114']);
   });
 
   it('117 Asculum: no leader on the board; the 2 Roman leaders are placed first, then the 2 Epirote', () => {
@@ -400,7 +403,8 @@ describe('the manifest notices a changed battle', () => {
         if (!t) return false;
         const old: [number, number] = [t.r, t.c];
         [t.r, t.c] = freeHex(base, st.terrain.map((x) => x.r * COLS + x.c));
-        for (const h of st.campCapture?.hexes ?? []) if (h[0] === old[0] && h[1] === old[1]) [h[0], h[1]] = [t.r, t.c]; // 114's camp objective follows its camp
+        // 114's camp objective follows its camp
+        for (const o of st.objectives ?? []) for (const h of ('hexes' in o && o.hexes) || []) if (h[0] === old[0] && h[1] === old[1]) [h[0], h[1]] = [t.r, t.c];
         return true;
       });
       if (!r) continue;

@@ -86,7 +86,7 @@ export interface AiMemory {
   /** Own-turn index (turns completed) at which each held card was first seen; keep value decays with time held. */
   cardSeen?: Record<string, number>;
   cardSeenIdx?: number;
-  /** Camps captured as seen at the previous decision (commentary). */
+  /** Camps our side had captured at the previous decision (commentary). */
   campsSeen?: number;
 }
 
@@ -240,7 +240,7 @@ function commentCard(s: GameState, me: Side, P: Personality, mem: AiMemory, rng:
   return speak(s, me, P, m, mem.voice, rng, { troops: shape.focus, elite: shape.elite, chance: important ? 0.75 : 0.35 });
 }
 
-/** A Castulo break-out (unit leaving over the enemy baseline). */
+/** A break-out: a unit leaving the board by an exit objective (010 Castulo). */
 function exitLine(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rng, a: Answer): string | undefined {
   if (a.kind !== 'move' || a.to !== OFF_BOARD) return undefined;
   return speak(s, me, P, 'exit', mem.voice, rng, { chance: 1.2 });
@@ -248,10 +248,13 @@ function exitLine(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rn
 
 /** Camp capture: a camp captured by our side since the previous decision (the engine credits it once the unit stops). */
 function campLine(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rng): string | undefined {
-  const n = s.special.campsCaptured.length;
+  let n = 0;
+  s.special.objectives.forEach((o, i) => {
+    if (o.kind === 'capture' && o.side === me) n += s.special.objState[i].taken.length;
+  });
   const before = mem.campsSeen ?? -1;
   mem.campsSeen = n;
-  if (before < 0 || n <= before || s.special.campCapture?.side !== me) return undefined;
+  if (before < 0 || n <= before) return undefined;
   return speak(s, me, P, 'camp', mem.voice, rng, { chance: 2 });
 }
 

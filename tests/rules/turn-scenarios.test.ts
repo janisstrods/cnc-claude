@@ -88,7 +88,7 @@ describe('scenario data', () => {
     expect(scenarioById('006').setup.rules).toContain('trasimenusHand');
     expect(scenarioById('009').setup.rules).toContain('beneventumHand');
     expect(scenarioById('010').setup.rules).toContain('castulo');
-    expect(scenarioById('011').setup.rules).toContain('campCapture');
+    expect(scenarioById('011').setup.objectives).toEqual([{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }]);
   });
   it('river fordability: Ticinus and Beneventum not fordable, Trebbia and Metaurus fordable', () => {
     const fordable = (id: string) => {
@@ -167,7 +167,7 @@ describe('2nd Beneventum: Roman hand grows to 6 at the 3rd banner', () => {
 
 describe('Castulo', () => {
   const castulo = {
-    rules: ['castulo' as const], sacredLeader: { side: 'bottom' as const, name: 'Scipio' },
+    rules: ['castulo' as const], sacredLeader: { side: 'bottom' as const, name: 'Scipio' }, objectives: scenarioById('010').setup.objectives,
   };
   it('if Publius Scipio is eliminated Carthage wins at once', () => {
     const s = build({
@@ -211,7 +211,7 @@ describe('Castulo', () => {
 });
 
 describe('Baecula camps', () => {
-  const baecula: Pos = { rules: ['campCapture'], campCapture: { side: 'bottom' }, terrain: [{ at: [2, 6], t: 'camp' }] };
+  const baecula: Pos = { objectives: [{ kind: 'capture', side: 'bottom' }], terrain: [{ at: [2, 6], t: 'camp' }] };
   it('a Roman unit ending its move on a camp hex gains 1 banner, once per camp', () => {
     const s = build({ ...baecula, units: [{ side: 'bottom', type: 'MI', at: [3, 6] }, { side: 'bottom', type: 'MI', at: [3, 5] }] });
     const d = play(s, 'order2C', ['u1']);
