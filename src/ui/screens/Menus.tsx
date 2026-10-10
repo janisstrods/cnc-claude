@@ -2,10 +2,11 @@ import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { UNIT_STATS, createGame, leaderUnit, type GameOptions, type GameState, type Side, type UnitType } from '../../engine';
 import { SCENARIOS, type Expansion, type ScenarioInfo } from '../../scenarios';
 import { LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
-import { BoardArt } from '../terrain';
+import { BoardArt, ObjectiveMarkers, terrainArtOf } from '../terrain';
 import { Button, Icon, Modal, Panel } from '../kit';
 import { BOARD_H, BOARD_W, hexCenterId } from '../geometry';
 import type { Difficulty, SavedGame } from '../game/controller';
+import { edgeBlocksOf } from '../game/uiModel';
 import { PERSONALITIES, personalityFor } from '../../ai';
 import { RulesReference } from './RulesReference';
 import {
@@ -32,7 +33,7 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
         </div>
         <h1 className="menu-title">Commands &amp; Colors</h1>
         <div className="menu-sub">ANCIENTS</div>
-        <p className="menu-tag">From Marathon to Pydna, 490–168 BC · 39 historical battles: the base game and Expansion #1</p>
+        <p className="menu-tag">From Marathon to the Severn, 490 BC – AD 51 · {SCENARIOS.length} historical battles: the base game and Expansions #1 and #2</p>
         <div className="menu-armies" aria-hidden>
           <svg viewBox="-52 -48 524 96" width="620" height="114">
             {MENU_ARMY_L.map((t, i) => (
@@ -65,6 +66,7 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
           <p>An unofficial, fan-made digital edition of <i>Commands &amp; Colors: Ancients</i>, designed by Richard Borg and published by GMT Games. Commands &amp; Colors is a trademark of GMT Games LLC. This edition uses original artwork and paraphrased rules text; it is not affiliated with or endorsed by GMT Games.</p>
           <p>Scenario setups follow the base game's 15 battles as documented by the community at commandsandcolors.net.</p>
           <p><b>Expansion #1</b>, <i>Greece &amp; Eastern Kingdoms</i>: its 24 battles (101–124) were transcribed hex by hex from the official battle maps published at commandsandcolors.net (122–124 from GMT's Bonus Pack #2). Its rules are paraphrased, its battle summaries original, and its armies drawn as original artwork.</p>
+          <p><b>Expansion #2</b>, <i>Rome &amp; the Barbarians</i>: its 23 battles (201–223) were transcribed the same way from the battle maps published at commandsandcolors.net. Its rules are paraphrased, its battle summaries original, and its armies drawn as original artwork.</p>
           <p><b>Fonts:</b> Cinzel (Natanael Gama) and EB Garamond (Georg Duffner, Octavio Pardo) — SIL Open Font License 1.1.</p>
           <p><b>Icons:</b> game-icons.net by Lorc and Delapouite — CC BY 3.0 (see CREDITS.md for the full list).</p>
           <p><b>Miniatures, terrain, cards and dice:</b> original SVG artwork made for this edition.</p>
@@ -74,17 +76,23 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
   );
 }
 
-function SetupPreview({ state, flipped, humanSide }: { state: GameState; flipped: boolean; humanSide: Side }) {
+function SetupPreview({ sc, state, flipped, humanSide }: { sc: ScenarioInfo; state: GameState; flipped: boolean; humanSide: Side }) {
   const top = flipped ? 'bottom' : 'top';
   const bottom = flipped ? 'top' : 'bottom';
+  const art = useMemo(() => terrainArtOf(sc.setup), [sc]);
+  const blocks = { top: state.players.top.blocks, bottom: state.players.bottom.blocks };
   return (
     <svg className="preview-svg" viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}>
-      <BoardArt terrain={state.terrain} fords={state.fords} rampart={state.rampart} flipped={flipped} topLabel={state.players[top].army} bottomLabel={state.players[bottom].army} />
+      <BoardArt
+        terrain={state.terrain} fords={state.fords} rampart={state.rampart} art={art} steepHills={state.special.rules.includes('veryHills')}
+        flipped={flipped} topLabel={state.players[top].army} bottomLabel={state.players[bottom].army}
+      />
+      <ObjectiveMarkers objectives={state.special.objectives} objState={state.special.objState} flipped={flipped} blocks={blocks} units={state.units} />
       {state.units.map((u) => {
         const { x, y } = hexCenterId(u.hex, flipped);
         return (
           <g key={u.id} transform={`translate(${x}, ${y})`}>
-            <UnitToken type={u.type} look={state.players[u.side].look} blockColor={state.players[u.side].blocks} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={u.side === humanSide ? 'right' : 'left'} elite={u.elite} />
+            <UnitToken type={u.type} look={state.players[u.side].look} blockColor={state.players[u.side].blocks} edgeBlocks={edgeBlocksOf(state, u)} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={u.side === humanSide ? 'right' : 'left'} elite={u.elite} />
           </g>
         );
       })}
@@ -94,7 +102,7 @@ function SetupPreview({ state, flipped, humanSide }: { state: GameState; flipped
         const att = !!leaderUnit(state, l);
         return (
           <g key={l.id} transform={`translate(${x + (att ? LEADER_ATTACH_OFFSET.x : 0)}, ${y + (att ? LEADER_ATTACH_OFFSET.y : 0)})`}>
-            <LeaderToken look={state.players[l.side].look} blockColor={state.players[l.side].blocks} facing={l.side === humanSide ? 'right' : 'left'} attached={att} name={l.name} showName={!att} />
+            <LeaderToken look={state.players[l.side].look} blockColor={state.players[l.side].blocks} edgeBlocks={edgeBlocksOf(state, l)} facing={l.side === humanSide ? 'right' : 'left'} attached={att} name={l.name} showName={!att} />
           </g>
         );
       })}
@@ -233,7 +241,7 @@ export function ScenarioSelect(p: {
           )}
         </Panel>
         <div className="preview-wrap">
-          <SetupPreview state={preview} flipped={side === 'top'} humanSide={side} />
+          <SetupPreview sc={sel} state={preview} flipped={side === 'top'} humanSide={side} />
         </div>
         <div className="choose-row">
           <div className="choose-group">

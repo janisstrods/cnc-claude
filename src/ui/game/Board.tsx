@@ -1,15 +1,19 @@
 import { memo, useMemo } from 'react';
 import { ALL_HEXES, leaderUnit, rowOf, colOf, type GameState, type HexId, type Leader, type Side, type Unit } from '../../engine';
-import { LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
-import { BoardArt } from '../terrain';
+import { BLOCK_COLORS, LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
+import { scenarioById } from '../../scenarios';
+import { BoardArt, ObjectiveMarkers, terrainArtOf } from '../terrain';
 import { BOARD_H, BOARD_W, HEX_R, hexCenterId, hexPoints } from '../geometry';
 import type { Flash } from './controller';
+import { commandBlocks, commandById, edgeBlocksOf } from './uiModel';
 
 export type Highlight =
   | 'eligible' | 'selected' | 'mover' | 'attacker' | 'move' | 'moveNoBattle' | 'moveMustBattle'
   | 'targetClose' | 'targetRanged' | 'option' | 'focus'
   /** Asculum leader placement: an own unit to join (strong) or an empty hex to stand on alone (faint). */
-  | 'placeUnit' | 'placeEmpty';
+  | 'placeUnit' | 'placeEmpty'
+  /** Rolling Fire (210): the path picked so far, and the hexes it may run on to. */
+  | 'rollPath' | 'rollNext';
 
 export interface BoardProps {
   state: GameState;
@@ -44,7 +48,29 @@ const HL_STYLE: Record<Highlight, { fill: string; stroke: string; dash?: string;
   focus: { fill: 'rgba(255,255,255,0.12)', stroke: '#ffffff', width: 2.5 },
   placeUnit: { fill: 'rgba(255, 210, 80, 0.22)', stroke: '#ffd45a', width: 2.8 },
   placeEmpty: { fill: 'rgba(200, 175, 255, 0.10)', stroke: 'rgba(215, 192, 255, 0.6)', width: 1.4 },
+  rollPath: { fill: 'rgba(255, 110, 20, 0.34)', stroke: '#ff8a2a', width: 3.2 },
+  rollNext: { fill: 'rgba(255, 150, 50, 0.16)', stroke: 'rgba(255, 176, 92, 0.95)', dash: '6 4', width: 2.4 },
 };
+
+/**
+ * Badge of a unit's separate command (210, §18.5): the command's initial on a disc of its colour, at the token's upper
+ * left (the upper right is kept for an attached leader).
+ */
+function CommandBadge({ state, command }: { state: GameState; command: string }) {
+  const c = commandById(state, command);
+  if (!c) return null;
+  const col = BLOCK_COLORS[commandBlocks(state, c)];
+  // a pale command colour (Lentulus' grey) takes a dark letter
+  const light = parseInt(col.edge.slice(1, 3), 16) + parseInt(col.edge.slice(3, 5), 16) + parseInt(col.edge.slice(5, 7), 16) > 450;
+  return (
+    <g className="command-badge" transform={`translate(${-HEX_R * 0.5}, ${-HEX_R * 0.6})`}>
+      <circle r={7.4} fill={col.edge} stroke={col.edgeShade} strokeWidth={1.4} />
+      <text y={3.4} textAnchor="middle" fontFamily="Cinzel, Georgia, serif" fontWeight={700} fontSize={9.6} fill={light ? '#1d1a22' : '#fbf1d6'}>
+        {c.name.charAt(0)}
+      </text>
+    </g>
+  );
+}
 
 function facingFor(side: Side, humanSide: Side): 'left' | 'right' {
   return side === humanSide ? 'right' : 'left';
@@ -75,7 +101,8 @@ const UnitLayer = memo(function UnitLayer(p: {
         return (
           <g key={u.id} className={`unit-g ${walking[u.id] !== undefined ? 'walking' : ''}`} style={{ transform: `translate(${x}px, ${y}px)` }}>
             {ordered && <circle r={HEX_R * 0.86} className="ordered-ring" />}
-            <UnitToken type={u.type} look={owner.look} blockColor={owner.blocks} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={facingFor(u.side, humanSide)} elite={u.elite} dimmed={p.doneIds.has(u.id)} />
+            <UnitToken type={u.type} look={owner.look} blockColor={owner.blocks} edgeBlocks={edgeBlocksOf(state, u)} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={facingFor(u.side, humanSide)} elite={u.elite} dimmed={p.doneIds.has(u.id)} />
+            {u.command && <CommandBadge state={state} command={u.command} />}
             {ordered && (
               <g transform={`translate(${-HEX_R * 0.72}, ${-HEX_R * 0.08})`} className="ordered-flag">
                 <path d="M0 0 L0 -14 L11 -10 L0 -6" fill="#f1c84b" stroke="#3b2a0a" strokeWidth={1} />
@@ -105,7 +132,7 @@ const UnitLayer = memo(function UnitLayer(p: {
           >
             {hl && <circle r={attached ? 15 : 30} fill={HL_STYLE[hl].fill} stroke={HL_STYLE[hl].stroke} strokeWidth={2.5} strokeDasharray={HL_STYLE[hl].dash} />}
             {p.orderedIds.has(l.id) && <circle r={attached ? 16 : 31} className="ordered-ring" />}
-            <LeaderToken look={owner.look} blockColor={owner.blocks} facing={facingFor(l.side, humanSide)} attached={attached} name={l.name || 'Leader'} showName={!attached} />
+            <LeaderToken look={owner.look} blockColor={owner.blocks} edgeBlocks={edgeBlocksOf(state, l)} facing={facingFor(l.side, humanSide)} attached={attached} name={l.name || 'Leader'} showName={!attached} />
           </g>
         );
       })}
@@ -113,24 +140,43 @@ const UnitLayer = memo(function UnitLayer(p: {
   );
 });
 
+/** Art hints of a battle's hexes (217's coast played as a ford), from its scenario setup: the game state drops them. */
+export function scenarioArt(scenarioId: string): (string | undefined)[] {
+  return terrainArtOf(scenarioById(scenarioId).setup);
+}
+
 export function Board(p: BoardProps) {
   const { state, flipped } = p;
   const top = flipped ? 'bottom' : 'top';
   const bottom = flipped ? 'top' : 'bottom';
+  const hexArt = useMemo(() => scenarioArt(state.scenarioId), [state.scenarioId]);
+  const steepHills = state.special.rules.includes('veryHills');
   const art = useMemo(
     () => (
       <BoardArt
         terrain={state.terrain}
         fords={state.fords}
         rampart={state.rampart}
+        art={hexArt}
+        steepHills={steepHills}
         flipped={flipped}
         topLabel={state.players[top].army}
         bottomLabel={state.players[bottom].army}
       />
     ),
-    // terrain never changes during a game
+    // terrain changes during play only by `setTerrain` (a camp captured, a rampart torn down), which replaces the
+    // `terrain` and `rampart` arrays: their identity is enough
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.scenarioId, flipped],
+    [state.scenarioId, state.terrain, state.rampart, hexArt, steepHills, flipped],
+  );
+  const { objectives, objState } = state.special;
+  const units = state.units;
+  const topBlocks = state.players.top.blocks;
+  const bottomBlocks = state.players.bottom.blocks;
+  // battle objectives (§18.4; also 010, 011, 114): redrawn when the state changes, not on every hover
+  const markers = useMemo(
+    () => <ObjectiveMarkers objectives={objectives} objState={objState} flipped={flipped} blocks={{ top: topBlocks, bottom: bottomBlocks }} units={units} />,
+    [objectives, objState, flipped, topBlocks, bottomBlocks, units],
   );
   const hexes = ALL_HEXES;
   const comb = p.combat ? { a: hexCenterId(p.combat.from, flipped), b: hexCenterId(p.combat.to, flipped) } : null;
@@ -146,6 +192,7 @@ export function Board(p: BoardProps) {
         </filter>
       </defs>
       {art}
+      {markers}
       <g className="shade-layer">
         {[...p.sectionShade].map((h) => {
           const { x, y } = hexCenterId(h, flipped);

@@ -1,11 +1,12 @@
 // Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges, plus the unit
 // descriptions shown in tooltips and the rules reference.
 import {
-  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, battleReady, battleTargets, canMarch, cardKind, closeCombatDice,
-  closeHitChance, eligiblePieces, eliteDef, fireMoveLimit, inSection, isFord, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf,
-  mirrorKind, movablePieces, orderCommander, orderMode, other, pieceMoves, rangeOf, rangedBaseDice, rangedDice, terrainAt, unitAt, unitById,
-  type CardKind, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type Leader, type LeaderTrait,
-  type SectionName, type Side, type Unit, type UnitClass, type UnitStats, type UnitType,
+  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, bannerTotal, baselineRow, battleReady, battleTargets, canMarch,
+  cardKind, closeCombatDice, closeHitChance, eligiblePieces, eliteDef, fireMoveLimit, heldBanners, inSection, isFord, isLeaderId, leaderAt,
+  leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces, nextCaptureBanners, orderCommander, orderMode, other, pieceMoves,
+  rangeOf, rangedBaseDice, rangedDice, rollingFirePaths, rowOf, sectionsOf, terrainAt, unitAt, unitById, veryHills,
+  type Blocks, type CardKind, type CommandDef, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type Leader,
+  type LeaderTrait, type ObjectiveDef, type RetreatOption, type SectionName, type Side, type Unit, type UnitClass, type UnitStats, type UnitType,
 } from '../../engine';
 import type { Highlight } from './Board';
 
@@ -15,6 +16,8 @@ export interface UiSel {
   orderSel: string[];
   selPiece: string | null;
   hoverHex: HexId | null;
+  /** Rolling Fire (210, §18.5): the path hexes picked so far for the selected unit; absent or null = not rolling. */
+  rollPath?: HexId[] | null;
 }
 
 export interface BoardUi {
@@ -98,7 +101,11 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
     }
     case 'orders': {
       sectionShade = shadeSections(human, CARD_DEFS[d.card].sections);
-      for (const id of eligiblePieces(s, human, d.card)) markPiece(id, 'eligible');
+      // separate commands (210, §18.5): once a piece of one command is picked, only that command's pieces stay marked
+      const cmd = selectionCommand(s, ui.orderSel);
+      for (const id of eligiblePieces(s, human, d.card)) {
+        if (cmd === undefined || pieceCommand(s, id) === undefined || pieceCommand(s, id) === cmd) markPiece(id, 'eligible');
+      }
       for (const id of ui.orderSel) markPiece(id, 'selected');
       break;
     }
@@ -127,9 +134,22 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       break;
     }
     case 'battle': {
+      if (ui.selPiece && ui.rollPath) {
+        // Rolling Fire: the path picked so far, and the hexes it may run on to
+        const u = unitById(s, ui.selPiece);
+        markPiece(ui.selPiece, 'selected');
+        const { next } = rollingFireStep(s, ui.selPiece, ui.rollPath);
+        for (const h of ui.rollPath) highlights.set(h, 'rollPath');
+        for (const h of next) highlights.set(h, 'rollNext');
+        for (const h of [...ui.rollPath, ...next]) if (unitAt(s, h)) badges.set(h, '2 dice');
+        if (u) pathPreview = [u.hex, ...ui.rollPath, ...(ui.hoverHex !== null && next.includes(ui.hoverHex) ? [ui.hoverHex] : [])];
+        break;
+      }
       for (const id of battleReady(s)) {
         const op = s.turn.ordered[id];
         markPiece(id, op?.mustBattle ? 'moveMustBattle' : 'attacker');
+        // a unit that may roll burning logs down its hill (210)
+        if (rollingFirePaths(s, id).length) badges.set(pieceHexOf(s, id), 'Logs');
       }
       if (ui.selPiece) {
         markPiece(ui.selPiece, 'selected');
@@ -150,6 +170,8 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       const h = pieceHexOf(s, id);
       if (h >= 0) highlights.set(h, 'focus');
       for (const o of d.options) if (!o.offBoard && o.end >= 0) highlights.set(o.end, 'option');
+      // last-row retreat (214): an option that eliminates the unit says so
+      if (d.kind === 'retreat') for (const o of d.options) if (retreatEliminates(s, d, o)) badges.set(o.end, 'Lost');
       if (ui.hoverHex !== null) {
         const o = d.options.find((x) => x.end === ui.hoverHex);
         if (o && h >= 0) pathPreview = [h, ...o.path];
@@ -471,18 +493,188 @@ export function rampartSidesText(mask: number, flipped: boolean): string {
  * terrain shows just "Terrain: <name>"; impassable hills and Expansion #1 terrain add what they do, and a rampart names
  * its protected sides relative to the viewer.
  */
-export function terrainTipLines(s: GameState, h: HexId, flipped: boolean, name: string): string[] {
+export function terrainTipLines(s: GameState, h: HexId, flipped: boolean, name: string, art?: string): string[] {
   const t = terrainAt(s, h);
   if (t === 'plain') return [];
   if (t === 'rampart') {
-    return [
+    const lines = [
       `Rampart: protects ${rampartSidesText(s.rampart[h], flipped)}`,
       'Foot here ignore 1 sword and 1 flag from attacks across them (1 flag vs missiles)',
     ];
+    // rampart breakers (223, §18.6)
+    const breakers = s.special.rampartBreakers;
+    if (breakers) lines.push(`Torn down when a ${s.players[breakers].army} unit enters or passes through it`);
+    return lines;
+  }
+  // very steep hills (223, §18.6)
+  if (t === 'hill' && veryHills(s)) {
+    return ['Terrain: Very Steep Hill', 'A unit climbing onto it stops and may not battle this turn', 'Close combat: uphill max 1 die, downhill 2, hill to hill 3'];
   }
   const lines = [`Terrain: ${name}`];
   if (t === 'sea') lines.push('Impassable; does not block line of sight');
   if (t === 'steep') lines.push('Impassable; blocks line of sight');
   if (t === 'river' && isFord(s, h) && s.noCap[h]) lines.push('Stops movement; no dice limits in or out');
+  // a coast played as a ford (217) and the ditch (212), §18.6
+  if (t === 'river' && isFord(s, h) && art === 'coast') lines.push('A fordable river in every respect: stops movement; close combat in or out max 2 dice, firing out max 1');
+  if (t === 'ditch') lines.push('Stops every unit and lone leader entering it; no other effect');
   return lines;
+}
+
+// ---------------------------------------------------------------------------
+// Expansion #2: banners held through objectives, objective tooltips, separate commands, Rolling Fire, last-row
+// retreat and the ambush wording (§18.4–§18.5)
+// ---------------------------------------------------------------------------
+
+/** A side's banners for the track: `total` (permanent + held, the number that wins) and `held` (of them, can be lost). */
+export function bannerCounts(s: GameState, side: Side): { total: number; held: number } {
+  return { total: bannerTotal(s, side), held: heldBanners(s, side) };
+}
+
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const ORDINAL = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'];
+/** "a Roman", "an Antigonus'..." */
+const aOrAn = (w: string) => `${/^[AEIOU]/i.test(w) ? 'an' : 'a'} ${w}`;
+
+/** The units an exit objective lets leave: "unit", "foot unit", "cavalry unit". */
+const EXIT_UNITS: Record<'any' | 'foot' | 'cavalry', string> = { any: 'unit', foot: 'foot unit', cavalry: 'cavalry unit' };
+
+/** What a hold or majority hex is called in its tooltip: a camp after its owner, a rampart, a hill, or just an objective. */
+function placeName(s: GameState, h: HexId, owner: Side | null): string {
+  const t = terrainAt(s, h);
+  if (t === 'camp') return owner ? `${s.players[owner].army} camp` : 'Camp';
+  if (t === 'rampart') return 'Rampart';
+  if (t === 'hill') return 'Hill';
+  return 'Objective';
+}
+
+/** Tooltip lines of one objective for hex `h` (none when the hex plays no part in it). */
+function objectiveLines(s: GameState, o: ObjectiveDef, i: number, h: HexId): string[] {
+  const st = s.special.objState[i];
+  const army = (side: Side) => s.players[side].army;
+  switch (o.kind) {
+    case 'capture': {
+      if (!o.hexes.includes(h)) return [];
+      const camp = `${army(other(o.side))} camp`;
+      if (st.taken.includes(h)) return [`${camp}: captured by the ${army(o.side)} army`];
+      if (o.together) {
+        const n = o.banners[0] ?? 1;
+        return [`${camp}: ${army(o.side)} units on ${o.together} of these ${o.hexes.length} camps at the start of their turn capture them all — ${plural(n, 'banner')}`];
+      }
+      const who = o.when === 'stop' ? 'ending its move here' : 'here at the start of its turn';
+      const n = nextCaptureBanners(s, i);
+      let gain = `${plural(n, 'banner')}`;
+      if (n === 0) {
+        const k = o.banners.findIndex((b, j) => j >= st.taken.length && b > 0);
+        gain = k >= 0 ? `no banner until the ${ORDINAL[k] ?? `${k + 1}th`} camp taken` : 'no banner';
+      }
+      return [`${camp}: ${aOrAn(army(o.side))} unit ${who} captures it — ${gain}${o.remove ? '; the camp is then removed' : ''}`];
+    }
+    case 'hold': {
+      if (!o.hexes.includes(h)) return [];
+      const cap = o.max < o.hexes.length ? ` (at most ${o.max} for all ${o.hexes.length} hexes)` : '';
+      const now = unitAt(s, h)?.side === o.side ? ' Held now.' : '';
+      return [`${placeName(s, h, other(o.side))}: the ${army(o.side)} army holds 1 banner while one of its units stands here${cap} — held while occupied, can be lost.${now}`];
+    }
+    case 'majority': {
+      if (!o.hexes.includes(h)) return [];
+      const holder = o.sides.find((side) => st.held[side] > 0);
+      const when = o.when === 'turnEnd' ? 'at the end of every turn the side with' : 'the side with';
+      return [
+        `${placeName(s, h, null)} objective: ${when} more units on the ${o.hexes.length} marked hexes holds ${plural(o.banners, 'banner')} (a tie: nobody)`,
+        holder ? `Held now by the ${army(holder)} army` : 'Held by nobody now',
+      ];
+    }
+    case 'sectionClear': {
+      const scored = st.sections.filter((sec) => sectionsOf(h, o.side).includes(sec));
+      if (!scored.length) return [];
+      return [`Section cleared: the ${army(o.side)} army holds 1 banner while no ${army(other(o.side))} unit enters this section`];
+    }
+    case 'exit':
+      if (!o.hexes.includes(h)) return [];
+      return [`Exit: ${aOrAn(army(o.side))} ${EXIT_UNITS[o.units]} here may leave the battlefield — 1 banner (the unit is removed)`];
+  }
+}
+
+/** Tooltip lines of the battle objectives on hex `h` (§18.4): what the hex scores, for whom, and its state now. */
+export function objectiveTipLines(s: GameState, h: HexId): string[] {
+  return s.special.objectives.flatMap((o, i) => objectiveLines(s, o, i, h));
+}
+
+/** The separate command a unit or leader belongs to (210, §18.5), or undefined. */
+export function pieceCommand(s: GameState, id: string): string | undefined {
+  return (isLeaderId(id) ? leaderById(s, id) : unitById(s, id))?.command;
+}
+
+/** The command of an order selection: that of its first piece with one (undefined = none yet, or no commands). */
+export function selectionCommand(s: GameState, sel: readonly string[]): string | undefined {
+  for (const id of sel) {
+    const c = pieceCommand(s, id);
+    if (c !== undefined) return c;
+  }
+  return undefined;
+}
+
+/** The definition of a command id. */
+export function commandById(s: GameState, id: string | undefined): CommandDef | undefined {
+  return id === undefined ? undefined : s.special.commands.find((c) => c.id === id);
+}
+
+/** Block set a command is drawn in: its own (210 Lentulus' grey), else its side's. */
+export function commandBlocks(s: GameState, c: CommandDef): Blocks {
+  return c.blocks ?? s.players[c.side].blocks;
+}
+
+/** Base-edge colour of a piece whose command is drawn apart from its army (`UnitToken`/`LeaderToken` `edgeBlocks`). */
+export function edgeBlocksOf(s: GameState, p: { command?: string }): Blocks | undefined {
+  return commandById(s, p.command)?.blocks;
+}
+
+/** Tooltip line of a piece's command. */
+export function commandTipLine(s: GameState, p: { command?: string }): string | null {
+  const c = commandById(s, p.command);
+  return c ? `${possessive(c.name)} command: one card orders one command only` : null;
+}
+
+/**
+ * Rolling Fire (210, §18.5): after the path hexes picked so far (`prefix`), the hexes the logs may roll on to (`next`),
+ * and whether `prefix` is a whole legal path (`complete`). A path stops only where it must end, so a complete path is
+ * never the start of a longer one.
+ */
+export function rollingFireStep(s: GameState, unitId: string, prefix: readonly HexId[]): { next: HexId[]; complete: boolean } {
+  const fits = rollingFirePaths(s, unitId).filter((p) => p.length >= prefix.length && prefix.every((h, i) => p[i] === h));
+  const next: HexId[] = [];
+  for (const p of fits) if (p.length > prefix.length && !next.includes(p[prefix.length])) next.push(p[prefix.length]);
+  return { next, complete: prefix.length > 0 && fits.some((p) => p.length === prefix.length) };
+}
+
+/**
+ * Last-row retreat (214, §18.5): does this retreat option eliminate the unit? It does for a unit of the battle's
+ * `lastRowRetreat` side whose retreat (not an evade) ends on its own baseline row with hexes it could not take, unless it
+ * ends by joining a leader.
+ */
+export function retreatEliminates(s: GameState, d: Extract<Decision, { kind: 'retreat' }>, o: RetreatOption): boolean {
+  const u = unitById(s, d.unit);
+  return !!u && d.reason === 'retreat' && s.special.lastRowRetreat === u.side && o.losses > 0 && !o.attachLeader && o.end >= 0 &&
+    rowOf(o.end) === baselineRow(u.side);
+}
+
+/** "Mago's", "Marcellus'" */
+export function possessive(name: string): string {
+  return name.endsWith('s') ? `${name}'` : `${name}'s`;
+}
+
+/**
+ * Wording of an ambush reserve (Trebbia 005, Aquae Sextiae 206): the ambush button's tooltip and the move prompt while
+ * its pieces enter. `leader` = the reserve's leader (the scenario setup's first reserve leader), if any.
+ */
+export function ambushTexts(s: GameState, leader?: string): { button: string; move: string } {
+  const side = s.special.reserveSide ?? s.active;
+  const enemy = s.players[other(side)].army;
+  const force = leader ? `${possessive(leader)} force` : 'The hidden force';
+  return {
+    button: leader
+      ? `Spring ${possessive(leader)} ambush: his force enters on the ${enemy} baseline in this section`
+      : `Spring the ambush: the hidden force enters on the ${enemy} baseline in this section`,
+    move: `${force} enters on the ${enemy} baseline: pick a piece, then a highlighted hex. Pieces left off the board return to the reserve.`,
+  };
 }

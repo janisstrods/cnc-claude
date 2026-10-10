@@ -1,7 +1,7 @@
 // Game session controller: owns the engine driver, runs the AI, and turns engine events into paced animations.
 import {
-  CARD_DEFS, CARD_LIST, GameDriver, OFF_BOARD, UNIT_STATS, cardKind, cloneState, createGame, freshSeed, leaderById, other, randomAnswer,
-  rallyCandidates, unitById,
+  CARD_DEFS, CARD_LIST, GameDriver, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, cardKind, cloneState, createGame, freshSeed, heldBanners, leaderById,
+  other, randomAnswer, rallyCandidates, unitById,
   type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameOptions, type GameState, type HexId, type QueuedEvent,
   type RollPurpose, type Side,
 } from '../../engine';
@@ -626,6 +626,34 @@ export class GameController {
         await sleep(this.dur(500));
         break;
       }
+      case 'held': {
+        // banners held through objectives (§18.4): gained while a position is held, lost when it lapses
+        const army = after.players[e.side].army;
+        const change = e.held - heldBanners(before, e.side);
+        const tally = `${e.total}/${after.bannersToWin}`;
+        const holds = `holds ${e.held} banner${e.held === 1 ? '' : 's'}`;
+        if (change > 0) {
+          sfx.banner();
+          this.addLog({ text: `${e.reason} The ${army} army ${holds} (${tally}) — held, so it can be lost again.`, side: e.side, kind: 'banner' });
+        } else if (change < 0) {
+          this.addLog({ text: `The ${army} army loses ${-change} held banner${change < -1 ? 's' : ''} and now ${holds} (${tally}).`, side: e.side, kind: 'banner' });
+        } else {
+          this.addLog({ text: `The ${army} army ${holds} (${tally}).`, side: e.side, kind: 'banner' });
+        }
+        this.set({ display: after });
+        await sleep(this.dur(change > 0 ? 500 : 350));
+        break;
+      }
+      case 'terrainChanged': {
+        // a captured camp removed (§18.4) or a rampart torn down (223): the hex is open ground now
+        const was = before.terrain[e.hex];
+        const what = was === 'camp' ? 'camp' : was === 'rampart' ? 'rampart' : TERRAIN_NAMES[was].toLowerCase();
+        this.flash(e.hex, was === 'rampart' ? 'Torn down' : 'Razed', 'info');
+        this.addLog({ text: `The ${what} ${was === 'rampart' ? 'is torn down' : 'is razed'}: open ground now.`, kind: 'info' });
+        this.set({ display: after });
+        await sleep(this.dur(450));
+        break;
+      }
       case 'draw':
       case 'reshuffle':
         if (e.t === 'reshuffle') this.addLog({ text: 'The command deck is reshuffled.', kind: 'info' });
@@ -715,7 +743,8 @@ export class GameController {
 
 /**
  * Dev shortcut `#/play/<scenario>/<top|bottom>/<recruit|tribune|consul>[/<seed>][?cards=k1,k2]`: the session it starts
- * (any scenario id, base game or Expansion #1), or null when the hash is not such a route or names no known battle.
+ * (any scenario id: base game 001–015, Expansion #1 101–124, Expansion #2 201–223), or null when the hash is not such a
+ * route or names no known battle.
  */
 export function devRouteConfig(hash: string): SessionConfig | null {
   const m = hash.match(/^#\/play\/(\d{3})\/(top|bottom)\/(recruit|tribune|consul)(?:\/(\d+))?/);

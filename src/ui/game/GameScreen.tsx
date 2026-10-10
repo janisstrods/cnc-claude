@@ -1,17 +1,18 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, cardKind, isLeaderId, leaderAt, leaderById, leaderUnit,
   other, pieceMoves, rallyCandidates, terrainAt, isFord, unitAt, unitById, validateOrders, validateRally, validateSpartacus,
-  battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf, sectionsOf, orderMode, orderLimit,
+  battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf, sectionsOf, orderMode, orderLimit, rollingFirePaths,
   type Answer, type DieFace, type GameState, type HexId, type RetreatOption, type SectionName, type Side,
 } from '../../engine';
-import { UnitIcon, unitTypeName } from '../../art';
+import { BLOCK_COLORS, UnitIcon, unitTypeName } from '../../art';
 import { BannerTrack, Button, CardBack, CardView, DiceTray, DieView, Modal, Panel } from '../kit';
 import { terrainName } from '../terrain';
-import { Board } from './Board';
+import { Board, scenarioArt } from './Board';
 import type { GameController, LogLine } from './controller';
 import {
-  attackDice, boardUi, deploymentSide, effectiveKind, expectedHits, leaderTraitLines, leadershipHint, pieceHexOf, terrainTipLines, unitSummary,
+  ambushTexts, attackDice, bannerCounts, boardUi, commandBlocks, commandById, commandTipLine, deploymentSide, effectiveKind, expectedHits,
+  leaderTraitLines, leadershipHint, objectiveTipLines, pieceHexOf, possessive, retreatEliminates, rollingFireStep, terrainTipLines, unitSummary,
   type UiSel,
 } from './uiModel';
 import { RulesReference } from '../screens/RulesReference';
@@ -19,7 +20,7 @@ import { isMuted, setMuted } from '../sound';
 import { opponentPersonality } from './makeOpponent';
 import './game.css';
 
-const EMPTY_SEL: UiSel = { selCard: null, hoverCard: null, orderSel: [], selPiece: null, hoverHex: null };
+const EMPTY_SEL: UiSel = { selCard: null, hoverCard: null, orderSel: [], selPiece: null, hoverHex: null, rollPath: null };
 
 const SECTION_LABEL: Record<SectionName, string> = { left: 'Left', center: 'Center', right: 'Right' };
 const DIFF_LABEL = { recruit: 'Recruit', tribune: 'Tribune', consul: 'Consul' } as const;
@@ -42,6 +43,8 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
   const [confirmExit, setConfirmExit] = useState(false);
   const [mutedState, setMutedState] = useState(isMuted());
   const [assignFocus, setAssignFocus] = useState<string[]>([]);
+  // chooseCommand (210): the command whose button is hovered, its units marked on the board
+  const [cmdFocus, setCmdFocus] = useState<string | null>(null);
 
   useEffect(() => {
     if (import.meta.env.DEV) (window as unknown as { __cca: GameController }).__cca = controller;
@@ -60,7 +63,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         const btn = document.querySelector<HTMLButtonElement>('.prompt-buttons .kit-btn--primary:not(:disabled)');
         if (btn) { e.preventDefault(); btn.click(); }
       } else if (e.key === 'Escape') {
-        setUi((u) => ({ ...u, selPiece: null, selCard: null }));
+        setUi((u) => ({ ...u, selPiece: null, selCard: null, rollPath: null }));
       } else if (/^[1-9]$/.test(e.key) && d?.kind === 'playCard' && d.side === human) {
         const c = s.players[human].hand[Number(e.key) - 1];
         if (c !== undefined) setUi((u) => ({ ...u, selCard: c }));
@@ -74,6 +77,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
   useEffect(() => {
     shownAt.current = performance.now();
     setUi((u) => ({ ...EMPTY_SEL, hoverHex: u.hoverHex }));
+    setCmdFocus(null);
     if (d?.kind === 'move' && d.side === human) {
       const movers = movablePieces(s, d.stage);
       const reserve = movers.find((id) => pieceHexOf(s, id) < 0);
@@ -90,6 +94,9 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
   }, [d]);
 
   const answer = (a: Answer) => controller.answer(a);
+  // the battle's hex art (217's coast played as a ford) and the leader of its ambush reserve (005, 206)
+  const hexArt = useMemo(() => scenarioArt(controller.scenario.id), [controller]);
+  const ambushLeader = controller.scenario.setup.reserveLeaders[0]?.name;
 
   const bui = useMemo(() => {
     const b = boardUi(s, d, ui, human);
@@ -99,8 +106,11 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         if (h >= 0) b.highlights.set(h, 'selected');
       }
     }
+    if (d && d.side === human && d.kind === 'chooseCommand' && cmdFocus) {
+      for (const u of unitsOf(s, human)) if (u.command === cmdFocus) b.highlights.set(u.hex, 'eligible');
+    }
     return b;
-  }, [s, d, ui, human, assignFocus]);
+  }, [s, d, ui, human, assignFocus, cmdFocus]);
 
   const orderedIds = useMemo(() => new Set(Object.keys(s.turn.ordered)), [s]);
   const doneIds = useMemo(() => {
@@ -152,6 +162,15 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         return;
       }
       case 'battle': {
+        if (ui.selPiece && ui.rollPath) {
+          // Rolling Fire: extend the path; it is sent as soon as it is complete
+          const { next } = rollingFireStep(s, ui.selPiece, ui.rollPath);
+          if (!next.includes(h)) return;
+          const path = [...ui.rollPath, h];
+          if (rollingFireStep(s, ui.selPiece, path).complete) answer({ kind: 'rollingFire', unit: ui.selPiece, path });
+          else setUi({ ...ui, rollPath: path });
+          return;
+        }
         if (ui.selPiece) {
           const t = battleTargets(s, ui.selPiece).find((x) => x.hex === h);
           if (t) {
@@ -278,11 +297,15 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
           if (units.length > 0 && units.length <= s.players[human].command) buttons.push(btn('Select all', () => setUi({ ...ui, orderSel: units }), { variant: 'secondary' }));
         }
         if (amb) {
-          for (const sec of ambushSections(d.card)) buttons.push(btn(`Ambush: ${SECTION_LABEL[sec]}`, () => answer({ kind: 'orders', pieces: [], ambushSection: sec }), { variant: 'secondary', key: `amb-${sec}`, title: "Spring Mago's ambush: his force enters on the Roman baseline in this section" }));
+          const title = ambushTexts(s, ambushLeader).button;
+          for (const sec of ambushSections(d.card)) buttons.push(btn(`Ambush: ${SECTION_LABEL[sec]}`, () => answer({ kind: 'orders', pieces: [], ambushSection: sec }), { variant: 'secondary', key: `amb-${sec}`, title }));
         }
         let text = `${def.text} Click your units to order them.`;
         if (mode === 'one') text = `None of your troops fit ${def.title}: order 1 unit of your choice (a normal order, no card bonus).`;
         else if (def.group === 'leadership') text = leadershipHint(s, human, d.card, ui.orderSel);
+        // separate commands (210, §18.5)
+        const myCommands = s.special.commands.filter((c) => c.side === human);
+        if (myCommands.length > 1) text = `${text} One card orders one army only: ${myCommands.map((c) => c.name).join(' or ')}.`;
         return {
           title: `${def.title}${d.mirrored ? ' (Counter Attack)' : ''}`,
           text: err && ui.orderSel.length ? err : text,
@@ -302,7 +325,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
             ? `${name}: may move again (no further combat this turn).`
             : `${name}: green = may battle after moving, amber = no battle, red = must charge into combat.${moves.some((m) => m.hex === OFF_BOARD) ? ' This unit can exit the battlefield.' : ''}`;
         }
-        if (reserve.length) text = "Mago's force enters on the Roman baseline: pick a piece, then a highlighted hex. Pieces left off the board return to the reserve.";
+        if (reserve.length) text = ambushTexts(s, ambushLeader).move;
         const buttons = [btn(d.stage === 2 ? 'Finish second move' : 'End movement', () => answer({ kind: 'endMove' }), { variant: 'secondary' })];
         for (const id of reserve) {
           const label = isLeaderId(id) ? leaderById(s, id)?.name || 'leader' : unitTypeName(unitById(s, id)!.type);
@@ -317,10 +340,26 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
       case 'battle': {
         const ready = battleReady(s);
         const must = mustCharge(s, ready);
+        if (ui.selPiece && ui.rollPath) {
+          // Rolling Fire (210, §18.5): the player picks the path hex by hex
+          const u = unitById(s, ui.selPiece)!;
+          const { next } = rollingFireStep(s, ui.selPiece, ui.rollPath);
+          return {
+            title: 'Rolling Fire',
+            text: `Click the ${ui.rollPath.length ? 'next' : 'first'} hex down the hill (dashed orange). Every unit in the path, friend or foe, is rolled 2 dice (only its own symbol hits, no flag ignored); then your ${unitTypeName(u.type)} loses 1 block.${next.length === 1 ? ' Only one way on.' : ''}`,
+            buttons: [btn('Cancel', () => setUi({ ...ui, rollPath: null }), { variant: 'secondary', key: 'roll-cancel' })],
+          };
+        }
         let text = `${ready.length} unit${ready.length === 1 ? '' : 's'} can battle. Select a unit, then its target.`;
+        const canRoll = !!ui.selPiece && rollingFirePaths(s, ui.selPiece).length > 0;
         if (ui.selPiece) {
           const u = unitById(s, ui.selPiece)!;
           text = `${unitTypeName(u.type)}: red = close combat, orange = ranged fire.`;
+          if (canRoll) {
+            text = battleTargets(s, ui.selPiece).length
+              ? `${unitTypeName(u.type)}: red = close combat, orange = ranged fire — or roll burning logs down the hill (Rolling Fire).`
+              : `${unitTypeName(u.type)}: may roll burning logs down the hill (Rolling Fire), costing it 1 block.`;
+          }
           if (ui.hoverHex !== null) {
             const t = battleTargets(s, ui.selPiece).find((x) => x.hex === ui.hoverHex);
             if (t) {
@@ -331,7 +370,11 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
           }
         }
         if (must.length) text = `Your charging warriors must attack first (${must.length} left). ${text}`;
-        return { title: 'Battle', text, buttons: [btn('End battles', () => answer({ kind: 'endBattle' }), { variant: 'secondary', disabled: must.length > 0 })] };
+        const buttons = [btn('End battles', () => answer({ kind: 'endBattle' }), { variant: 'secondary', disabled: must.length > 0 })];
+        if (canRoll && !must.length) {
+          buttons.unshift(btn('Rolling Fire', () => setUi({ ...ui, rollPath: [] }), { variant: 'secondary', key: 'roll', title: 'Roll burning logs down the hill: 2 dice against every unit in the path, then this unit loses 1 block' }));
+        }
+        return { title: 'Battle', text, buttons };
       }
       case 'defend': {
         const a = unitById(s, d.attacker)!;
@@ -360,13 +403,22 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
       }
       case 'retreat': {
         const uh = pieceHexOf(s, d.unit);
+        // last-row retreat (214): short of hexes on its own baseline row, the unit is eliminated
+        const lost = (o: RetreatOption) => retreatEliminates(s, d, o);
         const lbl = (o: RetreatOption, i: number) =>
           o.end === uh
-            ? `Stay (lose ${o.losses})`
-            : `Option ${i + 1}: ${o.path.length} hex${o.path.length > 1 ? 'es' : ''}${o.losses ? `, lose ${o.losses}` : ''}${o.attachLeader ? ', join leader' : ''}`;
+            ? `Stay (${lost(o) ? 'eliminated' : `lose ${o.losses}`})`
+            : `Option ${i + 1}: ${o.path.length} hex${o.path.length > 1 ? 'es' : ''}${o.losses ? (lost(o) ? ', eliminated' : `, lose ${o.losses}`) : ''}${o.attachLeader ? ', join leader' : ''}`;
+        const blocked = d.options[0]?.losses
+          ? d.options.every(lost)
+            ? ' The path is blocked on your baseline row: the unit will be eliminated (last-row retreat).'
+            : d.options.some(lost)
+              ? ` The path is blocked: ${d.options[0].losses} block(s) will be lost — or the whole unit, where a retreat ends on your baseline row ("Lost").`
+              : ` The path is blocked: ${d.options[0].losses} block(s) will be lost.`
+          : '';
         return {
           title: d.reason === 'evade' ? 'Evade' : 'Retreat',
-          text: `Click a purple hex to choose where your ${unitById(s, d.unit) ? UNIT_STATS[unitById(s, d.unit)!.type].name : 'unit'} ends up.${d.options[0]?.losses ? ` The path is blocked: ${d.options[0].losses} block(s) will be lost.` : ''}`,
+          text: `Click a purple hex to choose where your ${unitById(s, d.unit) ? UNIT_STATS[unitById(s, d.unit)!.type].name : 'unit'} ends up.${blocked}`,
           buttons: d.options.length <= 4
             ? d.options.map((o, i) => (
               <Button key={`o${i}`} variant="ghost" onClick={() => answer({ kind: 'choose', index: i })} onMouseEnter={() => setUi((u) => ({ ...u, hoverHex: o.end }))}>
@@ -399,12 +451,26 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
       case 'bonusCombat':
         return { title: 'Bonus combat', text: 'Click a red target to attack again, or decline.', buttons: [btn('No bonus attack', () => answer({ kind: 'hex', hex: null }), { variant: 'secondary' })] };
       case 'chooseCommand': {
-        // separate commands (210, §18.5): one card acts for one command
-        const name = (id: string) => s.special.commands.find((c) => c.id === id)?.name ?? id;
+        // separate commands (210, §18.5): one card acts for one command; hovering a button marks its units
         return {
           title: 'Which command?',
-          text: 'One card orders one army only. Choose the command this card acts for.',
-          buttons: d.options.map((id, i) => btn(`${name(id)} command`, () => answer({ kind: 'choose', index: i }), { variant: i === 0 ? 'primary' : 'secondary', key: `cmd-${id}` })),
+          text: `One card orders one army only. Choose the command ${s.turn.effective ? CARD_DEFS[s.turn.effective].title : 'this card'} acts for.`,
+          buttons: d.options.map((id, i) => {
+            const c = commandById(s, id);
+            const col = c ? BLOCK_COLORS[commandBlocks(s, c)].edge : undefined;
+            return (
+              <Button
+                key={`cmd-${id}`}
+                variant={i === 0 ? 'primary' : 'secondary'}
+                onClick={() => answer({ kind: 'choose', index: i })}
+                onMouseEnter={() => setCmdFocus(id)}
+                onMouseLeave={() => setCmdFocus((f) => (f === id ? null : f))}
+              >
+                {col && <span className="cmd-swatch" style={{ background: col }} aria-hidden />}
+                {`${possessive(c?.name ?? id)} command`}
+              </Button>
+            );
+          }),
         };
       }
       case 'rally':
@@ -431,13 +497,17 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
     const u = unitAt(s, h);
     const l = leaderAt(s, h);
     const t = terrainAt(s, h);
-    const terr = terrainTipLines(s, h, flipped, terrainName(t, isFord(s, h), s.noCap[h]));
-    if (!u && !l && !terr.length) return null;
-    return { u, l, terr };
-  }, [ui.hoverHex, s, flipped]);
+    const terr = terrainTipLines(s, h, flipped, terrainName(t, isFord(s, h), s.noCap[h], hexArt[h]), hexArt[h]);
+    const obj = objectiveTipLines(s, h);
+    if (!u && !l && !terr.length && !obj.length) return null;
+    return { u, l, terr, obj };
+  }, [ui.hoverHex, s, flipped, hexArt]);
 
   const me = s.players[human];
   const them = s.players[ai];
+  // banner totals: permanent banners plus those held through objectives (§18.4)
+  const meBanners = bannerCounts(s, human);
+  const themBanners = bannerCounts(s, ai);
   const persona = useMemo(() => opponentPersonality(controller.config), [controller]);
 
   return (
@@ -518,7 +588,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
                 {Array.from({ length: them.hand.length }).map((_, i) => <CardBack key={i} size="sm" style={{ fontSize: '1.7px', marginLeft: i ? -9 : 0 }} />)}
               </div>
             </div>
-            <BannerTrack count={them.banners} target={s.bannersToWin} blockColor={s.players[human].blocks} label="Banners won" />
+            <BannerTrack count={themBanners.total} held={themBanners.held} target={s.bannersToWin} blockColor={s.players[human].blocks} label="Banners won" />
             <div className="divider" />
             <div className="army-row">
               <div>
@@ -526,7 +596,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
                 <div className="army-cmd">{me.commander} · Command {me.command}</div>
               </div>
             </div>
-            <BannerTrack count={me.banners} target={s.bannersToWin} blockColor={s.players[ai].blocks} label="Banners won" />
+            <BannerTrack count={meBanners.total} held={meBanners.held} target={s.bannersToWin} blockColor={s.players[ai].blocks} label="Banners won" />
             <div className="deck-row">Deck {s.deck.length} · Discards {s.discard.length}</div>
           </Panel>
           <div className="dice-slot">
@@ -587,11 +657,13 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
               </div>
             </div>
             {unitSummary(hoverInfo.u).map((x) => <div key={x} className="tip-line">{x}</div>)}
+            {commandTipLine(s, hoverInfo.u) && <div className="tip-line tip-command">{commandTipLine(s, hoverInfo.u)}</div>}
           </>
         )}
         {hoverInfo?.l && <div className="tip-line tip-leader">Leader: {hoverInfo.l.name || 'unnamed'}{leaderUnit(s, hoverInfo.l) ? ' (attached)' : ' (alone)'}</div>}
         {hoverInfo?.l && leaderTraitLines(hoverInfo.l).map((x) => <div key={x} className="tip-line tip-leader">{x}</div>)}
         {hoverInfo?.terr.map((x) => <div key={x} className="tip-line tip-terrain">{x}</div>)}
+        {hoverInfo?.obj.map((x) => <div key={x} className="tip-line tip-objective">{x}</div>)}
       </HoverTip>
 
       {d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus') && (
@@ -614,7 +686,7 @@ export function GameScreen({ controller, onExit }: { controller: GameController;
         {view.over && (
           <div className="victory">
             <p className="modal-p">{view.over.reason}.</p>
-            <p className="modal-p">Banners — {me.army}: {me.banners} · {them.army}: {them.banners} · Turns played: {s.turn.number}</p>
+            <p className="modal-p">Banners — {me.army}: {meBanners.total} · {them.army}: {themBanners.total} · Turns played: {s.turn.number}</p>
             <div className="modal-buttons">
               <Button onClick={onExit}>Return to menu</Button>
             </div>
@@ -633,17 +705,20 @@ function mustCharge(s: GameState, ready: string[]): string[] {
   });
 }
 
-/** Floating unit tooltip that follows the mouse without re-rendering the game screen. */
+/**
+ * Floating unit tooltip that follows the mouse without re-rendering the game screen. It is kept inside the window by its
+ * measured size (a unit with a leader, his traits and an objective can be tall).
+ */
 function HoverTip({ active, children }: { active: boolean; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const pos = useRef({ x: -1000, y: -1000 });
+  const place = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.left = `${Math.min(pos.current.x + 18, window.innerWidth - Math.max(300, el.offsetWidth + 8))}px`;
+    el.style.top = `${Math.max(4, Math.min(pos.current.y + 18, window.innerHeight - Math.max(220, el.offsetHeight + 8)))}px`;
+  }, []);
   useEffect(() => {
-    const place = () => {
-      const el = ref.current;
-      if (!el) return;
-      el.style.left = `${Math.min(pos.current.x + 18, window.innerWidth - 300)}px`;
-      el.style.top = `${Math.min(pos.current.y + 18, window.innerHeight - 220)}px`;
-    };
     const on = (e: MouseEvent) => {
       pos.current = { x: e.clientX, y: e.clientY };
       place();
@@ -651,9 +726,11 @@ function HoverTip({ active, children }: { active: boolean; children: React.React
     window.addEventListener('mousemove', on);
     place();
     return () => window.removeEventListener('mousemove', on);
-  }, [active]);
+  }, [active, place]);
+  // the content (and so the size) changes with the hovered hex
+  useLayoutEffect(place);
   if (!active) return null;
-  return <div className="hover-tip" ref={ref} style={{ left: pos.current.x + 18, top: pos.current.y + 18 }}>{children}</div>;
+  return <div className="hover-tip" ref={ref}>{children}</div>;
 }
 
 const LogPanel = memo(function LogPanel({ log, human }: { log: LogLine[]; human: Side }) {

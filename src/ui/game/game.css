@@ -252,6 +252,11 @@ body {
 .tip-line { color: rgba(240, 227, 194, .9); }
 .tip-leader { color: #f3dc9a; margin-top: 3px; }
 .tip-terrain { color: #b9d8a8; margin-top: 3px; }
+/* Expansion #2: battle objectives on the hex (§18.4) and a unit's separate command (210) */
+.tip-objective { color: #f6d27a; margin-top: 3px; }
+.tip-command { color: #c9d3ee; margin-top: 3px; }
+.command-badge { pointer-events: none; }
+.cmd-swatch { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 7px; vertical-align: -1px; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, .55), inset 0 1px 1px rgba(255, 255, 255, .35); }
 
 .modal-p { margin: 0 0 10px; font-size: 16px; line-height: 1.4; }
 .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }
