@@ -1,7 +1,7 @@
 // Retreat / evade / leader-evade path enumeration (rules-reference §9, §10, §11). Pure functions.
 import { rearHexes } from './hex';
 import { attachedLeader, leaderAt, unitAt } from './query';
-import { isImpassable, terrainAt } from './terrain';
+import { isImpassable, steepSlopeUp, terrainAt } from './terrain';
 import { forbidsTerrain } from './units';
 import { OFF_BOARD, type GameState, type HexId, type Leader, type RetreatOption, type Unit } from './types';
 
@@ -30,9 +30,12 @@ function prune(s: GameState, opts: RetreatOption[]): RetreatOption[] {
   return [...byEnd.values()];
 }
 
-/** Impassable for this unit's retreat or evade: impassable terrain or terrain its type may not enter (§15 HWM). */
-function closedTo(s: GameState, u: Unit, h: HexId): boolean {
-  return isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h));
+/**
+ * Impassable for this unit's retreat or evade step from `from` into `h`: impassable terrain, terrain its type may not enter
+ * (§15 HWM; a city wall for mounted units and war machines, §18.7), or a steep slope up from a forest (308, §18.7).
+ */
+function closedTo(s: GameState, u: Unit, from: HexId, h: HexId): boolean {
+  return isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || steepSlopeUp(s, from, h);
 }
 
 /** Retreat options for a (non-elephant) unit that must retreat `hexes` hexes toward its own side. */
@@ -46,7 +49,7 @@ export function retreatOptions(s: GameState, u: Unit, hexes: number): RetreatOpt
     }
     let moved = false;
     for (const h of rearHexes(cur, u.side)) {
-      if (closedTo(s, u, h) || unitAt(s, h)) continue;
+      if (closedTo(s, u, cur, h) || unitAt(s, h)) continue;
       const l = leaderAt(s, h);
       if (l) {
         if (l.side !== u.side || hasLeader) continue;
@@ -77,7 +80,7 @@ export function elephantRetreatOptions(s: GameState, u: Unit, hexes: number): El
     let edgeBlocked = 0;
     const rears = rearHexes(cur, u.side);
     for (const h of rears) {
-      if (closedTo(s, u, h)) { edgeBlocked++; continue; }
+      if (closedTo(s, u, cur, h)) { edgeBlocked++; continue; }
       const v = unitAt(s, h);
       if (v) { blockers.push(v.id); continue; }
       const l = leaderAt(s, h);
@@ -112,9 +115,9 @@ export function evadeOptions(s: GameState, u: Unit): RetreatOption[] {
   const hasLeader = !!attachedLeader(s, u);
   const two: RetreatOption[] = [];
   const one: RetreatOption[] = [];
-  const free = (h: HexId) => !closedTo(s, u, h) && !unitAt(s, h);
+  const free = (from: HexId, h: HexId) => !closedTo(s, u, from, h) && !unitAt(s, h);
   for (const h1 of rearHexes(u.hex, u.side)) {
-    if (!free(h1)) continue;
+    if (!free(u.hex, h1)) continue;
     const l1 = leaderAt(s, h1);
     if (l1) {
       if (l1.side !== u.side || hasLeader) continue;
@@ -123,7 +126,7 @@ export function evadeOptions(s: GameState, u: Unit): RetreatOption[] {
     }
     let any = false;
     for (const h2 of rearHexes(h1, u.side)) {
-      if (!free(h2)) continue;
+      if (!free(h1, h2)) continue;
       const l2 = leaderAt(s, h2);
       if (l2) {
         if (l2.side !== u.side || hasLeader) continue;
@@ -141,7 +144,8 @@ export function evadeOptions(s: GameState, u: Unit): RetreatOption[] {
 
 /**
  * Leader evade options: 1-3 hexes toward his own side, through friendly pieces; may leave the board over his own
- * baseline. Passing through enemy units requires escape rolls (listed in `escapes`). Empty = eliminated.
+ * baseline. Passing through enemy units requires escape rolls (listed in `escapes`). Never up a steep slope (308, §18.7);
+ * city walls are passed freely. Empty = eliminated.
  */
 export function leaderEvadeOptions(s: GameState, l: Leader): RetreatOption[] {
   const out: RetreatOption[] = [];
@@ -151,7 +155,7 @@ export function leaderEvadeOptions(s: GameState, l: Leader): RetreatOption[] {
       out.push({ path: [...path, OFF_BOARD], end: OFF_BOARD, losses: 0, attachLeader: null, offBoard: true, escapes });
     }
     for (const h of rearHexes(cur, l.side)) {
-      if (isImpassable(s, h)) continue;
+      if (isImpassable(s, h) || steepSlopeUp(s, cur, h)) continue;
       const v = unitAt(s, h);
       const ldr = leaderAt(s, h);
       const np = [...path, h];

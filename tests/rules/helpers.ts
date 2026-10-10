@@ -9,8 +9,11 @@ export interface Pos {
   /** `command`: the command id the unit belongs to (needs `commands`, §18.5). */
   units?: { side: Side; type: UnitType; at: [number, number]; blocks?: number; elite?: EliteId; command?: string }[];
   leaders?: { side: Side; name?: string; at: [number, number]; traits?: LeaderTrait[]; command?: string }[];
-  /** `ford: 'nocap'` = fordable without dice caps; `faces` / `edges` = a rampart's protected hexsides (§16). */
-  terrain?: { at: [number, number]; t: TerrainType; ford?: boolean | 'nocap'; faces?: Side; edges?: HexDir[] }[];
+  /**
+   * `ford: 'nocap'` = fordable without dice caps; `faces` / `edges` = a rampart's protected hexsides (§16); `hill` = a hill
+   * under a camp or wall (§18.7); `art` = a drawing hint the engine ignores.
+   */
+  terrain?: { at: [number, number]; t: TerrainType; ford?: boolean | 'nocap'; faces?: Side; edges?: HexDir[]; hill?: boolean; art?: string }[];
   first?: Side;
   rules?: ScenarioSetup['rules'];
   cards?: number;
@@ -58,7 +61,10 @@ export function setupOf(p: Pos): ScenarioSetup {
     bottom: { army: p.bottomArmy ?? 'Roman', blocks: 'rom', look: 'roman', commander: 'B', cards: p.cards ?? 5 },
     first: p.first ?? 'bottom',
     banners: p.banners ?? 99,
-    terrain: (p.terrain ?? []).map((t) => ({ r: t.at[0], c: t.at[1], t: t.t, ford: t.ford, faces: t.faces, edges: t.edges })),
+    terrain: (p.terrain ?? []).map((t) => ({
+      r: t.at[0], c: t.at[1], t: t.t, ford: t.ford, faces: t.faces, edges: t.edges,
+      ...(t.hill !== undefined ? { hill: t.hill } : {}), ...(t.art !== undefined ? { art: t.art } : {}),
+    })),
     units: (p.units ?? []).map((u) => ({
       side: u.side, type: u.type, r: u.at[0], c: u.at[1], elite: u.elite, ...(u.command !== undefined ? { command: u.command } : {}),
     })),

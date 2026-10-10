@@ -22,8 +22,10 @@ export type Legion = (typeof LEGIONS)[number];
  * Terrain of a hex. A fordable river is `river` with `fords[hex] === true` (and `noCap[hex]` when it has no dice caps).
  * `sea` follows the lake rules (a coast played as a ford is a fordable `river`, 217); `rampart` is open ground whose
  * protected hexsides are `GameState.rampart[hex]` (§16); `ditch` (212) stops every unit and lone leader on entering and
- * does nothing else (§18.6); `wall` is a scalable city wall (Expansion #3, rules-reference §18.7; its rules come with the
- * wall engine task, until then it is open ground for movement and combat). `void` = not on the board.
+ * does nothing else (§18.6); `wall` is a scalable city wall (Expansion #3, 308 and 309, rules-reference §18.7): foot units
+ * and lone leaders climb onto it only from a hex next to it, mounted units and war machines never enter it, close combat
+ * in or out is capped at 2 dice and a foot unit defending on it strikes first. Impassable walls and towns (301, 303, 304)
+ * are `steep` with a drawing hint. `void` = not on the board.
  */
 export type TerrainType =
   | 'plain' | 'hill' | 'forest' | 'marsh' | 'broken' | 'river' | 'lake' | 'camp' | 'steep' | 'sea' | 'rampart' | 'ditch' | 'wall' | 'void';
@@ -184,7 +186,9 @@ export interface TurnState {
  * battle objective (`ObjectiveDef`), not a rule. Expansion #2: `magoAmbush` also serves 206 (§18.5) and
  * `veryHills` (223, §18.6) makes every hill very steep: a unit climbing onto one stops and may not battle, and the
  * close-combat caps change. The Trasimenus hand (006) is no rule of its own any more: it is hand growth
- * (`ScenarioSpecial.handGrowth`, §18.8). Scenario data is validated against this list.
+ * (`ScenarioSpecial.handGrowth`, §18.8). Expansion #3: `steepSlopes` (308, §18.7) makes every hexside between a hill (a
+ * hill under a camp or wall included) and a forest too steep to climb from the forest and closed to close combat. Scenario
+ * data is validated against this list.
  */
 export const SPECIAL_RULE_IDS = [
   'sacredBand',
@@ -197,6 +201,7 @@ export const SPECIAL_RULE_IDS = [
   'leaderPlacement',
   'tacticalFlexibility',
   'veryHills',
+  'steepSlopes',
 ] as const;
 /** A scenario special rule (see SPECIAL_RULE_IDS). */
 export type SpecialRuleId = (typeof SPECIAL_RULE_IDS)[number];

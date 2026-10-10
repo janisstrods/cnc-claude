@@ -1,4 +1,4 @@
-// Terrain effects (rules-reference §4, §7, §8; Expansion #1 terrain §16).
+// Terrain effects (rules-reference §4, §7, §8; Expansion #1 terrain §16; Expansion #2 and #3 terrain §18.6, §18.7).
 import { sidesCrossed } from './hex';
 import type { FlowCtx, GameState, HexId, Side, TerrainType } from './types';
 
@@ -50,10 +50,21 @@ export function isImpassable(s: GameState, h: HexId): boolean {
   return impassableTerrain(s.terrain[h], !!s.fords[h]);
 }
 
-/** Entering this hex ends movement for every unit and lone leader (forest, marsh, ford, ditch). */
+/**
+ * Entering this hex ends movement for every unit and lone leader (forest, marsh, ford, ditch, and a city wall, which only
+ * foot units and leaders may enter, §18.7).
+ */
 export function stopsAll(s: GameState, h: HexId): boolean {
   const t = s.terrain[h];
-  return t === 'forest' || t === 'marsh' || t === 'ditch' || (t === 'river' && !!s.fords[h]);
+  return t === 'forest' || t === 'marsh' || t === 'ditch' || t === 'wall' || (t === 'river' && !!s.fords[h]);
+}
+
+/**
+ * Is hex h a scalable city wall (§18.7, 308, 309)? Only foot units (not war machines) and lone leaders may enter it, and
+ * only by a move that begins next to it; a move that begins on it goes 1 hex at most.
+ */
+export function isWall(s: GameState, h: HexId): boolean {
+  return s.terrain[h] === 'wall';
 }
 
 /** Entering this hex ends movement for mounted units and lone leaders. */
@@ -61,10 +72,13 @@ export function stopsMounted(s: GameState, h: HexId): boolean {
   return s.terrain[h] === 'broken';
 }
 
-/** Close combat dice cap imposed by a hex (either combatant's hex), not counting hills. A no-cap ford imposes none. */
+/**
+ * Close combat dice cap imposed by a hex (either combatant's hex), not counting hills: forest, marsh, broken ground, a
+ * capped ford and a city wall (§18.7) 2. A no-cap ford imposes none.
+ */
 export function ccCapOfHex(s: GameState, h: HexId): number {
   const t = s.terrain[h];
-  if (t === 'forest' || t === 'marsh' || t === 'broken') return 2;
+  if (t === 'forest' || t === 'marsh' || t === 'broken' || t === 'wall') return 2;
   if (cappedFord(s, h)) return 2;
   return 99;
 }
@@ -82,8 +96,12 @@ export function rangedTargetCap(s: GameState, h: HexId): number {
   return s.terrain[h] === 'forest' ? 1 : 99;
 }
 
+/**
+ * Does hex h count as a hill: hill terrain, or a camp or wall with a hill under it (`hillUnder`, 308, §18.7)? Used for the
+ * close-combat hill caps, the same-hill line of sight, very steep hills and steep slopes.
+ */
 export function isHill(s: GameState, h: HexId): boolean {
-  return s.terrain[h] === 'hill';
+  return s.terrain[h] === 'hill' || s.hillUnder[h] === true;
 }
 
 /** Are the hills of this battle very steep (rule `veryHills`, 223, §18.6)? */
@@ -99,6 +117,32 @@ export function veryHills(s: GameState): boolean {
  */
 export function steepClimb(s: GameState, from: HexId, to: HexId): boolean {
   return veryHills(s) && isHill(s, to) && !isHill(s, from);
+}
+
+/** Are the hill–forest slopes of this battle too steep (rule `steepSlopes`, 308, §18.7)? */
+export function steepSlopes(s: GameState): boolean {
+  return s.special.rules.includes('steepSlopes');
+}
+
+/**
+ * Is the hexside between neighbours `a` and `b` a steep slope (rule `steepSlopes`, 308, §18.7, X3 Q5): one of them counts
+ * as a hill (`isHill`: a hill, or a camp or wall with a hill under it) and the other is a forest? No close combat crosses
+ * it, in either direction; ranged combat and line of sight are not affected.
+ */
+export function steepSlope(s: GameState, a: HexId, b: HexId): boolean {
+  const ta = s.terrain[a];
+  const tb = s.terrain[b];
+  if (ta !== 'forest' && tb !== 'forest') return false;
+  return steepSlopes(s) && ((ta === 'forest' && isHill(s, b)) || (tb === 'forest' && isHill(s, a)));
+}
+
+/**
+ * Does going from `from` into its neighbour `to` climb a steep slope (§18.7): `from` a forest, `to` a hill (a hill under a
+ * camp or wall included) and the rule `steepSlopes` on? No piece may move, advance, retreat or evade that way; down from
+ * the hill into the forest is allowed.
+ */
+export function steepSlopeUp(s: GameState, from: HexId, to: HexId): boolean {
+  return s.terrain[from] === 'forest' && isHill(s, to) && steepSlopes(s);
 }
 
 /**
@@ -127,24 +171,27 @@ export function rampartProtects(s: GameState, defHex: HexId, fromHex: HexId): bo
   return sidesCrossed(defHex, fromHex).some((d) => (mask & (1 << d)) !== 0);
 }
 
-/** Terrain that blocks line of sight when it lies between firer and target (hills handled separately). */
+/**
+ * Terrain that blocks line of sight when it lies between firer and target (hills handled separately; a city wall blocks
+ * except along a connected wall, see `terrainBlocksSight`).
+ */
 export function terrainBlocksLOS(s: GameState, h: HexId): boolean {
   const t = s.terrain[h];
-  return t === 'forest' || t === 'camp' || t === 'steep';
+  return t === 'forest' || t === 'camp' || t === 'steep' || t === 'wall';
 }
 
-/** Connected hill group id for every hill hex (used for the "same hill / plateau" LOS rule). */
-export function hillGroups(s: GameState, neighbours: (h: HexId) => HexId[]): Map<HexId, number> {
+/** Connected group id for every hex where `member` holds (neighbours by `neighbours`), in hex order. */
+function connectedGroups(s: GameState, neighbours: (h: HexId) => HexId[], member: (h: HexId) => boolean): Map<HexId, number> {
   const groups = new Map<HexId, number>();
   let g = 0;
   for (let h = 0; h < s.terrain.length; h++) {
-    if (s.terrain[h] !== 'hill' || groups.has(h)) continue;
+    if (groups.has(h) || !member(h)) continue;
     const stack = [h];
     groups.set(h, g);
     while (stack.length) {
       const x = stack.pop()!;
       for (const n of neighbours(x)) {
-        if (s.terrain[n] === 'hill' && !groups.has(n)) {
+        if (!groups.has(n) && member(n)) {
           groups.set(n, g);
           stack.push(n);
         }
@@ -153,6 +200,50 @@ export function hillGroups(s: GameState, neighbours: (h: HexId) => HexId[]): Map
     g++;
   }
   return groups;
+}
+
+/**
+ * Connected hill group id for every hex that counts as a hill (`isHill`: a camp or wall with a hill under it too), used for
+ * the "same hill / plateau" LOS rule.
+ */
+export function hillGroups(s: GameState, neighbours: (h: HexId) => HexId[]): Map<HexId, number> {
+  return connectedGroups(s, neighbours, (h) => isHill(s, h));
+}
+
+/** Connected group id for every city wall hex (§18.7: units on one wall see along it). */
+export function wallGroups(s: GameState, neighbours: (h: HexId) => HexId[]): Map<HexId, number> {
+  return connectedGroups(s, neighbours, (h) => s.terrain[h] === 'wall');
+}
+
+/** Hill and wall groups for `terrainBlocksSight`, worked out by the caller on first use (most lines of sight need neither). */
+export interface SightGroups {
+  hills(): Map<HexId, number>;
+  walls(): Map<HexId, number>;
+}
+
+/**
+ * Does the terrain of hex `h`, lying between firer `from` and target `to`, block the line of sight (§8, §18.7)? Pieces on
+ * `h` are the caller's business. A city wall blocks unless `from`, `to` and `h` are all hexes of one connected wall (units
+ * on a wall see along it), whatever lies under it; then forest, camps and impassable hills (`terrainBlocksLOS`); a hill
+ * (a camp or wall with a hill under it counts) blocks unless `from`, `to` and `h` are all on one connected hill.
+ */
+export function terrainBlocksSight(s: GameState, from: HexId, to: HexId, h: HexId, groups: SightGroups): boolean {
+  if (s.terrain[h] === 'wall') {
+    if (s.terrain[from] !== 'wall' || s.terrain[to] !== 'wall') return true;
+    const g = groups.walls();
+    const gh = g.get(h);
+    return gh === undefined || gh !== g.get(from) || gh !== g.get(to);
+  }
+  if (terrainBlocksLOS(s, h)) return true;
+  if (isHill(s, h)) {
+    if (isHill(s, from) && isHill(s, to)) {
+      const g = groups.hills();
+      const gf = g.get(from);
+      if (gf !== undefined && gf === g.get(to) && gf === g.get(h)) return false;
+    }
+    return true;
+  }
+  return false;
 }
 
 export const TERRAIN_NAMES: Record<TerrainType, string> = {

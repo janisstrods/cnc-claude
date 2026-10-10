@@ -17,7 +17,9 @@ import {
 import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption } from './retreat';
 import { randInt, rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
-import { breakRamparts, isFord, isHill, isImpassable, steepClimb, stopsAll, stopsMounted, terrainAt } from './terrain';
+import {
+  breakRamparts, isFord, isHill, isImpassable, isWall, steepClimb, steepSlope, steepSlopeUp, stopsAll, stopsMounted, terrainAt,
+} from './terrain';
 import { canShoot, fireMoveLimit } from './elites';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forbidsTerrain, forestFighter } from './units';
 import {
@@ -636,6 +638,15 @@ function holdsFirstStrike(s: GameState, side: Side): number | null {
 }
 
 /**
+ * City wall (§18.7, X3 Q3): does `defender`, standing on a wall hex, strike first against `attacker` as if it had played
+ * First Strike, without a card? Always, unless the attacker stands on a wall hex itself. (Only units get here: a lone
+ * leader on a wall has no first strike, §18.7 [Interp].)
+ */
+function wallStrikesFirst(s: GameState, defender: Unit, attacker: Unit): boolean {
+  return isWall(s, defender.hex) && !isWall(s, attacker.hex);
+}
+
+/**
  * Where an attacker's momentum advances ended during its close-combat sequence: `hex` is the last advance's end (the
  * extra hex included), null while it has not advanced. A 'stop' capture needs the unit still there at the end (§18.4).
  */
@@ -645,7 +656,8 @@ interface AdvanceTrack {
 
 /**
  * Full close combat sequence. Returns true when the defender's hex was vacated (successful combat). `adv` records the
- * attacker's momentum advances (bonus combats included).
+ * attacker's momentum advances (bonus combats included). A defender on a city wall that does not evade strikes first
+ * without a card (`wallStrikesFirst`, §18.7): the First Strike card is then neither offered nor used.
  */
 function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: HexId, role: 'attack' | 'bonus', adv: AdvanceTrack): Gen<boolean> {
   const tu = unitAt(s, targetHex);
@@ -661,7 +673,8 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
   const defFull = tu.blocks === tu.maxBlocks;
   const atkHex = attacker.hex;
   const canEvade = canEvadeType(tu.type, attacker.type) && evadeOptions(s, tu).length > 0;
-  const fsCard = holdsFirstStrike(s, tu.side);
+  const wallFirst = wallStrikesFirst(s, tu, attacker);
+  const fsCard = wallFirst ? null : holdsFirstStrike(s, tu.side);
   type DefendChoice = 'stand' | 'evade' | 'firstStrike';
   let choice = 'stand' as DefendChoice;
   if (canEvade || fsCard !== null) {
@@ -705,13 +718,16 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
   }
 
   let firstStruck = false;
-  if (choice === 'firstStrike' && fsCard !== null) {
-    const hand = s.players[tu.side].hand;
-    hand.splice(hand.indexOf(fsCard), 1);
-    s.discard.push(fsCard);
-    s.turn.firstStrikeBy = tu.side;
+  if (wallFirst || (choice === 'firstStrike' && fsCard !== null)) {
+    if (wallFirst) log(s, ctx, `${sideName(s, tu.side)} ${unitName(tu)} strikes first from the wall!`, tu.side);
+    else {
+      const hand = s.players[tu.side].hand;
+      hand.splice(hand.indexOf(fsCard!), 1);
+      s.discard.push(fsCard!);
+      s.turn.firstStrikeBy = tu.side;
+      log(s, ctx, `${sideName(s, tu.side)} plays First Strike!`, tu.side);
+    }
     firstStruck = true;
-    log(s, ctx, `${sideName(s, tu.side)} plays First Strike!`, tu.side);
     yield* strike(s, ctx, tu, attacker, 'firstStrike', defFull, atkFull);
     if (s.winner) return false;
     if (!unitById(s, attacker.id) || attacker.hex !== atkHex) return false;
@@ -732,8 +748,10 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
 
 function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attack' | 'bonus', adv: AdvanceTrack): Gen {
   if (s.winner || !isEmptyHex(s, hex) || isImpassable(s, hex)) return;
-  // war machines never advance (§15), and no unit advances into terrain it may not enter
-  if (UNIT_STATS[u.type].noMomentum || forbidsTerrain(u.type, terrainAt(s, hex))) return;
+  // war machines never advance (§15), and no unit advances into terrain it may not enter (a mounted unit onto a city wall,
+  // §18.7; a foot unit's advance onto a wall is allowed and ends there) or up a steep slope (308; unreachable, since no
+  // close combat crosses one)
+  if (UNIT_STATS[u.type].noMomentum || forbidsTerrain(u.type, terrainAt(s, hex)) || steepSlopeUp(s, u.hex, hex)) return;
   const op = s.turn.ordered[u.id];
   const fromT = terrainAt(s, u.hex);
   if ((fromT === 'marsh' || isFord(s, u.hex)) && op?.enteredHexThisTurn) return;
@@ -756,7 +774,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   if (st.momentumExtraHex && !stopped && fromT !== 'marsh') {
     const hasLeader = !!attachedLeader(s, u);
     const opts = neighbours(u.hex).filter((h) => {
-      if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || unitAt(s, h)) return false;
+      if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || steepSlopeUp(s, u.hex, h) || unitAt(s, h)) return false;
       const l = leaderAt(s, h);
       if (l) return l.side === u.side && !hasLeader;
       return true;
@@ -798,10 +816,26 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   yield* closeCombat(s, ctx, u, t, 'bonus', adv);
 }
 
-/** Adjacent hexes holding an enemy unit or a lone enemy leader. */
+/**
+ * May `u` close combat the piece on its neighbour `h` as far as the terrain goes (§18.7)? Not across a steep slope (308),
+ * either way; and a mounted unit or war machine attacks a piece on a city wall only if it began the turn next to that wall
+ * hex (`ordered.startHex`; a lone leader on the wall too [Interp]). A battle back is no attack: these never stop it.
+ */
+function mayAttackInto(s: GameState, u: Unit, h: HexId): boolean {
+  if (steepSlope(s, u.hex, h)) return false;
+  if (!isWall(s, h) || UNIT_STATS[u.type].infantry) return true;
+  const start = s.turn.ordered[u.id]?.startHex ?? OFF_BOARD;
+  return start >= 0 && areAdjacent(start, h);
+}
+
+/**
+ * Adjacent hexes holding an enemy unit or a lone enemy leader that `u` may close combat (not across a steep slope; a wall
+ * only from where a mounted unit or war machine began the turn, `mayAttackInto`).
+ */
 export function closeTargets(s: GameState, u: Unit): HexId[] {
   const out: HexId[] = [];
   for (const h of neighbours(u.hex)) {
+    if (!mayAttackInto(s, u, h)) continue;
     const v = unitAt(s, h);
     if (v) {
       if (v.side !== u.side) out.push(h);
@@ -1006,6 +1040,8 @@ export function pieceMoves(s: GameState, id: string, stage: 1 | 2 = s.turn.phase
   const u = unitById(s, id);
   if (!u) return [];
   if (op.attachedThisTurn) return [];
+  // a unit that began the turn on a city wall moves 1 hex in all that turn (§18.7): no second Move-Fire-Move move after one
+  if (stage === 2 && op.moved > 0 && isWall(s, op.startHex)) return [];
   if (op.fromReserve && u.hex === OFF_BOARD) {
     const sec = s.turn.ambushSection;
     if (!sec) return [];

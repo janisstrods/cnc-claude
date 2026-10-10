@@ -117,8 +117,9 @@ export interface GameOptions {
  * One terrain hex of a scenario. `ford`: a fordable river hex (`'nocap'` = fordable without the ford dice caps, 108
  * Pinarus). `{ t: 'sea', ford: true }` is a coast played as a fordable river (217, §18.6): it is built as a `river` with a
  * ford, and only the art is sea. A `rampart` hex lists its protected hexsides (§16): `faces: 'top'` = NW + NE, `faces:
- * 'bottom'` = SW + SE, and/or `edges` by direction (a corner piece lists 3). `art`: a hint for the drawing of the hex (the
- * sea of a coast ford); the engine checks it is text and otherwise ignores it.
+ * 'bottom'` = SW + SE, and/or `edges` by direction (a corner piece lists 3). `hill: true`: a hill lies under the hex
+ * (`GameState.hillUnder`, 308, §18.7), only on a `camp` or `wall` hex. `art`: a hint for the drawing of the hex (the sea of a
+ * coast ford, the impassable walls and towns of 301, 303 and 304); the engine checks it is text and otherwise ignores it.
  */
 export interface TerrainSetup {
   r: number;
@@ -127,8 +128,12 @@ export interface TerrainSetup {
   ford?: boolean | 'nocap';
   faces?: Side;
   edges?: HexDir[];
+  hill?: boolean;
   art?: string;
 }
+
+/** Terrain that may have a hill under it (`TerrainSetup.hill`, §18.7). */
+const HILL_UNDER_TERRAIN: readonly TerrainType[] = ['camp', 'wall'];
 
 const FACES: Record<Side, HexDir[]> = { top: ['NW', 'NE'], bottom: ['SW', 'SE'] };
 
@@ -257,6 +262,8 @@ function checkIds(setup: ScenarioSetup) {
     }
     if (t.t === 'sea' && t.ford === 'nocap') throw new Error(`a sea ford at ${t.r},${t.c} cannot be 'nocap' (it is an ordinary ford)`);
     if (t.art !== undefined && typeof t.art !== 'string') throw new Error(`terrain art at ${t.r},${t.c} must be text (not ${String(t.art)})`);
+    if (t.hill !== undefined && typeof t.hill !== 'boolean') throw new Error(`terrain hill at ${t.r},${t.c} must be true or false (not ${String(t.hill)})`);
+    if (t.hill && !HILL_UNDER_TERRAIN.includes(t.t)) throw new Error(`a hill under ${t.t} at ${t.r},${t.c}: only a camp or wall may stand on a hill`);
   }
   for (const u of setup.units) if (!has(UNIT_STATS, u.type)) throw new Error(`unknown unit type ${String(u.type)} at ${u.r},${u.c}`);
   for (const u of setup.reserves) if (!has(UNIT_STATS, u.type)) throw new Error(`unknown unit type ${String(u.type)} in reserve`);
@@ -273,7 +280,8 @@ function checkIds(setup: ScenarioSetup) {
 
 /**
  * Where the pieces stand (on the built board): one unit and one leader per hex at most, no leader on an enemy unit, and
- * no unit or leader on impassable terrain or a unit on terrain its type may not enter.
+ * no unit or leader on impassable terrain or a unit on terrain its type may not enter (a mounted unit or war machine on a
+ * city wall, §18.7).
  */
 function checkPositions(setup: ScenarioSetup, s: GameState) {
   const unitSide = new Map<HexId, Side>();
@@ -401,6 +409,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     fords[h] = !!t.ford;
     noCap[h] = t.ford === 'nocap';
     rampart[h] = rampartMask(t);
+    hillUnder[h] = t.hill === true;
   }
   const commands = resolveCommands(setup);
   let nextId = 1;

@@ -2,8 +2,8 @@
 import { distance, hasLineOfSight, neighbours } from './hex';
 import { attachedLeader, enemyUnitAdjacent, isRomanArmy, leaderAt, leaderHas, leaderNear, supportCount, unitAt } from './query';
 import {
-  ccCapOfHex, hillGroups, isCamp, isHill, rampartProtects, rangedFromCap, rangedTargetCap, terrainAt, terrainBlocksLOS,
-  veryHills,
+  ccCapOfHex, hillGroups, isCamp, isHill, isWall, rampartProtects, rangedFromCap, rangedTargetCap, terrainAt, terrainBlocksSight,
+  veryHills, wallGroups,
 } from './terrain';
 import { eliteHas, rangeOf, rangedBaseDice } from './elites';
 import { UNIT_STATS, elephantDiceVs, frightens } from './units';
@@ -62,8 +62,8 @@ export function tacticalFlexibility(s: GameState, striker: Unit, target: Unit | 
 
 /**
  * Number of dice `striker` rolls in close combat against `target` (a unit or a lone leader): base dice, capped by
- * terrain, -1 on a camp, then card bonuses and Alexander's +1 (§4, §17.2). Tactical Flexibility (§17.3) replaces the
- * base dice, before the caps.
+ * terrain (a city wall in either hex: 2, §18.7), -1 on a camp, then card bonuses and Alexander's or Caesar's +1 (§4,
+ * §17.2). Tactical Flexibility (§17.3) replaces the base dice, before the caps.
  */
 export function closeCombatDice(s: GameState, striker: Unit, target: Unit | Leader, opts: CloseDiceOpts): number {
   const st = UNIT_STATS[striker.type];
@@ -94,26 +94,19 @@ export function rangedDice(s: GameState, firer: Unit, targetHex: HexId, moved: n
   return Math.max(0, dice);
 }
 
-/** Does anything block line of sight from `from` to `to`? */
+/**
+ * Is the line of sight from `from` to `to` clear (§8)? Pieces between block it; the terrain between is decided by
+ * `terrainBlocksSight` (forest, camps, impassable hills, hills off the firer's and target's hill, city walls except along a
+ * connected wall, §18.7).
+ */
 export function lineOfSight(s: GameState, from: HexId, to: HexId): boolean {
-  let groups: Map<HexId, number> | null = null;
-  const fromHillGroup = () => {
-    groups ??= hillGroups(s, neighbours);
-    return groups;
+  let hills: Map<HexId, number> | null = null;
+  let walls: Map<HexId, number> | null = null;
+  const groups = {
+    hills: () => (hills ??= hillGroups(s, neighbours)),
+    walls: () => (walls ??= wallGroups(s, neighbours)),
   };
-  return hasLineOfSight(from, to, (h) => {
-    if (unitAt(s, h) || leaderAt(s, h)) return true;
-    if (terrainBlocksLOS(s, h)) return true;
-    if (isHill(s, h)) {
-      if (isHill(s, from) && isHill(s, to)) {
-        const g = fromHillGroup();
-        const gf = g.get(from);
-        if (gf !== undefined && gf === g.get(to) && gf === g.get(h)) return false;
-      }
-      return true;
-    }
-    return false;
-  });
+  return hasLineOfSight(from, to, (h) => !!unitAt(s, h) || !!leaderAt(s, h) || terrainBlocksSight(s, from, to, h, groups));
 }
 
 /** Can `firer` make a ranged attack at `targetHex` (ignoring order state)? */
@@ -152,9 +145,19 @@ export function rampartShields(s: GameState, target: Unit, striker: Unit | null,
 }
 
 /**
+ * City wall (§18.7): does `target`, a foot unit standing on a wall hex, defend there against this roll? In close combat
+ * only against an attack or bonus combat (`role`; never the battle back or First Strike against a wall unit that attacked
+ * out **[Interp]**), and against any ranged fire. It then ignores 1 sword (close combat) and may ignore 1 more flag.
+ */
+export function wallShields(s: GameState, target: Unit, kind: 'close' | 'ranged', role?: StrikeRole | null): boolean {
+  if (!isWall(s, target.hex) || !UNIT_STATS[target.type].foot) return false;
+  return kind === 'ranged' || role === 'attack' || role === 'bonus';
+}
+
+/**
  * Sword hits the target ignores whoever rolls against it: its type (EL all, HCH 1), a foot unit on a camp, the
- * Companions. **Excludes the rampart** (§16), which depends on the striker's position and role: use `swordIgnores` for
- * an actual roll.
+ * Companions. **Excludes the rampart** (§16) and the city wall (§18.7), which depend on the striker's position or role:
+ * use `swordIgnores` for an actual roll.
  */
 export function baseSwordIgnores(s: GameState, target: Unit): number {
   const t = UNIT_STATS[target.type];
@@ -167,11 +170,13 @@ export function baseSwordIgnores(s: GameState, target: Unit): number {
 
 /**
  * How many sword hits the target ignores from a close-combat roll by `striker` in `role` (an elephant does not re-roll an
- * ignored sword): `baseSwordIgnores` plus the rampart (§16).
+ * ignored sword): `baseSwordIgnores` plus the rampart (§16) and the city wall (§18.7).
  */
 export function swordIgnores(s: GameState, target: Unit, striker: Unit, role: StrikeRole): number {
-  const n = baseSwordIgnores(s, target);
-  return rampartShields(s, target, striker, 'close', role) ? n + 1 : n;
+  let n = baseSwordIgnores(s, target);
+  if (rampartShields(s, target, striker, 'close', role)) n++;
+  if (wallShields(s, target, 'close', role)) n++;
+  return n;
 }
 
 /** Is the striker a cavalry or chariot unit (the rollers that `vsMounted*` abilities react to)? */
@@ -286,7 +291,7 @@ export function frightAtFirstSight(s: GameState, target: Unit, striker: Unit | n
   return UNIT_STATS[striker.type].elephantTable && UNIT_STATS[target.type].infantry && isRomanArmy(s, target.side);
 }
 
-/** Number of flags the target may ignore (bolster morale, terrain, special). */
+/** Number of flags the target may ignore (bolster morale, terrain incl. the rampart and city wall, special). */
 export function ignorableFlags(s: GameState, target: Unit, ctx: IgnoreContext): number {
   if (frightAtFirstSight(s, target, ctx.striker, ctx.kind)) return 0;
   const t = UNIT_STATS[target.type];
@@ -300,6 +305,7 @@ export function ignorableFlags(s: GameState, target: Unit, ctx: IgnoreContext): 
   if (eliteHas(target, 'ignoreFlag')) n++;
   if (t.vsMountedIgnoreFlag && ctx.kind === 'close' && ctx.striker && cavalryOrChariot(ctx.striker)) n++;
   if (rampartShields(s, target, ctx.striker, ctx.kind, ctx.role)) n++;
+  if (wallShields(s, target, ctx.kind, ctx.role)) n++;
   return n;
 }
 

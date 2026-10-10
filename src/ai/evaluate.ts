@@ -9,7 +9,7 @@ import { exitAllows } from '../engine/objectives';
 import { isRomanArmy, leaderHas, other } from '../engine/query';
 import { ccCapOfHex, isHill, isImpassable, veryHills } from '../engine/terrain';
 import { eliteHas, hasPilum, rangeOf } from '../engine/elites';
-import { UNIT_STATS, canEvadeType, elephantDiceVs, type UnitStats } from '../engine/units';
+import { UNIT_STATS, barredTerrain, canEvadeType, elephantDiceVs, type UnitStats } from '../engine/units';
 import type { GameState, Leader, Side, TerrainType, Unit } from '../engine/types';
 import {
   Occ, advanceGap, attachedLeaderOcc, canEvadeOcc, canFireOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, hasTerrain, helmetsOcc,
@@ -94,8 +94,8 @@ function attackHexes(s: GameState, e: Unit): Set<number> {
 
 /**
  * Is there a hex next to `target` within `reach` of `e` that `e` may move to and attack from: free, passable, not
- * terrain it may not enter (`forbidden`, its forbiddenTerrain: broken ground or marsh for a war machine) and without an
- * enemy leader?
+ * terrain it may not enter (`forbidden`, its `barredTerrain`: broken ground or marsh for a war machine, a city wall for a
+ * mounted unit or war machine) and without an enemy leader?
  */
 function hasFreeApproach(s: GameState, occ: Occ, e: Unit, forbidden: readonly TerrainType[], target: number, reach: number): boolean {
   // very steep hills (223): a unit climbing onto a hill from lower ground may not battle that turn
@@ -249,7 +249,7 @@ function threatsAgainst(
     let diceBonus: number | undefined;
     const reach = reachOf(e, occ);
     const from = exact ? attackHexes(s, e) : null;
-    const forbidden = S.forbiddenTerrain;
+    const forbidden = barredTerrain(e.type);
     let walk: Set<number> | null = null;
     const canReach = (target: number) => {
       if (from) {

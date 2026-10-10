@@ -177,9 +177,27 @@ export function canEvadeType(defender: UnitType, attacker: UnitType): boolean {
   }
 }
 
-/** May a unit of type `t` not enter terrain `terrain` (movement, momentum, retreat and evade)? */
+/**
+ * The terrain a unit type may not enter (movement, momentum, retreat and evade): its `forbiddenTerrain`, plus the city wall
+ * for every type that is not infantry (mounted units and war machines, §18.7). Do not modify the result.
+ */
+const BARRED = {} as Record<UnitType, readonly TerrainType[]>;
+for (const t of UNIT_TYPES) {
+  const own = UNIT_STATS[t].forbiddenTerrain;
+  BARRED[t] = UNIT_STATS[t].infantry ? own : [...own, 'wall'];
+}
+
+/** The terrain a unit of type `t` may not enter: see `forbidsTerrain` (a shared list, not to be modified). */
+export function barredTerrain(t: UnitType): readonly TerrainType[] {
+  return BARRED[t];
+}
+
+/**
+ * May a unit of type `t` not enter terrain `terrain` (movement, momentum, retreat and evade)? Its `forbiddenTerrain` (war
+ * machines: broken ground, marsh), and a city wall for mounted units and war machines (§18.7).
+ */
 export function forbidsTerrain(t: UnitType, terrain: TerrainType): boolean {
-  return UNIT_STATS[t].forbiddenTerrain.includes(terrain);
+  return BARRED[t].includes(terrain);
 }
 
 /** Units that may battle after moving into a forest. */

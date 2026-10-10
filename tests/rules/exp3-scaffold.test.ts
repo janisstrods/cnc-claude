@@ -1,5 +1,5 @@
 // Expansion #3 type scaffold (rules-reference §18, §20): the eight new army looks and the city wall terrain exist, with
-// temporary art; the wall's own rules come with the wall engine task, so for now it is open ground that can be entered.
+// temporary art. The wall's own rules (§18.7) are tested in exp3-walls.test.ts; here only its name and basic shape.
 import { describe, expect, it } from 'vitest';
 import { ARMY_LOOKS, TERRAIN_NAMES, ccCapOfHex, isImpassable, pieceMoves, rangedFromCap } from '../../src/engine';
 import { LOOKS, lookDef, paletteFor } from '../../src/art/palettes';
@@ -25,19 +25,22 @@ describe('Expansion #3 scaffold', () => {
     expect(LOOKS.samnite).toBe(LOOKS.syracusan);
   });
 
-  it('has the city wall terrain: named, passable and without dice caps yet', () => {
+  it('has the city wall terrain: named, not impassable, close combat capped at 2, ranged combat not capped', () => {
     const s = build({ terrain: [{ at: [5, 6], t: 'wall' }] });
     expect(s.terrain[H(5, 6)]).toBe('wall');
     expect(TERRAIN_NAMES.wall).toBe('City Wall');
     expect(terrainName('wall', false)).toBe('City Wall');
     expect(isImpassable(s, H(5, 6))).toBe(false);
-    expect(ccCapOfHex(s, H(5, 6))).toBeGreaterThan(5);
+    expect(ccCapOfHex(s, H(5, 6))).toBe(2);
     expect(rangedFromCap(s, H(5, 6))).toBeGreaterThan(5);
   });
 
-  it('a unit can move onto a wall hex for now', () => {
-    const s = build({ units: [{ side: 'bottom', type: 'MI', at: [6, 6] }], terrain: [{ at: [5, 6], t: 'wall' }] });
-    const d = play(s, 'order4C', ['u1']);
-    expect(pieceMoves(d.state, 'u1').map((m) => m.hex)).toContain(H(5, 6));
+  it('a foot unit next to a wall hex may move onto it; a mounted unit may not', () => {
+    const moves = (type: 'MI' | 'MC') => {
+      const s = build({ units: [{ side: 'bottom', type, at: [6, 6] }], terrain: [{ at: [5, 6], t: 'wall' }] });
+      return pieceMoves(play(s, 'order4C', ['u1']).state, 'u1').map((m) => m.hex);
+    };
+    expect(moves('MI')).toContain(H(5, 6));
+    expect(moves('MC')).not.toContain(H(5, 6));
   });
 });

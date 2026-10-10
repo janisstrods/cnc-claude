@@ -1,10 +1,13 @@
 // Fast board helpers for the AI: distance table, occupancy, retreat room, LOS and flag rules mirrored with O(1) lookups.
 import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
-import { hillGroups, isCamp, isHill, isImpassable, steepClimb, stopsAll, stopsMounted, terrainAt, terrainBlocksLOS } from '../engine/terrain';
-import { frightAtFirstSight, rampartShields, type StrikeRole } from '../engine/combat';
+import {
+  hillGroups, isCamp, isImpassable, steepClimb, steepSlopeUp, stopsAll, stopsMounted, terrainAt, terrainBlocksSight, wallGroups,
+  type SightGroups,
+} from '../engine/terrain';
+import { frightAtFirstSight, rampartShields, wallShields, type StrikeRole } from '../engine/combat';
 import { canShoot, eliteHas, rangeOf } from '../engine/elites';
 import { leaderHas } from '../engine/query';
-import { UNIT_STATS } from '../engine/units';
+import { UNIT_STATS, barredTerrain } from '../engine/units';
 import { COLS, ROWS, type GameState, type HexId, type Leader, type Side, type TerrainType, type Unit } from '../engine/types';
 
 export const NHEX = ROWS * COLS;
@@ -100,6 +103,7 @@ export function ignorableOcc(
     if (st.cavalry || st.chariot) n++;
   }
   if (striker && rampartShields(s, t, striker, kind, role)) n++;
+  if (wallShields(s, t, kind, role)) n++;
   return n;
 }
 
@@ -119,8 +123,9 @@ export function helmetsOcc(occ: Occ, u: Unit): boolean {
 }
 
 /**
- * Is hex h terrain that a unit with this `forbiddenTerrain` list (its UNIT_STATS row) may not enter? Mirror of engine
- * forbidsTerrain; most types forbid nothing, so the list is passed in once per unit instead of looked up per hex.
+ * Is hex h terrain that a unit with this `barredTerrain` list (its type's `forbiddenTerrain`, plus the city wall for mounted
+ * units and war machines) may not enter? Mirror of engine forbidsTerrain; most types forbid nothing, so the list is passed
+ * in once per unit instead of looked up per hex.
  */
 export function terrainForbids(s: GameState, forbidden: readonly TerrainType[], h: HexId): boolean {
   return forbidden.length > 0 && forbidden.includes(terrainAt(s, h));
@@ -133,12 +138,12 @@ export function terrainForbids(s: GameState, forbidden: readonly TerrainType[], 
 export function retreatRoom(s: GameState, occ: Occ, u: Unit, need: number): number {
   if (need <= 0) return 0;
   const hasLeader = !!attachedLeaderOcc(occ, u);
-  const forbidden = UNIT_STATS[u.type].forbiddenTerrain;
+  const forbidden = barredTerrain(u.type);
   const walk = (cur: HexId, left: number): number => {
     if (left === 0) return 0;
     let best = 0;
     for (const h of rearOf(cur, u.side)) {
-      if (isImpassable(s, h) || terrainForbids(s, forbidden, h) || occ.unit[h]) continue;
+      if (isImpassable(s, h) || terrainForbids(s, forbidden, h) || occ.unit[h] || steepSlopeUp(s, cur, h)) continue;
       const l = occ.leader[h];
       if (l) {
         if (l.side !== u.side || hasLeader) continue;
@@ -156,9 +161,9 @@ export function retreatRoom(s: GameState, occ: Occ, u: Unit, need: number): numb
 /** Can the unit evade at all (mirror of engine evadeOptions non-emptiness)? */
 export function canEvadeOcc(s: GameState, occ: Occ, u: Unit): boolean {
   const hasLeader = !!attachedLeaderOcc(occ, u);
-  const forbidden = UNIT_STATS[u.type].forbiddenTerrain;
+  const forbidden = barredTerrain(u.type);
   for (const h of rearOf(u.hex, u.side)) {
-    if (isImpassable(s, h) || terrainForbids(s, forbidden, h) || occ.unit[h]) continue;
+    if (isImpassable(s, h) || terrainForbids(s, forbidden, h) || occ.unit[h] || steepSlopeUp(s, u.hex, h)) continue;
     const l = occ.leader[h];
     if (l && (l.side !== u.side || hasLeader)) continue;
     return true;
@@ -166,30 +171,26 @@ export function canEvadeOcc(s: GameState, occ: Occ, u: Unit): boolean {
   return false;
 }
 
-const hillCache = new WeakMap<object, Map<HexId, number>>();
-function hillGroupOf(s: GameState): Map<HexId, number> {
-  let g = hillCache.get(s.terrain);
+/**
+ * Hill and wall groups per terrain array, each worked out on first use (a changed hex replaces the array; `hillUnder`, the
+ * other input, never changes in play and is shared by the states of one game).
+ */
+const sightCache = new WeakMap<object, SightGroups>();
+function sightGroupsOf(s: GameState): SightGroups {
+  let g = sightCache.get(s.terrain);
   if (!g) {
-    g = hillGroups(s, neighbours);
-    hillCache.set(s.terrain, g);
+    let hills: Map<HexId, number> | undefined;
+    let walls: Map<HexId, number> | undefined;
+    g = { hills: () => (hills ??= hillGroups(s, neighbours)), walls: () => (walls ??= wallGroups(s, neighbours)) };
+    sightCache.set(s.terrain, g);
   }
   return g;
 }
 
+/** Mirror of engine lineOfSight using occupancy (the terrain decided by the engine's `terrainBlocksSight`). */
 export function losOcc(s: GameState, occ: Occ, from: HexId, to: HexId): boolean {
-  return hasLineOfSight(from, to, (h) => {
-    if (occ.unit[h] || occ.leader[h]) return true;
-    if (terrainBlocksLOS(s, h)) return true;
-    if (isHill(s, h)) {
-      if (isHill(s, from) && isHill(s, to)) {
-        const g = hillGroupOf(s);
-        const gf = g.get(from);
-        if (gf !== undefined && gf === g.get(to) && gf === g.get(h)) return false;
-      }
-      return true;
-    }
-    return false;
-  });
+  const groups = sightGroupsOf(s);
+  return hasLineOfSight(from, to, (h) => !!occ.unit[h] || !!occ.leader[h] || terrainBlocksSight(s, from, to, h, groups));
 }
 
 /** Mirror of engine canFireAt using occupancy. */
@@ -267,6 +268,7 @@ export function hasTerrain(s: GameState, t: TerrainType): boolean {
  */
 export function stopAwareReach(s: GameState, occ: Occ, e: Unit, reach: number): Set<HexId> {
   const st = UNIT_STATS[e.type];
+  const barred = barredTerrain(e.type);
   const out = new Set<HexId>();
   let frontier: HexId[] = [e.hex];
   const seen = new Set<HexId>([e.hex]);
@@ -274,7 +276,7 @@ export function stopAwareReach(s: GameState, occ: Occ, e: Unit, reach: number): 
     const next: HexId[] = [];
     for (const h of frontier) {
       for (const n of neighbours(h)) {
-        if (seen.has(n) || isImpassable(s, n) || terrainForbids(s, st.forbiddenTerrain, n) || occ.unit[n]) continue;
+        if (seen.has(n) || isImpassable(s, n) || terrainForbids(s, barred, n) || occ.unit[n] || steepSlopeUp(s, h, n)) continue;
         const l = occ.leader[n];
         if (l && l.side !== e.side) continue;
         seen.add(n);

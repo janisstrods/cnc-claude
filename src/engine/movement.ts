@@ -3,7 +3,7 @@ import { canMarch } from './elites';
 import { inSection, neighbours } from './hex';
 import { exitHexes, leaderExitHexes } from './objectives';
 import { attachedLeader, enemyPieceAdjacent, leaderAt, leaderById, leaderHas, unitAt, unitById } from './query';
-import { isImpassable, steepClimb, stopsAll, stopsMounted, terrainAt } from './terrain';
+import { isImpassable, isWall, steepClimb, steepSlope, steepSlopeUp, steepSlopes, stopsAll, stopsMounted, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain, forestFighter, isLightFoot } from './units';
 import { OFF_BOARD, type GameState, type HexId, type Leader, type OrderMods, type SectionName, type Side, type Unit } from './types';
 
@@ -25,7 +25,7 @@ export interface MoveLimits {
 /**
  * Movement limits of a unit under the current card. `leader`: the leader attached to the unit at the start of its move
  * (none for a unit that only joins a leader during the move, or enters from reserve); Caesar's `forcedMarch` (§18.3) lets
- * an infantry unit move 2 hexes and still battle.
+ * an infantry unit move 2 hexes and still battle. A move that begins in a marsh or on a city wall (§18.7) goes 1 hex.
  */
 export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: GameState, leader?: Leader): MoveLimits {
   const st = UNIT_STATS[u.type];
@@ -51,7 +51,7 @@ export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: Gam
     max = Math.min(max, mods.maxMove);
     battleMax = Math.min(battleMax, max);
   }
-  if (startHex >= 0 && terrainAt(s, startHex) === 'marsh') {
+  if (startHex >= 0 && (terrainAt(s, startHex) === 'marsh' || isWall(s, startHex))) {
     max = Math.min(max, 1);
     battleMax = Math.min(battleMax, 1);
   }
@@ -93,6 +93,10 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
 
   const canEnter = (h: HexId, from: HexId): 'no' | 'pass' | 'stop' | 'yes' | 'attach' => {
     if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h))) return 'no';
+    // a city wall (§18.7) is climbed only by a move that begins next to it (never by a reserve entering), and a steep slope
+    // (308) never from the forest below
+    if (isWall(s, h) && (fromReserve || from !== startHex)) return 'no';
+    if (steepSlopeUp(s, from, h)) return 'no';
     const v = unitAt(s, h);
     if (v) {
       // passing through means not stopping: impossible through a friend standing where the unit would have to stop (stopping
@@ -177,13 +181,22 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     if (bestExit) results.set(OFF_BOARD, bestExit);
   }
 
+  // A warrior's long move must end next to an enemy piece it can close combat: not one across a steep slope (308, §18.7).
+  const enemyToCharge = (h: HexId) => {
+    if (!steepSlopes(s)) return enemyPieceAdjacent(s, h, u.side);
+    return neighbours(h).some((x) => {
+      if (steepSlope(s, h, x)) return false;
+      const p = unitAt(s, x) ?? leaderAt(s, x);
+      return !!p && p.side !== u.side;
+    });
+  };
   // Battle eligibility. A unit that climbed onto a very steep hill (§18.6) may not battle, so it cannot charge either.
   for (const t of results.values()) {
     if (t.hex === OFF_BOARD) continue;
     const climbed = climbs(t.hex, t.path);
     let can = t.dist <= lim.battleMax && !climbed;
     if (lim.chargeFrom !== null && t.dist >= lim.chargeFrom) {
-      if (!climbed && enemyPieceAdjacent(s, t.hex, u.side)) t.mustBattle = true;
+      if (!climbed && enemyToCharge(t.hex)) t.mustBattle = true;
       else {
         // warriors may only make the long move when charging into close combat
         t.canBattle = false;
@@ -202,9 +215,10 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
 }
 
 /**
- * Reachable hexes for an ordered leader moving alone (1-3 hexes, through friendly pieces). Exit objectives that score
- * leaders (317, §18.4) add `OFF_BOARD`: stepping off the board from a listed hex is one more hex of the move, from the
- * start hex or a hex he passed without being stopped there.
+ * Reachable hexes for an ordered leader moving alone (1-3 hexes, through friendly pieces; 1 from a marsh or a city wall).
+ * He climbs onto a city wall only from a hex next to it, and stops there (§18.7); never up a steep slope (308). Exit
+ * objectives that score leaders (317, §18.4) add `OFF_BOARD`: stepping off the board from a listed hex is one more hex of
+ * the move, from the start hex or a hex he passed without being stopped there.
  */
 export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?: HexId[] } = {}): MoveTarget[] {
   const l = leaderById(s, leaderId);
@@ -219,7 +233,7 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
     return [...results.values()];
   }
   const start = l.hex;
-  const max = terrainAt(s, start) === 'marsh' ? 1 : 3;
+  const max = terrainAt(s, start) === 'marsh' || isWall(s, start) ? 1 : 3;
   type Node = { hex: HexId; dist: number; path: HexId[] };
   const queue: Node[] = [{ hex: start, dist: 0, path: [start] }];
   const best = new Map<HexId, number>([[start, 0]]);
@@ -228,7 +242,7 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
     const n = queue.shift()!;
     if (n.dist >= max) continue;
     for (const h of neighbours(n.hex)) {
-      if (isImpassable(s, h)) continue;
+      if (isImpassable(s, h) || (isWall(s, h) && n.hex !== start) || steepSlopeUp(s, n.hex, h)) continue;
       const v = unitAt(s, h);
       if (v && v.side !== l.side) continue;
       const other = leaderAt(s, h);
