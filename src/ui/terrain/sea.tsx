@@ -4,10 +4,11 @@
 // and fade out into it (paintRivers).
 import { ROWS } from '../../engine/types';
 import { clampCol, parity } from '../geometry';
-import { blurGrid, contours, decimate, loopArea, makeGrid, polyPath, sampleGrid, smoothClosed, type Grid } from './field';
-import { corner, DIRS, edgeCorners, fmt, neighborRC, screenDir, type PaintCtx, type Pt, type Rect } from './hexmath';
+import { blurGrid, contours, decimate, loopArea, makeGrid, sampleGrid, smoothClosed, type Grid } from './field';
+import { corner, DIRS, edgeCorners, fmt, neighborRC, polyPath, screenDir, type PaintCtx, type Pt, type Rect } from './hexmath';
 import { clamp, fbm, rng } from './noise';
 import { P } from './palette';
+import { unit } from './vec';
 
 export interface SeaOpts {
   /** Sea membership of any (possibly virtual, off-board) hex. Default: the board terrain, continued past the edges. */
@@ -273,10 +274,6 @@ export function paintCoastFords(ctx: PaintCtx, toLand?: Pt): JSX.Element | null 
   let stoneSh = '';
   let stoneHi = '';
   let ripples = '';
-  const unitV = (v: Pt): Pt => {
-    const l = Math.hypot(v.x, v.y) || 1;
-    return { x: v.x / l, y: v.y / l };
-  };
   for (const h of fords) {
     let u = toLand;
     if (!u) {
@@ -290,7 +287,7 @@ export function paintCoastFords(ctx: PaintCtx, toLand?: Pt): JSX.Element | null 
         }
       }
       // out at sea (no land beside it): wade towards the middle of the board
-      u = unitV(Math.hypot(v.x, v.y) > 1 ? v : { x: (ctx.bounds.x0 + ctx.bounds.x1) / 2 - h.x, y: (ctx.bounds.y0 + ctx.bounds.y1) / 2 - h.y });
+      u = unit(Math.hypot(v.x, v.y) > 1 ? v : { x: (ctx.bounds.x0 + ctx.bounds.x1) / 2 - h.x, y: (ctx.bounds.y0 + ctx.bounds.y1) / 2 - h.y });
     }
     const R = rng(2170 + h.id * 13);
     // each crossing leans a little and sits a little off the centre, so a row of them is not a pattern

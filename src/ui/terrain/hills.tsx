@@ -1,7 +1,7 @@
 // Hills (shaded grassy mounds merging into ridges) and steep hills (raised rocky plateaus).
-import { addToGrid, blurGrid, contours, decimate, fillGrid, isoPath, loopArea, makeGrid, polyPath } from './field';
+import { addToGrid, blurGrid, contours, decimate, fillGrid, isoPath, loopArea, makeGrid } from './field';
 import type { TerrainType } from '../../engine/types';
-import { fmt, type PaintCtx, type Pt, type Rect } from './hexmath';
+import { fmt, polyPath, type PaintCtx, type Pt, type Rect } from './hexmath';
 import { fbm, rng } from './noise';
 import { P } from './palette';
 

@@ -190,6 +190,11 @@ export function edgeCorners(sd: Dir): [number, number] {
 
 export const fmt = (n: number) => (Math.round(n * 10) / 10).toString();
 
+/** Path through `pts` in straight segments: a polygon, or (`close` false) an open polyline. */
+export function polyPath(pts: Pt[], close = true): string {
+  return `M${pts.map((p) => `${fmt(p.x)},${fmt(p.y)}`).join('L')}${close ? 'Z' : ''}`;
+}
+
 /** SVG path of the outer boundary of all hexes in ctx (the playing field outline). */
 export function fieldOutline(ctx: PaintCtx): string {
   type E = { a: Pt; b: Pt; used: boolean };
@@ -224,7 +229,7 @@ export function fieldOutline(ctx: PaintCtx): string {
       cur = key(next.a) === key(cur) ? next.b : next.a;
       pts.push(cur);
     }
-    d += `M${pts.map((p) => `${fmt(p.x)},${fmt(p.y)}`).join('L')}Z`;
+    d += polyPath(pts);
   }
   return d;
 }

@@ -12,7 +12,7 @@ import { BLOCK_COLORS, type SideColors } from '../../art';
 import { colOf, hexId, onBoard, rowOf } from '../../engine/hex';
 import { ROWS, type Blocks, type HexId, type ObjectiveDef, type ObjectiveState, type SectionName, type Side } from '../../engine/types';
 import { BOARD_H, BOARD_W, HEX_R, hexCenter, hexCenterId } from '../geometry';
-import { boardCtx, corner, DIRS, edgeCorners, fieldOutline, fmt, neighborRC, screenDir, type Pt } from './hexmath';
+import { boardCtx, corner, DIRS, edgeCorners, fieldOutline, fmt, neighborRC, polyPath, screenDir, type Pt } from './hexmath';
 
 export interface ObjectiveMarkersProps {
   /** `GameState.special.objectives`. */
@@ -213,7 +213,7 @@ function ExitArrow({ h, flipped, c, leaders = false }: { h: HexId; flipped: bool
   const n = { x: -u.y, y: u.x };
   const at = (a: number, s: number): Pt => ({ x: p.x + u.x * a + n.x * s, y: p.y + u.y * a + n.y * s });
   const arrow = [at(48, 0), at(35, 13.5), at(35, 6), at(25, 6), at(25, -6), at(35, -6), at(35, -13.5)];
-  const d = `M${arrow.map((q) => `${fmt(q.x)},${fmt(q.y)}`).join('L')}Z`;
+  const d = polyPath(arrow);
   return (
     <g className="exit">
       <path d={sides} fill="none" stroke={INK} strokeWidth={6.5} strokeLinecap="round" opacity={0.6} />
@@ -315,7 +315,7 @@ export function ObjectiveMarkers({ objectives, objState, flipped, blocks, units 
         for (const h of o.hexes) {
           const p = hexCenterId(h, flipped);
           const ring = Array.from({ length: 6 }, (_, k) => corner(p, k, HEX_R - 4.5));
-          const d = `M${ring.map((q) => `${fmt(q.x)},${fmt(q.y)}`).join('L')}Z`;
+          const d = polyPath(ring);
           rings.push(
             <g key={`h${i}-${h}`} className="hold" fill="none" strokeLinejoin="round">
               <path d={d} stroke={INK} strokeWidth={5.6} opacity={0.5} />

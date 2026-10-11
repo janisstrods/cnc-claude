@@ -5,21 +5,11 @@
 // a forest. Walls join across neighbouring wall hexes (as the ditch's trench does), run on under the frame at a board
 // edge and end in a tower elsewhere. Everything is seen from the board's lower edge and lit from the upper left, like the
 // hills and the steep plateaus: the walls' front faces look down the screen on either orientation.
-import { polyPath } from './field';
-import { DIRS, corner, edgeCorners, fmt, neighborRC, screenDir, type Dir, type HexInfo, type PaintCtx, type Pt } from './hexmath';
+import { DIRS, corner, edgeCorners, fmt, neighborRC, polyPath, screenDir, type Dir, type HexInfo, type PaintCtx, type Pt } from './hexmath';
 import { boulder } from './hills';
 import { rng } from './noise';
 import { P } from './palette';
-
-const sub = (a: Pt, b: Pt): Pt => ({ x: a.x - b.x, y: a.y - b.y });
-const add = (a: Pt, b: Pt): Pt => ({ x: a.x + b.x, y: a.y + b.y });
-const mul = (a: Pt, k: number): Pt => ({ x: a.x * k, y: a.y * k });
-const unit = (a: Pt): Pt => {
-  const l = Math.hypot(a.x, a.y) || 1;
-  return { x: a.x / l, y: a.y / l };
-};
-const dot = (a: Pt, b: Pt) => a.x * b.x + a.y * b.y;
-const line = (pts: Pt[]) => `M${pts.map((p) => `${fmt(p.x)},${fmt(p.y)}`).join('L')}`;
+import { add, dot, leftNormal, mitre, mul, sub, unit } from './vec';
 
 /** Light from the upper left (as for the hills). */
 const LIGHT = unit({ x: -0.6, y: -0.8 });
@@ -165,18 +155,13 @@ const TOWN: WallLook = {
 /** The polyline moved `o` to its left (screen space), with mitred joins; `closed` for a ring. */
 function offsetLine(pts: Pt[], o: number, closed = false): Pt[] {
   const n = pts.length;
-  const segN = (i: number) => {
-    const u = unit(sub(pts[(i + 1) % n], pts[i]));
-    return { x: u.y, y: -u.x };
-  };
+  const segN = (i: number) => leftNormal(pts[i], pts[(i + 1) % n]);
   return pts.map((p, i) => {
     let a: Pt | null = i > 0 ? segN(i - 1) : closed ? segN(n - 1) : null;
     let b: Pt | null = i < n - 1 || closed ? segN(i) : null;
     if (!a) a = b!;
     if (!b) b = a;
-    const m = unit(add(a, b));
-    const k = o / Math.max(0.5, dot(m, b));
-    return add(p, mul(m, k));
+    return mitre(p, a, b, o);
   });
 }
 
@@ -212,7 +197,7 @@ function wallLayers(pts: Pt[], w: WallLook, closed: boolean, R: () => number): {
       const len = Math.hypot(e2.x - e1.x, e2.y - e1.y);
       for (let c = 1; c <= w.courses; c++) {
         const y = (w.h * c) / (w.courses + 1);
-        joints += line([add(e1, { x: 0, y }), add(e2, { x: 0, y })]);
+        joints += polyPath([add(e1, { x: 0, y }), add(e2, { x: 0, y })], false);
       }
       for (let c = 0; c <= w.courses; c++) {
         const y0 = (w.h * c) / (w.courses + 1);
@@ -235,7 +220,7 @@ function wallLayers(pts: Pt[], w: WallLook, closed: boolean, R: () => number): {
   const walk = closed
     ? polyPath(left) + polyPath([...right].reverse())
     : polyPath([...left, ...[...right].reverse()]);
-  const walkEdge = line(left) + line(right);
+  const walkEdge = polyPath(left, false) + polyPath(right, false);
   const shadow = closed ? '' : polyPath([...left, ...[...right].reverse()].map((p) => add(p, { x: 4, y: w.h + 4 })));
   return { shadow, faces, walk, walkEdge, merlons, joints };
 }
@@ -318,8 +303,8 @@ function paintWallChains(
     // the walk is drawn a little above the line, so the wall stands centred on its hexes
     const pts = ch.pts.map((p) => ({ x: p.x, y: p.y - w.h / 2 }));
     if (earthworks) {
-      agger += line(pts.map((p) => ({ x: p.x, y: p.y - w.w / 2 - 8 })));
-      fossa += line(pts.map((p) => ({ x: p.x, y: p.y + w.w / 2 + w.h + 11 })));
+      agger += polyPath(pts.map((p) => ({ x: p.x, y: p.y - w.w / 2 - 8 })), false);
+      fossa += polyPath(pts.map((p) => ({ x: p.x, y: p.y + w.w / 2 + w.h + 11 })), false);
     }
     const l = wallLayers(pts, w, false, R);
     shadow += l.shadow;
@@ -637,9 +622,9 @@ export function paintSteepSlopes(ctx: PaintCtx): JSX.Element | null {
       const lit = dot(outward, LIGHT);
       const fill = lit > 0.3 ? P.rockMid : lit < -0.3 ? P.rockDark : P.rock;
       faces.push(<path key={`${h.id}-${d}`} className="scarp" d={polyPath([...top, ...foot])} fill={fill} stroke={P.rockDark} strokeWidth={0.8} strokeLinejoin="round" />);
-      crest += line(top);
-      crestLit += line(top.map((p) => add(p, mul(inward, 1.3))));
-      drop += line([at(-1, -1.6), at(len + 1, -1.6)]);
+      crest += polyPath(top, false);
+      crestLit += polyPath(top.map((p) => add(p, mul(inward, 1.3))), false);
+      drop += polyPath([at(-1, -1.6), at(len + 1, -1.6)], false);
       for (let k = 1; k < m; k += 1 + Math.floor(R() * 2)) {
         const p = top[k];
         const q = add(add(p, mul(outward, 4 + R() * 4)), mul(t, (R() - 0.5) * 2.5));

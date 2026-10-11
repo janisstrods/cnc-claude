@@ -4,21 +4,15 @@
 // edge runs on under the frame; elsewhere it ends short of the hexside. The bank lies on the side of the board's bottom
 // army (Crassus' Romans in 212) and turns with the board; light comes from the upper left, as for the hills.
 import { blobPath } from './field';
-import { DIRS, fmt, neighborRC, type HexInfo, type PaintCtx, type Pt } from './hexmath';
+import { DIRS, fmt, neighborRC, polyPath, type HexInfo, type PaintCtx, type Pt } from './hexmath';
 import { fbm, rng } from './noise';
 import { P } from './palette';
+import { dot, sub, unit } from './vec';
 
 /** Distance from the centre line to the crest of the spoil bank. */
 const BANK = 17;
 /** A trench ending inside the board stops this far past the centre of its last hex. */
 const STUB = 27;
-
-const sub = (a: Pt, b: Pt): Pt => ({ x: a.x - b.x, y: a.y - b.y });
-const unit = (a: Pt): Pt => {
-  const l = Math.hypot(a.x, a.y) || 1;
-  return { x: a.x / l, y: a.y / l };
-};
-const dot = (a: Pt, b: Pt) => a.x * b.x + a.y * b.y;
 
 /** Key points of every trench: runs of ditch hexes (centres), with their free ends extended. */
 function trenchChains(ctx: PaintCtx): Pt[][] {
@@ -146,8 +140,6 @@ function offset(pts: Pt[], o: (i: number) => number): Pt[] {
   });
 }
 
-const line = (pts: Pt[]) => `M${pts.map((p) => `${fmt(p.x)},${fmt(p.y)}`).join('L')}`;
-
 /** Every ditch hex of `ctx`. */
 export function paintDitches(ctx: PaintCtx): JSX.Element | null {
   const chains = trenchChains(ctx);
@@ -168,9 +160,9 @@ export function paintDitches(ctx: PaintCtx): JSX.Element | null {
     const t = unit(sub(pts[pts.length - 1], pts[0]));
     const left = { x: t.y, y: -t.x }; // offset() moves positive amounts this way
     const side = Math.abs(left.y) > 0.3 ? Math.sign(left.y) * down : Math.sign(left.x) * down;
-    trench += line(pts);
+    trench += polyPath(pts, false);
     const crest = offset(pts, (i) => side * (BANK + (fbm(i / 9, ci, 47) - 0.5) * 3));
-    bank += line(crest);
+    bank += polyPath(crest, false);
     // clods heaped along the bank, a few stones in the bottom, grass tufts on the far lip
     for (let i = 2; i < crest.length - 2; i += 3 + Math.floor(R() * 3)) {
       const p = crest[i];
