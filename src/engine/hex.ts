@@ -15,9 +15,6 @@ export function colOf(h: HexId): number {
 export function onBoard(r: number, c: number): boolean {
   return r >= 0 && r < ROWS && c >= 0 && c < (r % 2 === 0 ? COLS : COLS - 1);
 }
-export function isValidHex(h: HexId): boolean {
-  return h >= 0 && h < NUM_HEXES && onBoard(rowOf(h), colOf(h));
-}
 
 /** All valid hex ids on the board. */
 export const ALL_HEXES: HexId[] = (() => {

@@ -47,7 +47,7 @@ function* ask(ctx: FlowCtx, d: Decision, validate: (a: Answer) => string | null)
 const unitName = (u: Unit) => UNIT_STATS[u.type].name;
 const sideName = (s: GameState, side: Side) => s.players[side].army;
 
-function log(s: GameState, ctx: FlowCtx, text: string, side?: Side) {
+function log(ctx: FlowCtx, text: string, side?: Side) {
   ctx.emit({ t: 'log', text, side });
 }
 
@@ -79,7 +79,7 @@ function leaderLost(s: GameState, ctx: FlowCtx, l: Leader, reason: string, text:
   s.leaders = s.leaders.filter((x) => x.id !== l.id);
   s.special.leadersEliminated[l.side]++;
   ctx.emit({ t: 'leaderKilled', id: l.id });
-  log(s, ctx, text, l.side);
+  log(ctx, text, l.side);
   if (s.special.sacredLeaderId === l.id && !s.winner) {
     s.winner = other(l.side);
     s.winReason = `${l.name} has fallen`;
@@ -169,7 +169,7 @@ function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: stri
   if (u.blocks <= 0) {
     s.units = s.units.filter((x) => x.id !== u.id);
     ctx.emit({ t: 'eliminated', id: u.id });
-    log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} eliminated.`, u.side);
+    log(ctx, `${sideName(s, u.side)} ${unitName(u)} eliminated.`, u.side);
     gainBanner(s, ctx, other(u.side), 'unit eliminated'); // held banners first: the unit no longer holds anything
     return true;
   }
@@ -199,7 +199,7 @@ function leaderCheck(s: GameState, ctx: FlowCtx, l: Leader, dice: 1 | 2): boolea
 function* leaderEvade(s: GameState, ctx: FlowCtx, l: Leader): Gen {
   const opts = leaderEvadeOptions(s, l);
   if (!opts.length) {
-    log(s, ctx, `${l.name || 'The leader'} is trapped and cannot evade.`, l.side);
+    log(ctx, `${l.name || 'The leader'} is trapped and cannot evade.`, l.side);
     killLeader(s, ctx, l, 'leader trapped');
     return;
   }
@@ -238,7 +238,7 @@ function* leaderEvade(s: GameState, ctx: FlowCtx, l: Leader): Gen {
   if (opt.offBoard) {
     ctx.emit({ t: 'leaderEvade', id: l.id, path: [...walked, OFF_BOARD], offBoard: true });
     s.leaders = s.leaders.filter((x) => x.id !== l.id);
-    log(s, ctx, `${l.name || 'A leader'} leaves the battlefield.`, l.side);
+    log(ctx, `${l.name || 'A leader'} leaves the battlefield.`, l.side);
     return;
   }
   l.hex = opt.end;
@@ -297,7 +297,7 @@ export interface HitOutcome {
 
 function* rampage(s: GameState, ctx: FlowCtx, el: Unit): Gen {
   ctx.emit({ t: 'rampage', id: el.id });
-  log(s, ctx, `The ${sideName(s, el.side)} elephants rampage!`, el.side);
+  log(ctx, `The ${sideName(s, el.side)} elephants rampage!`, el.side);
   for (const h of neighbours(el.hex)) {
     if (s.winner) return;
     const v = unitAt(s, h);
@@ -381,7 +381,7 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
     if (v.blocks <= 0) {
       s.units = s.units.filter((x) => x.id !== v.id);
       ctx.emit({ t: 'eliminated', id: v.id });
-      log(s, ctx, `${sideName(s, v.side)} ${unitName(v)} eliminated.`, v.side);
+      log(ctx, `${sideName(s, v.side)} ${unitName(v)} eliminated.`, v.side);
       batch.gains.push(other(v.side));
       if (l) orphans.push(l);
     } else if (l) survivorsWithLeader.push(l);
@@ -401,7 +401,7 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
  */
 function loseBlocksShortOfRetreat(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, reason: string): boolean {
   if (s.special.lastRowRetreat !== u.side || opt.attachLeader || !atOwnBaseline(u)) return loseBlocks(s, ctx, u, opt.losses, reason);
-  log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} has no ground left to retreat and is cut down!`, u.side);
+  log(ctx, `${sideName(s, u.side)} ${unitName(u)} has no ground left to retreat and is cut down!`, u.side);
   return loseBlocks(s, ctx, u, u.blocks, reason);
 }
 
@@ -611,7 +611,7 @@ export function isRollingFirePath(s: GameState, unitId: string, path: unknown): 
  */
 function* rollingFire(s: GameState, ctx: FlowCtx, u: Unit, path: HexId[]): Gen {
   s.turn.ordered[u.id].battlesLeft = 0;
-  log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} rolls burning logs down the hill!`, u.side);
+  log(ctx, `${sideName(s, u.side)} ${unitName(u)} rolls burning logs down the hill!`, u.side);
   const targets = path.map((hex) => ({ hex, id: (unitAt(s, hex) ?? leaderAt(s, hex))?.id }));
   for (const t of targets) {
     if (s.winner) return;
@@ -691,7 +691,7 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
   if (choice === 'evade') {
     const dice = closeCombatDice(s, attacker, tu, { role, fullAtStart: atkFull, ordered: true });
     ctx.emit({ t: 'combat', purpose: 'evade', attacker: attacker.id, target: tu.id, dice });
-    log(s, ctx, `${sideName(s, tu.side)} ${unitName(tu)} evades.`, tu.side);
+    log(ctx, `${sideName(s, tu.side)} ${unitName(tu)} evades.`, tu.side);
     const faces = rollDice(s, dice);
     const sc = scoreClassOnly(tu, faces, false, vsMountedIgnores(attacker, tu)); // camels vs horses [Interp] §15
     emitRoll(ctx, 'evade', faces, sc.scoring, attacker.id, tu.id);
@@ -720,13 +720,13 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
 
   let firstStruck = false;
   if (wallFirst || (choice === 'firstStrike' && fsCard !== null)) {
-    if (wallFirst) log(s, ctx, `${sideName(s, tu.side)} ${unitName(tu)} strikes first from the wall!`, tu.side);
+    if (wallFirst) log(ctx, `${sideName(s, tu.side)} ${unitName(tu)} strikes first from the wall!`, tu.side);
     else {
       const hand = s.players[tu.side].hand;
       hand.splice(hand.indexOf(fsCard!), 1);
       s.discard.push(fsCard!);
       s.turn.firstStrikeBy = tu.side;
-      log(s, ctx, `${sideName(s, tu.side)} plays First Strike!`, tu.side);
+      log(ctx, `${sideName(s, tu.side)} plays First Strike!`, tu.side);
     }
     firstStruck = true;
     yield* strike(s, ctx, tu, attacker, 'firstStrike', defFull, atkFull);
@@ -931,7 +931,7 @@ function releaseAmbush(s: GameState, ctx: FlowCtx, side: Side, section: SectionN
   s.special.reserveUnits = [];
   s.special.reserveLeaders = [];
   for (const id of ids) addOrdered(s, id, { fromReserve: true });
-  log(s, ctx, s.special.ambush!.text.replace(/\{section\}/g, section), side);
+  log(ctx, s.special.ambush!.text.replace(/\{section\}/g, section), side);
   ctx.emit({ t: 'ordered', side, ids });
 }
 
@@ -959,7 +959,7 @@ function* chooseCommandStep(s: GameState, ctx: FlowCtx, side: Side, kind: CardKi
     a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < options.length ? null : 'Choose a command.',
   )) as Extract<Answer, { kind: 'choose' }>;
   const id = options[a.index];
-  log(s, ctx, `Orders go to the ${s.special.commands.find((c) => c.id === id)!.name} command.`, side);
+  log(ctx, `Orders go to the ${s.special.commands.find((c) => c.id === id)!.name} command.`, side);
   return id;
 }
 
@@ -969,7 +969,7 @@ function* rallyStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
   const cands = rallyCandidates(s, side, command);
   emitRoll(ctx, 'rally', faces, faces.map((f) => f !== 'flag' && f !== 'swords'), null, null);
   if (!cands.length) {
-    log(s, ctx, 'No damaged units are near a leader: nothing to rally.', side);
+    log(ctx, 'No damaged units are near a leader: nothing to rally.', side);
     return [];
   }
   const a = yield* ask(
@@ -1345,7 +1345,6 @@ function* cardStep(s: GameState, ctx: FlowCtx, side: Side): Gen {
     }
   }
   t.effective = effective;
-  t.mirrored = mirrored;
   ctx.emit({ t: 'cardPlayed', side, card: cardId, kind, effective: effective ?? kind });
   t.phase = 'orders';
   yield* ordersStep(s, ctx, effective, mirrored);
@@ -1375,10 +1374,10 @@ function* diceOrdersStep(s: GameState, ctx: FlowCtx, side: Side): Gen {
       )) as Extract<Answer, { kind: 'choose' }>;
       const u = unitById(s, options[a.index])!;
       if (face === 'flag') {
-        log(s, ctx, `A flag on the order dice: the ${sideName(s, side)} ${unitName(u)} falls back.`, side);
+        log(ctx, `A flag on the order dice: the ${sideName(s, side)} ${unitName(u)} falls back.`, side);
         yield* applyHits(s, ctx, u, 0, 1, { kind: 'ranged', striker: null, fullAtStart: u.blocks === u.maxBlocks, noFlagIgnore: true });
       } else {
-        log(s, ctx, `Swords on the order dice: the ${sideName(s, side)} ${unitName(u)} loses a block.`, side);
+        log(ctx, `Swords on the order dice: the ${sideName(s, side)} ${unitName(u)} loses a block.`, side);
         const l = attachedLeader(s, u);
         if (loseBlocks(s, ctx, u, 1, 'swords on the order dice')) {
           if (l) yield* leaderOrphaned(s, ctx, l);
@@ -1464,7 +1463,7 @@ function* forcedPlacements(s: GameState, ctx: FlowCtx, side: Side): Gen {
 /** Advance to the next player's turn (call after turnFlow completes without a winner). */
 export function nextTurn(s: GameState) {
   s.active = other(s.active);
-  s.turn = newTurn(s.active, s.turn.number + 1);
+  s.turn = newTurn(s.turn.number + 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -1517,5 +1516,3 @@ export function* gameFlow(s: GameState, ctx: FlowCtx): Gen {
 export function atOwnBaseline(u: Unit): boolean {
   return onBaseline(u.hex, u.side);
 }
-
-export { areAdjacent };

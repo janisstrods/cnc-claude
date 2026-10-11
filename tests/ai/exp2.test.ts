@@ -112,7 +112,6 @@ function aiTurn(s: GameState, seed: number, extra: Partial<AiOptions> = {}) {
 /** Order unit `id` for the battle phase (not moved, one battle left) under card `kind`. */
 function battleReady(s: GameState, side: Side, ids: string[], kind: Parameters<typeof cardRetention>[2] = 'order2C') {
   s.active = side;
-  s.turn.side = side;
   s.turn.effective = kind;
   s.turn.phase = 'battle';
   for (const id of ids) {

@@ -170,10 +170,8 @@ export type TurnPhase = 'card' | 'orders' | 'move' | 'battle' | 'move2' | 'draw'
 
 export interface TurnState {
   number: number; // 1-based global turn counter
-  side: Side;
   card: number | null; // card instance played
   effective: CardKind | null; // card kind actually executed (Counter Attack resolves to a copy)
-  mirrored: boolean; // Counter Attack of a section/inspired card swaps left/right
   phase: TurnPhase;
   ordered: Record<string, OrderedPiece>;
   mods: OrderMods;
@@ -418,7 +416,6 @@ export interface GameState {
   winner: Side | 'draw' | null;
   winReason: string;
   special: ScenarioSpecial;
-  nextId: number;
 }
 
 // ---------------------------------------------------------------------------

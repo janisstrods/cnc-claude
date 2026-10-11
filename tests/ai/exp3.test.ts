@@ -81,7 +81,7 @@ function uticaAt(seed: number, faces: DieFace[], edit?: (s: GameState) => void):
   const sc = SCENARIOS.find((x) => x.id === '310')!;
   const s = createGame(sc.setup, seed);
   s.active = 'top';
-  s.turn = newTurn('top', 2);
+  s.turn = newTurn(2);
   edit?.(s);
   forceDice(faces);
   return new GameDriver(s);
@@ -580,7 +580,7 @@ describe('Expansion #3 units', () => {
     }
     // a whole Sertorian turn with the card: every answer legal
     s.active = 'top';
-    s.turn = newTurn('top', 2);
+    s.turn = newTurn(2);
     setHand(s, 'top', ['orderLight', 'order2L', 'order2C', 'order2R']);
     for (const seed of [1, 2]) aiTurn(structuredClone(s), seed);
   });

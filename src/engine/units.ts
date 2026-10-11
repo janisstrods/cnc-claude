@@ -152,10 +152,6 @@ export const UNIT_STATS: Record<UnitType, UnitStats> = {
 
 export const UNIT_TYPES = Object.keys(UNIT_STATS) as UnitType[];
 
-export function stats(t: UnitType): UnitStats {
-  return UNIT_STATS[t];
-}
-
 /** Elephants roll this many dice against (or battling back against) a unit of type t. */
 export function elephantDiceVs(t: UnitType): number {
   return UNIT_STATS[t].elephantDiceAgainst;

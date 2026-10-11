@@ -126,7 +126,6 @@ describe('reinforcements: scenario data (§18.9)', () => {
     }]);
     expect(s.units.map((x) => x.id)).toEqual(['u1', 'u2', 'u3']);
     expect(s.special.reserveUnits.some((x) => x.id === 'u9')).toBe(false);
-    expect(s.nextId).toBe(10);
   });
 
   it('copies the data and survives cloneState (the clone has its own unit)', () => {
@@ -378,7 +377,8 @@ describe('reinforcements: forced placement (§18.9)', () => {
     const d = afterEntry();
     expect(d.state.special.reserveEntered).toBe(true);
     expect(d.pending).toEqual({ kind: 'placeUnit', side: 'bottom', unit: 'u9', options: hexes(ROMAN_LEFT) });
-    expect(d.state.turn).toMatchObject({ side: 'bottom', phase: 'card', card: null });
+    expect(d.state.active).toBe('bottom');
+    expect(d.state.turn).toMatchObject({ phase: 'card', card: null });
     expect(d.answer({ kind: 'hex', hex: null })).toBe(false);
     expect(d.answer({ kind: 'hex', hex: H(8, 5) })).toBe(false);
     expect(d.answer({ kind: 'playCard', card: d.state.players.bottom.hand[0] } as Answer)).toBe(false);

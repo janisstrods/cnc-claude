@@ -2,7 +2,7 @@
 import { sectionOrders } from './cards';
 import { areAdjacent, inSection, sectionsOf } from './hex';
 import {
-  attachedLeader, isLeaderId, isLoneLeader, leaderById, leaderHas, leaderUnit, leadersOf, unitById, unitsOf, enemyUnitAdjacent,
+  isLeaderId, isLoneLeader, leaderById, leaderHas, leaderUnit, leadersOf, unitById, unitsOf, enemyUnitAdjacent,
 } from './query';
 import { canShoot } from './elites';
 import { UNIT_STATS } from './units';
@@ -539,6 +539,3 @@ export function validateDiceOrders(s: GameState, side: Side, faces: DieFace[], i
   if (new Set(all).size !== all.length) return 'Each unit may be ordered only once.';
   return null;
 }
-
-/** Leader attached to the unit, re-exported for flow convenience. */
-export { attachedLeader };

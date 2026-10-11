@@ -3,8 +3,7 @@ import { ambushAvailable, ambushSections, battleTargets, movablePieces, pieceMov
 import {
   diceOrderPieces, eligiblePieces, orderMode, rallyCandidates, validateDiceOrders, validateOrders, validateRally, validateSpartacus,
 } from './orders';
-import { leaderById, unitById, unitsOf, leadersOf } from './query';
-import { UNIT_STATS } from './units';
+import { leaderById, unitsOf, leadersOf } from './query';
 import type { Answer, Decision, GameState } from './types';
 
 export type Rand = () => number;
@@ -146,5 +145,3 @@ export function randomAnswer(s: GameState, d: Decision, rnd: Rand): Answer {
     }
   }
 }
-
-export { UNIT_STATS, unitById };

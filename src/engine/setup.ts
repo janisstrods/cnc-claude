@@ -188,9 +188,9 @@ export function rampartMask(t: TerrainSetup): number {
   return mask;
 }
 
-export function newTurn(side: Side, number: number): TurnState {
+export function newTurn(number: number): TurnState {
   return {
-    number, side, card: null, effective: null, mirrored: false, phase: 'card', ordered: {},
+    number, card: null, effective: null, phase: 'card', ordered: {},
     mods: defaultMods(), firstStrikeBy: null, reshuffleAfter: false, ambushSection: null,
   };
 }
@@ -656,7 +656,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     discard: [],
     first: setup.first,
     active: setup.first,
-    turn: newTurn(setup.first, 1),
+    turn: newTurn(1),
     lastCard: { top: null, bottom: null },
     bannersToWin: setup.banners,
     rng: rngHolder.rng,
@@ -688,7 +688,6 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
       leadersEliminated: { top: 0, bottom: 0 },
       cardDebt: { top: 0, bottom: 0 },
     },
-    nextId,
   };
   checkPositions(setup, s);
   checkReinforcementHexes(s);

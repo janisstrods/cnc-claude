@@ -410,13 +410,13 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       const b = res.best;
       mem.plan = {
         turn, side: me, card: b.card, kind: b.kind, effective: b.effective, orders: b.orders, ambush: b.ambush, command: b.command,
-        moves: b.moves, moveIdx: 0, label: b.label, score: candScore(b, ctx),
+        moves: b.moves, moveIdx: 0, label: b.label, score: candScore(b),
       };
       mem.decided = [];
       mem.decidedKey = '';
       mem.last = {
-        kind: d.kind, ms: res.ms, sims: res.sims, plan: `${b.label} = ${candScore(b, ctx).toFixed(3)}`,
-        alternatives: res.cands.slice(0, 6).map((c) => `${c.label}: ${candScore(c, ctx).toFixed(3)} (n=${c.n}${c.laN ? `, 2ply=${c.laN}` : ''}, keep=${c.retention.toFixed(2)})`),
+        kind: d.kind, ms: res.ms, sims: res.sims, plan: `${b.label} = ${candScore(b).toFixed(3)}`,
+        alternatives: res.cands.slice(0, 6).map((c) => `${c.label}: ${candScore(c).toFixed(3)} (n=${c.n}${c.laN ? `, 2ply=${c.laN}` : ''}, keep=${c.retention.toFixed(2)})`),
       };
       const say = qx === 1 ? speak(s, me, P, 'stallBreak', mem.voice, rng, { chance: 2 }) : undefined;
       return { answer: { kind: 'playCard', card: b.card }, say: say ?? commentCard(s, me, P, mem, rng, b) };
@@ -434,13 +434,13 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
         // No plan for this turn (resumed game, or a fresh worker mid-turn): plan again for the card already played.
         const root = cloneState(s);
         root.players[me].hand = [s.turn.card];
-        root.turn = newTurn(me, turn);
+        root.turn = newTurn(turn);
         const ctx = makeCtx(me, W, NEUTRAL_W, rng, cfg, scale * 0.5, det);
         const b = planTurn(root, ctx).best;
         if (b && b.card === s.turn.card) {
           mem.plan = {
             turn, side: me, card: b.card, kind: b.kind, effective: b.effective, orders: b.orders, ambush: b.ambush, command: b.command,
-            moves: b.moves, moveIdx: 0, label: `${b.label} (replanned)`, score: candScore(b, ctx),
+            moves: b.moves, moveIdx: 0, label: `${b.label} (replanned)`, score: candScore(b),
           };
           const a: Answer | null = b.ambush ? { kind: 'orders', pieces: [], ambushSection: b.ambush } : b.orders ? { kind: 'orders', pieces: b.orders } : null;
           if (a && isLegal(s, d, a)) return { answer: a };
@@ -557,13 +557,13 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       const b = res.best;
       mem.plan = {
         turn, side: me, card: -1, kind: null, effective: null, orders: b.orders, moves: b.moves, moveIdx: 0, label: b.label,
-        score: candScore(b, ctx),
+        score: candScore(b),
       };
       mem.decided = [];
       mem.decidedKey = '';
       mem.last = {
-        kind: d.kind, ms: res.ms, sims: res.sims, plan: `${b.label} = ${candScore(b, ctx).toFixed(3)}`,
-        alternatives: res.cands.slice(0, 6).map((c) => `${c.label}: ${candScore(c, ctx).toFixed(3)} (n=${c.n})`),
+        kind: d.kind, ms: res.ms, sims: res.sims, plan: `${b.label} = ${candScore(b).toFixed(3)}`,
+        alternatives: res.cands.slice(0, 6).map((c) => `${c.label}: ${candScore(c).toFixed(3)} (n=${c.n})`),
       };
       // a face the plan left unused still orders the best piece it can: that unit stays where it is (the plan's moves end
       // the movement) but may still battle; an order never costs anything
