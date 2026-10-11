@@ -20,8 +20,8 @@ import {
 import { leaderTraitLines, unitSummary } from './unitText';
 import { TerrainTipBlock } from './TerrainTipBlock';
 import { terrainTip } from './terrainTips';
-import { RulesReference } from '../screens/RulesReference';
-import { HistoryButton } from '../history/HistoryDialog';
+import { RulesDialog } from '../screens/RulesDialog';
+import { HistoryButton } from '../history/HistoryButton';
 import { isMuted, setMuted } from '../sound';
 import { opponentPersonality } from './makeOpponent';
 import './game.css';
@@ -508,9 +508,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
         <AssignDialog state={s} side={human} kind={d.kind} faces={d.faces} command={d.command} onChange={setAssignFocus} onDone={(ids) => answer({ kind: 'assign', ids })} error={view.error} />
       )}
 
-      <Modal open={showRules} title="Rules Reference" onClose={() => setShowRules(false)} width={880}>
-        <RulesReference scenario={controller.scenario} />
-      </Modal>
+      <RulesDialog open={showRules} title="Rules Reference" scenario={controller.scenario} onClose={() => setShowRules(false)} />
 
       <Modal open={confirmExit} title="Leave the battle?" onClose={() => setConfirmExit(false)}>
         <p className="modal-p">Your battle is saved automatically — you can continue it from the main menu.</p>

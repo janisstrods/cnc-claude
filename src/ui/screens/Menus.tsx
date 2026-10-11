@@ -8,8 +8,8 @@ import { BOARD_H, BOARD_W, hexCenterId } from '../geometry';
 import type { Difficulty, SavedGame } from '../game/controller';
 import { boardArtProps, leaderTokenProps, unitTokenProps } from '../game/boardProps';
 import { PERSONALITIES, personalityFor } from '../../ai/personality';
-import { RulesReference } from './RulesReference';
-import { HistoryButton } from '../history/HistoryDialog';
+import { RulesDialog } from './RulesDialog';
+import { HistoryButton } from '../history/HistoryButton';
 import {
   OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue, randomPick,
   saveOptionChoice, savePickerTab, tabForKey, type OptionId,
@@ -65,9 +65,7 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
         <div>v{RELEASE.number} “{RELEASE.name}”</div>
         <div className="menu-build">{buildLabel(BUILD_TIME)}</div>
       </div>
-      <Modal open={rules} title="How to Play" onClose={() => setRules(false)} width={880}>
-        <RulesReference />
-      </Modal>
+      <RulesDialog open={rules} title="How to Play" onClose={() => setRules(false)} />
       <Modal open={credits} title="Credits" onClose={() => setCredits(false)} width={640}>
         <div className="credits">
           <p>An unofficial, fan-made digital edition of <i>Commands &amp; Colors: Ancients</i>, designed by Richard Borg and published by GMT Games. Commands &amp; Colors is a trademark of GMT Games LLC. This edition uses original artwork and paraphrased rules text; it is not affiliated with or endorsed by GMT Games.</p>

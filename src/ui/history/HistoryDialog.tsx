@@ -1,13 +1,18 @@
-// The History dialog of a battle: three slides (the road to battle, the battlefield map in phases, the outcome), opened
-// from the battle briefing and the in-game header. Each battle's history is loaded when the dialog first opens.
+// The slides of a battle's History dialog: the road to battle, the battlefield map in phases, the outcome. The dialog's
+// frame and its button are in HistoryButton.tsx, so that this module, with the battle map, is loaded only when a History
+// dialog first opens.
 import { useEffect, useState } from 'react';
 import type { Side } from '../../engine';
 import type { ScenarioInfo } from '../../scenarios';
-import { hasHistory, loadHistory, type BattleHistory, type UnitKind } from '../../history';
+import type { BattleHistory, UnitKind } from '../../history';
 import { blockColors } from '../../art';
-import { Button, Modal } from '../kit';
+import { Button } from '../kit';
 import { BattleMap, KIND_NAMES, UnitGlyph, luminance, shade, unitSize, type MapColors } from './BattleMap';
+import { nextPos, prevPos, type SlidePos } from './HistoryButton';
 import './history.css';
+
+// the button and the slide stepping, still to be had from here as before the split (tests/history imports them)
+export { HistoryButton, nextPos, prevPos, type SlidePos } from './HistoryButton';
 
 /**
  * The two armies' map colours: their block colours. A very light set (Expansion #3's grey, made light to stand out on
@@ -22,27 +27,6 @@ export function sideColors(sc: ScenarioInfo): Record<Side, MapColors> {
 }
 
 export const SLIDE_TITLES = ['The Road to Battle', 'The Battlefield', 'Outcome & Consequences'] as const;
-
-/** A slide and, on the map slide, its phase. */
-export interface SlidePos {
-  slide: number;
-  phase: number;
-}
-
-/** The next build step: through the map's phases, then on to the next slide. */
-export function nextPos(p: SlidePos, phases: number): SlidePos | null {
-  if (p.slide === 1 && p.phase < phases - 1) return { slide: 1, phase: p.phase + 1 };
-  if (p.slide < 2) return { slide: p.slide + 1, phase: 0 };
-  return null;
-}
-
-/** The previous build step; entering the map slide from the end shows its last phase. */
-export function prevPos(p: SlidePos, phases: number): SlidePos | null {
-  if (p.slide === 1 && p.phase > 0) return { slide: 1, phase: p.phase - 1 };
-  if (p.slide === 2) return { slide: 1, phase: phases - 1 };
-  if (p.slide === 1) return { slide: 0, phase: 0 };
-  return null;
-}
 
 /** Slide 1: the war, why the armies met, and one card per army. */
 export function RoadSlide({ h, colors }: { h: BattleHistory; colors: Record<Side, MapColors> }) {
@@ -185,62 +169,5 @@ export function HistorySlides(p: { h: BattleHistory; scenario: ScenarioInfo; fli
         {next ? <Button onClick={() => onPos(next)}>Next →</Button> : <Button onClick={p.onDone}>Done</Button>}
       </div>
     </div>
-  );
-}
-
-/** The History dialog: loads the battle's history, then shows the slides; ← and → step through them. */
-export function HistoryDialog({ scenario, flipped, onClose }: { scenario: ScenarioInfo; flipped?: boolean; onClose: () => void }) {
-  const [h, setH] = useState<BattleHistory | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [pos, setPos] = useState<SlidePos>({ slide: 0, phase: 0 });
-  useEffect(() => {
-    let live = true;
-    loadHistory(scenario.id).then(
-      (x) => live && setH(x),
-      (e) => {
-        console.error(e);
-        if (live) setFailed(true);
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [scenario.id]);
-  useEffect(() => {
-    if (!h) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
-      const n = h.map.phases.length;
-      const to = e.key === 'ArrowRight' ? nextPos(pos, n) : e.key === 'ArrowLeft' ? prevPos(pos, n) : null;
-      if (!to) return;
-      e.preventDefault();
-      setPos(to);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [h, pos]);
-  return (
-    <Modal open title={`${scenario.name}, ${h?.date ?? scenario.year}`} onClose={onClose} width={940}>
-      {h ? (
-        <HistorySlides h={h} scenario={scenario} flipped={flipped} pos={pos} onPos={setPos} onDone={onClose} />
-      ) : (
-        <p className="hist-loading">{failed ? 'The history of this battle could not be loaded.' : 'Unrolling the scroll…'}</p>
-      )}
-    </Modal>
-  );
-}
-
-/**
- * The History button of a battle; renders nothing for a battle without a history. `flipped`: the player commands the
- * top army, so the map is turned like the board.
- */
-export function HistoryButton({ scenario, flipped, variant = 'ghost', className }: { scenario: ScenarioInfo; flipped?: boolean; variant?: 'primary' | 'secondary' | 'ghost'; className?: string }) {
-  const [open, setOpen] = useState(false);
-  if (!hasHistory(scenario.id)) return null;
-  return (
-    <>
-      <Button variant={variant} className={className} onClick={() => setOpen(true)} title={`The history of ${scenario.name}`}>History</Button>
-      {open && <HistoryDialog scenario={scenario} flipped={flipped} onClose={() => setOpen(false)} />}
-    </>
   );
 }
