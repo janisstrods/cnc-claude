@@ -6,7 +6,9 @@
 import { bannerTotal } from '../engine/banners';
 import { sectionsOf } from '../engine/hex';
 import { other } from '../engine/query';
-import type { GameState, HexId, ObjectiveOf, SectionName, Side } from '../engine/types';
+import { canMarch } from '../engine/elites';
+import { UNIT_STATS } from '../engine/units';
+import type { GameState, HexId, ObjectiveOf, SectionName, Side, Unit } from '../engine/types';
 import { type Occ, hexDist } from './board';
 import { bannerStep, bannersWorth, type Weights } from './values';
 
@@ -25,6 +27,8 @@ const MAJORITY_PULL = 0.03;
 const SECTION_THREAT = 0.05;
 /** Each rampart still standing, for the side that breaks them (223): it shelters the enemy's foot. */
 const RAMPART_LEFT = 0.04;
+/** Ship markers (313): share of a capture for a free marker a unit of the capturing side can step onto next turn. */
+const MARKER_REACH = 0.25;
 
 const SECTIONS: readonly SectionName[] = ['left', 'center', 'right'];
 
@@ -172,6 +176,35 @@ function captureTerm(s: GameState, occ: Occ, o: ObjectiveOf<'capture'>, taken: r
   return v;
 }
 
+/**
+ * Ship markers (313, §18.4), from the capturing side's point of view: each untaken marker no unit stands on that one of its
+ * units (each counted once, nearest marker first) could step onto in its next turn (within its move, the march included)
+ * is a share of a capture. A marker an enemy unit stands on is blocked until that unit is driven off: the defender values
+ * standing on its ships, and on the raiders that close in on them. Expansion #3 only (camp captures have no such term).
+ */
+function markerReach(s: GameState, occ: Occ, o: ObjectiveOf<'capture'>, taken: readonly HexId[]): number {
+  const side = o.side;
+  const step = bannerStep(bannerTotal(s, side) + 1, s.bannersToWin);
+  const used = new Set<Unit>();
+  let v = 0;
+  for (const h of o.hexes) {
+    if (taken.includes(h) || occ.unit[h]) continue;
+    let pick: Unit | null = null;
+    for (const u of s.units) {
+      if (u.side !== side || u.hex < 0 || u.immobile || used.has(u)) continue;
+      const move = Math.max(UNIT_STATS[u.type].move, canMarch(u) ? 2 : 0);
+      if (hexDist(u.hex, h) <= move) {
+        pick = u;
+        break;
+      }
+    }
+    if (!pick) continue;
+    used.add(pick);
+    v += MARKER_REACH * step;
+  }
+  return v;
+}
+
 /** Nearest unit of `side` (not standing on one of `hexes`) to hex h. */
 function nearestFree(s: GameState, h: HexId, side: Side, hexes: readonly HexId[]): number {
   let best = 99;
@@ -246,7 +279,8 @@ export function goalTerms(s: GameState, occ: Occ, me: Side, W: Weights): number 
   for (let i = 0; i < objectives.length; i++) {
     const o = objectives[i];
     if (o.kind === 'capture' && o.when === 'turnStart') {
-      pulls += (o.side === me ? 1 : -1) * captureTerm(s, occ, o, objState[i].taken);
+      const reach = o.marker ? markerReach(s, occ, o, objState[i].taken) : 0;
+      pulls += (o.side === me ? 1 : -1) * (captureTerm(s, occ, o, objState[i].taken) + reach);
     } else if (o.kind === 'hold') {
       pulls += (o.side === me ? 1 : -1) * holdPull(s, occ, o);
     } else if (o.kind === 'majority') {
