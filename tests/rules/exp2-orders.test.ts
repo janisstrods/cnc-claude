@@ -70,36 +70,36 @@ const accepts = (d: GameDriver, section: SectionName) => d.answer({ kind: 'order
 describe('ambush reserve', () => {
   describe('resolved configuration', () => {
     it('is null in a battle without ambush data', () => {
-      expect(build({ units: [{ side: 'top', type: 'MI', at: [1, 6] }] }).special.ambush).toBeNull();
+      expect(build({ units: [{ side: 'top', type: 'MI', at: [1, 6] }] }).scenario.ambush).toBeNull();
     });
     it('defaults to Trebbia: the four Leadership cards, after the first own turn, the Mago text', () => {
       const s = build(posFor('top'));
-      expect(s.special.ambush).toEqual({
+      expect(s.scenario.ambush).toEqual({
         trigger: LEADERSHIP, afterOwnTurns: 1, text: "Ambush! Mago's hidden force strikes from the {section}.",
       });
       expect(scenarioById('005').setup.ambush).toEqual({});
-      expect(createGame(scenarioById('005').setup, 11).special.ambush).toEqual(s.special.ambush);
+      expect(createGame(scenarioById('005').setup, 11).scenario.ambush).toEqual(s.scenario.ambush);
     });
     it('fills the fields the scenario leaves out from the Trebbia defaults', () => {
       const s = build(posFor('top', { ambush: { afterOwnTurns: 2 } }));
-      expect(s.special.ambush).toEqual({ trigger: LEADERSHIP, afterOwnTurns: 2, text: "Ambush! Mago's hidden force strikes from the {section}." });
+      expect(s.scenario.ambush).toEqual({ trigger: LEADERSHIP, afterOwnTurns: 2, text: "Ambush! Mago's hidden force strikes from the {section}." });
       const t = build(posFor('top', { ambush: { text: 'Out of the mist!' } }));
-      expect(t.special.ambush).toMatchObject({ trigger: LEADERSHIP, afterOwnTurns: 1, text: 'Out of the mist!' });
+      expect(t.scenario.ambush).toMatchObject({ trigger: LEADERSHIP, afterOwnTurns: 1, text: 'Out of the mist!' });
     });
     it('takes the 206 configuration as given', () => {
-      expect(build(posFor('top', { ambush: AQUAE })).special.ambush).toEqual(AQUAE);
+      expect(build(posFor('top', { ambush: AQUAE })).scenario.ambush).toEqual(AQUAE);
     });
     it('copies the scenario data: later changes to the setup do not reach the state', () => {
       const p = posFor('top', { ambush: { ...AQUAE, trigger: [...AQUAE.trigger] } });
       const setup = setupOf(p);
       const s = createGame(setup, 1);
       setup.ambush!.trigger!.push('order2L');
-      expect(s.special.ambush!.trigger).toEqual(AQUAE.trigger);
+      expect(s.scenario.ambush!.trigger).toEqual(AQUAE.trigger);
     });
     it('survives cloneState unchanged', () => {
       const s = build(posFor('top', { ambush: AQUAE }));
       const c = cloneState(s);
-      expect(c.special.ambush).toEqual(AQUAE);
+      expect(c.scenario.ambush).toEqual(AQUAE);
     });
     it('rejects ambush data that is no object, unknown cards and bad turn counts', () => {
       const bad = (ambush: unknown) => () => createGame(setupOf({ ambush: ambush as Pos['ambush'], units: [{ side: 'top', type: 'MI', at: [1, 6] }] }), 1);
@@ -352,7 +352,7 @@ describe('ambush reserve', () => {
       expect(setup.ambush).toEqual(AQUAE);
       expect(setup.ambush).not.toBe(json.ambush);
       expect(setup.ambush!.trigger).not.toBe(json.ambush!.trigger);
-      expect(createGame(setup, 1).special.ambush).toEqual(AQUAE);
+      expect(createGame(setup, 1).scenario.ambush).toEqual(AQUAE);
     });
     it('a file without ambush data leaves the setup without it; empty data (the Trebbia defaults) is kept', () => {
       expect(scenarioFromJson(base).setup.ambush).toBeUndefined();
@@ -389,12 +389,12 @@ describe('separate commands', () => {
   describe('scenario data', () => {
     it('a battle without commands has none, and units carry no command', () => {
       const s = build({ units: [{ side: 'bottom', type: 'MI', at: [6, 4] }] });
-      expect(s.special.commands).toEqual([]);
+      expect(s.scenario.commands).toEqual([]);
       expect('command' in s.units[0]).toBe(false);
     });
     it('the commands, the units and the leaders keep what the scenario gives them', () => {
       const s = build({ ...ROW, leaders: [{ side: 'bottom', name: 'Lentulus', at: [6, 5], command: 'len' }, { side: 'bottom', at: [6, 6] }] });
-      expect(s.special.commands).toEqual(CMDS);
+      expect(s.scenario.commands).toEqual(CMDS);
       expect(s.units.map((x) => x.command)).toEqual(['len', 'len', 'gel', 'gel', undefined]);
       expect(s.leaders.map((l) => l.command)).toEqual(['len', undefined]);
     });
@@ -402,9 +402,9 @@ describe('separate commands', () => {
       const setup = setupOf({ ...ROW, commands: CMDS.map((c) => ({ ...c })) });
       const s = createGame(setup, 1);
       setup.commands![0].name = 'Changed';
-      expect(s.special.commands[0].name).toBe('Lentulus');
+      expect(s.scenario.commands[0].name).toBe('Lentulus');
       const c = cloneState(s);
-      expect(c.special.commands).toEqual(CMDS);
+      expect(c.scenario.commands).toEqual(CMDS);
       expect(c.units.map((x) => x.command)).toEqual(s.units.map((x) => x.command));
     });
     it('rejects bad command data, naming the scenario', () => {
@@ -676,7 +676,7 @@ describe('separate commands', () => {
     });
     it('a battle without commands asks nothing, with the same units', () => {
       const plain: Pos = { units: ARCHERS.units!.map(({ command: _c, ...x }) => x) };
-      expect(build(plain).special.commands).toEqual([]);
+      expect(build(plain).scenario.commands).toEqual([]);
       const d = start(plain, 'darken');
       expect(d.pending?.kind).not.toBe('chooseCommand');
       expect(orderedIds(d)).toEqual(['u1', 'u2', 'u3']);

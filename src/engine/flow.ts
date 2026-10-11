@@ -159,7 +159,7 @@ function leaderLost(s: GameState, ctx: FlowCtx, l: Leader, reason: string, text:
   s.special.leadersEliminated[l.side]++;
   ctx.emit({ t: 'leaderKilled', id: l.id });
   log(ctx, text, l.side);
-  if (s.special.sacredLeaderId === l.id && !s.winner) {
+  if (s.scenario.sacredLeaderId === l.id && !s.winner) {
     s.winner = other(l.side);
     s.winReason = `${l.name} has fallen`;
     ctx.emit({ t: 'victory', winner: s.winner, reason: s.winReason });
@@ -213,14 +213,15 @@ function settleBanners(s: GameState, ctx: FlowCtx, b: BannerBatch, reason: strin
  */
 function afterLeaderLoss(s: GameState, ctx: FlowCtx, side: Side) {
   if (s.winner) return;
+  const { rules, leadersAtStart } = s.scenario;
   const sp = s.special;
-  if (sp.rules.includes('allLeadersSuddenDeath') && sp.leadersEliminated[side] >= sp.leadersAtStart[side]) {
+  if (rules.includes('allLeadersSuddenDeath') && sp.leadersEliminated[side] >= leadersAtStart[side]) {
     s.winner = other(side);
     s.winReason = `All of ${possessive(s.players[side].commander)} leaders have fallen`;
     ctx.emit({ t: 'victory', winner: s.winner, reason: s.winReason });
     return;
   }
-  if (!sp.rules.includes('leaderLossCostsCard')) return;
+  if (!rules.includes('leaderLossCostsCard')) return;
   const p = s.players[side];
   if (p.command <= 1) return;
   p.command--;
@@ -481,7 +482,7 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
  * `lastRowRetreat` side and joined no leader (a log line says so). An evade never gets here.
  */
 function retreatShortfall(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption): number {
-  if (s.special.lastRowRetreat !== u.side || opt.attachLeader || !atOwnBaseline(u)) return opt.losses;
+  if (s.scenario.lastRowRetreat !== u.side || opt.attachLeader || !atOwnBaseline(u)) return opt.losses;
   log(ctx, `${sideName(s, u.side)} ${unitName(u)} has no ground left to retreat and is cut down!`, u.side);
   return u.blocks;
 }
@@ -624,7 +625,7 @@ const ROLLING_FIRE_DICE = 2;
 
 /**
  * Legal Rolling Fire paths of an ordered unit right now (empty when it may not use it; §18.5, rulings Exp2 Q6).
- * The unit: infantry of the battle's `special.rollingFire` side, on a hill, ordered by a card that is not a Tactic card (a
+ * The unit: infantry of the battle's `scenario.rollingFire` side, on a hill, ordered by a card that is not a Tactic card (a
  * Counter Attack counts as the card it copies), not moved, its battle unused; adjacent enemies do not matter.
  * A path: from the unit's hex, each step goes to one of the two neighbours one row nearer the enemy baseline, never into
  * a hill, void or impassable hex. It ends after the first hex that is not open ground (that hex included), else after 3
@@ -632,7 +633,7 @@ const ROLLING_FIRE_DICE = 2;
  * in search order (neighbour order: SW before SE for the top side).
  */
 export function rollingFirePaths(s: GameState, unitId: string): HexId[][] {
-  const side = s.special.rollingFire;
+  const side = s.scenario.rollingFire;
   if (!side) return [];
   const u = unitById(s, unitId);
   const op = s.turn.ordered[unitId];
@@ -952,11 +953,11 @@ function addOrdered(s: GameState, id: string, extra: Partial<OrderedPiece> = {})
 
 /**
  * Whether `side` may spring its ambush reserve with a card of `kind` (the effective kind: a Counter Attack counts as the
- * card it copies): the battle's `special.ambush` data names the trigger cards and the own turns that must be finished.
+ * card it copies): the battle's `scenario.ambush` data names the trigger cards and the own turns that must be finished.
  */
 export function ambushAvailable(s: GameState, side: Side, kind: CardKind | null): boolean {
-  const a = s.special.ambush;
-  return !!kind && !!a && a.trigger.includes(kind) && s.special.reserveSide === side &&
+  const a = s.scenario.ambush;
+  return !!kind && !!a && a.trigger.includes(kind) && s.scenario.reserveSide === side &&
     !s.special.reserveReleased && s.special.turnsDone[side] >= a.afterOwnTurns && s.special.reserveUnits.length > 0;
 }
 
@@ -974,7 +975,7 @@ export function ambushSections(kind: CardKind): SectionName[] {
  */
 export function ambushSectionChoices(s: GameState, kind: CardKind): SectionName[] {
   const secs = ambushSections(kind);
-  return s.special.ambush?.entryHexes ? secs.slice(0, 1) : secs;
+  return s.scenario.ambush?.entryHexes ? secs.slice(0, 1) : secs;
 }
 
 /**
@@ -984,7 +985,7 @@ export function ambushSectionChoices(s: GameState, kind: CardKind): SectionName[
  */
 export function ambushChoices(s: GameState, side: Side, kind: CardKind): SectionName[] {
   if (!ambushAvailable(s, side, kind)) return [];
-  if (s.special.ambush?.entryHexes && !ambushEntryHexes(s, side).length) return [];
+  if (s.scenario.ambush?.entryHexes && !ambushEntryHexes(s, side).length) return [];
   return ambushSectionChoices(s, kind);
 }
 
@@ -994,7 +995,7 @@ export function ambushChoices(s: GameState, side: Side, kind: CardKind): Section
  * it is irrelevant).
  */
 export function ambushSectionAllowed(s: GameState, kind: CardKind, section: SectionName): boolean {
-  if (s.special.ambush?.entryHexes) return SECTIONS.includes(section);
+  if (s.scenario.ambush?.entryHexes) return SECTIONS.includes(section);
   return ambushSections(kind).includes(section);
 }
 
@@ -1007,7 +1008,7 @@ function releaseAmbush(s: GameState, ctx: FlowCtx, side: Side, section: SectionN
   s.special.reserveUnits = [];
   s.special.reserveLeaders = [];
   for (const id of ids) addOrdered(s, id, { fromReserve: true });
-  log(ctx, s.special.ambush!.text.replace(/\{section\}/g, section), side);
+  log(ctx, s.scenario.ambush!.text.replace(/\{section\}/g, section), side);
   ctx.emit({ t: 'ordered', side, ids });
 }
 
@@ -1033,7 +1034,7 @@ function* chooseCommandStep(s: GameState, ctx: FlowCtx, side: Side, kind: CardKi
   if (!options.length) return undefined;
   const a = (yield* ask(s, ctx, { kind: 'chooseCommand', side, options })) as Extract<Answer, { kind: 'choose' }>;
   const id = options[a.index];
-  log(ctx, `Orders go to the ${s.special.commands.find((c) => c.id === id)!.name} command.`, side);
+  log(ctx, `Orders go to the ${s.scenario.commands.find((c) => c.id === id)!.name} command.`, side);
   return id;
 }
 
@@ -1124,7 +1125,7 @@ export function pieceMoves(s: GameState, id: string, stage: 1 | 2 = s.turn.phase
   // a unit that moves onto or off a city wall moves 1 hex in all that turn (§18.7): no second Move-Fire-Move move after a
   // first move that began on a wall or climbed onto one
   if (stage === 2 && op.moved > 0 && (isWall(s, op.startHex) || isWall(s, u.hex))) return [];
-  const noMove = !!s.special.ambush?.noMove;
+  const noMove = !!s.scenario.ambush?.noMove;
   if (op.fromReserve && u.hex === OFF_BOARD) {
     const sec = s.turn.ambushSection;
     if (!sec) return [];
@@ -1245,7 +1246,7 @@ function* movePhase(s: GameState, ctx: FlowCtx, stage: 1 | 2): Gen {
  * ascending; asked even when there is one). Without units entered he goes back to the reserve with the rest of the force.
  */
 function* attachReserveLeaders(s: GameState, ctx: FlowCtx): Gen {
-  if (!s.special.ambush?.attachLeader) return;
+  if (!s.scenario.ambush?.attachLeader) return;
   for (const op of Object.values(s.turn.ordered)) {
     if (!op.fromReserve || !op.isLeader) continue;
     const l = leaderById(s, op.id);
@@ -1355,7 +1356,7 @@ function endOfTurn(s: GameState, ctx: FlowCtx) {
   if (t.firstStrikeBy && t.firstStrikeBy !== side && !orderDice(s, t.firstStrikeBy)) drawCard(s, ctx, t.firstStrikeBy);
   let draws = orderDice(s, side) ? 0 : 1;
   // hand growth (006 Trasimenus, 313 Brindisi Raid, §18.8): while its Command is below the target the side draws 2 and grows by 1
-  const growth = s.special.handGrowth;
+  const growth = s.scenario.handGrowth;
   if (draws && growth && growth.side === side && s.players[side].command < growth.to) {
     draws = 2;
     s.players[side].command += 1;

@@ -48,10 +48,10 @@ const damage = (e: GameEvent[], id: string) =>
 describe('Rolling Fire', () => {
   describe('scenario data', () => {
     it('is off in a battle without it, and on for the side the scenario names (survives cloneState)', () => {
-      expect(build({ units: [roman('MI', [6, 4])] }).special.rollingFire).toBeNull();
+      expect(build({ units: [roman('MI', [6, 4])] }).scenario.rollingFire).toBeNull();
       const s = build(pos());
-      expect(s.special.rollingFire).toBe('top');
-      expect(cloneState(s).special.rollingFire).toBe('top');
+      expect(s.scenario.rollingFire).toBe('top');
+      expect(cloneState(s).scenario.rollingFire).toBe('top');
     });
     it('a scenario file carries rollingFire into the setup', () => {
       const base: ScenarioJson = {
@@ -60,7 +60,7 @@ describe('Rolling Fire', () => {
         terrain: [], units: [], leaders: [], reserves: [], reserveLeaders: [],
       };
       expect(scenarioFromJson({ ...base, rollingFire: 'top' }).setup.rollingFire).toBe('top');
-      expect(createGame(scenarioFromJson({ ...base, rollingFire: 'top' }).setup, 1).special.rollingFire).toBe('top');
+      expect(createGame(scenarioFromJson({ ...base, rollingFire: 'top' }).setup, 1).scenario.rollingFire).toBe('top');
       expect('rollingFire' in scenarioFromJson(base).setup).toBe(false);
     });
     it('rejects an unknown side, naming the scenario', () => {

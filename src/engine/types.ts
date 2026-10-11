@@ -75,7 +75,7 @@ export interface Unit {
   elite?: EliteId;
   /** Legion rule of the unit's army (pilum, march; §18.2); absent for units outside a legion. */
   legion?: Legion;
-  /** Id of the separate command the unit belongs to (`ScenarioSpecial.commands`, 210 Picenum, §18.5); absent outside one. */
+  /** Id of the separate command the unit belongs to (`ScenarioConfig.commands`, 210 Picenum, §18.5); absent outside one. */
   command?: string;
   /**
    * Immobile (306 Bibracte's recruits, §18.11): the unit never moves and never momentum advances, but is ordered, fires,
@@ -232,20 +232,22 @@ export type ObjectiveMarker = (typeof OBJECTIVE_MARKERS)[number];
  *   hex: 1 banner, the unit and its attached leader are removed (not eliminated). With `leadersScore` (317) every leader
  *   scores too: a lone leader of `side` on one of `hexes` may exit as part of his move (1 banner), and a unit exiting
  *   with its attached leader scores 2. In `text`, `{unit}` is the unit's name (the leader's name for a leader).
- * `text` is the log line (the `held` event reason for held banners).
+ * `text` is the log line (the `held` event reason for held banners). Readonly: the objectives are fixed scenario rules
+ * (`ScenarioConfig.objectives`).
  */
-export type ObjectiveDef =
+export type ObjectiveDef = DeepReadonly<
   | { kind: 'capture'; side: Side; hexes: HexId[]; when: 'stop' | 'turnStart'; banners: number[]; together: number;
       remove: boolean; marker?: ObjectiveMarker; text: string }
   | { kind: 'hold'; side: Side; hexes: HexId[]; max: number; text: string }
   | { kind: 'majority'; sides: Side[]; hexes: HexId[]; banners: number; when: 'turnEnd' | 'always'; text: string }
   | { kind: 'sectionClear'; side: Side; text: string }
-  | { kind: 'exit'; side: Side; hexes: HexId[]; units: 'any' | 'foot' | 'cavalry'; leadersScore: boolean; text: string };
+  | { kind: 'exit'; side: Side; hexes: HexId[]; units: 'any' | 'foot' | 'cavalry'; leadersScore: boolean; text: string }
+>;
 
 /** The objective of one kind. */
 export type ObjectiveOf<K extends ObjectiveDef['kind']> = Extract<ObjectiveDef, { kind: K }>;
 
-/** Play state of one objective (`ScenarioSpecial.objState[i]` belongs to `objectives[i]`). */
+/** Play state of one objective (`SpecialState.objState[i]` belongs to `ScenarioConfig.objectives[i]`). */
 export interface ObjectiveState {
   /** capture: hexes captured so far, in order. */
   taken: HexId[];
@@ -262,7 +264,7 @@ export interface ObjectiveState {
  */
 export interface AmbushDef {
   /** Cards that spring the ambush (the card played, or the one a Counter Attack copies). */
-  trigger: CardKind[];
+  trigger: readonly CardKind[];
   /** Own turns the reserve's side must have finished first (Trebbia 1, 206 0). */
   afterOwnTurns: number;
   /** The log line; `{section}` is replaced by the section the force enters from. */
@@ -271,7 +273,7 @@ export interface AmbushDef {
    * Fixed entry hexes (308, data order): the units enter on these, one per empty hex, instead of the enemy baseline hexes
    * of the card's section. The section is still asked, and any section is accepted (`ambushSectionAllowed`).
    */
-  entryHexes?: HexId[];
+  entryHexes?: readonly HexId[];
   /**
    * No further move (308): the entry hex is the whole move and counts as no hex moved (placement is not movement), so
    * the units fire as units that did not move; they may battle, momentum advance and bonus combat, but move no more
@@ -288,13 +290,13 @@ export interface AmbushDef {
 /**
  * A forced placement (308, §18.9): `unit` waits off the board (it is not one of the ambush reserves) until it is placed on
  * an empty hex of `hexes` at the start of one of its side's turns, before the card; `after: 'ambush'` = the first turn of
- * its side that starts after a unit of the ambush force has entered the board (`ScenarioSpecial.reserveEntered`). While
+ * its side that starts after a unit of the ambush force has entered the board (`SpecialState.reserveEntered`). While
  * every listed hex holds a unit or a leader, it waits for a later turn start.
  */
 export interface PlaceUnitDef {
   unit: Unit;
   /** Hexes it may be placed on, in data order (never changed during play: `cloneState` shares the array). */
-  hexes: HexId[];
+  hexes: readonly HexId[];
   after: 'ambush';
 }
 
@@ -330,65 +332,82 @@ export interface CommandBonus {
   text: string;
 }
 
-export interface ScenarioSpecial {
+/** `T` readonly all the way down: every property, and every array as a readonly array (plain data). */
+export type DeepReadonly<T> = T extends readonly (infer E)[]
+  ? readonly DeepReadonly<E>[]
+  : T extends object ? { readonly [K in keyof T]: DeepReadonly<T[K]> } : T;
+
+/** The fields of `ScenarioConfig` (see there), as setup builds them. */
+export interface ScenarioConfigData {
+  /** Battle-wide special rules (SPECIAL_RULE_IDS). */
   rules: SpecialRuleId[];
-  /** Hand growth of one side (§18.8); null in most battles. Never changed during play. */
+  /** Hand growth of one side (§18.8); null in most battles. */
   handGrowth: HandGrowth | null;
-  /** The Command bonus at a banner count (009, §14); null in most battles. Never changed during play. */
+  /** The Command bonus at a banner count (009, §14); null in most battles. Given once: `SpecialState.commandBonusGiven`. */
   commandBonus: CommandBonus | null;
   /**
    * Fright at First Sight (116 Heraclea, §17.4): the side (the Romans) whose infantry may ignore no flag an elephant rolls
-   * in close combat; null in most battles. Never changed during play.
+   * in close combat; null in most battles.
    */
   frightAtFirstSight: Side | null;
   /**
    * Roman Tactical Flexibility (§17.3): the Roman side, whose MI and HI attacks an unsupported enemy HI battles back with
-   * 3 dice; null in most battles and when the player switched the option off. Never changed during play.
+   * 3 dice; null in most battles and when the player switched the option off.
    */
   tacticalFlexibility: Side | null;
-  /** Separate commands (§18.5), in data order; empty in most battles. Never changed during play: `cloneState` shares the array. */
+  /** Separate commands (§18.5), in data order; empty in most battles. */
   commands: CommandDef[];
   /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs; null in most battles. */
   rollingFire: Side | null;
   /**
    * Rampart breakers (223 Medway, §18.6): the side whose units remove (`setTerrain` to plain) every rampart hex they enter
-   * or pass through by moving, advancing, retreating or evading; null in most battles. Never changed during play.
+   * or pass through by moving, advancing, retreating or evading; null in most battles.
    */
   rampartBreakers: Side | null;
   /**
    * Last-row retreat (214 Silarus, §18.5): the side whose unit is eliminated, not damaged, by a retreat that ends on its own
-   * baseline row with retreat hexes it could not take; null in most battles. Never changed during play.
+   * baseline row with retreat hexes it could not take; null in most battles.
    */
   lastRowRetreat: Side | null;
-  /** Ambush trigger data: set exactly when the scenario gives ambush data, else null. Never changed during play. */
+  /** Ambush trigger data: set exactly when the scenario gives ambush data, else null. */
   ambush: AmbushDef | null;
-  /** Off-board reserve force of an ambush (Trebbia's Mago, 206, ...; §18.5). */
+  /** The side of the off-board ambush force (`SpecialState.reserveUnits`, `reserveLeaders`), if there is one. */
+  reserveSide: Side | null;
+  /**
+   * Dice orders (310 Utica P1, §18.10): the dice each side rolls at the start of its turn instead of playing a card; 0 = the
+   * side plays cards (every side of every other battle). A side with dice holds no cards and never draws.
+   */
+  orderDice: Record<Side, number>;
+  /** Battle objectives (§18.4; empty in most battles); their play state is `SpecialState.objState`. */
+  objectives: ObjectiveDef[];
+  /** Castulo: id of Publius Scipio, whose loss loses the battle; null in every other battle. */
+  sacredLeaderId: string | null;
+  /** Leaders each side had at the start (on the board, in reserve or still to be placed). */
+  leadersAtStart: Record<Side, number>;
+}
+
+/**
+ * A battle's fixed rules, resolved from its scenario data by `createGame` and never changed during play
+ * (`GameState.scenario`): readonly all the way down, so a write into it is a compile error, and `cloneState` shares it.
+ */
+export type ScenarioConfig = DeepReadonly<ScenarioConfigData>;
+
+/** A battle's special play state (`GameState.special`): what its scenario rules change during play. `cloneState` copies it. */
+export interface SpecialState {
+  /** Off-board reserve force of an ambush (Trebbia's Mago, 206, ...; §18.5); its side is `ScenarioConfig.reserveSide`. */
   reserveUnits: Unit[];
   reserveLeaders: Leader[];
-  reserveSide: Side | null;
   reserveReleased: boolean;
   /** A unit of the ambush force has entered the board (set once, never cleared); forced placements wait for it (§18.9). */
   reserveEntered: boolean;
   /** Units still to be placed by a forced placement (308, §18.9), in data order; removed once placed. Empty in most battles. */
   placeUnits: PlaceUnitDef[];
-  /**
-   * Dice orders (310 Utica P1, §18.10): the dice each side rolls at the start of its turn instead of playing a card; 0 = the
-   * side plays cards (every side of every other battle). A side with dice holds no cards and never draws. Never changed
-   * during play: `cloneState` shares it.
-   */
-  orderDice: Record<Side, number>;
   /** Turns completed per side (used by ambush reserves' `afterOwnTurns`, §18.5, and by the AI's card memory). */
   turnsDone: Record<Side, number>;
-  /** Battle objectives (§18.4; empty in most battles). Never changed during play: `cloneState` shares the array. */
-  objectives: ObjectiveDef[];
-  /** State of each objective, by index (`cloneState` copies it). */
+  /** State of each objective, by index (`ScenarioConfig.objectives`). */
   objState: ObjectiveState[];
-  /** Castulo: id of Publius Scipio. */
-  sacredLeaderId: string | null;
   /** The `commandBonus` was given (it is given once). */
   commandBonusGiven: boolean;
-  /** Leaders each side had at the start (on the board, in reserve or still to be placed). */
-  leadersAtStart: Record<Side, number>;
   /**
    * Asculum (`ScenarioSetup.placeLeaders`): ids of the leaders still to be placed before the first turn, in placement
    * order. They wait in `GameState.leaders` at `OFF_BOARD`; empty once placement is over (and in every other battle).
@@ -436,7 +455,10 @@ export interface GameState {
   rngCalls: number; // number of random draws so far
   winner: Side | 'draw' | null;
   winReason: string;
-  special: ScenarioSpecial;
+  /** The battle's fixed rules (never changed during play; `cloneState` shares it). */
+  scenario: ScenarioConfig;
+  /** The battle's special play state (`cloneState` copies it). */
+  special: SpecialState;
 }
 
 // ---------------------------------------------------------------------------
@@ -480,7 +502,7 @@ export type Decision =
   | { kind: 'placeLeader'; side: Side; leader: string; options: HexId[] }
   /**
    * A forced placement (308, §18.9) at the start of `side`'s turn, before the card: place the off-board `unit`
-   * (`ScenarioSpecial.placeUnits`) on one of `options`, the empty listed hexes (answer `hex`, never null).
+   * (`SpecialState.placeUnits`) on one of `options`, the empty listed hexes (answer `hex`, never null).
    */
   | { kind: 'placeUnit'; side: Side; unit: string; options: HexId[] }
   /**

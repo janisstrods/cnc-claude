@@ -124,7 +124,7 @@ describe('objectives core', () => {
     const cols = [4, 5, 6, 7, 8, 9, 10, 11, 12];
     expect(sc.setup.objectives).toEqual([{ kind: 'exit', side: 'bottom', hexes: cols.map((c) => [0, c]) }]);
     const s = createGame(sc.setup, 1);
-    expect(s.special.objectives).toEqual([{
+    expect(s.scenario.objectives).toEqual([{
       kind: 'exit', side: 'bottom', hexes: cols.map((c) => H(0, c)), units: 'any', leadersScore: false,
       text: 'Roman {unit} breaks through and exits the battlefield!',
     }]);
@@ -133,7 +133,7 @@ describe('objectives core', () => {
   it('cloneState shares the objectives and copies their state', () => {
     const s = build(CAMPS);
     const c = cloneState(s);
-    expect(c.special.objectives).toBe(s.special.objectives);
+    expect(c.scenario.objectives).toBe(s.scenario.objectives);
     c.special.objState[0].taken.push(H(2, 6));
     c.special.objState[0].held.bottom = 1;
     expect(s.special.objState).toEqual([{ taken: [], held: { top: 0, bottom: 0 }, sections: [] }]);
@@ -653,7 +653,7 @@ describe('Expansion #2 objectives', () => {
 
   it('setup validates the Expansion #2 objectives', () => {
     const game = (p: Pos) => () => createGame(setupOf({ ...CAMPS, ...p }), 1);
-    const ok = (p: Pos) => createGame(setupOf({ ...CAMPS, ...p }), 1).special.objectives;
+    const ok = (p: Pos) => createGame(setupOf({ ...CAMPS, ...p }), 1).scenario.objectives;
     // `leadersScore` (Expansion #3, 317) was not supported in Expansion #2; it is now (tests/rules/exp3-objectives.test.ts)
     expect(ok({ objectives: [{ kind: 'exit', side: 'bottom', hexes: [[0, 6]], leadersScore: true }] })[0]).toMatchObject({ kind: 'exit', leadersScore: true });
     expect(game({ objectives: [{ kind: 'bogus' } as never] })).toThrow(/^unknown objective kind bogus \(qa\)$/);

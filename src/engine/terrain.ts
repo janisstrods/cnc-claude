@@ -212,7 +212,7 @@ export function isHill(s: BoardTerrain, h: HexId): boolean {
 
 /** Are the hills of this battle very steep (rule `veryHills`, 223, §18.6)? */
 export function veryHills(s: GameState): boolean {
-  return s.special.rules.includes('veryHills');
+  return s.scenario.rules.includes('veryHills');
 }
 
 /**
@@ -227,7 +227,7 @@ export function steepClimb(s: GameState, from: HexId, to: HexId): boolean {
 
 /** Are the hill–forest slopes of this battle too steep (rule `steepSlopes`, 308, §18.7)? */
 export function steepSlopes(s: GameState): boolean {
-  return s.special.rules.includes('steepSlopes');
+  return s.scenario.rules.includes('steepSlopes');
 }
 
 /**
@@ -277,7 +277,7 @@ export function stopsOnEntry(s: GameState, type: UnitType, from: HexId, to: HexI
  * (`setTerrain`: event `terrainChanged`, hexsides gone). Lone leaders never call this; off-board entries are ignored.
  */
 export function breakRamparts(s: GameState, ctx: FlowCtx, side: Side, hexes: readonly HexId[]): void {
-  if (s.special.rampartBreakers !== side) return;
+  if (s.scenario.rampartBreakers !== side) return;
   for (const h of hexes) if (h >= 0 && s.terrain[h] === 'rampart') setTerrain(s, ctx, h, 'plain');
 }
 

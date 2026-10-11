@@ -199,7 +199,7 @@ function rampartLines(s: GameState, h: HexId, flipped: boolean): TipLine[] {
     combat(`Protects ${sides}: foot here ignore 1 sword and may ignore 1 flag when attacked across them, 1 flag when fired at through them`),
     ...rest,
   ];
-  const breakers = s.special.rampartBreakers;
+  const breakers = s.scenario.rampartBreakers;
   if (breakers) lines.push(battle(`Torn down when a ${s.players[breakers].army} unit enters or passes through it`));
   return lines;
 }

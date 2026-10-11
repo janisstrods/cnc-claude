@@ -84,9 +84,9 @@ for (const id of EXP1) {
       expect([s.first, s.active, s.bannersToWin]).toEqual([m.first, m.first, m.banners]);
       expect(sc.setup.rules).toEqual(m.rules);
       expect(sc.setup.options).toEqual(m.options);
-      expect(s.special.rules).toEqual(m.rules);
+      expect(s.scenario.rules).toEqual(m.rules);
       expect([sc.setup.frightAtFirstSight, sc.setup.tacticalFlexibility]).toEqual([m.frightAtFirstSight, m.tacticalFlexibility]);
-      expect([s.special.frightAtFirstSight, s.special.tacticalFlexibility]).toEqual([m.frightAtFirstSight ?? null, m.tacticalFlexibility ?? null]);
+      expect([s.scenario.frightAtFirstSight, s.scenario.tacticalFlexibility]).toEqual([m.frightAtFirstSight ?? null, m.tacticalFlexibility ?? null]);
     });
 
     it('units per side and type, leaders and elites', () => {
@@ -95,7 +95,7 @@ for (const id of EXP1) {
         expect(unitCounts(s, side), side).toEqual(m.units[side]);
         expect(s.leaders.filter((l) => l.side === side && l.hex >= 0).map((l) => l.name), side).toEqual(m.leaders[side]);
         const placed = (m.placeLeaders ?? []).filter(([sd]) => sd === side).length;
-        expect(s.special.leadersAtStart[side], side).toBe(m.leaders[side].length + placed);
+        expect(s.scenario.leadersAtStart[side], side).toBe(m.leaders[side].length + placed);
       }
       const unplaced = s.special.unplaced.map((lid) => s.leaders.find((l) => l.id === lid)!);
       expect(unplaced.map((l) => [l.side, l.name])).toEqual(m.placeLeaders ?? []);
@@ -214,7 +214,7 @@ describe('battle-specific setup', () => {
 
   it("114 Gabiene: Antigonus' army (top) gains a banner for Eumenes' camp at (8,12)", () => {
     const s = game('114');
-    expect(s.special.objectives).toEqual([{
+    expect(s.scenario.objectives).toEqual([{
       kind: 'capture', side: 'top', hexes: [H(8, 12)], when: 'stop', banners: [1], together: 0, remove: false,
       text: "Antigonus' troops seize Eumenes' baggage camp!",
     }]);
@@ -235,16 +235,16 @@ describe('battle-specific setup', () => {
 
   it('112 Hellespont: every leader counts, and losing both ends the battle', () => {
     const s = game('112');
-    expect(s.special.rules).toEqual(['leaderLossCostsCard', 'allLeadersSuddenDeath']);
-    expect(s.special.leadersAtStart).toEqual({ top: 2, bottom: 2 });
+    expect(s.scenario.rules).toEqual(['leaderLossCostsCard', 'allLeadersSuddenDeath']);
+    expect(s.scenario.leadersAtStart).toEqual({ top: 2, bottom: 2 });
   });
 
   for (const id of ['120', '121', '124']) {
     it(`${id} ${MANIFEST[id].name}: Roman Tactical Flexibility is on by default and can be switched off`, () => {
       const st = scenarioById(id).setup;
-      expect(createGame(st, 1).special.tacticalFlexibility).toBe('bottom');
-      expect(createGame(st, 1, { tacticalFlexibility: true }).special.tacticalFlexibility).toBe('bottom');
-      expect(createGame(st, 1, { tacticalFlexibility: false }).special.tacticalFlexibility).toBeNull();
+      expect(createGame(st, 1).scenario.tacticalFlexibility).toBe('bottom');
+      expect(createGame(st, 1, { tacticalFlexibility: true }).scenario.tacticalFlexibility).toBe('bottom');
+      expect(createGame(st, 1, { tacticalFlexibility: false }).scenario.tacticalFlexibility).toBeNull();
     });
   }
 
@@ -252,7 +252,7 @@ describe('battle-specific setup', () => {
     expect(SCENARIOS.filter((sc) => sc.setup.options).map((sc) => sc.id)).toEqual(['120', '121', '124']);
     for (const sc of SCENARIOS) {
       if (['120', '121', '124'].includes(sc.id)) continue;
-      expect([sc.id, createGame(sc.setup, 1, { tacticalFlexibility: true }).special.tacticalFlexibility]).toEqual([sc.id, null]);
+      expect([sc.id, createGame(sc.setup, 1, { tacticalFlexibility: true }).scenario.tacticalFlexibility]).toEqual([sc.id, null]);
     }
   });
 

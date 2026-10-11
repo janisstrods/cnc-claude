@@ -94,9 +94,9 @@ const NOT_THE_COMMAND = 'That piece is not in the command you named.';
  * the cards act for the commands that remain as they would in a battle without the rule.
  */
 export function fallbackCommands(s: GameState, side: Side): string[] {
-  if (!s.special.rules.includes('commandFallback')) return [];
+  if (!s.scenario.rules.includes('commandFallback')) return [];
   const present = new Set(unitsOf(s, side).map((u) => u.command));
-  return s.special.commands.filter((c) => c.side === side && present.has(c.id)).map((c) => c.id);
+  return s.scenario.commands.filter((c) => c.side === side && present.has(c.id)).map((c) => c.id);
 }
 
 /** A command and the order mode a card has for it (`commandModes`). */
@@ -153,7 +153,7 @@ export const inCommand = (p: { command?: string }, command: string | undefined):
  * or null. Pieces with no command, and battles without commands, never clash.
  */
 export function commandClash(s: GameState, ids: string[], command?: string): string | null {
-  if (!s.special.commands.length) return null;
+  if (!s.scenario.commands.length) return null;
   let seen = command;
   for (const id of ids) {
     const c = commandOf(s, id);
@@ -172,7 +172,7 @@ export function commandClash(s: GameState, ids: string[], command?: string): str
  * units) can be named too, for 1 unit of its choice.
  */
 export function commandChoices(s: GameState, side: Side, kind: CardKind | null): string[] {
-  if (!kind || !s.special.commands.length) return [];
+  if (!kind || !s.scenario.commands.length) return [];
   const m = orderMode(s, side, kind);
   let pool: Unit[];
   if (m.mode === 'auto') pool = autoOrders(s, side, kind).map((id) => unitById(s, id)!);
@@ -180,7 +180,7 @@ export function commandChoices(s: GameState, side: Side, kind: CardKind | null):
   else return [];
   const fallback = m.mode === 'auto' ? (commandModes(s, side, kind) ?? []).filter((p) => p.mode.mode === 'one').map((p) => p.command) : [];
   const units = unitsOf(s, side);
-  const present = s.special.commands.filter((c) => c.side === side && (
+  const present = s.scenario.commands.filter((c) => c.side === side && (
     pool.some((u) => u.command === c.id) || (fallback.includes(c.id) && units.some((u) => u.command === c.id))
   )).map((c) => c.id);
   return present.length > 1 ? present : [];
@@ -485,7 +485,7 @@ export function validateSpartacus(s: GameState, side: Side, faces: DieFace[], id
 
 /** Order dice `side` rolls at the start of its turn instead of playing a card (§18.10); 0 = it plays cards. */
 export function orderDice(s: GameState, side: Side): number {
-  return s.special.orderDice?.[side] ?? 0;
+  return s.scenario.orderDice?.[side] ?? 0;
 }
 
 /**

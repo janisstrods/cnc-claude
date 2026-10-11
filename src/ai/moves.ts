@@ -30,7 +30,7 @@ export interface MoveCtx {
  */
 function exitBanners(s: GameState, u: { side: Side }, l: unknown): number {
   if (!l) return 1;
-  return s.special.objectives.some((o) => o.kind === 'exit' && o.side === u.side && o.leadersScore) ? 2 : 1;
+  return s.scenario.objectives.some((o) => o.kind === 'exit' && o.side === u.side && o.leadersScore) ? 2 : 1;
 }
 
 /** Score the position if `id` moves to `m` (null = stays). */
@@ -93,7 +93,7 @@ export function scoreOption(s: GameState, id: string, m: MoveTarget | null, stag
   // rampart breakers (223, §18.6): the ramparts the unit enters or passes through become open ground
   let terrain0: TerrainType[] | null = null;
   let rampart0: number[] | null = null;
-  if (m && s.special.rampartBreakers === me) {
+  if (m && s.scenario.rampartBreakers === me) {
     const broken = m.path.slice(1).filter((h) => h >= 0 && s.terrain[h] === 'rampart');
     if (broken.length) {
       terrain0 = s.terrain;

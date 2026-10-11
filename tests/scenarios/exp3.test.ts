@@ -189,7 +189,7 @@ for (const id of EXP3) {
       }
       expect([s.first, s.active, s.bannersToWin]).toEqual([m.first, m.first, m.banners]);
       expect(sc.setup.rules).toEqual(m.rules);
-      expect(s.special.rules).toEqual(m.rules);
+      expect(s.scenario.rules).toEqual(m.rules);
       expect(sc.setup.options).toBeUndefined();
       expect(sc.setup.placeLeaders).toBeUndefined();
       expect(s.special.unplaced).toEqual([]);
@@ -201,7 +201,7 @@ for (const id of EXP3) {
         expect(unitCounts(s, side), side).toEqual(m.units[side]);
         expect(s.leaders.filter((l) => l.side === side && l.hex >= 0).map((l) => l.name), side).toEqual(m.leaders[side]);
         const reserveLeaders = m.reserves?.leaders[side] ?? [];
-        expect(s.special.leadersAtStart[side], side).toBe(m.leaders[side].length + reserveLeaders.length);
+        expect(s.scenario.leadersAtStart[side], side).toBe(m.leaders[side].length + reserveLeaders.length);
       }
       const reserves: Record<Side, Partial<Record<UnitType, number>>> = { top: {}, bottom: {} };
       for (const u of s.special.reserveUnits) reserves[u.side][u.type] = (reserves[u.side][u.type] ?? 0) + 1;
@@ -257,7 +257,7 @@ for (const id of EXP3) {
 
 describe('objectives', () => {
   /** The resolved objectives of a battle without their log text. */
-  const objectivesOf = (id: string) => game(id).special.objectives.map((o) => {
+  const objectivesOf = (id: string) => game(id).scenario.objectives.map((o) => {
     const { text, ...rest } = o;
     expect(text.length, `${id} objective text`).toBeGreaterThan(5);
     return rest;
@@ -308,7 +308,7 @@ describe('objectives', () => {
   };
 
   it('the objective battles, and the objectives of each, are the ones the rulings give', () => {
-    expect(EXP3.filter((id) => game(id).special.objectives.length)).toEqual(Object.keys(EXPECTED));
+    expect(EXP3.filter((id) => game(id).scenario.objectives.length)).toEqual(Object.keys(EXPECTED));
     for (const [id, want] of Object.entries(EXPECTED)) expect(objectivesOf(id), id).toEqual(want);
   });
 
@@ -569,8 +569,8 @@ describe('the battle rules (§18.5, §18.8-§18.11)', () => {
       text: expect.not.stringContaining('{section}'),
     });
     const s = game('308');
-    expect(s.special.ambush).toMatchObject({ afterOwnTurns: 0, entryHexes: entry.map(([r, c]) => H(r, c)), noMove: true, attachLeader: true });
-    expect(s.special.reserveSide).toBe('top');
+    expect(s.scenario.ambush).toMatchObject({ afterOwnTurns: 0, entryHexes: entry.map(([r, c]) => H(r, c)), noMove: true, attachLeader: true });
+    expect(s.scenario.reserveSide).toBe('top');
     // the entry hexes are empty at the start; G2-G4 are hills, G1 and G5 plain
     for (const [r, c] of entry) expect([r, c, s.units.some((u) => u.hex === H(r, c)), s.leaders.some((l) => l.hex === H(r, c))]).toEqual([r, c, false, false]);
     expect(entry.map(([r, c]) => s.terrain[H(r, c)])).toEqual(['plain', 'hill', 'hill', 'hill', 'plain']);
@@ -589,7 +589,7 @@ describe('the battle rules (§18.5, §18.8-§18.11)', () => {
     expect(st.top).toMatchObject({ army: 'Numidian', cards: 0, orders: 'dice', orderDice: 2 });
     expect([st.bottom.orders, st.bottom.orderDice, st.legions]).toEqual([undefined, undefined, undefined]);
     const s = game('310');
-    expect(s.special.orderDice).toEqual({ top: 2, bottom: 0 });
+    expect(s.scenario.orderDice).toEqual({ top: 2, bottom: 0 });
     expect([s.players.top.hand, s.players.top.command, s.players.bottom.hand.length, s.active]).toEqual([[], 0, 6, 'bottom']);
     // Saburra, the leader a helmet orders
     expect(s.leaders.filter((l) => l.side === 'top').map((l) => l.name)).toEqual(['Saburra']);
@@ -599,7 +599,7 @@ describe('the battle rules (§18.5, §18.8-§18.11)', () => {
     expect(EXP3.filter((id) => scenarioById(id).setup.handGrowth)).toEqual(['313']);
     expect(scenarioById('313').setup.handGrowth).toEqual({ side: 'bottom', to: 5 });
     const s = game('313');
-    expect(s.special.handGrowth).toEqual({ side: 'bottom', to: 5 });
+    expect(s.scenario.handGrowth).toEqual({ side: 'bottom', to: 5 });
     expect([s.players.bottom.command, s.players.bottom.hand.length, s.players.top.command]).toEqual([2, 2, 5]);
   });
 

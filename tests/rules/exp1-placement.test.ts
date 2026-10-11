@@ -214,7 +214,7 @@ describe('leader placement (117 Asculum)', () => {
   });
 
   it('leadersAtStart counts the leaders still to be placed (Hellespont-style counters)', () => {
-    expect(build(ASC).special.leadersAtStart).toEqual({ top: 3, bottom: 4 });
+    expect(build(ASC).scenario.leadersAtStart).toEqual({ top: 3, bottom: 4 });
   });
 
   it('placed leaders keep their traits', () => {
@@ -368,7 +368,7 @@ describe('leader placement (117 Asculum)', () => {
     };
     for (const seed of [1, 2, 3]) {
       const initial = createGame(setup, seed);
-      expect(initial.special.leadersAtStart.top + initial.special.leadersAtStart.bottom).toBe(base.leaders.length);
+      expect(initial.scenario.leadersAtStart.top + initial.scenario.leadersAtStart.bottom).toBe(base.leaders.length);
       const d = new GameDriver(initial);
       const rnd = mulberry32(seed);
       const sides: Side[] = [];

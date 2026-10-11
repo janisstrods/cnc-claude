@@ -175,7 +175,7 @@ describe('very steep hills (223)', () => {
 
   it('is a known special rule id', () => {
     expect(SPECIAL_RULE_IDS).toContain('veryHills');
-    expect(build({ rules: VH }).special.rules).toEqual(['veryHills']);
+    expect(build({ rules: VH }).scenario.rules).toEqual(['veryHills']);
   });
 
   describe('moving onto a hill from lower ground', () => {
@@ -464,10 +464,10 @@ describe('rampart breakers (223)', () => {
   const BREAKERS: Pos['rampartBreakers'] = 'bottom';
 
   it('is off by default and kept by cloneState; an unknown side is an error', () => {
-    expect(build({}).special.rampartBreakers).toBeNull();
+    expect(build({}).scenario.rampartBreakers).toBeNull();
     const s = build({ rampartBreakers: 'bottom' });
-    expect(s.special.rampartBreakers).toBe('bottom');
-    expect(cloneState(s).special.rampartBreakers).toBe('bottom');
+    expect(s.scenario.rampartBreakers).toBe('bottom');
+    expect(cloneState(s).scenario.rampartBreakers).toBe('bottom');
     expect(() => createGame({ ...setupOf({}), rampartBreakers: 'left' as never }, 1)).toThrow(/rampartBreakers/);
   });
 
@@ -646,10 +646,10 @@ describe('last-row retreat (214)', () => {
   const eliminations = (es: GameEvent[]) => events(es, 'eliminated');
 
   it('is off by default and kept by cloneState; an unknown side is an error', () => {
-    expect(build({}).special.lastRowRetreat).toBeNull();
+    expect(build({}).scenario.lastRowRetreat).toBeNull();
     const s = build({ lastRowRetreat: 'top' });
-    expect(s.special.lastRowRetreat).toBe('top');
-    expect(cloneState(s).special.lastRowRetreat).toBe('top');
+    expect(s.scenario.lastRowRetreat).toBe('top');
+    expect(cloneState(s).scenario.lastRowRetreat).toBe('top');
     expect(() => createGame({ ...setupOf({}), lastRowRetreat: 'left' as never }, 1)).toThrow(/lastRowRetreat/);
   });
 
@@ -810,7 +810,7 @@ describe('scenario data', () => {
     expect(setup.rampartBreakers).toBe('bottom');
     expect(setup.terrain[0]).toEqual({ r: 4, c: 6, t: 'sea', ford: true, art: 'sea' });
     const s = createGame(setup, 1);
-    expect([s.special.lastRowRetreat, s.special.rampartBreakers, s.special.rules]).toEqual(['top', 'bottom', ['veryHills']]);
+    expect([s.scenario.lastRowRetreat, s.scenario.rampartBreakers, s.scenario.rules]).toEqual(['top', 'bottom', ['veryHills']]);
     expect([s.terrain[H(4, 6)], s.fords[H(4, 6)], s.terrain[H(5, 6)]]).toEqual(['river', true, 'ditch']);
   });
 
@@ -819,6 +819,6 @@ describe('scenario data', () => {
     expect(setup.lastRowRetreat).toBeUndefined();
     expect(setup.rampartBreakers).toBeUndefined();
     const s = createGame(setup, 1);
-    expect([s.special.lastRowRetreat, s.special.rampartBreakers]).toEqual([null, null]);
+    expect([s.scenario.lastRowRetreat, s.scenario.rampartBreakers]).toEqual([null, null]);
   });
 });

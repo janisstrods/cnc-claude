@@ -79,7 +79,7 @@ describe('Castulo: Publius Scipio (losing him loses the battle)', () => {
       setHand(s, 'bottom', ['doubleTime', 'order3C', 'lineCommand', 'inspiredC', 'orderMedium']);
       const d = new GameDriver(s);
       const mem = newMemory();
-      const sid = d.state.special.sacredLeaderId!;
+      const sid = d.state.scenario.sacredLeaderId!;
       while (d.pending && d.state.active === 'bottom' && d.state.turn.number === 1) {
         const dec = d.pending;
         d.answer(chooseAnswer(d.state, dec, detOpts(dec.side, seed), mem).answer);

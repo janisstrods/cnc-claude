@@ -84,9 +84,9 @@ describe('scenario loader', () => {
     expect(info.setup.objectives).toEqual([{ kind: 'capture', side: 'top', hexes: [[8, 12]], text: 'The camp falls!' }]);
     expect(info.setup.placeLeaders).toEqual([{ side: 'bottom', name: 'Darius', traits: ['attachedOnly'] }, { side: 'top', name: 'Craterus' }]);
     const s = createGame(info.setup, 1);
-    expect([s.special.rules, s.special.tacticalFlexibility]).toEqual([[], 'top']);
-    expect(createGame(info.setup, 1, { tacticalFlexibility: false }).special.tacticalFlexibility).toBeNull();
-    expect(s.special.objectives).toEqual([{
+    expect([s.scenario.rules, s.scenario.tacticalFlexibility]).toEqual([[], 'top']);
+    expect(createGame(info.setup, 1, { tacticalFlexibility: false }).scenario.tacticalFlexibility).toBeNull();
+    expect(s.scenario.objectives).toEqual([{
       kind: 'capture', side: 'top', hexes: [H(8, 12)], when: 'stop', banners: [1], together: 0, remove: false, text: 'The camp falls!',
     }]);
     expect(s.special.unplaced).toHaveLength(2);
@@ -163,12 +163,12 @@ describe('scenario loader', () => {
     expect(raw).toEqual(keep);
     // and the pieces reach the game
     const s = createGame(scenarioFromJson(raw).setup, 1);
-    expect(s.special.commands.map((c) => [c.id, c.blocks])).toEqual([['a', 'gry'], ['b', undefined]]);
-    expect(s.special.rollingFire).toBe('top');
-    expect(s.special.rampartBreakers).toBe('bottom');
-    expect(s.special.lastRowRetreat).toBe('top');
-    expect(s.special.rules).toEqual(['veryHills']);
-    expect(s.special.ambush?.trigger).toEqual(['orderLight', 'leadershipAny']);
+    expect(s.scenario.commands.map((c) => [c.id, c.blocks])).toEqual([['a', 'gry'], ['b', undefined]]);
+    expect(s.scenario.rollingFire).toBe('top');
+    expect(s.scenario.rampartBreakers).toBe('bottom');
+    expect(s.scenario.lastRowRetreat).toBe('top');
+    expect(s.scenario.rules).toEqual(['veryHills']);
+    expect(s.scenario.ambush?.trigger).toEqual(['orderLight', 'leadershipAny']);
     expect(s.units.map((u) => [u.type, u.legion, u.command])).toEqual([['MI', 'marius', 'a'], ['MC', undefined, 'b'], ['WA', undefined, undefined]]);
     expect([s.terrain[H(8, 1)], s.fords[H(8, 1)]]).toEqual(['river', true]);
     expect(s.special.reserveUnits.map((u) => u.type)).toEqual(['LI']);
@@ -177,7 +177,7 @@ describe('scenario loader', () => {
   it('an empty options object offers no optional rule', () => {
     const { setup } = scenarioFromJson({ ...RAW, options: {}, tacticalFlexibility: undefined, rules: [], objectives: undefined, placeLeaders: undefined });
     expect(setup.options).toBeUndefined();
-    expect(createGame(setup, 1, { tacticalFlexibility: true }).special.tacticalFlexibility).toBeNull();
+    expect(createGame(setup, 1, { tacticalFlexibility: true }).scenario.tacticalFlexibility).toBeNull();
   });
 
   it('the setup is a copy: changing it leaves the JSON data alone', () => {
@@ -222,8 +222,8 @@ describe('scenario loader', () => {
     expect(raw).toEqual(keep);
     const s = createGame(scenarioFromJson(raw).setup, 1);
     expect([s.players.bottom.command, s.players.bottom.hand.length]).toEqual([2, 2]);
-    expect([s.special.commandBonus, s.special.frightAtFirstSight, s.special.tacticalFlexibility]).toEqual([bonus, 'bottom', 'top']);
-    expect(s.special.sacredLeaderId).toBe(s.leaders.find((l) => l.name === 'Alexander')?.id);
+    expect([s.scenario.commandBonus, s.scenario.frightAtFirstSight, s.scenario.tacticalFlexibility]).toEqual([bonus, 'bottom', 'top']);
+    expect(s.scenario.sacredLeaderId).toBe(s.leaders.find((l) => l.name === 'Alexander')?.id);
   });
 
   it('the retired campCapture field is an error naming the scenario', () => {
@@ -374,7 +374,7 @@ describe('Expansion #3 reinforcements through the loader (src/scenarios/data/308
     const sc = scenarioFromJson(raw());
     expect(sc.setup.ambush).toMatchObject({ afterOwnTurns: 0, entryHexes: G, noMove: true, attachLeader: true });
     const s = createGame(sc.setup, 1);
-    expect(s.special.ambush).toMatchObject({
+    expect(s.scenario.ambush).toMatchObject({
       trigger: ['inspiredL', 'inspiredC', 'inspiredR', 'leadershipAny'], afterOwnTurns: 0,
       entryHexes: G.map(([r, c]) => H(r, c)), noMove: true, attachLeader: true,
     });
@@ -418,7 +418,7 @@ describe('Expansion #3 units and commands through the loader (src/scenarios/data
     const sc = scenarioFromJson(read(valentia));
     expect(sc.setup.leaders.filter((l) => l.side === 'top').map((l) => [l.name, l.command])).toEqual([['Perpenna', 'perpenna'], ['Herennius', 'herennius']]);
     const s = createGame(sc.setup, 1);
-    expect(s.special.commands).toEqual([
+    expect(s.scenario.commands).toEqual([
       { id: 'herennius', name: 'Herennius', side: 'top' }, { id: 'perpenna', name: 'Perpenna', side: 'top', blocks: 'grk' },
     ]);
     expect(s.leaders.map((l) => [l.name, l.command])).toEqual([

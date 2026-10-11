@@ -175,7 +175,8 @@ export function Board(p: BoardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.scenarioId, state.terrain, state.rampart, state.hillUnder, artProps.art, artProps.steepHills, artProps.steepSlopes, flipped],
   );
-  const { objectives, objState } = state.special;
+  const { objectives } = state.scenario;
+  const { objState } = state.special;
   const units = state.units;
   const topBlocks = state.players.top.blocks;
   const bottomBlocks = state.players.bottom.blocks;

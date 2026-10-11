@@ -372,12 +372,12 @@ export function commandFallbackNote(s: GameState, side: Side, card: CardKind, se
 }
 
 /** The definition of a command id. */
-export function commandById(s: GameState, id: string | undefined): CommandDef | undefined {
-  return id === undefined ? undefined : s.special.commands.find((c) => c.id === id);
+export function commandById(s: GameState, id: string | undefined): Readonly<CommandDef> | undefined {
+  return id === undefined ? undefined : s.scenario.commands.find((c) => c.id === id);
 }
 
 /** Block set a command is drawn in: its own (210 Lentulus' grey), else its side's. */
-export function commandBlocks(s: GameState, c: CommandDef): Blocks {
+export function commandBlocks(s: GameState, c: Readonly<CommandDef>): Blocks {
   return c.blocks ?? s.players[c.side].blocks;
 }
 
@@ -411,7 +411,7 @@ export function rollingFireStep(s: GameState, unitId: string, prefix: readonly H
  */
 export function retreatEliminates(s: GameState, d: Extract<Decision, { kind: 'retreat' }>, o: RetreatOption): boolean {
   const u = unitById(s, d.unit);
-  return !!u && d.reason === 'retreat' && s.special.lastRowRetreat === u.side && o.losses > 0 && !o.attachLeader && o.end >= 0 &&
+  return !!u && d.reason === 'retreat' && s.scenario.lastRowRetreat === u.side && o.losses > 0 && !o.attachLeader && o.end >= 0 &&
     rowOf(o.end) === baselineRow(u.side);
 }
 
@@ -423,9 +423,9 @@ export function retreatEliminates(s: GameState, d: Extract<Decision, { kind: 're
  * not offered); it is null for an ambush on the baseline.
  */
 export function ambushTexts(s: GameState, leader?: string): { button: string; move: string; label: string; fixed: boolean; free: number | null } {
-  const side = s.special.reserveSide ?? s.active;
+  const side = s.scenario.reserveSide ?? s.active;
   const enemy = s.players[other(side)].army;
-  const a = s.special.ambush;
+  const a = s.scenario.ambush;
   if (a?.entryHexes) {
     const force = leader ? `${possessive(leader)} reinforcements` : 'The reinforcements';
     // the leader joins an entering unit only while he is still off the board (in the reserve, or released and waiting)
@@ -487,7 +487,7 @@ export function fixedEntryHexes(s: GameState, side: Side, card: CardKind): HexId
  * (`ambushEntryHexes`, the same whatever the section); none for an ambush without fixed entry.
  */
 function freeEntryHexes(s: GameState, side: Side): HexId[] {
-  return s.special.ambush?.entryHexes ? ambushEntryHexes(s, side) : [];
+  return s.scenario.ambush?.entryHexes ? ambushEntryHexes(s, side) : [];
 }
 
 /** Tooltip line of an immobile unit (306, §18.11). */
@@ -495,7 +495,7 @@ export const IMMOBILE_TIP = 'Immobile: never moves or advances; battles and retr
 
 /** Tooltip line of a unit that entered from the reserve this turn and may not move again (308, `ambush.noMove`), or null. */
 export function enteredTipLine(s: GameState, u: Unit): string | null {
-  if (u.hex < 0 || !s.turn.ordered[u.id]?.fromReserve || !s.special.ambush?.noMove) return null;
+  if (u.hex < 0 || !s.turn.ordered[u.id]?.fromReserve || !s.scenario.ambush?.noMove) return null;
   return 'Entered this turn: cannot move again until next turn, but may battle';
 }
 

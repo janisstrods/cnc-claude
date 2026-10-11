@@ -120,8 +120,8 @@ const FIRST_STRIKE_ID = CARD_LIST.indexOf('firstStrike');
  * unchanged.
  */
 function exactResume(s: GameState): boolean {
-  if (s.special.rollingFire || orderDice(s, s.active)) return true;
-  return s.special.objectives.some((o) => o.kind === 'capture' && o.when === 'turnStart');
+  if (s.scenario.rollingFire || orderDice(s, s.active)) return true;
+  return s.scenario.objectives.some((o) => o.kind === 'capture' && o.when === 'turnStart');
 }
 
 /**

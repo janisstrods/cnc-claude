@@ -96,14 +96,13 @@ export function leaderWorth(l: Leader): number {
  * without the rule). A leader who evaded off the board is never eliminated, so the count can exceed the leaders left.
  */
 export function leadersToLose(s: GameState, side: Side): number {
-  const sp = s.special;
-  if (!sp.rules.includes('allLeadersSuddenDeath')) return Infinity;
-  return sp.leadersAtStart[side] - sp.leadersEliminated[side];
+  if (!s.scenario.rules.includes('allLeadersSuddenDeath')) return Infinity;
+  return s.scenario.leadersAtStart[side] - s.special.leadersEliminated[side];
 }
 
 /** Killing this leader ends the battle at once: Castulo's Scipio, or the last leader of a Hellespont side. */
 export function isSacredLeader(s: GameState, l: Leader): boolean {
-  return s.special.sacredLeaderId === l.id || leadersToLose(s, l.side) <= 1;
+  return s.scenario.sacredLeaderId === l.id || leadersToLose(s, l.side) <= 1;
 }
 
 /**
@@ -118,8 +117,7 @@ const SUDDEN_DEATH_STEP = 1;
 /** Extra value at stake when a leader of `side` is eliminated under the Hellespont rules (0 in every other battle). */
 function leaderLossStake(s: GameState, side: Side): number {
   let v = 0;
-  const sp = s.special;
-  if (sp.rules.includes('leaderLossCostsCard')) v += CARD_AND_COMMAND;
+  if (s.scenario.rules.includes('leaderLossCostsCard')) v += CARD_AND_COMMAND;
   if (leadersToLose(s, side) === 2) v += SUDDEN_DEATH_STEP;
   return v;
 }
@@ -129,10 +127,10 @@ function leaderLossStake(s: GameState, side: Side): number {
  * cards and Command they cost, and the liability of being one kill from defeat. 0 in every other battle.
  */
 export function leaderLossCost(s: GameState, side: Side): number {
-  const sp = s.special;
-  if (!sp.rules.includes('leaderLossCostsCard') && !sp.rules.includes('allLeadersSuddenDeath')) return 0;
+  const { rules } = s.scenario;
+  if (!rules.includes('leaderLossCostsCard') && !rules.includes('allLeadersSuddenDeath')) return 0;
   let v = 0;
-  if (sp.rules.includes('leaderLossCostsCard')) v += CARD_AND_COMMAND * sp.leadersEliminated[side];
+  if (rules.includes('leaderLossCostsCard')) v += CARD_AND_COMMAND * s.special.leadersEliminated[side];
   if (leadersToLose(s, side) === 1 && s.leaders.some((l) => l.side === side && l.hex >= 0)) v += SUDDEN_DEATH_STEP;
   return v;
 }

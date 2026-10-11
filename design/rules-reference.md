@@ -941,7 +941,7 @@ Data: side `cards: 0`, `orders: 'dice'`, `orderDice: 2`; the roll purpose is `di
 * Then the normal move and battle phases follow for the ordered units, with no card modifiers.
 * No legion rule applies (X3 Q1).
 * Engine: side data `orders: 'dice'` with `orderDice` (a whole number from 1) and `cards: 0` (validated; such a side may have
-  no `initialCommand` and no hand growth) → `special.orderDice[side]` (0 for a side that plays cards; such a side needs
+  no `initialCommand`, hand growth or Command bonus) → `GameState.scenario.orderDice[side]` (0 for a side that plays cards; such a side needs
   `cards` of 1 or more, validated too). In `turnFlow`, after
   the turn-start objectives and forced placements, a dice side rolls `orderDice` dice (event `roll`, purpose `diceOrders`;
   phase `orders`, `card` and `effective` null, default modifiers). Each flag face, then each swords face, asks

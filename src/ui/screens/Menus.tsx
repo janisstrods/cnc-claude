@@ -87,7 +87,7 @@ function SetupPreview({ state, flipped, humanSide }: { state: GameState; flipped
   return (
     <svg className="preview-svg" viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}>
       <BoardArt {...boardArtProps(state, flipped)} />
-      <ObjectiveMarkers objectives={state.special.objectives} objState={state.special.objState} flipped={flipped} blocks={blocks} units={state.units} />
+      <ObjectiveMarkers objectives={state.scenario.objectives} objState={state.special.objState} flipped={flipped} blocks={blocks} units={state.units} />
       {state.units.map((u) => {
         const { x, y } = hexCenterId(u.hex, flipped);
         return (
@@ -191,7 +191,7 @@ export function ScenarioSelect(p: {
   const cardsText = (sd: Side) => {
     const dice = orderDice(preview, sd);
     if (dice) return `no cards, ${dice} order dice`;
-    const growth = preview.special.handGrowth;
+    const growth = preview.scenario.handGrowth;
     const startCommand = preview.players[sd].command;
     return `${growth?.side === sd && growth.to > startCommand ? `${startCommand}→${growth.to}` : armies[sd].cards} cards`;
   };

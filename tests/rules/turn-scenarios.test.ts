@@ -258,7 +258,7 @@ describe('Trebbia: Mago ambush', () => {
     const d = trebbia();
     expect(d.state.special.reserveUnits.map((x) => x.type).sort()).toEqual(['MC', 'WA', 'WA']);
     expect(d.state.special.reserveLeaders.map((x) => x.name)).toEqual(['Mago']);
-    expect(d.state.special.reserveSide).toBe('top');
+    expect(d.state.scenario.reserveSide).toBe('top');
   });
   it('not available on the Carthaginian first turn', () => {
     const d = trebbia();

@@ -174,11 +174,11 @@ describe('objective markers', () => {
   it('a real battle: the Baecula camps (011) and the Castulo exits (010)', () => {
     const baecula = createGame(scenarioById('011').setup, 1);
     const camps = baecula.terrain.filter((t) => t === 'camp').length;
-    const b = svg(createElement(ObjectiveMarkers, { objectives: baecula.special.objectives, objState: baecula.special.objState, flipped: false, blocks: { top: baecula.players.top.blocks, bottom: baecula.players.bottom.blocks } }));
+    const b = svg(createElement(ObjectiveMarkers, { objectives: baecula.scenario.objectives, objState: baecula.special.objState, flipped: false, blocks: { top: baecula.players.top.blocks, bottom: baecula.players.bottom.blocks } }));
     expect(b.match(/class="pennant"/g)).toHaveLength(camps);
     const castulo = createGame(scenarioById('010').setup, 1);
-    const exits = castulo.special.objectives.flatMap((o) => (o.kind === 'exit' ? o.hexes : []));
-    const c = svg(createElement(ObjectiveMarkers, { objectives: castulo.special.objectives, objState: castulo.special.objState, flipped: true, blocks: { top: castulo.players.top.blocks, bottom: castulo.players.bottom.blocks } }));
+    const exits = castulo.scenario.objectives.flatMap((o) => (o.kind === 'exit' ? o.hexes : []));
+    const c = svg(createElement(ObjectiveMarkers, { objectives: castulo.scenario.objectives, objState: castulo.special.objState, flipped: true, blocks: { top: castulo.players.top.blocks, bottom: castulo.players.bottom.blocks } }));
     expect(c.match(/class="exit"/g)).toHaveLength(exits.length);
   });
 

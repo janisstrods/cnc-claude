@@ -54,13 +54,13 @@ const TF_DICE = 3;
 const TF_NOT_ON: readonly TerrainType[] = ['broken'];
 
 /**
- * Roman Tactical Flexibility (`special.tacticalFlexibility`, the Roman side, §17.3): does `striker`, battling back against
+ * Roman Tactical Flexibility (`scenario.tacticalFlexibility`, the Roman side, §17.3): does `striker`, battling back against
  * `target`, roll only 3 dice? It must be a HI of the non-Roman army that is unsupported (fewer than 2 adjacent friendly
  * units or lone leaders, the §10 support test) and not on broken ground, battling back (`role` 'back', so also against a
  * bonus combat) against a Roman MI or HI. Never on First Strike.
  */
 export function tacticalFlexibility(s: GameState, striker: Unit, target: Unit | Leader, role: StrikeRole): boolean {
-  const roman = s.special.tacticalFlexibility;
+  const roman = s.scenario.tacticalFlexibility;
   if (role !== 'back' || !('type' in target) || roman === null) return false;
   if (!TF_DEFENDERS.includes(striker.type) || !TF_ATTACKERS.includes(target.type)) return false;
   if (striker.side === roman || target.side !== roman) return false;
@@ -315,12 +315,12 @@ export interface IgnoreContext {
 }
 
 /**
- * Fright at First Sight (`special.frightAtFirstSight`, the Roman side, 116 Heraclea, §17.4): an infantry unit of that side
+ * Fright at First Sight (`scenario.frightAtFirstSight`, the Roman side, 116 Heraclea, §17.4): an infantry unit of that side
  * (any foot type but war machines) may ignore none of the flags an elephant rolls against it in close combat, whatever its
  * role (attack, battle back, bonus combat, First Strike); no leader, support or other ignore applies.
  */
 export function frightAtFirstSight(s: GameState, target: Unit, striker: Unit | null, kind: 'close' | 'ranged'): boolean {
-  if (kind !== 'close' || !striker || s.special.frightAtFirstSight !== target.side) return false;
+  if (kind !== 'close' || !striker || s.scenario.frightAtFirstSight !== target.side) return false;
   return UNIT_STATS[striker.type].elephantTable && UNIT_STATS[target.type].infantry;
 }
 

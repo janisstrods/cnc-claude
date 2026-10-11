@@ -102,5 +102,5 @@ function objectiveLines(s: GameState, o: ObjectiveDef, i: number, h: HexId): str
 
 /** Tooltip lines of the battle objectives on hex `h` (§18.4): what the hex scores, for whom, and its state now. */
 export function objectiveTipLines(s: GameState, h: HexId): string[] {
-  return s.special.objectives.flatMap((o, i) => objectiveLines(s, o, i, h));
+  return s.scenario.objectives.flatMap((o, i) => objectiveLines(s, o, i, h));
 }

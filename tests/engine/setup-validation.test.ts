@@ -64,7 +64,7 @@ describe('scenario data validation', () => {
   it('a Command bonus (009) names a side, banner count, Command, cards to draw and its text', () => {
     const ok = { side: 'bottom' as const, atBanners: 3, command: 6, draw: 2, text: 'Six cards.' };
     const bonus = (b: unknown) => build(changed((st) => { st.commandBonus = b as ScenarioSetup['commandBonus']; }));
-    expect(createGame(changed((st) => { st.commandBonus = ok; }), 1).special.commandBonus).toEqual(ok);
+    expect(createGame(changed((st) => { st.commandBonus = ok; }), 1).scenario.commandBonus).toEqual(ok);
     expect(bonus([ok])).toThrow(/^commandBonus must be an object \(test\)$/);
     expect(bonus({ ...ok, side: 'left' })).toThrow(/^commandBonus: unknown side left \(test\)$/);
     expect(bonus({ ...ok, atBanners: 0 })).toThrow(/^commandBonus: atBanners must be a whole number, 1 or more \(test\)$/);
@@ -79,7 +79,7 @@ describe('scenario data validation', () => {
   });
 
   it('the sacred leader (010) must be a leader of the side named', () => {
-    expect(createGame(changed((st) => { st.sacredLeader = { side: 'bottom', name: 'Scipio' }; }), 1).special.sacredLeaderId).toBe('L3');
+    expect(createGame(changed((st) => { st.sacredLeader = { side: 'bottom', name: 'Scipio' }; }), 1).scenario.sacredLeaderId).toBe('L3');
     expect(build(changed((st) => { st.sacredLeader = { side: 'top', name: 'Scipio' }; }))).toThrow(/^sacredLeader Scipio is no leader of the top army \(test\)$/);
     expect(build(changed((st) => { st.sacredLeader = { side: 'bottom', name: 'Publius' }; }))).toThrow(/^sacredLeader Publius is no leader of the bottom army \(test\)$/);
   });

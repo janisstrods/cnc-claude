@@ -290,7 +290,7 @@ export function troopName(s: GameState, side: Side, t: UnitType | undefined, eli
  * commander himself (Vercingetorix leads his own reinforcements at Gergovia: no one to call on).
  */
 function reserveLeaderName(s: GameState, side: Side): string | undefined {
-  if (s.special.reserveSide !== side) return undefined;
+  if (s.scenario.reserveSide !== side) return undefined;
   const name = s.special.reserveLeaders.find((l) => l.side === side)?.name;
   return name && name !== s.players[side].commander ? name : undefined;
 }

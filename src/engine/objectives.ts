@@ -184,14 +184,15 @@ function unitOfSide(s: GameState, h: HexId, side: Side): boolean {
 
 /** Capture objective `i` (an error for any other kind). */
 function captureObjective(s: GameState, i: number): ObjectiveOf<'capture'> {
-  const o = s.special.objectives[i];
+  const o = s.scenario.objectives[i];
   if (o?.kind !== 'capture') throw new Error(`objective ${i} is not a capture objective`);
   return o;
 }
 
 /** Index of the 'stop' capture objective that would take hex `h` for a unit of `side` stopping there now, or -1. */
 export function stopCaptureAt(s: GameState, side: Side, h: HexId): number {
-  const { objectives, objState } = s.special;
+  const { objectives } = s.scenario;
+  const { objState } = s.special;
   for (let i = 0; i < objectives.length; i++) {
     const o = objectives[i];
     if (o.kind === 'capture' && o.when === 'stop' && o.side === side && o.hexes.includes(h) && !objState[i].taken.includes(h)) return i;
@@ -241,7 +242,8 @@ export function captureOnStop(s: GameState, ctx: FlowCtx, u: Unit) {
  * banners are brought up to date before and after. The battle may end here.
  */
 export function turnStartObjectives(s: GameState, ctx: FlowCtx, side: Side): void {
-  const { objectives, objState } = s.special;
+  const { objectives } = s.scenario;
+  const { objState } = s.special;
   updateHeld(s, ctx);
   for (let i = 0; i < objectives.length; i++) {
     const o = objectives[i];
@@ -290,14 +292,14 @@ export function leaderExitAllows(o: ObjectiveOf<'exit'>, l: Leader): boolean {
 /** Hexes lone leader `l` may step off the board from (those of the exit objectives that score leaders; usually none). */
 export function leaderExitHexes(s: GameState, l: Leader): HexId[] {
   const out: HexId[] = [];
-  for (const o of s.special.objectives) if (o.kind === 'exit' && leaderExitAllows(o, l)) out.push(...o.hexes);
+  for (const o of s.scenario.objectives) if (o.kind === 'exit' && leaderExitAllows(o, l)) out.push(...o.hexes);
   return out;
 }
 
 /** Hexes unit `u` may step off the board from (those of the exit objectives that let it leave; usually none). */
 export function exitHexes(s: GameState, u: Unit): HexId[] {
   const out: HexId[] = [];
-  for (const o of s.special.objectives) if (o.kind === 'exit' && exitAllows(o, u)) out.push(...o.hexes);
+  for (const o of s.scenario.objectives) if (o.kind === 'exit' && exitAllows(o, u)) out.push(...o.hexes);
   return out;
 }
 
@@ -307,7 +309,7 @@ export function exitHexes(s: GameState, u: Unit): HexId[] {
  * leader when the objective scores leaders (`leadersScore`, 317).
  */
 export function exitUnit(s: GameState, ctx: FlowCtx, u: Unit) {
-  const o = s.special.objectives.find((x): x is ObjectiveOf<'exit'> => x.kind === 'exit' && exitAllows(x, u) && x.hexes.includes(u.hex));
+  const o = s.scenario.objectives.find((x): x is ObjectiveOf<'exit'> => x.kind === 'exit' && exitAllows(x, u) && x.hexes.includes(u.hex));
   if (!o) throw new Error(`${u.id} cannot exit from hex ${u.hex}`);
   const l = attachedLeader(s, u);
   s.units = s.units.filter((x) => x.id !== u.id);
@@ -323,7 +325,7 @@ export function exitUnit(s: GameState, ctx: FlowCtx, u: Unit) {
  * scores 1 banner. Needs an exit objective of his side that scores leaders and lists `hex`.
  */
 export function exitLeader(s: GameState, ctx: FlowCtx, l: Leader, hex: HexId) {
-  const o = s.special.objectives.find((x): x is ObjectiveOf<'exit'> => x.kind === 'exit' && leaderExitAllows(x, l) && x.hexes.includes(hex));
+  const o = s.scenario.objectives.find((x): x is ObjectiveOf<'exit'> => x.kind === 'exit' && leaderExitAllows(x, l) && x.hexes.includes(hex));
   if (!o) throw new Error(`${l.id} cannot exit from hex ${hex}`);
   s.leaders = s.leaders.filter((x) => x.id !== l.id);
   ctx.emit({ t: 'log', text: o.text.replaceAll('{unit}', l.name), side: l.side });

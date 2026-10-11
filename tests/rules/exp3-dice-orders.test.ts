@@ -74,14 +74,14 @@ const rolls = (e: GameEvent[]) => e.filter((x): x is Extract<GameEvent, { t: 'ro
 describe('dice orders: data (§18.10)', () => {
   it('a dice side holds no cards and has no Command; the other side its hand; cloneState keeps the dice', () => {
     const s = build(numidia());
-    expect(s.special.orderDice).toEqual({ top: 2, bottom: 0 });
+    expect(s.scenario.orderDice).toEqual({ top: 2, bottom: 0 });
     expect(s.players.top).toMatchObject({ hand: [], command: 0 });
     expect(s.players.bottom.hand).toHaveLength(5);
-    expect(cloneState(s).special.orderDice).toEqual({ top: 2, bottom: 0 });
+    expect(cloneState(s).scenario.orderDice).toEqual({ top: 2, bottom: 0 });
   });
 
   it('every other battle: no side orders by dice', () => {
-    expect(build({ units: [top('MI', [2, 2]), bottom('MI', [6, 2])] }).special.orderDice).toEqual({ top: 0, bottom: 0 });
+    expect(build({ units: [top('MI', [2, 2]), bottom('MI', [6, 2])] }).scenario.orderDice).toEqual({ top: 0, bottom: 0 });
   });
 
   it('rejects bad data: a hand, a dice count that is not a whole number from 1, dice without dice orders, an unknown mode', () => {
@@ -454,7 +454,7 @@ describe('310 Utica P1 itself (src/scenarios/data/310.json)', () => {
     expect(setup.bottom.orders).toBeUndefined();
     expect(setup.bottom.orderDice).toBeUndefined();
     const s = createGame(setup, 1);
-    expect(s.special.orderDice).toEqual({ top: 2, bottom: 0 });
+    expect(s.scenario.orderDice).toEqual({ top: 2, bottom: 0 });
     expect(s.players.top).toMatchObject({ hand: [], command: 0 });
     expect(s.players.bottom.hand).toHaveLength(6);
     expect(s.active).toBe('bottom');

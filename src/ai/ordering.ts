@@ -102,7 +102,7 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
     if (isWarMachine(u)) ben = Math.max(ben, shotValue(s, occ, u, 0));
     out.set(u.id, ben);
   }
-  const leaderExits = s.special.objectives.some((o) => o.kind === 'exit' && o.side === side && o.leadersScore);
+  const leaderExits = s.scenario.objectives.some((o) => o.kind === 'exit' && o.side === side && o.leadersScore);
   for (const l of leadersOf(s, side)) {
     if (!isLoneLeader(s, l)) {
       // a leader riding with a battered unit near the enemy should move to a healthier one
@@ -157,7 +157,7 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
   const total = (ids: string[]) => ids.reduce((a, id) => a + Math.max(0, b(id)), 0);
   const valid = (ids: string[]) => !validateOrders(s, side, kind, ids);
   // separate commands (§18.5): adding the piece would mix two commands (never in a battle without commands)
-  const clash = (sel: string[], id: string) => s.special.commands.length > 0 && commandClash(s, [...sel, id]) !== null;
+  const clash = (sel: string[], id: string) => s.scenario.commands.length > 0 && commandClash(s, [...sel, id]) !== null;
   const fill = (order: string[], seed: string[] = []): string[] => {
     const sel = [...seed];
     for (const id of order) {

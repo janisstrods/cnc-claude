@@ -354,7 +354,7 @@ function bestRolling(s: GameState, occ: Occ, u: Unit, paths: HexId[][]): { path:
  * on a hill, ordered by a card that is not a Tactic card. 0 when it may not roll or no path is worth it.
  */
 function rollingNow(s: GameState, occ: Occ, u: Unit, moved: number): number {
-  const side = s.special.rollingFire;
+  const side = s.scenario.rollingFire;
   if (side !== u.side || moved > 0 || !UNIT_STATS[u.type].infantry || !isHill(s, u.hex)) return 0;
   const kind = s.turn.effective;
   if (!kind || CARD_DEFS[kind].group === 'tactic') return 0;
@@ -387,7 +387,7 @@ export function attackOptions(s: GameState, W: Weights, occIn?: Occ): AttackOpt[
     }
   }
   // Rolling Fire (210): the best path of each eligible unit, when it hits an enemy and is worth its block
-  if (s.special.rollingFire === s.active) {
+  if (s.scenario.rollingFire === s.active) {
     for (const id in s.turn.ordered) {
       const paths = rollingFirePaths(s, id);
       if (!paths.length) continue;
@@ -409,7 +409,7 @@ export function attackNowValue(
 ): number {
   if (!canBattle) return 0;
   const m = s.turn.mods;
-  let best = s.special.rollingFire === u.side ? rollingNow(s, occ, u, moved) : 0;
+  let best = s.scenario.rollingFire === u.side ? rollingNow(s, occ, u, moved) : 0;
   let bestClose = -Infinity;
   if (!m.noClose) {
     const start = startHex ?? s.turn.ordered[u.id]?.startHex ?? u.hex;

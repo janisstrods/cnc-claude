@@ -199,7 +199,7 @@ function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number, fright: Side | 
   const room = retreatRoom(s, occ, u, per);
   let lossPerFlag = Math.min(2, per - room);
   // last-row retreat (214): a retreat that ends on its own baseline short of hexes eliminates the unit
-  if (lossPerFlag > 0 && s.special.lastRowRetreat === u.side && room === rowsToOwnEdge(u.hex, u.side)) lossPerFlag = u.blocks;
+  if (lossPerFlag > 0 && s.scenario.lastRowRetreat === u.side && room === rowsToOwnEdge(u.hex, u.side)) lossPerFlag = u.blocks;
   // a foot unit defending on a city wall (§18.7) ignores 1 more flag (attacks and fire) and 1 sword (attacks)
   const wall = wallShields(s, u, 'close', 'attack') ? 1 : 0;
   const ign = ignorableOcc(s, occ, u, 'close', null) + wall;
@@ -275,7 +275,7 @@ function threatsAgainst(
   const pAdj = W.pOrderAdj * f;
   const pReach = W.pOrderReach * f;
   const bm = nextBanner(s, aSide);
-  const fright = s.special.frightAtFirstSight;
+  const fright = s.scenario.frightAtFirstSight;
   // plain loops, not map / Array.from, and candidate slots reused across attackers: this runs on every evaluation
   const info: VictimInfo[] = [];
   for (const u of victims) info.push(victimInfo(s, occ, u, bm, fright));
@@ -649,7 +649,8 @@ function exitDistanceOf(o: ObjectiveOf<'exit'>, h: HexId): number {
 
 /** Scenario objectives (exits and camp captures), positive = good for `me`. */
 function objectives(s: GameState, occ: Occ, me: Side, W: Weights): number {
-  const { objectives: list, objState } = s.special;
+  const list = s.scenario.objectives;
+  const { objState } = s.special;
   let v = 0;
   for (let i = 0; i < list.length; i++) {
     const o = list[i];

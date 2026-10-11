@@ -210,7 +210,7 @@ function ordersPrompt(c: PromptCtx, d: D<'orders'>): Prompt {
   else if (fallback) text = `${text} ${fallback}`;
   if (amb?.fixed && !n) text = noEntry ? `${text} The reinforcements cannot enter now: every entry hex is occupied.` : `${text} Or bring in the reinforcements (Entry).`;
   // separate commands (210, §18.5)
-  const myCommands = s.special.commands.filter((x) => x.side === human);
+  const myCommands = s.scenario.commands.filter((x) => x.side === human);
   if (myCommands.length > 1) text = `${text} One card orders one army only: ${myCommands.map((x) => x.name).join(' or ')}.`;
   return {
     title: `${def.title}${d.mirrored ? ' (Counter Attack)' : ''}`,

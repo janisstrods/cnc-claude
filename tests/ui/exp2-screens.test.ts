@@ -80,13 +80,13 @@ describe('tooltips: battle objectives', () => {
   });
   it('banners in order (201: only the third camp scores) and all camps at once (211)', () => {
     const clusium = game('201');
-    const camps = clusium.special.objectives[0].kind === 'capture' ? clusium.special.objectives[0].hexes : [];
+    const camps = clusium.scenario.objectives[0].kind === 'capture' ? clusium.scenario.objectives[0].hexes : [];
     expect(camps).toHaveLength(3);
     expect(objectiveTipLines(clusium, camps[0])[0]).toMatch(/^Gallic camp: a Roman unit here at the start of its turn captures it — no banner until the third camp taken/);
     clusium.special.objState[0].taken.push(camps[0], camps[1]);
     expect(objectiveTipLines(clusium, camps[2])[0]).toMatch(/captures it — 1 banner/);
     const mummius = game('211');
-    const m = mummius.special.objectives[0];
+    const m = mummius.scenario.objectives[0];
     expect(objectiveTipLines(mummius, m.kind === 'capture' ? m.hexes[0] : -1)).toEqual([
       'Slave camp: Roman units on 2 of these 3 camps at the start of their turn capture them all — 1 banner',
     ]);
@@ -98,13 +98,13 @@ describe('tooltips: battle objectives', () => {
   });
   it('hold (204, 222): held while occupied, can be lost; the state now', () => {
     const s = game('204');
-    const o = s.special.objectives[0];
+    const o = s.scenario.objectives[0];
     const h = o.kind === 'hold' ? o.hexes[0] : -1;
     expect(objectiveTipLines(s, h)).toEqual([
       'Roman camp: the Germanic army holds 1 banner while one of its units stands here (at most 1 for all 2 hexes) — held while occupied, can be lost.',
     ]);
     const angrivarii = game('222');
-    const r = angrivarii.special.objectives[0];
+    const r = angrivarii.scenario.objectives[0];
     const rh = r.kind === 'hold' ? r.hexes[0] : -1;
     const line = objectiveTipLines(angrivarii, rh)[0];
     expect(line).toMatch(/^Rampart: the Roman army holds 1 banner while one of its units stands here \(at most 2 for all 7 hexes\)/);
@@ -113,7 +113,7 @@ describe('tooltips: battle objectives', () => {
   });
   it('hill control (202) names the holder', () => {
     const s = game('202');
-    const o = s.special.objectives[0];
+    const o = s.scenario.objectives[0];
     const h = o.kind === 'majority' ? o.hexes[0] : -1;
     expect(objectiveTipLines(s, h)).toEqual([
       'Hill objective: at the end of every turn the side with more units on the 9 marked hexes holds 2 banners (a tie: nobody)',
@@ -133,10 +133,10 @@ describe('tooltips: battle objectives', () => {
   it('exits (210 any unit, 212 foot only, 010 base game)', () => {
     expect(objectiveTipLines(game('210'), H(8, 3))).toEqual(['Exit: a Slave unit here may leave the battlefield — 1 banner (the unit is removed)']);
     const bruttium = game('212');
-    const o = bruttium.special.objectives.find((x) => x.kind === 'exit');
+    const o = bruttium.scenario.objectives.find((x) => x.kind === 'exit');
     expect(o && objectiveTipLines(bruttium, o.hexes[0])).toEqual(['Exit: a Slave foot unit here may leave the battlefield — 1 banner (the unit is removed)']);
     const castulo = game('010');
-    const ex = castulo.special.objectives[0];
+    const ex = castulo.scenario.objectives[0];
     expect(objectiveTipLines(castulo, ex.kind === 'exit' ? ex.hexes[0] : -1)).toEqual(['Exit: a Roman unit here may leave the battlefield — 1 banner (the unit is removed)']);
   });
   it('battles without objectives have no objective lines', () => {

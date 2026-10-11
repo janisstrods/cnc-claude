@@ -9,8 +9,9 @@ import { TERRAIN_STATS, isImpassable, isWall, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain } from './units';
 import {
   ARMY_LOOKS, BLOCKS, COLS, LEGIONS, OFF_BOARD, ROWS, SIDES, SPECIAL_RULE_IDS,
-  type AmbushDef, type ArmyLook, type Blocks, type CommandBonus, type CommandDef, type EliteId, type GameState, type HandGrowth, type HexDir, type HexId, type Leader, type LeaderTrait,
-  type Legion, type ObjectiveMarker, type PlaceUnitDef, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
+  type AmbushDef, type ArmyLook, type Blocks, type CardKind, type CommandBonus, type CommandDef, type EliteId, type GameState, type HandGrowth,
+  type HexDir, type HexId, type Leader, type LeaderTrait, type Legion, type ObjectiveMarker, type PlaceUnitDef, type ScenarioConfigData, type Side,
+  type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
 export interface SideSetup {
@@ -148,7 +149,7 @@ export type ObjectiveSetup =
   | { kind: 'exit'; side: Side; hexes: [number, number][]; units?: 'any' | 'foot' | 'cavalry'; leadersScore?: boolean; text?: string };
 
 /** Ambush data as the scenario gives it (`AmbushDef`, every field optional; the entry hexes as `[r, c]`). */
-export type AmbushSetup = Partial<Omit<AmbushDef, 'entryHexes'>> & { entryHexes?: [number, number][] };
+export type AmbushSetup = Partial<Omit<AmbushDef, 'trigger' | 'entryHexes'>> & { trigger?: CardKind[]; entryHexes?: [number, number][] };
 
 /** A forced placement as scenario data (`PlaceUnitDef`; hexes as `[r, c]`). */
 export interface PlaceUnitSetup {
@@ -562,7 +563,7 @@ function resolvePlaceUnits(setup: ScenarioSetup, ambush: AmbushDef | null, nextI
  * its unit type (no mounted unit on a city wall).
  */
 function checkReinforcementHexes(s: GameState) {
-  for (const h of s.special.ambush?.entryHexes ?? []) {
+  for (const h of s.scenario.ambush?.entryHexes ?? []) {
     if (isImpassable(s, h)) throw new Error(`ambush entry hex ${hexLabel(h)} is impassable`);
     // a unit climbs onto a wall only by a move that begins next to it (§18.7): one entering from off the board never does
     if (isWall(s, h)) throw new Error(`ambush entry hex ${hexLabel(h)} is a city wall, which a reserve cannot enter`);
@@ -686,6 +687,24 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   const sacred = sl ? leaders.find((l) => l.side === sl.side && l.name === sl.name)?.id : null;
   if (sacred === undefined) throw new Error(`sacredLeader ${String(sl?.name)} is no leader of the ${String(sl?.side)} army`);
 
+  // the battle's fixed rules (the objectives follow once the board is checked)
+  const scenario: ScenarioConfigData = {
+    rules,
+    handGrowth,
+    commandBonus,
+    frightAtFirstSight: setup.frightAtFirstSight ?? null,
+    tacticalFlexibility,
+    commands,
+    rollingFire: setup.rollingFire ?? null,
+    rampartBreakers: setup.rampartBreakers ?? null,
+    lastRowRetreat: setup.lastRowRetreat ?? null,
+    ambush,
+    reserveSide: reserveUnits[0]?.side ?? reserveLeaders[0]?.side ?? null,
+    orderDice: orderDiceOf(setup),
+    objectives: [],
+    sacredLeaderId: sacred,
+    leadersAtStart: leaderCount(setup),
+  };
   const s: GameState = {
     scenarioId: setup.id,
     terrain,
@@ -716,30 +735,16 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     rngCalls: rngHolder.rngCalls,
     winner: null,
     winReason: '',
+    scenario,
     special: {
-      rules,
-      handGrowth,
-      commandBonus,
-      frightAtFirstSight: setup.frightAtFirstSight ?? null,
-      tacticalFlexibility,
-      commands,
-      rollingFire: setup.rollingFire ?? null,
-      rampartBreakers: setup.rampartBreakers ?? null,
-      lastRowRetreat: setup.lastRowRetreat ?? null,
-      ambush,
       reserveUnits,
       reserveLeaders,
-      reserveSide: reserveUnits[0]?.side ?? reserveLeaders[0]?.side ?? null,
       reserveReleased: false,
       reserveEntered: false,
       placeUnits,
-      orderDice: orderDiceOf(setup),
       turnsDone: { top: 0, bottom: 0 },
-      objectives: [],
       objState: [],
-      sacredLeaderId: sacred,
       commandBonusGiven: false,
-      leadersAtStart: leaderCount(setup),
       unplaced,
       leadersEliminated: { top: 0, bottom: 0 },
       cardDebt: { top: 0, bottom: 0 },
@@ -747,8 +752,8 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   };
   checkPositions(setup, s);
   checkReinforcementHexes(s);
-  s.special.objectives = resolveObjectives(setup, terrain, fords, s.players);
-  s.special.objState = s.special.objectives.map(newObjectiveState);
+  scenario.objectives = resolveObjectives(setup, terrain, fords, s.players);
+  s.special.objState = scenario.objectives.map(newObjectiveState);
   for (const side of [setup.first, setup.first === 'top' ? 'bottom' : 'top'] as Side[]) {
     const p = s.players[side];
     for (let i = 0; i < p.command; i++) p.hand.push(s.deck.pop()!);
@@ -757,19 +762,16 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
 }
 
 /**
- * Fast deep copy of a game state (plain data). The board arrays (terrain, fords, noCap, rampart, hillUnder) and the
- * objective definitions are shared: they never change in place (`setTerrain` replaces the arrays).
+ * Fast deep copy of a game state (plain data). Shared, not copied: the board arrays (terrain, fords, noCap, rampart,
+ * hillUnder), which never change in place (`setTerrain` replaces the arrays), and the battle's fixed rules
+ * (`GameState.scenario`, readonly); everything else is copied, the special play state included.
  */
 export function cloneState(s: GameState): GameState {
   const ordered: TurnState['ordered'] = {};
   for (const k in s.turn.ordered) ordered[k] = { ...s.turn.ordered[k] };
+  const sp = s.special;
   return {
     ...s,
-    terrain: s.terrain,
-    fords: s.fords,
-    noCap: s.noCap,
-    rampart: s.rampart,
-    hillUnder: s.hillUnder,
     units: s.units.map((u) => ({ ...u })),
     leaders: s.leaders.map((l) => ({ ...l })),
     players: {
@@ -781,21 +783,15 @@ export function cloneState(s: GameState): GameState {
     turn: { ...s.turn, ordered, mods: { ...s.turn.mods } },
     lastCard: { ...s.lastCard },
     special: {
-      ...s.special,
-      rules: s.special.rules,
-      commands: s.special.commands,
-      ambush: s.special.ambush,
-      reserveUnits: s.special.reserveUnits.map((u) => ({ ...u })),
-      reserveLeaders: s.special.reserveLeaders.map((l) => ({ ...l })),
-      placeUnits: s.special.placeUnits.map((p) => ({ ...p, unit: { ...p.unit } })),
-      orderDice: s.special.orderDice,
-      turnsDone: { ...s.special.turnsDone },
-      objectives: s.special.objectives,
-      objState: s.special.objState.map((o) => ({ taken: [...o.taken], held: { ...o.held }, sections: [...o.sections] })),
-      leadersAtStart: { ...s.special.leadersAtStart },
-      unplaced: [...s.special.unplaced],
-      leadersEliminated: { ...s.special.leadersEliminated },
-      cardDebt: { ...s.special.cardDebt },
+      ...sp,
+      reserveUnits: sp.reserveUnits.map((u) => ({ ...u })),
+      reserveLeaders: sp.reserveLeaders.map((l) => ({ ...l })),
+      placeUnits: sp.placeUnits.map((p) => ({ ...p, unit: { ...p.unit } })), // its hexes are never changed: shared
+      turnsDone: { ...sp.turnsDone },
+      objState: sp.objState.map((o) => ({ taken: [...o.taken], held: { ...o.held }, sections: [...o.sections] })),
+      unplaced: [...sp.unplaced],
+      leadersEliminated: { ...sp.leadersEliminated },
+      cardDebt: { ...sp.cardDebt },
     },
   };
 }

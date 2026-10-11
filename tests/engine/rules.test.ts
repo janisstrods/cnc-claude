@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   CARD_DEFS, CARD_LIST, battleTargets, closeCombatDice, distance, evadeOptions, forceDice, forcedDiceLeft, ignorableFlags,
   lineOfSight, neighbours, pieceMoves, rangedDice, rearHexes, retreatOptions, scoreClose, sectionsOf, unitMoves, validateOrders,
-  leaderEvadeOptions, elephantRetreatOptions, answerError, type Answer, type Decision,
+  leaderEvadeOptions, elephantRetreatOptions, answerError, cloneState, createGame, type Answer, type Decision,
 } from '../../src/engine';
+import { scenarioById } from '../../src/scenarios';
 import { H, drive, dropFirstStrike, must, replaceFirstCard, state } from './helpers';
 
 beforeEach(() => forceDice([]));
@@ -458,5 +459,32 @@ describe('answer validation (answerError)', () => {
     const flags: Decision = { kind: 'ignoreFlags', side: 'top', unit: 'u2', flags: 2, max: 1 };
     expect([0, 1].map((count) => answerError(s, flags, { kind: 'ignoreFlags', count }))).toEqual([null, null]);
     expect([2, 0.5].map((count) => answerError(s, flags, { kind: 'ignoreFlags', count }))).toEqual(Array(2).fill('Ignore between 0 and 1 flags.'));
+  });
+});
+
+describe('game state: the fixed scenario rules and the special play state', () => {
+  it('cloneState shares the scenario rules (readonly) and copies the play state', () => {
+    const s = createGame(scenarioById('308').setup, 1);
+    const c = cloneState(s);
+    expect(c.scenario).toBe(s.scenario);
+    expect(c.special).not.toBe(s.special);
+    expect(c.special).toEqual(s.special);
+    for (const k of ['reserveUnits', 'reserveLeaders', 'placeUnits', 'turnsDone', 'objState', 'unplaced', 'leadersEliminated', 'cardDebt'] as const) {
+      expect(c.special[k], k).not.toBe(s.special[k]);
+    }
+    // never called: the type checker (npm run typecheck) rejects writes into the shared rules
+    const writes = () => {
+      // @ts-expect-error readonly
+      c.scenario.rules.push('veryHills');
+      // @ts-expect-error readonly
+      c.scenario.ambush!.trigger.push('order2L');
+      // @ts-expect-error readonly
+      c.scenario.objectives[0].text = '';
+      // @ts-expect-error readonly
+      c.scenario.orderDice.top = 1;
+      // @ts-expect-error readonly
+      c.scenario.commands.length = 0;
+    };
+    expect(writes).toBeTypeOf('function');
   });
 });

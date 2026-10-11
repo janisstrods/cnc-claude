@@ -277,7 +277,7 @@ function evalUnitAt(s: GameState, u: Unit, to: HexId, loss: number, W: Weights, 
  * retreat ends on its own baseline short of hexes without joining a leader (never an evade).
  */
 export function retreatLoss(s: GameState, u: Unit, o: RetreatOption, evade = false): number {
-  if (evade || o.losses <= 0 || o.attachLeader || s.special.lastRowRetreat !== u.side) return o.losses;
+  if (evade || o.losses <= 0 || o.attachLeader || s.scenario.lastRowRetreat !== u.side) return o.losses;
   return rowOf(o.end) === baselineRow(u.side) ? u.blocks : o.losses;
 }
 

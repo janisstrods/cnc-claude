@@ -402,7 +402,7 @@ describe('allLeadersSuddenDeath (112 Hellespont)', () => {
   it('when every leader a side started with has been eliminated, the other side wins at once', () => {
     const { d, first, second } = killBoth();
     expect(ofKind(first, 'victory')).toHaveLength(0);
-    expect(d.state.special.leadersAtStart).toEqual({ top: 2, bottom: 0 });
+    expect(d.state.scenario.leadersAtStart).toEqual({ top: 2, bottom: 0 });
     expect(d.state.special.leadersEliminated.top).toBe(2);
     expect(d.state.winner).toBe('bottom');
     expect(d.state.winReason).toBe("All of T's leaders have fallen");
@@ -738,7 +738,7 @@ describe('tacticalFlexibility (§17.3)', () => {
   });
 
   it('scenario option: on by default where the scenario offers it, off on request, ignored where it is not offered', () => {
-    const tf = (st: ScenarioSetup, o?: { tacticalFlexibility: boolean }) => createGame(st, 1, o).special.tacticalFlexibility;
+    const tf = (st: ScenarioSetup, o?: { tacticalFlexibility: boolean }) => createGame(st, 1, o).scenario.tacticalFlexibility;
     const offered: ScenarioSetup = { ...setupOf(TF), options: { tacticalFlexibility: true } };
     expect([tf(offered), tf(offered, { tacticalFlexibility: true }), tf(offered, { tacticalFlexibility: false })]).toEqual(['bottom', 'bottom', null]);
     const offOffered: ScenarioSetup = { ...offered, options: { tacticalFlexibility: false } };
@@ -823,10 +823,10 @@ describe('camp capture objective (114 Gabiene, 011 Baecula)', () => {
 
   it('setup: hexes default to every camp on the board; the hexes must be camps; the old campCapture rule is gone', () => {
     const all = createGame(setupOf({ ...GABIENE, objectives: [{ kind: 'capture', side: 'bottom' }] }), 1);
-    expect(all.special.objectives).toMatchObject([{ kind: 'capture', side: 'bottom', hexes: [H(7, 1), H(7, 11)] }]);
+    expect(all.scenario.objectives).toMatchObject([{ kind: 'capture', side: 'bottom', hexes: [H(7, 1), H(7, 11)] }]);
     expect(() => createGame(setupOf({ ...GABIENE, objectives: [{ kind: 'capture', side: 'top', hexes: [[6, 6]] }] }), 1)).toThrow(/camp/);
     expect(() => createGame(setupOf({ ...GABIENE, rules: ['campCapture' as SpecialRuleId] }), 1)).toThrow(/unknown special rule campCapture/);
-    expect(createGame(setupOf({}), 1).special.objectives).toEqual([]);
+    expect(createGame(setupOf({}), 1).scenario.objectives).toEqual([]);
   });
 
   it('011 Baecula: the Romans (bottom) capture any of the three Carthaginian camps; the setup is otherwise unchanged', () => {
@@ -835,7 +835,7 @@ describe('camp capture objective (114 Gabiene, 011 Baecula)', () => {
     expect(sc.setup.objectives).toEqual([{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }]);
     const s = createGame(sc.setup, 1);
     expect(s.players.bottom.army).toBe('Roman');
-    expect(s.special.objectives).toEqual([{
+    expect(s.scenario.objectives).toEqual([{
       kind: 'capture', side: 'bottom', hexes: [H(1, 4), H(1, 6), H(1, 8)], when: 'stop', banners: [1], together: 0, remove: false,
       text: 'The Romans storm a Carthaginian camp!',
     }]);

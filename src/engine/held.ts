@@ -52,7 +52,8 @@ function setMajority(st: ObjectiveState, o: ObjectiveOf<'majority'>, holder: Sid
  * `max`), `majority` 'always', and the `sectionClear` sections an enemy unit now stands in (lost).
  */
 export function refreshHeld(s: GameState): void {
-  const { objectives, objState } = s.special;
+  const { objectives } = s.scenario;
+  const { objState } = s.special;
   for (let i = 0; i < objectives.length; i++) {
     const o = objectives[i];
     const st = objState[i];
@@ -71,7 +72,8 @@ export function refreshHeld(s: GameState): void {
  * an enemy unit.
  */
 export function turnEndHeld(s: GameState, side: Side): void {
-  const { objectives, objState } = s.special;
+  const { objectives } = s.scenario;
+  const { objState } = s.special;
   for (let i = 0; i < objectives.length; i++) {
     const o = objectives[i];
     if (o.kind === 'majority' && o.when === 'turnEnd') setMajority(objState[i], o, majorityHolder(s, o));

@@ -33,7 +33,8 @@ export function bannerVictory(s: GameState, ctx: FlowCtx, side: Side): boolean {
  * nothing changed (always in battles without hold, majority or section clear objectives) or once the battle is over.
  */
 export function updateHeld(s: GameState, ctx: FlowCtx, change?: (s: GameState) => void): void {
-  const { objectives, objState } = s.special;
+  const { objectives } = s.scenario;
+  const { objState } = s.special;
   if (!objectives.length || s.winner) return;
   const before = heldSnapshot(s);
   change?.(s);
@@ -61,7 +62,7 @@ export function gainBanner(s: GameState, ctx: FlowCtx, side: Side, reason: strin
   p.banners++;
   ctx.emit({ t: 'banner', side, total: bannerTotal(s, side), reason });
   if (bannerVictory(s, ctx, side)) return;
-  const bonus = s.special.commandBonus;
+  const bonus = s.scenario.commandBonus;
   if (bonus && bonus.side === side && p.banners === bonus.atBanners && !s.special.commandBonusGiven) {
     s.special.commandBonusGiven = true;
     p.command = bonus.command;

@@ -87,7 +87,7 @@ const accepts = (d: GameDriver, section: SectionName) => d.answer({ kind: 'order
 describe('reinforcements: scenario data (§18.9)', () => {
   it('resolves the entry hexes (data order), noMove and attachLeader; the Trebbia defaults fill the rest', () => {
     const s = build(gergovia({ ambush: { entryHexes: ENTRY, noMove: true, attachLeader: true } }));
-    expect(s.special.ambush).toEqual({
+    expect(s.scenario.ambush).toEqual({
       trigger: LEADERSHIP, afterOwnTurns: 1, text: "Ambush! Mago's hidden force strikes from the {section}.",
       entryHexes: hexes(ENTRY), noMove: true, attachLeader: true,
     });
@@ -95,7 +95,7 @@ describe('reinforcements: scenario data (§18.9)', () => {
 
   it('an ambush without the new fields has none of them (005, 206 unchanged)', () => {
     const s = build(gergovia({ ambush: { afterOwnTurns: 0 }, placeUnits: undefined }));
-    expect(Object.keys(s.special.ambush!).sort()).toEqual(['afterOwnTurns', 'text', 'trigger']);
+    expect(Object.keys(s.scenario.ambush!).sort()).toEqual(['afterOwnTurns', 'text', 'trigger']);
     expect(s.special.placeUnits).toEqual([]);
     expect(s.special.reserveEntered).toBe(false);
   });

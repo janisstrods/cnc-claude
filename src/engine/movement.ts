@@ -290,7 +290,7 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
  * ones of those whatever the section.
  */
 export function ambushEntryHexes(s: GameState, side: Side, section?: SectionName): HexId[] {
-  const fixed = s.special.ambush?.entryHexes;
+  const fixed = s.scenario.ambush?.entryHexes;
   if (fixed) return fixed.filter((h) => !isImpassable(s, h) && isEmptyHex(s, h));
   const row = baselineRow(other(side));
   const out: HexId[] = [];

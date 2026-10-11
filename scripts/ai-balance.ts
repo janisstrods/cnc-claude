@@ -199,7 +199,7 @@ function countX2(x: X2, s: GameState, e: GameEvent, known: Map<string, Unit>, te
   } else if (e.t === 'reserveEnter') x.ambush++;
   else if (e.t === 'log' && /no ground left to retreat/.test(e.text)) x.lastRow++;
   else if (e.t === 'terrainChanged' && terrainBefore[e.hex] === 'rampart' && e.terrain === 'plain' &&
-    !s.special.objectives.some((o) => o.kind === 'capture' && o.hexes.includes(e.hex))) x.ramparts++;
+    !s.scenario.objectives.some((o) => o.kind === 'capture' && o.hexes.includes(e.hex))) x.ramparts++;
 }
 
 const results: GameResult[] = [];

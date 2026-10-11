@@ -149,7 +149,7 @@ export function rowsToOwnEdge(h: HexId, side: Side): number {
  */
 export function shortfall(s: GameState, v: Unit, need: number, r: number): number {
   const n = need - r;
-  if (n <= 0 || s.special.lastRowRetreat !== v.side) return n;
+  if (n <= 0 || s.scenario.lastRowRetreat !== v.side) return n;
   return r === rowsToOwnEdge(v.hex, v.side) ? v.blocks : n;
 }
 

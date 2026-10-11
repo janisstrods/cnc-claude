@@ -295,7 +295,7 @@ describe('forced placement (308)', () => {
     const s = game('308');
     const p = s.special.placeUnits[0];
     expect(p.unit.type).toBe('MI');
-    const d: Extract<Decision, { kind: 'placeUnit' }> = { kind: 'placeUnit', side: 'bottom', unit: p.unit.id, options: p.hexes };
+    const d: Extract<Decision, { kind: 'placeUnit' }> = { kind: 'placeUnit', side: 'bottom', unit: p.unit.id, options: [...p.hexes] };
     expect(placeUnitPrompt(s, d)).toEqual({
       title: 'Reinforcement: place your Medium Infantry',
       text: 'Before you play a card, the Roman Medium Infantry waiting off the board must be placed on one of the 5 highlighted hexes. It is then an ordinary unit, and this turn\'s card may order it.',
@@ -582,7 +582,7 @@ describe('304: a card falls back to 1 unit within the command named (rule comman
       const s = game('304');
       s.units = s.units.filter((u) => u.command !== gone); // his leader stands on, with nothing to order
       const plain = cloneState(s);
-      plain.special.rules = [];
+      plain.scenario = { ...plain.scenario, rules: [] };
       for (const card of CARDS) {
         expect(commandFallbackNote(s, 'top', card, []), `${gone} ${card}`).toBeNull();
         expect(selectAllUnits(s, 'top', card), `${gone} ${card}`).toEqual(selectAllUnits(plain, 'top', card));
@@ -629,7 +629,7 @@ describe('tooltips: the new objectives', () => {
     const s = game('313');
     expect(objectiveTipLines(s, hexId(0, 1))).toEqual(['Pompeian ship: a Caesarian unit here at the start of its turn takes the marker — 1 banner (the hex does not change)']);
     expect(objectiveTipLines(s, hexId(0, 9))).toEqual(['Caesarian ship: a Pompeian unit here at the start of its turn takes the marker — 1 banner (the hex does not change)']);
-    const o = s.special.objectives.findIndex((x) => x.kind === 'capture' && x.side === 'bottom');
+    const o = s.scenario.objectives.findIndex((x) => x.kind === 'capture' && x.side === 'bottom');
     s.special.objState[o].taken.push(hexId(0, 1));
     expect(objectiveTipLines(s, hexId(0, 1))).toEqual(['Pompeian ship: taken by the Caesarian army']);
   });
@@ -646,7 +646,7 @@ describe('tooltips: the new objectives', () => {
       'Hill objective: the Caesarian army holds 1 banner while it has more units on the 3 marked hexes than the Pompeian army; the Pompeian army cannot hold it',
       'Not held now',
     ]);
-    const o = s.special.objectives.findIndex((x) => x.kind === 'majority');
+    const o = s.scenario.objectives.findIndex((x) => x.kind === 'majority');
     s.special.objState[o].held.bottom = 1;
     expect(objectiveTipLines(s, hexId(3, 5))[1]).toBe('Held now by the Caesarian army');
   });

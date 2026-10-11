@@ -634,7 +634,7 @@ export class GameController {
         delete walking[e.id];
         this.set({ display: after, walking });
         // a reserve leader (308) placed straight onto a unit of his force that entered (not Mago in 005 or Marcellus in 206: they enter alone)
-        if (e.t === 'move' && after.special.ambush?.attachLeader && isLeaderId(e.id) && (leaderById(before, e.id)?.hex ?? OFF_BOARD) < 0 && path.length === 1) this.arrives(e.id, path[0], after);
+        if (e.t === 'move' && after.scenario.ambush?.attachLeader && isLeaderId(e.id) && (leaderById(before, e.id)?.hex ?? OFF_BOARD) < 0 && path.length === 1) this.arrives(e.id, path[0], after);
         if (e.t === 'retreat' && path.length > 1) this.addLog({ text: `${this.name(e.id, after)} retreats ${Math.max(0, path.length - 1)} hex${path.length === 2 ? '' : 'es'}.`, side: this.sideOf(e.id, after), kind: 'result' });
         if (e.t === 'evade') this.flash(path[path.length - 1], 'Evaded', 'info');
         if (e.t === 'leaderEvade' && e.offBoard) this.addLog({ text: `${this.name(e.id, before)} escapes the battlefield.`, kind: 'result' });
@@ -643,7 +643,7 @@ export class GameController {
       case 'reserveEnter': {
         this.set({ display: after });
         // reinforcements on fixed entry hexes (308) are no ambush
-        this.flash(e.hex, after.special.ambush?.entryHexes ? 'Arrives!' : 'Ambush!', 'banner');
+        this.flash(e.hex, after.scenario.ambush?.entryHexes ? 'Arrives!' : 'Ambush!', 'banner');
         break;
       }
       case 'combat': {
@@ -787,7 +787,7 @@ export class GameController {
         // a captured camp removed (§18.4) or a rampart torn down (223): the hex is open ground now. A capture objective's
         // hex is a camp even when it is drawn as a rampart (215's Roman camp): it is razed, not torn down.
         const was = before.terrain[e.hex];
-        const isCamp = was === 'camp' || before.special.objectives.some((o) => o.kind === 'capture' && o.remove && o.hexes.includes(e.hex));
+        const isCamp = was === 'camp' || before.scenario.objectives.some((o) => o.kind === 'capture' && o.remove && o.hexes.includes(e.hex));
         const tornDown = was === 'rampart' && !isCamp;
         const what = isCamp ? 'camp' : TERRAIN_NAMES[was].toLowerCase();
         this.flash(e.hex, tornDown ? 'Torn down' : 'Razed', 'info');

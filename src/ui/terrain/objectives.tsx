@@ -15,7 +15,7 @@ import { BOARD_H, BOARD_W, HEX_R, hexCenter, hexCenterId } from '../geometry';
 import { boardCtx, corner, DIRS, edgeCorners, fieldOutline, fmt, hexOutline, neighborRC, polyPath, screenDir, type Pt } from './hexmath';
 
 export interface ObjectiveMarkersProps {
-  /** `GameState.special.objectives`. */
+  /** `GameState.scenario.objectives`. */
   objectives: readonly ObjectiveDef[];
   /** `GameState.special.objState` (same order): taken capture hexes, held banners, scored sections. */
   objState: readonly ObjectiveState[];

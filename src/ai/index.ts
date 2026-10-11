@@ -191,7 +191,7 @@ function commentCard(s: GameState, me: Side, P: Personality, mem: AiMemory, rng:
   const prev = mem.seenBanners;
   mem.seenBanners = { mine, theirs };
   // reinforcements on fixed entry hexes (308) are no trap: they march in
-  if (b.ambush) return speak(s, me, P, s.special.ambush?.entryHexes ? 'reinforce' : 'ambush', mem.voice, rng, { chance: 2 });
+  if (b.ambush) return speak(s, me, P, s.scenario.ambush?.entryHexes ? 'reinforce' : 'ambush', mem.voice, rng, { chance: 2 });
   if (prev && mine > prev.mine && rng.chance(0.6)) {
     const line = speak(s, me, P, mine >= T - 1 ? 'nearVictory' : 'gained', mem.voice, rng, { chance: 1.2 });
     if (line) return line;
@@ -226,7 +226,7 @@ function moveLine(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rn
 function campLine(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rng): string | undefined {
   let n = 0;
   let ships = 0;
-  s.special.objectives.forEach((o, i) => {
+  s.scenario.objectives.forEach((o, i) => {
     if (o.kind !== 'capture' || o.side !== me) return;
     n += s.special.objState[i].taken.length;
     if (o.marker === 'ship') ships += s.special.objState[i].taken.length;

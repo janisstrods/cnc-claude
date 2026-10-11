@@ -117,7 +117,7 @@ for (const id of EXP2) {
       }
       expect([s.first, s.active, s.bannersToWin]).toEqual([m.first, m.first, m.banners]);
       expect(sc.setup.rules).toEqual(m.rules);
-      expect(s.special.rules).toEqual(m.rules);
+      expect(s.scenario.rules).toEqual(m.rules);
       expect(sc.setup.options).toBeUndefined();
       expect(sc.setup.placeLeaders).toBeUndefined();
       expect(s.special.unplaced).toEqual([]);
@@ -129,7 +129,7 @@ for (const id of EXP2) {
         expect(unitCounts(s, side), side).toEqual(m.units[side]);
         expect(s.leaders.filter((l) => l.side === side && l.hex >= 0).map((l) => l.name), side).toEqual(m.leaders[side]);
         const reserveLeaders = m.reserves?.leaders[side] ?? [];
-        expect(s.special.leadersAtStart[side], side).toBe(m.leaders[side].length + reserveLeaders.length);
+        expect(s.scenario.leadersAtStart[side], side).toBe(m.leaders[side].length + reserveLeaders.length);
       }
       const reserves: Record<Side, Partial<Record<UnitType, number>>> = { top: {}, bottom: {} };
       for (const u of s.special.reserveUnits) reserves[u.side][u.type] = (reserves[u.side][u.type] ?? 0) + 1;
@@ -182,7 +182,7 @@ for (const id of EXP2) {
 
 describe('objectives', () => {
   /** The resolved objectives of a battle without their log text. */
-  const objectivesOf = (id: string) => game(id).special.objectives.map((o) => {
+  const objectivesOf = (id: string) => game(id).scenario.objectives.map((o) => {
     const { text, ...rest } = o;
     expect(text.length, `${id} objective text`).toBeGreaterThan(5);
     return rest;
@@ -213,7 +213,7 @@ describe('objectives', () => {
   };
 
   it('the objective battles, and the objectives of each, are the ones the rulings give', () => {
-    expect(EXP2.filter((id) => game(id).special.objectives.length)).toEqual(Object.keys(EXPECTED));
+    expect(EXP2.filter((id) => game(id).scenario.objectives.length)).toEqual(Object.keys(EXPECTED));
     for (const [id, want] of Object.entries(EXPECTED)) expect(objectivesOf(id), id).toEqual(want);
   });
 
@@ -266,8 +266,8 @@ describe('separate commands, Rolling Fire and the other battle rules', () => {
       { id: 'gellius', name: 'Gellius', side: 'bottom' },
     ]);
     const s = game('210');
-    expect(s.special.commands.map((c) => c.id)).toEqual(['lentulus', 'gellius']);
-    const ids = new Set(s.special.commands.map((c) => c.id));
+    expect(s.scenario.commands.map((c) => c.id)).toEqual(['lentulus', 'gellius']);
+    const ids = new Set(s.scenario.commands.map((c) => c.id));
     const romans = s.units.filter((u) => u.side === 'bottom');
     expect(romans).toHaveLength(18);
     for (const u of romans) expect(ids.has(u.command ?? ''), `${u.type} ${u.hex} has a command`).toBe(true);
@@ -275,7 +275,7 @@ describe('separate commands, Rolling Fire and the other battle rules', () => {
     expect(count('lentulus')).toEqual(['HWM', 'LI', 'LI', 'MC', 'MI', 'MI', 'MI', 'MI']);
     expect(count('gellius')).toEqual(['HWM', 'LI', 'LI', 'MC', 'MC', 'MI', 'MI', 'MI', 'MI', 'MI']);
     // the command named on a unit exists and belongs to the unit's side
-    for (const u of s.units) if (u.command) expect(s.special.commands.find((c) => c.id === u.command)?.side, u.id).toBe(u.side);
+    for (const u of s.units) if (u.command) expect(s.scenario.commands.find((c) => c.id === u.command)?.side, u.id).toBe(u.side);
     for (const l of s.leaders) expect(l.command, `${l.name} is unrestricted`).toBeUndefined();
     for (const u of s.units.filter((x) => x.side === 'top')) expect(u.command, 'a Slave unit').toBeUndefined();
     // Lentulus' army stands left of the central chain (columns 1-4), Gellius' right of it
@@ -288,7 +288,7 @@ describe('separate commands, Rolling Fire and the other battle rules', () => {
   it('only 210 has separate commands and Rolling Fire (Slave infantry on the hills); every unit and leader naming a command names a real one', () => {
     expect(EXP2.filter((id) => scenarioById(id).setup.commands)).toEqual(['210']);
     expect(EXP2.filter((id) => scenarioById(id).setup.rollingFire)).toEqual(['210']);
-    expect(game('210').special.rollingFire).toBe('top');
+    expect(game('210').scenario.rollingFire).toBe('top');
     for (const id of EXP2) {
       const st = scenarioById(id).setup;
       const known = new Set((st.commands ?? []).map((c) => c.id));
@@ -302,15 +302,15 @@ describe('separate commands, Rolling Fire and the other battle rules', () => {
 
   it('214 Silarus: the Slaves are eliminated by a retreat that ends on their baseline (last-row retreat)', () => {
     expect(EXP2.filter((id) => scenarioById(id).setup.lastRowRetreat)).toEqual(['214']);
-    expect(game('214').special.lastRowRetreat).toBe('top');
+    expect(game('214').scenario.lastRowRetreat).toBe('top');
   });
 
   it('223 Cefn Carnedd: very steep hills and Roman rampart breakers', () => {
     expect(EXP2.filter((id) => scenarioById(id).setup.rules.includes('veryHills'))).toEqual(['223']);
     expect(EXP2.filter((id) => scenarioById(id).setup.rampartBreakers)).toEqual(['223']);
     const s = game('223');
-    expect(s.special.rules).toEqual(['veryHills']);
-    expect(s.special.rampartBreakers).toBe('bottom');
+    expect(s.scenario.rules).toEqual(['veryHills']);
+    expect(s.scenario.rampartBreakers).toBe('bottom');
     expect(MANIFEST_EXP2['223'].rules).toEqual(['veryHills']);
     expect(s.terrain.filter((t) => t === 'hill')).toHaveLength(16);
   });
@@ -324,8 +324,8 @@ describe('separate commands, Rolling Fire and the other battle rules', () => {
       text: expect.stringContaining('{section}'),
     });
     const s = game('206');
-    expect(s.special.ambush).toMatchObject({ trigger: ['inspiredL', 'inspiredC', 'inspiredR', 'leadershipAny', 'orderLight'], afterOwnTurns: 0 });
-    expect(s.special.reserveSide).toBe('bottom');
+    expect(s.scenario.ambush).toMatchObject({ trigger: ['inspiredL', 'inspiredC', 'inspiredR', 'leadershipAny', 'orderLight'], afterOwnTurns: 0 });
+    expect(s.scenario.reserveSide).toBe('bottom');
     expect(s.special.reserveUnits.map((u) => u.type).sort()).toEqual(['AX', 'AX', 'LC', 'LI']);
     expect(s.special.reserveLeaders.map((l) => l.name)).toEqual(['Marcellus']);
     expect(EXP2.filter((id) => scenarioById(id).setup.ambush)).toEqual(['206']);

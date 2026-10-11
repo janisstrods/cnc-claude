@@ -34,14 +34,14 @@ const MARKER_REACH = 0.25;
 
 /** Does the battle have objectives that give held banners (hold, majority, section clear)? */
 export function hasHeldObjectives(s: GameState): boolean {
-  for (const o of s.special.objectives) if (o.kind === 'hold' || o.kind === 'majority' || o.kind === 'sectionClear') return true;
+  for (const o of s.scenario.objectives) if (o.kind === 'hold' || o.kind === 'majority' || o.kind === 'sectionClear') return true;
   return false;
 }
 
 /** Does the battle need goalTerms at all (objectives beyond the base game's exits and 'stop' captures, rampart breakers)? */
 function hasGoals(s: GameState): boolean {
-  if (s.special.rampartBreakers) return true;
-  for (const o of s.special.objectives) {
+  if (s.scenario.rampartBreakers) return true;
+  for (const o of s.scenario.objectives) {
     if (o.kind === 'exit' || (o.kind === 'capture' && o.when === 'stop')) continue;
     return true;
   }
@@ -61,7 +61,8 @@ function enemySections(s: GameState, side: Side): Set<SectionName> {
  * through these is immediate (the engine checks after every move).
  */
 export function heldNow(s: GameState, occ: Occ, side: Side): number {
-  const { objectives, objState } = s.special;
+  const { objectives } = s.scenario;
+  const { objState } = s.special;
   let n = 0;
   for (let i = 0; i < objectives.length; i++) {
     const o = objectives[i];
@@ -84,7 +85,8 @@ export function heldNow(s: GameState, occ: Occ, side: Side): number {
  * section at once when an enemy unit stands in it.
  */
 function projectedHeld(s: GameState, occ: Occ, side: Side): { held: number; potential: number } {
-  const { objectives, objState } = s.special;
+  const { objectives } = s.scenario;
+  const { objState } = s.special;
   let held = 0;
   let potential = 0;
   for (let i = 0; i < objectives.length; i++) {
@@ -255,7 +257,8 @@ export function goalTerms(s: GameState, occ: Occ, me: Side, W: Weights): number 
   if (!hasGoals(s)) return 0;
   const opp = other(me);
   const T = s.bannersToWin;
-  const { objectives, objState } = s.special;
+  const { objectives } = s.scenario;
+  const { objState } = s.special;
   let v = 0;
   if (hasHeldObjectives(s)) {
     const a = projectedHeld(s, occ, me);
@@ -276,7 +279,7 @@ export function goalTerms(s: GameState, occ: Occ, me: Side, W: Weights): number 
       pulls += (o.side === me ? 1 : -1) * sectionThreat(s, o.side);
     }
   }
-  const breaker = s.special.rampartBreakers;
+  const breaker = s.scenario.rampartBreakers;
   if (breaker) {
     let n = 0;
     for (const t of s.terrain) if (t === 'rampart') n++;

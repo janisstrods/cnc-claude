@@ -532,7 +532,7 @@ describe("304 Valentia: a card's \"1 unit of your choice\" within the command na
 
   it('304 itself has the rule: with the light cavalry gone, Order Light Troops orders 1 unit of Perpenna', () => {
     const s = createGame(scenarioById('304').setup, 1);
-    expect(s.special.rules).toEqual(['commandFallback']);
+    expect(s.scenario.rules).toEqual(['commandFallback']);
     const perpenna = s.units.filter((x) => x.command === 'perpenna');
     const mi = perpenna.find((x) => x.type === 'MI')!;
     expect(validateOrders(s, 'top', 'orderLight', [mi.id])).toBe(NOT_TYPE); // the LC is light: Perpenna's command obeys the card

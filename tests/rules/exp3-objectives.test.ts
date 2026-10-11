@@ -34,7 +34,7 @@ describe('hand growth (§18.8)', () => {
   it('313: Command 2 -> 3 -> 4 -> 5, drawing 2 after each of the first three turns, then 1 as usual', () => {
     const s = build(BRINDISI);
     noFirstStrike(s);
-    expect(s.special.handGrowth).toEqual({ side: 'bottom', to: 5 });
+    expect(s.scenario.handGrowth).toEqual({ side: 'bottom', to: 5 });
     expect([s.players.bottom.hand.length, s.players.bottom.command]).toEqual([2, 2]);
     const d = new GameDriver(s);
     const turns = passTurns(d, 10).filter((t) => t.side === 'bottom');
@@ -84,7 +84,7 @@ describe('hand growth (§18.8)', () => {
     expect(SPECIAL_RULE_IDS as readonly string[]).not.toContain('trasimenusHand');
     expect(sc.setup.initialCommand).toEqual({ bottom: 2 });
     const s = createGame(sc.setup, 7);
-    expect(s.special.handGrowth).toEqual({ side: 'bottom', to: 4 });
+    expect(s.scenario.handGrowth).toEqual({ side: 'bottom', to: 4 });
     noFirstStrike(s);
     const turns = passTurns(new GameDriver(s), 8).filter((t) => t.side === 'bottom');
     expect(turns.map((t) => t.hand)).toEqual([3, 4, 4, 4]);
@@ -92,20 +92,20 @@ describe('hand growth (§18.8)', () => {
   });
 
   it('no other battle has hand growth', () => {
-    expect(createGame(setupOf({}), 1).special.handGrowth).toBeNull();
-    expect(createGame(scenarioById('007').setup, 1).special.handGrowth).toBeNull();
+    expect(createGame(setupOf({}), 1).scenario.handGrowth).toBeNull();
+    expect(createGame(scenarioById('007').setup, 1).scenario.handGrowth).toBeNull();
   });
 
   it('cloneState keeps the hand growth; a game played from the clone grows without changing it', () => {
     const s = build(BRINDISI);
     noFirstStrike(s);
     const c = cloneState(s);
-    expect(c.special.handGrowth).toEqual({ side: 'bottom', to: 5 });
+    expect(c.scenario.handGrowth).toEqual({ side: 'bottom', to: 5 });
     const d = new GameDriver(c);
     passTurns(d, 2);
     expect(d.state.players.bottom.command).toBe(3);
     expect([c.players.bottom.command, s.players.bottom.command]).toEqual([2, 2]);
-    expect(cloneState(d.state).special.handGrowth).toEqual({ side: 'bottom', to: 5 });
+    expect(cloneState(d.state).scenario.handGrowth).toEqual({ side: 'bottom', to: 5 });
   });
 
   it('setup validates the hand growth', () => {
@@ -224,10 +224,10 @@ describe('ship markers (313, §18.4)', () => {
     });
     for (const t of ['plain', 'hill', 'forest', 'marsh', 'broken', 'camp', 'rampart', 'ditch'] as const) {
       const p = marked(t === 'rampart' ? [{ at: [4, 6], t, faces: 'top' }] : [{ at: [4, 6], t }]);
-      expect(createGame(setupOf(p), 1).special.objectives[0], t).toMatchObject({ kind: 'capture', hexes: [H(4, 6)], marker: 'ship' });
+      expect(createGame(setupOf(p), 1).scenario.objectives[0], t).toMatchObject({ kind: 'capture', hexes: [H(4, 6)], marker: 'ship' });
     }
-    expect(createGame(setupOf(marked([{ at: [4, 6], t: 'river', ford: true }])), 1).special.objectives[0]).toMatchObject({ marker: 'ship' });
-    expect(createGame(setupOf(marked([{ at: [4, 6], t: 'sea', ford: true }])), 1).special.objectives[0]).toMatchObject({ marker: 'ship' });
+    expect(createGame(setupOf(marked([{ at: [4, 6], t: 'river', ford: true }])), 1).scenario.objectives[0]).toMatchObject({ marker: 'ship' });
+    expect(createGame(setupOf(marked([{ at: [4, 6], t: 'sea', ford: true }])), 1).scenario.objectives[0]).toMatchObject({ marker: 'ship' });
     for (const t of ['river', 'sea', 'lake', 'steep'] as const) {
       expect(() => createGame(setupOf(marked([{ at: [4, 6], t }])), 1), t).toThrow(/^capture objective: 4,6 is impassable \(qa\)$/);
     }
@@ -240,10 +240,10 @@ describe('ship markers (313, §18.4)', () => {
   });
 
   it('the resolved objective: the marker is only there when set, and the default text names the ship', () => {
-    const plainDef = createGame(setupOf({ terrain: [{ at: [2, 6], t: 'camp' }], objectives: [{ kind: 'capture', side: 'bottom' }] }), 1).special.objectives[0];
+    const plainDef = createGame(setupOf({ terrain: [{ at: [2, 6], t: 'camp' }], objectives: [{ kind: 'capture', side: 'bottom' }] }), 1).scenario.objectives[0];
     expect('marker' in plainDef).toBe(false);
     const def = createGame(setupOf({ objectives: [{ kind: 'capture', side: 'bottom', hexes: [[4, 7], [4, 6]], when: 'turnStart', marker: 'ship' }] }), 1)
-      .special.objectives[0];
+      .scenario.objectives[0];
     expect(def).toEqual({
       kind: 'capture', side: 'bottom', hexes: [H(4, 6), H(4, 7)], when: 'turnStart', banners: [1], together: 0, remove: false,
       marker: 'ship', text: 'The Roman army seizes a ship.',
@@ -402,7 +402,7 @@ describe('exits: side edges and leaders (311, 317, §18.4)', () => {
       const exits = s.units.filter((x) => exitHexes(s, x).length > 0).map((x) => x.type);
       expect(exits).toEqual(['LC', 'MC', 'HC', 'LBC']);
       expect(exitHexes(s, s.units[0])).toEqual([H(4, 0), H(5, 0)]);
-      const o = s.special.objectives[0];
+      const o = s.scenario.objectives[0];
       if (o.kind !== 'exit') throw new Error('expected an exit objective');
       expect(s.units.filter((x) => exitAllows(o, x)).map((x) => x.type)).toEqual(['LC', 'MC', 'HC', 'LBC']);
       expect(() => build({ ...VALLEY, objectives: [{ kind: 'exit', side: 'top', hexes: [[4, 1]], units: 'cavalry' }] })).toThrow(/4,1 is not an edge hex/);
@@ -429,9 +429,9 @@ describe('exits: side edges and leaders (311, 317, §18.4)', () => {
   describe('317: leaders score', () => {
     it('setup accepts `leadersScore`, resolves it into the objective and defaults to false', () => {
       const s = build({ ...BREAKOUT, units: [FAR_TOP] });
-      expect(s.special.objectives[0]).toMatchObject({ kind: 'exit', side: 'bottom', units: 'any', leadersScore: true, text: BREAKOUT_TEXT });
+      expect(s.scenario.objectives[0]).toMatchObject({ kind: 'exit', side: 'bottom', units: 'any', leadersScore: true, text: BREAKOUT_TEXT });
       const off = build({ objectives: [{ kind: 'exit', side: 'bottom', hexes: ROW0 }] });
-      expect(off.special.objectives[0]).toMatchObject({ leadersScore: false });
+      expect(off.scenario.objectives[0]).toMatchObject({ leadersScore: false });
       expect(() => build({ objectives: [{ kind: 'exit', side: 'bottom', hexes: ROW0, leadersScore: 'yes' as never }] }))
         .toThrow(/^exit objective: leadersScore must be true or false \(qa\)$/);
     });
