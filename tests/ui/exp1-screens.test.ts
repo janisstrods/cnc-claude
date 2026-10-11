@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  CARD_DEFS, GameDriver, UNIT_STATS, cardKind, cloneState, createGame, hexId, orderCommander, orderLimit, randomAnswer, type GameEvent,
+  CARD_DEFS, GameDriver, UNIT_STATS, cardKind, cloneState, createGame, hexId, orderCommander, orderLimit, randomAnswer,
   type GameState, type LeaderTrait, type QueuedEvent, type Side,
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
@@ -21,6 +21,7 @@ import {
 } from '../../src/ui/screens/picker';
 import { OptionToggle, ScenarioSelect } from '../../src/ui/screens/Menus';
 import { build, leaderId, type Pos } from '../rules/helpers';
+import { SeededOpponent, eventPlayer, newSince, runToHuman, useFakeClock } from './controller-helpers';
 
 /** A Map-backed localStorage for the node test environment. */
 function stubStorage(): Map<string, string> {
@@ -141,6 +142,7 @@ describe('optional rules in the briefing', () => {
 });
 
 describe('optional rules reach the engine on start and on restore', () => {
+  useFakeClock();
   const tf = (s: GameState) => s.special.rules.includes('tacticalFlexibility');
 
   it('the session config carries the options into createGame', () => {
@@ -156,13 +158,11 @@ describe('optional rules reach the engine on start and on restore', () => {
   it('a saved battle with the option off is restored with it off', async () => {
     const m = stubStorage();
     const cfg: SessionConfig = { ...newSessionConfig('120', 'bottom', 'recruit', { tacticalFlexibility: false }), seed: 777 };
-    const c = new GameController(cfg, new RandomOpponent());
+    const c = new GameController(cfg, new SeededOpponent());
     try {
       expect(tf(c.driver.initial)).toBe(false);
-      c.hurry();
       // wait for the human's first decision, then answer it (which saves)
-      for (let i = 0; i < 200 && !c.view.pending; i++) await new Promise((r) => setTimeout(r, 5));
-      expect(c.view.pending).not.toBeNull();
+      await runToHuman(c);
       c.answer(randomAnswer(c.driver.state, c.view.pending!, () => 0.3));
     } finally {
       c.dispose();
@@ -182,18 +182,13 @@ describe('optional rules reach the engine on start and on restore', () => {
 });
 
 describe('controller notices', () => {
+  useFakeClock();
+
   /** A controller waiting for the human's first decision, animations skipped, with its event animation exposed. */
   async function settled(id: string, human: Side) {
-    const c = new GameController({ ...newSessionConfig(id, human, 'recruit'), seed: 9 }, new RandomOpponent());
-    for (let i = 0; i < 400 && !c.view.pending; i++) {
-      c.hurry();
-      await new Promise((r) => setTimeout(r, 5));
-    }
-    expect(c.view.pending, id).not.toBeNull();
-    c.hurry();
-    const animate = (e: GameEvent, state: GameState) =>
-      (c as unknown as { animate(q: QueuedEvent): Promise<void> }).animate({ e, state });
-    return { c, animate };
+    const c = new GameController({ ...newSessionConfig(id, human, 'recruit'), seed: 9 }, new SeededOpponent());
+    await runToHuman(c);
+    return { c, animate: eventPlayer(c) };
   }
   const lastLog = (c: GameController) => c.view.log[c.view.log.length - 1].text;
 
@@ -206,12 +201,15 @@ describe('controller notices', () => {
       const to = hexId(7, 3);
       const moved = cloneState(s0);
       moved.units.find((u) => u.id === hwm.id)!.hex = to;
+      // the flashes these events put on the hex: whatever the computer's play left there before is not theirs
+      const added = newSince(c);
+      const onTo = () => added().flashes.filter((f) => f.hex === to).map((f) => f.text);
       await animate({ t: 'evade', id: hwm.id, path: [hwm.hex, to] }, moved);
-      expect(c.view.flashes.filter((f) => f.hex === to).map((f) => f.text)).toEqual(['Evaded']);
+      expect(onTo()).toEqual(['Evaded']);
       const gone = cloneState(moved);
       gone.units = gone.units.filter((u) => u.id !== hwm.id);
       await animate({ t: 'removed', id: hwm.id, reason: 'war machine abandoned' }, gone);
-      expect(c.view.flashes.filter((f) => f.hex === to).map((f) => f.text)).toEqual(['Abandoned']);
+      expect(onTo()).toEqual(['Abandoned']);
       expect(lastLog(c)).toBe('Roman Heavy War Machines abandoned (no banner).');
     } finally {
       c.dispose();
@@ -225,8 +223,10 @@ describe('controller notices', () => {
       const unit = s0.units.find((u) => u.side === 'bottom' && u.type !== 'HWM')!;
       const gone = cloneState(s0);
       gone.units = gone.units.filter((u) => u.id !== unit.id);
+      // the computer's play on the way here may have left a damage flash on this very hex: only the removal's own is counted
+      const added = newSince(c);
       await animate({ t: 'removed', id: unit.id, reason: 'left the field' }, gone);
-      expect(c.view.flashes.filter((f) => f.hex === unit.hex).map((f) => f.text)).toEqual(['Removed']);
+      expect(added().flashes.filter((f) => f.hex === unit.hex).map((f) => f.text)).toEqual(['Removed']);
       expect(lastLog(c)).toBe(`Roman ${UNIT_STATS[unit.type].name} removed from the field (no banner).`);
     } finally {
       c.dispose();
@@ -235,44 +235,33 @@ describe('controller notices', () => {
 
   it('a lost command card is named to the human, and kept hidden for the computer', async () => {
     const { c, animate } = await settled('112', 'bottom');
-    vi.useFakeTimers();
     try {
-      const play = async (e: GameEvent, st: GameState) => {
-        const done = animate(e, st);
-        await vi.advanceTimersByTimeAsync(0);
-        await done;
-      };
       const s0 = c.driver.state;
       const mine = s0.players.bottom.hand[0];
       const title = CARD_DEFS[cardKind(mine)].title;
-      await play({ t: 'cardLost', side: 'bottom', card: mine }, s0);
+      await animate({ t: 'cardLost', side: 'bottom', card: mine }, s0);
       expect(c.view.toast).toMatchObject({ kind: 'notice', text: `You lose a command card: ${title}` });
       expect(lastLog(c)).toBe(`The ${s0.players.bottom.army} army loses a command card (${title}).`);
       const theirs = s0.players.top.hand[0];
-      await play({ t: 'cardLost', side: 'top', card: theirs }, s0);
+      await animate({ t: 'cardLost', side: 'top', card: theirs }, s0);
       expect(lastLog(c)).toBe(`The ${s0.players.top.army} army loses a command card.`);
       await vi.advanceTimersByTimeAsync(2800); // the second notice waits for the first
       expect(c.view.toast).toMatchObject({ kind: 'notice', text: `${s0.players.top.army} loses a command card` });
       expect(c.view.toast!.text).not.toContain(CARD_DEFS[cardKind(theirs)].title);
     } finally {
-      vi.useRealTimers();
       c.dispose();
     }
   });
 });
 
 describe('controller toasts', () => {
+  useFakeClock();
   type Toaster = { toast(text: string, kind: 'turn' | 'notice', ms: number): void };
-  /** A controller on 112 waiting for the human, with fake timers from here on. */
+  /** A controller on 112 waiting for the human, animations skipped. */
   async function onHellespont() {
-    const c = new GameController({ ...newSessionConfig('112', 'bottom', 'recruit'), seed: 9 }, new RandomOpponent());
-    for (let i = 0; i < 400 && !c.view.pending; i++) {
-      c.hurry();
-      await new Promise((r) => setTimeout(r, 5));
-    }
-    expect(c.view.pending).not.toBeNull();
+    const c = new GameController({ ...newSessionConfig('112', 'bottom', 'recruit'), seed: 9 }, new SeededOpponent());
+    await runToHuman(c);
     c.hurry();
-    vi.useFakeTimers();
     const s0 = c.driver.state;
     const lose = async () => {
       const done = (c as unknown as { animate(q: QueuedEvent): Promise<void> }).animate({ e: { t: 'cardLost', side: 'bottom', card: s0.players.bottom.hand[0] }, state: s0 });
@@ -281,7 +270,6 @@ describe('controller toasts', () => {
     };
     return { c, lose, toast: (c as unknown as Toaster).toast.bind(c) };
   }
-  afterEach(() => vi.useRealTimers());
 
   it('a card-loss notice stays up for its full time: "Your turn" waits for it, then shows for its own', async () => {
     const { c, lose, toast } = await onHellespont();
@@ -340,17 +328,12 @@ describe('controller toasts', () => {
 });
 
 describe('undo during deployment (117 Asculum)', () => {
+  useFakeClock();
   /** Let the controller run until the human has a decision again. */
-  async function waitHuman(c: GameController) {
-    for (let i = 0; i < 400 && !c.view.pending; i++) {
-      c.hurry();
-      await new Promise((r) => setTimeout(r, 5));
-    }
-    expect(c.view.pending).not.toBeNull();
-  }
+  const waitHuman = runToHuman;
 
   it('the human may take back his own placement while he is still placing; not once the computer has placed', async () => {
-    const c = new GameController({ ...newSessionConfig('117', 'bottom', 'recruit'), seed: 9 }, new RandomOpponent());
+    const c = new GameController({ ...newSessionConfig('117', 'bottom', 'recruit'), seed: 9 }, new SeededOpponent());
     try {
       await waitHuman(c);
       const first = c.view.pending!;

@@ -8,12 +8,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   CARD_LIST, GameDriver, UNIT_STATS, cloneState, createGame, eligiblePieces, hexId, orderLimit, setTerrain,
-  type Decision, type DieFace, type GameEvent, type GameState, type HexId, type QueuedEvent, type Side, type Unit, type UnitType,
+  type Decision, type DieFace, type GameState, type HexId, type Side, type Unit, type UnitType,
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
 import { Board } from '../../src/ui/game/Board';
 import { GameController, newSessionConfig } from '../../src/ui/game/controller';
-import { RandomOpponent } from '../../src/ui/game/opponent';
 import {
   IMMOBILE_TIP, ambushTexts, boardUi, commandFallbackNote, commandTipLine, counterAttackNote, currentDiceTurn, diceAssignClick, diceOrderSlots, diceRollSummary,
   diceSlotChoices, diceSlotText, diceTurnOrders, diceTurnText, diceTurnVictim, enteredTipLine, firstOrderDie, fixedEntryHexes,
@@ -22,6 +21,7 @@ import {
 import { PICKER_TABS, battlesOf, randomPick } from '../../src/ui/screens/picker';
 import { Expansion3 } from '../../src/ui/screens/RulesReference';
 import { H, build, forceDice, must, noFirstStrike, type Pos } from '../rules/helpers';
+import { SeededOpponent, eventPlayer, newSince, runToHuman, useFakeClock } from './controller-helpers';
 
 afterEach(() => forceDice([]));
 
@@ -224,19 +224,18 @@ describe('dice orders: the turn panel model', () => {
 // ---------------------------------------------------------------------------------------------
 // the controller: its dice-order turn, "Your turn", the log, the forced placement and its undo
 
+/** The human's first decision of a battle reached (the computer plays the turns before it), and the controller's event animation. */
 async function settled(c: GameController) {
-  for (let i = 0; i < 400 && !c.view.pending; i++) {
-    c.hurry();
-    await new Promise((r) => setTimeout(r, 5));
-  }
-  c.hurry();
-  return (e: GameEvent, state: GameState) => (c as unknown as { animate(q: QueuedEvent): Promise<void> }).animate({ e, state });
+  await runToHuman(c);
+  return eventPlayer(c);
 }
 const lastLog = (c: GameController) => c.view.log[c.view.log.length - 1].text;
 
 describe('dice orders: the controller (310)', () => {
+  useFakeClock();
+
   it('the dice side gets "Your turn"; its roll is logged, starts the turn panel and the tray says what it can do (from the snapshot)', async () => {
-    const c = new GameController({ ...newSessionConfig('310', 'top', 'recruit'), seed: 3 }, new RandomOpponent());
+    const c = new GameController({ ...newSessionConfig('310', 'top', 'recruit'), seed: 3 }, new SeededOpponent());
     try {
       const animate = await settled(c);
       const s0 = cloneState(c.driver.state);
@@ -264,7 +263,7 @@ describe('dice orders: the controller (310)', () => {
   });
 
   it('the computer\'s roll is shown on the board, as its cards are; a Counter Attack against it is logged as copying nothing', async () => {
-    const c = new GameController({ ...newSessionConfig('310', 'bottom', 'recruit'), seed: 3 }, new RandomOpponent());
+    const c = new GameController({ ...newSessionConfig('310', 'bottom', 'recruit'), seed: 3 }, new SeededOpponent());
     try {
       const animate = await settled(c);
       const s0 = cloneState(c.driver.state);
@@ -285,6 +284,8 @@ describe('dice orders: the controller (310)', () => {
 });
 
 describe('forced placement (308)', () => {
+  useFakeClock();
+
   it('the prompt names the unit and the board highlights and badges the hexes it may go to', () => {
     const s = game('308');
     const p = s.special.placeUnits[0];
@@ -303,9 +304,9 @@ describe('forced placement (308)', () => {
   });
 
   it('the human may take the placement back until he plays his card; its log line goes with it', async () => {
-    const c = new GameController({ ...newSessionConfig('308', 'bottom', 'recruit'), seed: 3 }, new RandomOpponent());
+    const c = new GameController({ ...newSessionConfig('308', 'bottom', 'recruit'), seed: 3 }, new SeededOpponent());
     try {
-      await settled(c);
+      await runToHuman(c);
       // the Gauls have entered before the Romans' first turn: the turn starts with the placement
       const s = game('308', 3);
       s.special.reserveEntered = true;
@@ -314,7 +315,7 @@ describe('forced placement (308)', () => {
       (c as unknown as { set(p: object): void }).set({ pending: c.driver.pending, log: [] });
       expect(c.view.pending).toMatchObject({ kind: 'placeUnit', side: 'bottom' });
       c.answer({ kind: 'hex', hex: hexId(8, 2) });
-      await settled(c);
+      await runToHuman(c);
       expect(c.view.pending).toMatchObject({ kind: 'playCard', side: 'bottom' });
       expect(c.view.canUndo).toBe(true);
       expect(c.view.log.map((l) => l.text)).toContain('The Roman Medium Infantry arrives as a reinforcement.');
@@ -324,10 +325,10 @@ describe('forced placement (308)', () => {
       expect(c.view.log.map((l) => l.text)).not.toContain('The Roman Medium Infantry arrives as a reinforcement.');
       // placed again, then the card played: no more undo
       c.answer({ kind: 'hex', hex: hexId(8, 0) });
-      await settled(c);
+      await runToHuman(c);
       expect(c.driver.state.units.find((u) => u.type === 'MI' && u.hex === hexId(8, 0))).toBeDefined();
       c.answer({ kind: 'playCard', card: c.driver.state.players.bottom.hand[0] });
-      await settled(c);
+      await runToHuman(c);
       expect(c.view.canUndo).toBe(false);
     } finally {
       c.dispose();
@@ -336,10 +337,12 @@ describe('forced placement (308)', () => {
 });
 
 describe('forced placement (308): undo with a full log', () => {
+  useFakeClock();
+
   it('takes back the placement\'s lines by their ids, though the capped log has dropped its oldest lines since', async () => {
-    const c = new GameController({ ...newSessionConfig('308', 'bottom', 'recruit'), seed: 3 }, new RandomOpponent());
+    const c = new GameController({ ...newSessionConfig('308', 'bottom', 'recruit'), seed: 3 }, new SeededOpponent());
     try {
-      await settled(c);
+      await runToHuman(c);
       const s = game('308', 3);
       s.special.reserveEntered = true;
       c.driver = new GameDriver(s, { snapshots: true });
@@ -348,7 +351,7 @@ describe('forced placement (308): undo with a full log', () => {
       const old = Array.from({ length: 400 }, (_, i) => ({ id: -1000 + i, text: `old line ${i}`, kind: 'info' as const }));
       (c as unknown as { set(p: object): void }).set({ pending: c.driver.pending, log: old });
       c.answer({ kind: 'hex', hex: hexId(8, 2) });
-      await settled(c);
+      await runToHuman(c);
       const placed = c.view.log.map((l) => l.text);
       expect(placed).toContain('The Roman Medium Infantry arrives as a reinforcement.');
       expect(c.view.log).toHaveLength(400);
@@ -438,10 +441,12 @@ describe('reinforcements with fixed entry (308)', () => {
 });
 
 describe('a reserve leader entering the board (the controller)', () => {
+  useFakeClock();
+
   /** The leader's own `move` event from off the board onto a unit of his side, as the engine emits it. */
   async function enters(id: string, name: string) {
     const lead = scenarioById(id).setup.reserveLeaders.find((l) => l.name === name)!;
-    const c = new GameController({ ...newSessionConfig(id, lead.side, 'recruit'), seed: 3 }, new RandomOpponent());
+    const c = new GameController({ ...newSessionConfig(id, lead.side, 'recruit'), seed: 3 }, new SeededOpponent());
     try {
       const animate = await settled(c);
       // the ambush springs: the reserve leader leaves the reserve and waits off the board among the leaders (flow.ts)
@@ -454,9 +459,12 @@ describe('a reserve leader entering the board (the controller)', () => {
       expect(leader.hex, name).toBe(-1);
       const unit = after.units.find((u) => u.side === leader.side && u.hex >= 0)!;
       leader.hex = unit.hex;
-      const before = c.view.log.length;
+      // a flash from before is not the leader's: the computer's last attack leaves a "−1" on the board for 1.5 s, here on his hex
+      (c as unknown as { flash(hex: HexId, text: string, kind: string): void }).flash(unit.hex, '−1', 'hit');
+      const added = newSince(c);
       await animate({ t: 'move', id: leader.id, path: [unit.hex] }, after);
-      return { log: c.view.log.slice(before).map((l) => l.text), flashes: c.view.flashes.map((f) => f.text) };
+      const { log, flashes } = added();
+      return { log, flashes: flashes.map((f) => f.text) };
     } finally {
       c.dispose();
     }
