@@ -1,5 +1,5 @@
 // Movement planning: score each reachable hex of an ordered piece by the resulting position plus the attack it enables.
-import { movablePieces, pieceMoves } from '../engine/flow';
+import { pieceMoves } from '../engine/flow';
 import { nextCaptureBanners, stopCaptureAt } from '../engine/objectives';
 import { attachedLeader, isLeaderId, leaderById, leaderUnit, other, unitById } from '../engine/query';
 import type { MoveTarget } from '../engine/movement';
@@ -131,9 +131,8 @@ export function scoreOption(s: GameState, id: string, m: MoveTarget | null, stag
   return v + noise;
 }
 
-/** Best destination for a piece, or null to stay. */
-export function bestMoveFor(s: GameState, id: string, stage: 1 | 2, mc: MoveCtx): HexId | null {
-  const moves = pieceMoves(s, id, stage);
+/** Best destination for a piece among `moves` (default: its `pieceMoves`), or null to stay. */
+export function bestMoveFor(s: GameState, id: string, stage: 1 | 2, mc: MoveCtx, moves = pieceMoves(s, id, stage)): HexId | null {
   if (!moves.length) return null;
   const isReserve = !isLeaderId(id) && (unitById(s, id)?.hex ?? 0) < 0;
   let best: HexId | null = null;
@@ -161,8 +160,8 @@ function orderKey(s: GameState, id: string, me: Side): number {
   return nearestEnemy(s, u.hex, me);
 }
 
-/** Best attack a unit could make this turn after one of its moves (strike-first ordering). */
-function strikeKey(s: GameState, id: string, stage: 1 | 2, W: Weights): number {
+/** Best attack a unit could make this turn after one of its `moves` (strike-first ordering). */
+function strikeKey(s: GameState, id: string, stage: 1 | 2, W: Weights, moves: readonly MoveTarget[]): number {
   const u = unitById(s, id);
   if (!u || u.hex < 0 || stage !== 1) return 0;
   const op = s.turn.ordered[id];
@@ -171,7 +170,7 @@ function strikeKey(s: GameState, id: string, stage: 1 | 2, W: Weights): number {
   const l = attachedLeader(s, u);
   let best = 0;
   try {
-    for (const m of pieceMoves(s, id, stage)) {
+    for (const m of moves) {
       if (m.hex < 0 || !m.canBattle) continue;
       u.hex = m.hex;
       if (l) l.hex = m.hex;
@@ -187,15 +186,22 @@ function strikeKey(s: GameState, id: string, stage: 1 | 2, W: Weights): number {
 
 /** Next move of the greedy planner (front units first, then supports, lone leaders last). */
 export function greedyMoveStep(s: GameState, stage: 1 | 2, mc: MoveCtx): Answer {
-  const ids = movablePieces(s, stage).filter((id) => !mc.decided.has(id));
+  // the moves of each undecided piece that can move, worked out once: every look below puts the state back
+  const moves = new Map<string, MoveTarget[]>();
+  for (const id of Object.keys(s.turn.ordered)) {
+    if (mc.decided.has(id)) continue;
+    const m = pieceMoves(s, id, stage);
+    if (m.length) moves.set(id, m);
+  }
+  const ids = [...moves.keys()];
   if (!ids.length) return { kind: 'endMove' };
   const jitter = () => (mc.orderNoise && mc.rng ? mc.orderNoise * mc.rng.normal() : 0);
-  const strike = (id: string) => (mc.strikeFirst && !isLeaderId(id) ? 10 * strikeKey(s, id, stage, mc.W) : 0);
+  const strike = (id: string) => (mc.strikeFirst && !isLeaderId(id) ? 10 * strikeKey(s, id, stage, mc.W, moves.get(id)!) : 0);
   const keys = new Map(ids.map((id) => [id, orderKey(s, id, mc.me) + jitter() - strike(id)]));
   ids.sort((a, b) => keys.get(a)! - keys.get(b)!);
   for (const id of ids) {
     mc.decided.add(id);
-    const to = bestMoveFor(s, id, stage, mc);
+    const to = bestMoveFor(s, id, stage, mc, moves.get(id));
     if (to !== null) return { kind: 'move', piece: id, to };
   }
   return { kind: 'endMove' };
