@@ -1,53 +1,9 @@
 // Close combat: dice counts (§2, §4), terrain caps, card bonuses, hit scoring (§3).
 import { beforeEach, describe, expect, it } from 'vitest';
-import { UNIT_STATS, scoreClose, type CardKind, type DieFace, type TerrainType, type UnitClass, type UnitType } from '../../src/engine';
-import { H, build, combatDice, ev, forceDice, forcedDiceLeft, must, n, play, toBattle, u, type Pos } from './helpers';
+import { scoreClose, type UnitType } from '../../src/engine';
+import { H, build, combatDice, duel, ev, forceDice, forcedDiceLeft, must, n, toBattle, u } from './helpers';
 
 beforeEach(() => forceDice([]));
-
-const CLASSES: UnitClass[] = ['light', 'medium', 'heavy'];
-/** A die face that scores nothing against either class (and is not a flag / sword / helmet). */
-function miss(a: UnitType, b: UnitType): DieFace {
-  const ca = UNIT_STATS[a].cls;
-  const cb = UNIT_STATS[b].cls;
-  return CLASSES.find((c) => c !== ca && c !== cb)!;
-}
-
-interface Duel {
-  atk: UnitType;
-  def: UnitType;
-  atkT?: TerrainType;
-  defT?: TerrainType;
-  atkFord?: boolean;
-  defFord?: boolean;
-  card?: CardKind;
-  atkBlocks?: number;
-  defBlocks?: number;
-}
-
-/** Bottom attacker at (5,6) attacks top defender at (4,6); all dice miss. Returns attack / battle-back dice counts. */
-function duel(o: Duel): { attack?: number; back?: number } {
-  const terrain: Pos['terrain'] = [];
-  if (o.atkT) terrain.push({ at: [5, 6], t: o.atkT, ford: o.atkFord });
-  if (o.defT) terrain.push({ at: [4, 6], t: o.defT, ford: o.defFord });
-  const s = build({
-    units: [
-      { side: 'bottom', type: o.atk, at: [5, 6], blocks: o.atkBlocks },
-      { side: 'top', type: o.def, at: [4, 6], blocks: o.defBlocks },
-    ],
-    terrain,
-  });
-  const card = o.card ?? 'order4C';
-  const d = play(s, card, card === 'clash' ? undefined : ['u1']);
-  if (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
-  expect(d.pending?.kind).toBe('battle');
-  ev(d);
-  forceDice(n(miss(o.atk, o.def), 30));
-  must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
-  if (d.pending?.kind === 'defend') must(d, { kind: 'defend', choice: 'stand' });
-  const e = ev(d);
-  return { attack: combatDice(e, 'close'), back: combatDice(e, 'battleBack') };
-}
 
 describe('base close combat dice per unit type (attacking, open ground)', () => {
   const table: [UnitType, number][] = [
@@ -56,21 +12,21 @@ describe('base close combat dice per unit type (attacking, open ground)', () => 
   ];
   for (const [t, dice] of table) {
     it(`${t} attacks with ${dice}${t === 'WA' ? ' (full strength +1)' : ''}`, () => {
-      expect(duel({ atk: t, def: 'MI' }).attack).toBe(dice);
+      expect(duel(t, 'MI').attack).toBe(dice);
     });
   }
   it('damaged warriors attack with 3', () => {
-    expect(duel({ atk: 'WA', def: 'MI', atkBlocks: 3 }).attack).toBe(3);
+    expect(duel('WA', 'MI', { atkBlocks: 3 }).attack).toBe(3);
   });
   it('number of blocks does not change dice (1-block heavy infantry still rolls 5)', () => {
-    expect(duel({ atk: 'HI', def: 'MI', atkBlocks: 1 }).attack).toBe(5);
+    expect(duel('HI', 'MI', { atkBlocks: 1 }).attack).toBe(5);
   });
   it('heavy chariot battles back with 3, other units battle back with their normal dice', () => {
-    expect(duel({ atk: 'MI', def: 'HCH' }).back).toBe(3);
-    expect(duel({ atk: 'MI', def: 'HI' }).back).toBe(5);
-    expect(duel({ atk: 'MI', def: 'AX' }).back).toBe(3);
-    expect(duel({ atk: 'MI', def: 'WA' }).back).toBe(4);
-    expect(duel({ atk: 'MI', def: 'WA', defBlocks: 2 }).back).toBe(3);
+    expect(duel('MI', 'HCH').back).toBe(3);
+    expect(duel('MI', 'HI').back).toBe(5);
+    expect(duel('MI', 'AX').back).toBe(3);
+    expect(duel('MI', 'WA').back).toBe(4);
+    expect(duel('MI', 'WA', { defBlocks: 2 }).back).toBe(3);
   });
 });
 
@@ -80,19 +36,19 @@ describe('elephant dice table (attack and battle back)', () => {
   ];
   for (const [t, dice] of table) {
     it(`elephant attacking ${t} rolls ${dice}`, () => {
-      expect(duel({ atk: 'EL', def: t }).attack).toBe(dice);
+      expect(duel('EL', t).attack).toBe(dice);
     });
     it(`elephant battling back against ${t} rolls ${dice}`, () => {
-      expect(duel({ atk: t, def: 'EL' }).back).toBe(dice);
+      expect(duel(t, 'EL').back).toBe(dice);
     });
   }
   it('elephant battle back ignores the attacker\'s bonus dice (full-strength warriors 4 -> elephant 3)', () => {
-    const r = duel({ atk: 'WA', def: 'EL' });
+    const r = duel('WA', 'EL');
     expect(r.attack).toBe(4);
     expect(r.back).toBe(3);
   });
   it('elephant battle back ignores Clash of Shields bonus of the attacker (HI 5+2 -> elephant 5)', () => {
-    const r = duel({ atk: 'HI', def: 'EL', card: 'clash' });
+    const r = duel('HI', 'EL', { card: 'clash' });
     expect(r.attack).toBe(7);
     expect(r.back).toBe(5);
   });
@@ -108,66 +64,66 @@ describe('elephant dice table (attack and battle back)', () => {
 
 describe('terrain caps in close combat', () => {
   it('defender in forest: max 2 both ways', () => {
-    expect(duel({ atk: 'HI', def: 'MI', defT: 'forest' })).toEqual({ attack: 2, back: 2 });
+    expect(duel('HI', 'MI', { defT: 'forest' })).toEqual({ attack: 2, back: 2 });
   });
   it('attacker in forest: max 2 both ways', () => {
-    expect(duel({ atk: 'HI', def: 'MI', atkT: 'forest' })).toEqual({ attack: 2, back: 2 });
+    expect(duel('HI', 'MI', { atkT: 'forest' })).toEqual({ attack: 2, back: 2 });
   });
   it('marsh (either hex): max 2', () => {
-    expect(duel({ atk: 'HI', def: 'MI', defT: 'marsh' })).toEqual({ attack: 2, back: 2 });
-    expect(duel({ atk: 'HC', def: 'HI', atkT: 'marsh' })).toEqual({ attack: 2, back: 2 });
+    expect(duel('HI', 'MI', { defT: 'marsh' })).toEqual({ attack: 2, back: 2 });
+    expect(duel('HC', 'HI', { atkT: 'marsh' })).toEqual({ attack: 2, back: 2 });
   });
   it('fordable river (either hex): max 2', () => {
-    expect(duel({ atk: 'HI', def: 'MI', defT: 'river', defFord: true })).toEqual({ attack: 2, back: 2 });
-    expect(duel({ atk: 'HI', def: 'MI', atkT: 'river', atkFord: true })).toEqual({ attack: 2, back: 2 });
+    expect(duel('HI', 'MI', { defT: 'river', defFord: true })).toEqual({ attack: 2, back: 2 });
+    expect(duel('HI', 'MI', { atkT: 'river', atkFord: true })).toEqual({ attack: 2, back: 2 });
   });
   it('broken ground (either hex): max 2 for foot and mounted', () => {
-    expect(duel({ atk: 'HI', def: 'MI', defT: 'broken' })).toEqual({ attack: 2, back: 2 });
-    expect(duel({ atk: 'HC', def: 'MI', atkT: 'broken' })).toEqual({ attack: 2, back: 2 });
+    expect(duel('HI', 'MI', { defT: 'broken' })).toEqual({ attack: 2, back: 2 });
+    expect(duel('HC', 'MI', { atkT: 'broken' })).toEqual({ attack: 2, back: 2 });
   });
   it('attacking uphill: max 2 for any unit; the defender battles back downhill (foot max 3)', () => {
-    expect(duel({ atk: 'HI', def: 'MI', defT: 'hill' })).toEqual({ attack: 2, back: 3 });
-    expect(duel({ atk: 'HC', def: 'HI', defT: 'hill' })).toEqual({ attack: 2, back: 3 });
+    expect(duel('HI', 'MI', { defT: 'hill' })).toEqual({ attack: 2, back: 3 });
+    expect(duel('HC', 'HI', { defT: 'hill' })).toEqual({ attack: 2, back: 3 });
   });
   it('mounted defender on a hill battles back downhill with max 2', () => {
-    expect(duel({ atk: 'HI', def: 'HC', defT: 'hill' })).toEqual({ attack: 2, back: 2 });
+    expect(duel('HI', 'HC', { defT: 'hill' })).toEqual({ attack: 2, back: 2 });
   });
   it('attacking downhill: foot max 3, mounted max 2; defender battles back uphill max 2', () => {
-    expect(duel({ atk: 'HI', def: 'MI', atkT: 'hill' })).toEqual({ attack: 3, back: 2 });
-    expect(duel({ atk: 'HC', def: 'MI', atkT: 'hill' })).toEqual({ attack: 2, back: 2 });
+    expect(duel('HI', 'MI', { atkT: 'hill' })).toEqual({ attack: 3, back: 2 });
+    expect(duel('HC', 'MI', { atkT: 'hill' })).toEqual({ attack: 2, back: 2 });
   });
   it('hill to hill: foot max 3, mounted max 2', () => {
-    expect(duel({ atk: 'HI', def: 'MI', atkT: 'hill', defT: 'hill' })).toEqual({ attack: 3, back: 3 });
-    expect(duel({ atk: 'HC', def: 'HI', atkT: 'hill', defT: 'hill' })).toEqual({ attack: 2, back: 3 });
+    expect(duel('HI', 'MI', { atkT: 'hill', defT: 'hill' })).toEqual({ attack: 3, back: 3 });
+    expect(duel('HC', 'HI', { atkT: 'hill', defT: 'hill' })).toEqual({ attack: 2, back: 3 });
   });
   it('a cap above the base dice changes nothing (light infantry downhill still 2)', () => {
-    expect(duel({ atk: 'LI', def: 'MI', atkT: 'hill' }).attack).toBe(2);
+    expect(duel('LI', 'MI', { atkT: 'hill' }).attack).toBe(2);
   });
   it('fortified camp: a unit on a camp rolls 1 fewer die (attacking and battling back)', () => {
-    expect(duel({ atk: 'HI', def: 'MI', atkT: 'camp' })).toEqual({ attack: 4, back: 4 });
-    expect(duel({ atk: 'MI', def: 'HI', defT: 'camp' })).toEqual({ attack: 4, back: 4 });
+    expect(duel('HI', 'MI', { atkT: 'camp' })).toEqual({ attack: 4, back: 4 });
+    expect(duel('MI', 'HI', { defT: 'camp' })).toEqual({ attack: 4, back: 4 });
   });
   it('camp penalty applies after the terrain cap (camp attacker into forest: 2-1 = 1)', () => {
-    expect(duel({ atk: 'HI', def: 'MI', atkT: 'camp', defT: 'forest' }).attack).toBe(1);
+    expect(duel('HI', 'MI', { atkT: 'camp', defT: 'forest' }).attack).toBe(1);
   });
 });
 
 describe('card bonuses are added after caps and only for the ordered attacker', () => {
   it('Clash of Shields: +2 on top of the forest cap (2+2 = 4); defender battles back without bonus', () => {
-    expect(duel({ atk: 'HI', def: 'MI', defT: 'forest', card: 'clash' })).toEqual({ attack: 4, back: 2 });
+    expect(duel('HI', 'MI', { defT: 'forest', card: 'clash' })).toEqual({ attack: 4, back: 2 });
   });
   it('Clash of Shields on open ground: HI 7', () => {
-    expect(duel({ atk: 'HI', def: 'MI', card: 'clash' }).attack).toBe(7);
+    expect(duel('HI', 'MI', { card: 'clash' }).attack).toBe(7);
   });
   it('Mounted Charge: +1 (HC 5 on open ground, 3 into forest)', () => {
-    expect(duel({ atk: 'HC', def: 'MI', card: 'mountedCharge' }).attack).toBe(5);
-    expect(duel({ atk: 'HC', def: 'MI', defT: 'forest', card: 'mountedCharge' }).attack).toBe(3);
+    expect(duel('HC', 'MI', { card: 'mountedCharge' }).attack).toBe(5);
+    expect(duel('HC', 'MI', { defT: 'forest', card: 'mountedCharge' }).attack).toBe(3);
   });
   it('Mounted Charge: elephant gets +1 over its table value', () => {
-    expect(duel({ atk: 'EL', def: 'MI', card: 'mountedCharge' }).attack).toBe(5);
+    expect(duel('EL', 'MI', { card: 'mountedCharge' }).attack).toBe(5);
   });
   it('camp then card bonus: HI on camp with Clash of Shields = 5-1+2 = 6', () => {
-    expect(duel({ atk: 'HI', def: 'MI', atkT: 'camp', card: 'clash' }).attack).toBe(6);
+    expect(duel('HI', 'MI', { atkT: 'camp', card: 'clash' }).attack).toBe(6);
   });
 });
 

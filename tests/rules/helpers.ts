@@ -1,8 +1,9 @@
 // Independent QA helpers for the rules suite (tests/rules). Uses only the public engine API.
+import { expect } from 'vitest';
 import {
-  CARD_LIST, GameDriver, createGame, forceDice, forcedDiceLeft, hexId,
+  CARD_LIST, GameDriver, UNIT_STATS, createGame, forceDice, forcedDiceLeft, hexId,
   type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameState, type ScenarioSetup, type Side, type TerrainSetup,
-  type Unit,
+  type TerrainType, type Unit, type UnitType,
 } from '../../src/engine';
 
 /** A scenario entry placed `at: [r, c]` instead of by `r` and `c`. */
@@ -181,4 +182,62 @@ export function passTurn(d: GameDriver, kind: CardKind = 'order2L') {
   if (d.pending?.kind === 'orders') must(d, { kind: 'orders', pieces: [] });
   while (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
   while (d.pending?.kind === 'battle') must(d, { kind: 'endBattle' });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// One close combat: a bottom attacker (u1) at (5,6) against a top defender (u2) at (4,6)
+
+/** A class face that scores against neither unit type (nor is a flag, sword or helmet): a sure miss between them. */
+export function miss(a: UnitType, b: UnitType): DieFace {
+  return (['light', 'medium', 'heavy'] as const).find((c) => c !== UNIT_STATS[a].cls && c !== UNIT_STATS[b].cls)!;
+}
+
+/** A `duel`: the card played (default `order4C`), the strengths at the start, the terrain under each unit. */
+export interface DuelOpts {
+  card?: CardKind;
+  atkBlocks?: number;
+  defBlocks?: number;
+  atkT?: TerrainType;
+  defT?: TerrainType;
+  atkFord?: boolean;
+  defFord?: boolean;
+}
+
+/** The attacker attacks the defender, which stands; every die misses. Returns the attack and battle-back dice. */
+export function duel(atk: UnitType, def: UnitType, o: DuelOpts = {}): { attack?: number; back?: number } {
+  const terrain: Pos['terrain'] = [];
+  if (o.atkT) terrain.push({ at: [5, 6], t: o.atkT, ford: o.atkFord });
+  if (o.defT) terrain.push({ at: [4, 6], t: o.defT, ford: o.defFord });
+  const s = build({
+    units: [
+      { side: 'bottom', type: atk, at: [5, 6], blocks: o.atkBlocks },
+      { side: 'top', type: def, at: [4, 6], blocks: o.defBlocks },
+    ],
+    terrain,
+  });
+  const card = o.card ?? 'order4C';
+  const d = play(s, card, card === 'clash' ? undefined : ['u1']);
+  if (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
+  expect(d.pending?.kind).toBe('battle');
+  ev(d);
+  forceDice(n(miss(atk, def), 30));
+  must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+  if (d.pending?.kind === 'defend') must(d, { kind: 'defend', choice: 'stand' });
+  const e = ev(d);
+  return { attack: combatDice(e, 'close'), back: combatDice(e, 'battleBack') };
+}
+
+/** The attacker declares the attack (`extra` adds to the position); returns the driver at the defend decision. */
+export function attackOn(atk: UnitType, def: UnitType, extra: Pos = {}): GameDriver {
+  const s = build({ ...extra, units: [{ side: 'bottom', type: atk, at: [5, 6] }, { side: 'top', type: def, at: [4, 6] }, ...(extra.units ?? [])] });
+  const d = toBattle(s, 'order4C', ['u1']);
+  forceDice(n(miss(atk, def), 40)); // if the attack resolves at once (no defend decision), every die misses
+  must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+  return d;
+}
+
+/** Whether the defender may evade the attack. */
+export function canEvade(atk: UnitType, def: UnitType): boolean {
+  const d = attackOn(atk, def);
+  return d.pending?.kind === 'defend' && d.pending.canEvade;
 }
