@@ -2,8 +2,8 @@
 import {
   CARD_DEFS, CARD_LIST, GameDriver, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, bannerTotal, cardKind, cloneState, createGame, freshSeed,
   heldBanners, isLeaderId, leaderById, orderDice, other, randomAnswer, rallyCandidates, unitAt, unitById,
-  type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameOptions, type GameState, type HexId, type QueuedEvent,
-  type RollPurpose, type Side,
+  type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameOptions, type GameState, type HexId, type Leader,
+  type QueuedEvent, type RollPurpose, type Side, type Unit,
 } from '../../engine';
 import { SCENARIOS, scenarioById } from '../../scenarios';
 import type { Opponent } from './opponent';
@@ -83,7 +83,6 @@ export interface CardShow {
   id: number;
   kind: CardKind;
   side: Side;
-  mirrored: boolean;
 }
 
 export interface ViewState {
@@ -103,7 +102,6 @@ export interface ViewState {
   over: { winner: Side | 'draw'; reason: string } | null;
   canUndo: boolean;
   speed: number; // 1 = normal, 2 = fast, 0.6 = slow
-  lastCombatOdds: string | null;
   /** Centre-board announcement: 'turn' = "Your turn"; 'notice' = a longer message (a lost command card). */
   toast: { id: number; text: string; kind?: 'turn' | 'notice' } | null;
   /** Dice orders (310, §18.10): the current or last dice-order turn (the roll and what its dice were used for). */
@@ -224,7 +222,6 @@ export class GameController {
       over: null,
       canUndo: false,
       speed,
-      lastCombatOdds: null,
       toast: null,
       diceTurn: null,
       orderShow: null,
@@ -475,19 +472,25 @@ export class GameController {
     this.skipAnim = false;
   }
 
+  /**
+   * Leader or unit `id` of `s`, else as the board last showed it: a piece the events being played have removed from `s` is
+   * still on the display.
+   */
+  private piece(id: string, s: GameState): Leader | Unit | undefined {
+    const shown = this.view.display;
+    if (isLeaderId(id)) return leaderById(s, id) ?? shown.leaders.find((x) => x.id === id);
+    return unitById(s, id) ?? shown.units.find((x) => x.id === id);
+  }
+
+  /** "Roman Heavy Infantry", a leader's name ("Leader" when he has none), or "unit"/"Leader" for a piece not found. */
   private name(id: string, s: GameState): string {
-    if (id.startsWith('L')) {
-      const l = leaderById(s, id) ?? this.view.display.leaders.find((x) => x.id === id);
-      return l ? (l.name || 'Leader') : 'Leader';
-    }
-    const u = unitById(s, id) ?? this.view.display.units.find((x) => x.id === id);
-    if (!u) return 'unit';
-    return `${s.players[u.side].army} ${UNIT_STATS[u.type].name}`;
+    const p = this.piece(id, s);
+    if (!p) return isLeaderId(id) ? 'Leader' : 'unit';
+    return 'type' in p ? `${s.players[p.side].army} ${UNIT_STATS[p.type].name}` : p.name || 'Leader';
   }
 
   private hexOf(id: string, s: GameState): HexId {
-    if (id.startsWith('L')) return (leaderById(s, id) ?? this.view.display.leaders.find((x) => x.id === id))?.hex ?? OFF_BOARD;
-    return (unitById(s, id) ?? this.view.display.units.find((x) => x.id === id))?.hex ?? OFF_BOARD;
+    return this.piece(id, s)?.hex ?? OFF_BOARD;
   }
 
   /**
@@ -602,7 +605,7 @@ export class GameController {
         this.addLog({ text: `${after.players[e.side].commander} plays ${def.title}${eff}.`, side: e.side, kind: 'card' });
         sfx.card();
         if (e.side !== human) {
-          this.set({ display: after, cardShow: { id: seq++, kind: e.kind, side: e.side, mirrored: false } });
+          this.set({ display: after, cardShow: { id: seq++, kind: e.kind, side: e.side } });
           await sleep(this.dur(1600));
           this.set({ cardShow: null });
         } else this.set({ display: after });
@@ -848,8 +851,7 @@ export class GameController {
   }
 
   private sideOf(id: string, s: GameState): Side | undefined {
-    if (id.startsWith('L')) return (leaderById(s, id) ?? this.view.display.leaders.find((x) => x.id === id))?.side;
-    return (unitById(s, id) ?? this.view.display.units.find((x) => x.id === id))?.side;
+    return this.piece(id, s)?.side;
   }
 
   private rollTitle(p: RollPurpose, by: string | null, against: string | null, s: GameState): string {
