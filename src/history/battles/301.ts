@@ -1,0 +1,132 @@
+// 301 Colline Gate, 82 BC. Top: Samnites, Lucanians and Marians (Pontius Telesinus); bottom: Sullans (Sulla).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '301',
+  context: {
+    war: "Sulla's civil war, 83–82 BC",
+    text: [
+      'In 83 BC Lucius Cornelius Sulla came back from the war against Mithridates and landed at Brundisium to overthrow the Marian government in Rome. By the autumn of 82 BC he had beaten the younger Marius at Sacriportus and shut him up in Praeneste, while his generals broke the Marian armies in the north. The consul Carbo fled to Africa.',
+      'The Samnites under Pontius Telesinus and the Lucanians under Marcus Lamponius, joined by the Marian generals Carrinas, Censorinus and Damasippus, failed to break through to Praeneste. They then marched by night on Rome, which had almost no garrison, and camped less than two kilometres from the Colline Gate. At dawn they cut down a band of young nobles who rode out against them. Sulla sent 700 horse ahead and followed at speed, arriving about midday on 1 November.',
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Samnites, Lucanians and Marians',
+      commanders: ['Pontius Telesinus (Samnite; killed)', 'Marcus Lamponius (Lucanian)', 'Gaius Carrinas (Marian general)', 'Gaius Marcius Censorinus (Marian general)'],
+      strength: 'c. 40,000 (Velleius); Appian gives 70,000 for the earlier Samnite and Lucanian relief army',
+      forces: 'Samnite and Lucanian levies, the last Italians still in arms against Rome, with the remnants of the Marian legions.',
+    },
+    bottom: {
+      name: "Sulla's army",
+      commanders: ['Lucius Cornelius Sulla (left wing)', 'Marcus Licinius Crassus (right wing)', 'Balbus (700 horse sent ahead)', 'Dolabella and Torquatus (senior officers)'],
+      strength: 'Not recorded; Sulla brought his whole army by forced march from around Praeneste',
+      forces: 'Legions brought back from the war against Mithridates and others raised in Italy, tired from a forced march.',
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'road', points: [[360, 505], [372, 430], [430, 330], [560, 210], [720, 90], [860, -40]] },
+      { kind: 'hills', points: [[-60, 492], [100, 492], [200, 492], [290, 492], [294, 508], [290, 524], [200, 524], [100, 524], [-60, 524]] },
+      { kind: 'hills', points: [[430, 492], [550, 492], [700, 492], [856, 492], [872, 540], [900, 650], [868, 650], [842, 548], [830, 524], [700, 524], [550, 524], [430, 524], [426, 508]] },
+      { kind: 'camp', at: [560, 52], size: 32, label: 'Samnite camp' },
+      { kind: 'label', at: [360, 552], text: 'Colline Gate' },
+      { kind: 'label', at: [640, 556], text: 'Walls of Rome' },
+      { kind: 'label', at: [150, 562], text: 'Rome' },
+      { kind: 'label', at: [905, 128], text: 'To Antemnae' },
+    ],
+    units: [
+      { id: 't1', side: 'top', kind: 'foot', w: 100, h: 30 },
+      { id: 't2', side: 'top', kind: 'foot', w: 100, h: 30 },
+      { id: 't3', side: 'top', kind: 'foot', label: "Telesinus' army", w: 100, h: 30 },
+      { id: 't4', side: 'top', kind: 'foot', w: 100, h: 30 },
+      { id: 't5', side: 'top', kind: 'foot', w: 100, h: 30 },
+      { id: 't6', side: 'top', kind: 'foot', w: 100, h: 30 },
+      { id: 'L1', side: 'bottom', kind: 'foot', label: 'Sulla', w: 100, h: 30 },
+      { id: 'L2', side: 'bottom', kind: 'foot', w: 100, h: 30 },
+      { id: 'C', side: 'bottom', kind: 'foot', w: 100, h: 30 },
+      { id: 'R1', side: 'bottom', kind: 'foot', label: 'Crassus', w: 100, h: 30 },
+      { id: 'R2', side: 'bottom', kind: 'foot', w: 100, h: 30 },
+    ],
+    phases: [
+      {
+        title: 'Sulla attacks late',
+        caption: "Telesinus' Samnites, Lucanians and Marians stand before the Colline Gate. Sulla's officers beg him to rest his exhausted men, but after a quick meal he orders the attack late in the afternoon, with Crassus commanding the right.",
+        at: {
+          t1: [170, 200],
+          t2: [290, 200],
+          t3: [410, 200],
+          t4: [530, 200],
+          t5: [650, 200],
+          t6: [770, 200],
+          L1: [190, 400],
+          L2: [320, 400],
+          C: [450, 400],
+          R1: [610, 400],
+          R2: [740, 400],
+        },
+      },
+      {
+        title: "Sulla's left gives way",
+        caption: 'Crassus breaks the enemy facing him. Sulla rides to his hard-pressed left but cannot hold it, and two spears narrowly miss him. Appian says the fugitives ran for the gate, where the defenders dropped the portcullis, crushing many soldiers and senators.',
+        at: {
+          t1: [175, 350],
+          t2: [300, 360],
+          L1: [170, 455],
+          L2: [300, 458],
+          R1: [620, 270],
+          R2: [750, 270],
+          t5: [655, 135],
+          t6: [785, 135],
+        },
+        broken: ['t5', 't6'],
+        arrows: [
+          { side: 'top', points: [[175, 222], [175, 328]] },
+          { side: 'top', points: [[300, 222], [300, 338]] },
+          { side: 'bottom', points: [[330, 474], [350, 500], [362, 542]], style: 'rout' },
+          { side: 'bottom', points: [[620, 392], [620, 332]] },
+          { side: 'bottom', points: [[750, 392], [750, 332]] },
+        ],
+      },
+      {
+        title: 'Fighting into the night',
+        caption: "Crassus chases the beaten wing to Antemnae, north of the city. At the walls, Appian says, Sulla's men turn and fight on into the night until the enemy breaks. Telesinus is found dying next day, and his camp is taken.",
+        at: {
+          L1: [180, 372],
+          L2: [310, 376],
+          C: [450, 372],
+          t1: [175, 258],
+          t2: [300, 264],
+          t3: [420, 180],
+          t4: [545, 172],
+        },
+        broken: ['t1', 't2', 't3', 't4'],
+        gone: ['R1', 'R2', 't5', 't6'],
+        arrows: [
+          { side: 'bottom', points: [[650, 256], [760, 166], [868, 76]] },
+          { side: 'top', points: [[820, 130], [905, 58], [990, 4]], style: 'rout' },
+          { side: 'bottom', points: [[134, 442], [146, 292]] },
+          { side: 'bottom', points: [[310, 444], [310, 296]] },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'bottom',
+    result: 'Decisive Sullan victory',
+    losses: "Some 50,000 dead on both sides by Appian's estimate; Orosius has 80,000 of the enemy laid low and 12,000 surrendering. Thousands of prisoners, 6,000 by Plutarch and over 8,000 by Appian, were massacred afterwards.",
+    text: [
+      "Plutarch says Sulla took refuge in his camp and learned only late at night, when messengers came from Crassus asking for supper, that the battle was won. Carrinas and Censorinus were caught and executed. Their heads and Telesinus' were shown to the defenders of Praeneste, which surrendered; the younger Marius died in its tunnels.",
+      'The prisoners were butchered within earshot of the Senate, which Sulla was addressing in the temple of Bellona. Then came the proscriptions, lists of enemies whom anyone might kill for a reward, and Sulla had himself made dictator to remake the state. Samnium was laid waste. Marian resistance went on abroad, above all in Spain under Sertorius.',
+    ],
+  },
+  sources: [
+    'Appian, Civil Wars 1.90–94',
+    'Plutarch, Life of Sulla 29–30',
+    'Velleius Paterculus, Roman History 2.27',
+    'Orosius, Histories against the Pagans 5.20–21',
+    'Arthur Keaveney, Sulla: The Last Republican (1982)',
+  ],
+};
+
+export default history;

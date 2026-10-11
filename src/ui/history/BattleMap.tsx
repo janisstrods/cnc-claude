@@ -61,11 +61,19 @@ export function smoothPath(pts: Pt[], closed = false): string {
   return closed ? `${d} Z` : d;
 }
 
-function luminance(hex: string): number {
+/** Relative luminance (0 dark .. 1 light) of a #rrggbb colour. */
+export function luminance(hex: string): number {
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
   if (!m) return 0;
   const [r, g, b] = [m[1], m[2], m[3]].map((x) => parseInt(x, 16) / 255);
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** A #rrggbb colour scaled towards black by factor f (0..1). */
+export function darken(hex: string, f: number): string {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return hex;
+  return `#${[m[1], m[2], m[3]].map((x) => Math.round(parseInt(x, 16) * f).toString(16).padStart(2, '0')).join('')}`;
 }
 
 /** The symbol inside a unit block, centred on 0,0 in a w × h block. */

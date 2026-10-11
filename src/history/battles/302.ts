@@ -1,0 +1,128 @@
+// 302 Baetis River, 80 BC. Top: Sertorians (Quintus Sertorius); bottom: Sullan army of Further Spain (Lucius Fufidius).
+import type { BattleHistory } from '../types';
+
+const history: BattleHistory = {
+  id: '302',
+  context: {
+    war: 'Sertorian War, 80–72 BC',
+    text: [
+      "Quintus Sertorius, a veteran officer who had sided with Marius and Cinna, went out to govern Spain for the Marian regime in 83/82 BC. After Sulla's victory a Sullan army drove him out. He took to the sea with Cilician pirates, then joined a civil war in Mauretania, where he beat a force sent by Sulla and took Tingis (Tangier).",
+      'In 80 BC the Lusitanians, fearful of the Roman governors, invited him to lead them. He slipped across the strait by night; Plutarch says he also beat a Sullan squadron under Cotta near Mellaria. Lucius Fufidius, the Sullan governor of Further Spain, marched against him, and they met on the Baetis (Guadalquivir). Where on the river they fought is unknown: the battle is known only from a line of Plutarch and, probably, a fragment of Sallust.',
+    ],
+  },
+  sides: {
+    top: {
+      name: 'Sertorians',
+      commanders: ['Quintus Sertorius'],
+      strength: 'c. 8,000 at the outset (Plutarch): 2,600 Romans, 700 Libyans, 4,000 Lusitanian targeteers, 700 horse',
+      forces: 'Men Sertorius called Romans, a mixed band of Libyans from Mauretania, Lusitanian foot with light shields, and horsemen.',
+    },
+    bottom: {
+      name: 'Sullan army of Further Spain',
+      commanders: ['Lucius Fufidius (governor of Further Spain)'],
+      strength: 'Not recorded; Sallust speaks of his legions',
+      forces: 'Roman legions of the province. Fufidius was probably the former chief centurion whom Sulla had raised to the Senate.',
+    },
+  },
+  map: {
+    terrain: [
+      { kind: 'woods', points: [[80, 412], [140, 408], [150, 450], [110, 470], [72, 450]] },
+      { kind: 'woods', points: [[200, 482], [262, 478], [270, 522], [226, 540], [192, 520]] },
+      {
+        kind: 'hills',
+        points: [
+          [487, -60], [457, 21], [390, 88], [302, 144], [225, 183], [177, 250], [166, 338], [157, 419], [108, 483], [25, 523], [-60, 545],
+          [-60, 510], [12, 489], [86, 454], [124, 405], [130, 334], [143, 237], [202, 155], [284, 113], [368, 59], [427, 1], [457, -60],
+        ],
+      },
+      { kind: 'river', points: [[500, -50], [470, 30], [400, 100], [310, 158], [235, 195], [192, 255], [182, 340], [172, 425], [118, 495], [30, 538], [-60, 560], [-60, 563], [-60, 566]], width: 22, label: 'Baetis' },
+      { kind: 'road', points: [[250, 40], [310, 158], [400, 290], [520, 450], [600, 640]] },
+      { kind: 'label', at: [298, 28], text: 'Steep banks' },
+      { kind: 'label', at: [395, 175], text: 'Ford' },
+    ],
+    units: [
+      { id: 'lus1', side: 'top', kind: 'warband', label: 'Lusitanians', w: 100, h: 28 },
+      { id: 'sr', side: 'top', kind: 'foot', label: "Sertorius' Romans", w: 90, h: 26 },
+      { id: 'lus2', side: 'top', kind: 'warband', w: 100, h: 28 },
+      { id: 'lib', side: 'top', kind: 'foot', label: 'Libyans', w: 60, h: 22 },
+      { id: 'hor', side: 'top', kind: 'lighthorse', label: 'Sertorian horse', w: 56, h: 16 },
+      { id: 'f1', side: 'bottom', kind: 'foot', w: 100, h: 28 },
+      { id: 'f2', side: 'bottom', kind: 'foot', w: 100, h: 28 },
+      { id: 'f3', side: 'bottom', kind: 'foot', w: 100, h: 28 },
+      { id: 'f4', side: 'bottom', kind: 'foot', label: "Fufidius' legions", w: 100, h: 28 },
+    ],
+    phases: [
+      {
+        title: 'Fufidius reaches the Baetis',
+        caption: 'Sertorius apparently holds the far bank. A fragment of Sallust, probably about this battle, says Fufidius arrived with his legions to find steep banks and a single ford awkward to fight in: every advantage lay with the enemy.',
+        at: {
+          lus1: [380, 52, -35],
+          sr: [285, 92, -32],
+          lus2: [190, 160, -40],
+          lib: [112, 245, -65],
+          hor: [78, 362, -80],
+          f1: [330, 300, -35],
+          f2: [430, 235, -35],
+          f3: [530, 170, -35],
+          f4: [490, 320, -35],
+        },
+        arrows: [{ side: 'bottom', points: [[720, 600], [640, 470], [570, 380]] }],
+      },
+      {
+        title: 'The fight at the ford',
+        caption: "Fufidius seems to have attacked regardless. The map shows his legions forcing the ford against Sertorius' men on the far bank; how the fighting actually went is not recorded.",
+        at: {
+          f1: [302, 170, -35],
+          f2: [374, 246, -35],
+          f3: [490, 212, -35],
+          f4: [456, 312, -35],
+          sr: [262, 104, -32],
+          lus1: [372, 92, -35],
+          lus2: [205, 176, -40],
+        },
+        arrows: [
+          { side: 'bottom', points: [[318, 314], [298, 262], [298, 214]] },
+        ],
+      },
+      {
+        title: 'Fufidius routed',
+        caption: 'Plutarch says only that Sertorius routed Fufidius on the banks of the Baetis and killed 2,000 Romans. The sources say nothing more; the map is a reconstruction.',
+        at: {
+          f1: [430, 320, -35],
+          f2: [535, 262, -35],
+          f3: [640, 210, -35],
+          f4: [560, 395, -35],
+          sr: [340, 240, -35],
+          lus1: [455, 180, -35],
+          lus2: [262, 300, -40],
+        },
+        broken: ['f1', 'f2', 'f3', 'f4'],
+        arrows: [
+          { side: 'top', points: [[275, 110], [306, 160], [326, 212]] },
+          { side: 'top', points: [[212, 190], [262, 228], [268, 270]] },
+          { side: 'top', points: [[385, 100], [430, 135], [446, 156]] },
+          { side: 'bottom', points: [[580, 290], [690, 350], [790, 400]], style: 'rout' },
+          { side: 'bottom', points: [[600, 420], [680, 500], [740, 590]], style: 'rout' },
+          { side: 'bottom', points: [[680, 230], [800, 270], [900, 300]], style: 'rout' },
+        ],
+      },
+    ],
+  },
+  outcome: {
+    winner: 'top',
+    result: 'Sertorian victory',
+    losses: 'Sullans: 2,000 Roman dead (Plutarch). Sertorian losses unrecorded.',
+    text: [
+      "The victory made Sertorius master of much of Further Spain and drew more Spanish peoples to his side. Sulla's regime answered by sending Quintus Caecilius Metellus Pius, consul in 80 BC, to the province in 79 BC, while Sertorius' quaestor Hirtuleius defeated Domitius Calvinus, governor of Hither Spain.",
+      'Sertorius set up a rival Roman state in exile, with its own senate, and trained his Spanish allies in Roman ways. Avoiding pitched battle, he wore Metellus down with raids and ambushes, and from 76 BC fought Pompey too, beginning at Lauron. The war ended only when his own officers murdered him in 73 or 72 BC.',
+    ],
+  },
+  sources: [
+    'Plutarch, Life of Sertorius 7–12',
+    'Sallust, Histories, fragments 1.104 and 1.108 Maurenbrecher (1.93, 1.95 McGushin)',
+    'Philip O. Spann, Quintus Sertorius and the Legacy of Sulla (1987)',
+    "C. F. Konrad, Plutarch's Sertorius: A Historical Commentary (1994)",
+  ],
+};
+
+export default history;
