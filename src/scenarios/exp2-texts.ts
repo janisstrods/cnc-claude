@@ -1,7 +1,7 @@
 // Briefing texts of the 23 Expansion #2 battles (Rome & the Barbarians, 201-223): original summaries of the
 // historical battles and plain-language paraphrases of their special rules. The setups are in data/201.json-223.json.
 
-import type { ScenarioTexts } from './exp1-texts';
+import type { ScenarioTexts } from './base-texts';
 import { CAESAR, FORTIFIED_CAMPS, RAMPARTS } from './rule-texts';
 
 /** The Marian legions of the Roman side (rules-reference §18.2). */
@@ -9,7 +9,7 @@ const MARIAN_LEGIONS = 'Marian legions: Roman medium and heavy infantry may thro
 /** Spartacus' leader ability (§18.3). */
 const SPARTACUS = 'Spartacus: while he is on the board, the Slaves roll Command + 2 dice when they play I Am Spartacus (also when a Counter Attack copies it).';
 
-export const EXTRA_EXP2: Record<string, ScenarioTexts> = {
+export const EXP2_TEXTS: Record<string, ScenarioTexts> = {
   '201': {
     blurb: 'In 225 BC a great Gallic host of Insubres, Boii and mercenary Gaesatae, led by the kings Aneroestes and Concolitanus, crosses the Apennines and floods into Etruria. A Roman army under a praetor, shadowing them, is drawn into a battle on bad terms and badly beaten; the survivors cling to a hillside. The Gauls, heavy with plunder, then turn for home along the coast, straight towards the consular armies gathering to cut them off.',
     specialText: [

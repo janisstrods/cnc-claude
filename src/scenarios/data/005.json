@@ -18,6 +18,9 @@
   },
   "first": "bottom",
   "banners": 7,
+  "rules": [
+    "magoAmbush"
+  ],
   "terrain": [
     {
       "r": 7,

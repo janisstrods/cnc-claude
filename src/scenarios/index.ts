@@ -1,23 +1,23 @@
 // The 15 base-game battles (001-015), the 24 battles of Expansion #1, Greece & Eastern Kingdoms (101-124), the 23
 // battles of Expansion #2, Rome & the Barbarians (201-223), and the 19 battles of Expansion #3, The Roman Civil Wars
-// (301-319). Setups are transcribed data (src/scenarios/data); texts are original summaries (base game below, Expansion #1
-// in exp1-texts.ts, Expansion #2 in exp2-texts.ts, Expansion #3 in exp3-texts.ts).
-import { ELITES } from '../engine/elites';
-import { hexId, inSection, onBoard } from '../engine/hex';
+// (301-319). Setups, rules included, are transcribed data (src/scenarios/data); texts are original summaries, one module
+// per box (base-texts.ts, exp1-texts.ts, exp2-texts.ts, exp3-texts.ts).
 import type { GameOptions, ObjectiveSetup, ScenarioSetup, SideSetup, TerrainSetup } from '../engine/setup';
-import { COLS, type LeaderTrait, type Side, type SpecialRuleId } from '../engine/types';
-import { EXTRA_EXP1, type ScenarioTexts } from './exp1-texts';
-import { EXTRA_EXP2 } from './exp2-texts';
-import { EXTRA_EXP3 } from './exp3-texts';
+import type { LeaderTrait, Side, SpecialRuleId } from '../engine/types';
+import { BASE_TEXTS, type ScenarioTexts } from './base-texts';
+import { EXP1_TEXTS } from './exp1-texts';
+import { EXP2_TEXTS } from './exp2-texts';
+import { EXP3_TEXTS } from './exp3-texts';
 
 /** Which box a battle comes from. */
 export type Expansion = 'base' | 'exp1' | 'exp2' | 'exp3';
 
 /**
- * A scenario file in src/scenarios/data. Base-game files omit `expansion` (and keep their special rules and objectives in
- * `EXTRA` below); Expansion #1, #2 and #3 files carry their rules, options, objectives, legions, commands and leaders to
- * place themselves (Expansion #3 also its sides' dice orders, forced placements, immobile units and terrain hints). Other fields of a file (the base files' copied rule text, roster checks) are ignored, except the retired
- * `campCapture` (now an objective), which is an error.
+ * A scenario file in src/scenarios/data: the whole setup, rules included (rules, options, objectives, legions, commands,
+ * leaders to place, the starting Command and hand growth, the sacred leader, elites; Expansion #3 also its sides' dice
+ * orders, forced placements, immobile units and terrain hints). Base-game files omit `expansion`. Other fields of a file
+ * (the base files' copied rule text, roster checks) are ignored, except the retired `campCapture` (now an objective),
+ * which is an error.
  */
 export interface ScenarioJson {
   id: string;
@@ -42,8 +42,15 @@ export interface ScenarioJson {
   objectives?: ObjectiveSetup[];
   /** Legion rule per side (§18.2): Marius for the Romans of 206-223 and both armies of 301-305, Julian in 306-319 but 310. */
   legions?: ScenarioSetup['legions'];
-  /** Hand growth of one side (313 Brindisi Raid, §18.8): it draws 2 and grows by 1 while its Command is below `to`. */
+  /** Starting Command of a side when not its `cards` (006 Trasimenus: the Romans start with 2 of their 4). */
+  initialCommand?: ScenarioSetup['initialCommand'];
+  /**
+   * Hand growth of one side (006 Trasimenus, 313 Brindisi Raid, §18.8): it draws 2 and grows by 1 while its Command is
+   * below `to`.
+   */
   handGrowth?: ScenarioSetup['handGrowth'];
+  /** The leader whose loss loses the battle (010 Castulo's Publius Scipio). */
+  sacredLeader?: ScenarioSetup['sacredLeader'];
   /** Separate commands (210 Picenum, §18.5); units and leaders name theirs with `command`. */
   commands?: ScenarioSetup['commands'];
   /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs. */
@@ -80,127 +87,8 @@ export interface ScenarioInfo {
 
 const files = import.meta.glob<ScenarioJson>('./data/*.json', { eager: true, import: 'default' });
 
-/** Texts and base-game rule data of a base battle (expansion battles keep their rules in the JSON). */
-interface Extra extends ScenarioTexts {
-  rules?: SpecialRuleId[];
-  objectives?: ObjectiveSetup[];
-  handGrowth?: ScenarioSetup['handGrowth'];
-  patch?: (s: ScenarioSetup) => void;
-}
-
-/** 010 Castulo: the Carthaginian (top) baseline hexes in the Roman (bottom) centre and right sections. */
-const CASTULO_EXITS: [number, number][] = [];
-for (let c = 0; c < COLS; c++) {
-  if (onBoard(0, c) && (inSection(hexId(0, c), 'bottom', 'center') || inSection(hexId(0, c), 'bottom', 'right'))) CASTULO_EXITS.push([0, c]);
-}
-
-const EXTRA: Record<string, Extra> = {
-  '001': {
-    blurb: "Himilco's Carthaginians besiege Akragas on Sicily's southern coast. Daphnaeus marches a Syracusan relief army to break the siege and offers battle beneath the city walls. The field is open and the armies are small: an ideal first battle.",
-    hint: 'Introductory — open ground, small armies.',
-  },
-  '002': {
-    blurb: "Timoleon's outnumbered Greeks catch a great Carthaginian army as it fords the Crimissos river. Carthage's elite Sacred Band, citizens of the noblest families, must hold while the rest of the host struggles across.",
-    specialText: [
-      'The Crimissos can only be forded at its five bends (shallow crossings); other river hexes are impassable.',
-      'The Carthaginian Sacred Band (marked with a gold standard) scores a hit with every helmet in close combat and may ignore one flag.',
-    ],
-    hint: 'River crossing, elite Sacred Band.',
-    patch: (s) => {
-      // The Sacred Band is the Carthaginian heavy infantry at r3 c2; the ELITES type list guards against another unit type there.
-      const sb = s.units.find((u) => u.side === 'top' && u.r === 3 && u.c === 2 && ELITES.carthSacredBand.types.includes(u.type));
-      if (sb) sb.elite = 'carthSacredBand';
-    },
-  },
-  '003': {
-    blurb: "Regulus has invaded Africa and Carthage turns to a Spartan mercenary, Xanthippus. On open ground he unleashes a screen of war elephants against the Roman legions while his superior cavalry sweeps the wings.",
-    hint: 'Elephants vs legions on open ground.',
-  },
-  '004': {
-    blurb: "Hannibal has crossed the Alps. Near the Ticinus, his Numidian and Spanish horse collide with Publius Scipio's cavalry screen in a swirling mounted clash; the consul himself is wounded.",
-    specialText: ['The Ticinus is not fordable.'],
-    hint: 'All-cavalry skirmish.',
-  },
-  '005': {
-    blurb: "Sempronius drives his cold, hungry legions across the icy Trebbia to attack Hannibal — straight past a ravine where Mago lies hidden with picked troops.",
-    specialText: [
-      'The Trebbia is fordable everywhere.',
-      "Mago's ambush (1 medium cavalry, 2 warriors and Mago) waits off the board. After their first turn, the Carthaginians may play a Leadership card to bring the force onto the Roman baseline in that card's section (any section for Leadership Any Section). Entering counts as the first hex of movement.",
-    ],
-    rules: ['magoAmbush'],
-    hint: 'Hidden ambush behind Roman lines.',
-  },
-  '006': {
-    blurb: "Flaminius marches his column along the shore of Lake Trasimenus in the morning mist. Hannibal's army waits on the hills above, and the trap is sprung before the Romans can form line.",
-    specialText: [
-      'Lake Trasimenus and the steep hills are impassable.',
-      'The Roman column is caught unprepared: the Romans start with 2 command cards and draw 2 cards after each of their first two turns, growing to a hand of 4.',
-    ],
-    handGrowth: { side: 'bottom', to: 4 }, // §18.8; the patch below sets the starting Command of 2
-    hint: 'Ambush — the Romans start disorganised.',
-    patch: (s) => {
-      s.initialCommand = { bottom: 2 };
-      if (!s.leaders.some((l) => l.side === 'bottom' && l.r === 8 && l.c === 9)) {
-        s.leaders.push({ side: 'bottom', name: 'Legate', r: 8, c: 9 });
-      }
-    },
-  },
-  '007': {
-    blurb: "Varro packs eight legions into a deep, narrow mass and drives at the Carthaginian centre. Hannibal's Gauls and Spaniards give ground while his African veterans and cavalry wait on the wings for the double envelopment.",
-    hint: 'The classic encirclement.',
-  },
-  '008': {
-    blurb: "On the Ebro, the Scipio brothers meet Hasdrubal Barca. Hasdrubal's Spanish centre is weak and his elephants few; if the legions break through, Carthage's hold on Spain is shaken.",
-    hint: 'Roman legions vs a thin Carthaginian line.',
-  },
-  '009': {
-    blurb: "Tiberius Gracchus leads legions of freed slave-volunteers against Hanno near Beneventum, promising liberty to every man who brings back an enemy head.",
-    specialText: [
-      'The Calor river is not fordable.',
-      'When the Romans capture their 3rd banner they immediately draw 2 cards and hold 6 command cards for the rest of the battle.',
-    ],
-    rules: ['beneventumHand'],
-    hint: 'Roman command grows as they win.',
-  },
-  '010': {
-    blurb: "Publius Scipio, deep in Spain with his army divided, is caught by Hasdrubal Gisgo, Mago and the Numidian prince Masinissa near Castulo. His only hope is to cut through before he is surrounded.",
-    specialText: [
-      'If Publius Scipio is killed, Carthage wins immediately.',
-      "A Roman unit that exits the battlefield over the Carthaginian baseline from a centre or Roman-right hex scores a banner and is removed.",
-    ],
-    objectives: [{ kind: 'exit', side: 'bottom', hexes: CASTULO_EXITS }],
-    hint: 'Break out or die; protect Scipio.',
-    patch: (s) => {
-      s.sacredLeader = { side: 'bottom', name: 'Scipio' };
-    },
-  },
-  '011': {
-    blurb: "Hasdrubal Barca holds a strong ridge at Baecula, his camps behind it. The young Scipio pins him with light troops and swings his legions around both flanks.",
-    specialText: ['A Roman unit that ends its move in a Carthaginian camp hex gains a banner (each camp only once).'],
-    // every camp on the board is Carthaginian; the Romans (bottom) capture them
-    objectives: [{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }],
-    hint: 'Assault the ridge and the camps.',
-  },
-  '012': {
-    blurb: "Hasdrubal has crossed the Alps to join his brother, but the consul Nero has secretly force-marched north. Trapped against the Metaurus, the Carthaginian army must fight two consular armies at once.",
-    specialText: ['Both streams are fordable.'],
-    hint: 'Rough terrain, two streams.',
-  },
-  '013': {
-    blurb: "At Ilipa Scipio reverses his usual deployment, placing his Spanish allies in the centre and his legions on the wings — then strikes the Carthaginian flanks before Hasdrubal Gisgo can react.",
-    hint: 'Large open battle, elephants.',
-  },
-  '014': {
-    blurb: "After burning the Carthaginian camps by night, Scipio meets the rebuilt army of Hasdrubal Gisgo and Syphax on the Great Plains. His veteran legions and Masinissa's horse face fresh Celtiberian mercenaries.",
-    hint: 'Veterans vs mercenaries.',
-  },
-  '015': {
-    blurb: "The decisive battle of the Second Punic War. Hannibal's eighty elephants open the attack, but Scipio has drawn up his maniples in lanes to let them pass, and Masinissa's Numidians now ride for Rome.",
-    hint: 'The finale — elephants, three lines.',
-  },
-};
-
-const EXPANSIONS: Expansion[] = ['base', 'exp1', 'exp2', 'exp3'];
+/** The briefing texts of each box, by battle id. */
+const TEXTS: Record<Expansion, Record<string, ScenarioTexts>> = { base: BASE_TEXTS, exp1: EXP1_TEXTS, exp2: EXP2_TEXTS, exp3: EXP3_TEXTS };
 
 const copyLeader = <T extends { traits?: LeaderTrait[] }>(l: T): T => (l.traits ? { ...l, traits: [...l.traits] } : { ...l });
 
@@ -236,18 +124,11 @@ function copyObjective(o: ObjectiveSetup): ObjectiveSetup {
 /** A list of `[r, c]` hexes copied pair by pair (anything else is left for the engine to reject). */
 const copyHexes = <T>(v: T): T => (Array.isArray(v) ? (v.map((x: unknown) => (Array.isArray(x) ? [...x] : x)) as T) : v);
 
-/** One value given by the JSON or by `EXTRA`, never both. */
-function oneSource<T>(id: string, field: string, json: T | undefined, extra: T | undefined): T | undefined {
-  if (json !== undefined && extra !== undefined) throw new Error(`${field} is given twice, in the JSON and in EXTRA (${id})`);
-  return json ?? extra;
-}
-
 /** Build a scenario from its JSON data and texts. The setup is a copy: nothing in it shares the JSON's objects. */
 export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   const expansion = j.expansion ?? 'base';
-  if (!EXPANSIONS.includes(expansion)) throw new Error(`unknown expansion ${String(j.expansion)} (${j.id})`);
-  const ex: Extra | undefined = EXTRA[j.id];
-  const texts: ScenarioTexts | undefined = ex ?? EXTRA_EXP1[j.id] ?? EXTRA_EXP2[j.id] ?? EXTRA_EXP3[j.id];
+  if (!Object.prototype.hasOwnProperty.call(TEXTS, expansion)) throw new Error(`unknown expansion ${String(j.expansion)} (${j.id})`);
+  const texts: ScenarioTexts | undefined = TEXTS[expansion][j.id];
   const setup: ScenarioSetup = {
     id: j.id,
     name: j.name,
@@ -260,11 +141,10 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
     leaders: j.leaders.map(copyLeader),
     reserves: j.reserves.map((u) => ({ ...u })),
     reserveLeaders: j.reserveLeaders.map(copyLeader),
-    rules: [...(oneSource(j.id, 'rules', j.rules, ex?.rules) ?? [])],
+    rules: [...(j.rules ?? [])],
   };
   if ((j as { campCapture?: unknown }).campCapture !== undefined) throw new Error(`campCapture is now a capture objective in objectives (${j.id})`);
-  const objectives = oneSource(j.id, 'objectives', j.objectives, ex?.objectives);
-  if (objectives?.length) setup.objectives = objectives.map(copyObjective);
+  if (j.objectives?.length) setup.objectives = j.objectives.map(copyObjective);
   if (j.ambush) {
     setup.ambush = { ...j.ambush, ...(j.ambush.trigger ? { trigger: [...j.ambush.trigger] } : {}) };
     if (j.ambush.entryHexes !== undefined) setup.ambush.entryHexes = copyHexes(j.ambush.entryHexes);
@@ -275,16 +155,15 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   }
   if (j.options && Object.keys(j.options).length) setup.options = { ...j.options };
   if (j.legions && Object.keys(j.legions).length) setup.legions = { ...j.legions };
-  const handGrowth = oneSource(j.id, 'handGrowth', j.handGrowth, ex?.handGrowth);
+  if (j.initialCommand !== undefined) setup.initialCommand = { ...j.initialCommand };
+  const { handGrowth } = j;
   if (handGrowth !== undefined) setup.handGrowth = typeof handGrowth === 'object' && handGrowth !== null ? { ...handGrowth } : handGrowth; // the engine rejects a non-object
+  if (j.sacredLeader !== undefined) setup.sacredLeader = { ...j.sacredLeader };
   if (j.commands !== undefined) setup.commands = Array.isArray(j.commands) ? j.commands.map((c) => ({ ...c })) : j.commands; // the engine rejects a non-list
   if (j.rollingFire !== undefined) setup.rollingFire = j.rollingFire; // the engine rejects an unknown side
   if (j.rampartBreakers !== undefined) setup.rampartBreakers = j.rampartBreakers; // likewise
   if (j.lastRowRetreat !== undefined) setup.lastRowRetreat = j.lastRowRetreat; // likewise
   if (j.placeLeaders?.length) setup.placeLeaders = j.placeLeaders.map(copyLeader);
-  // Trasimenus: the Roman column starts with 4 cards eventually; War Council lists 2 initially.
-  if (j.id === '006') setup.bottom.cards = 4;
-  ex?.patch?.(setup);
   return {
     id: j.id,
     name: j.name,

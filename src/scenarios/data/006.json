@@ -14,10 +14,17 @@
     "blocks": "rom",
     "look": "roman",
     "commander": "Flaminius",
-    "cards": 2
+    "cards": 4
   },
   "first": "top",
   "banners": 6,
+  "initialCommand": {
+    "bottom": 2
+  },
+  "handGrowth": {
+    "side": "bottom",
+    "to": 4
+  },
   "terrain": [
     {
       "r": 2,
@@ -341,6 +348,12 @@
       "name": "Flaminius",
       "r": 7,
       "c": 4
+    },
+    {
+      "side": "bottom",
+      "name": "Legate",
+      "r": 8,
+      "c": 9
     }
   ],
   "reserves": [],
@@ -388,5 +401,5 @@
     },
     "match": false
   },
-  "notes": "Roman War Council shows '2* Command Cards' (cards=2, ramps to 4 per cardsNote). Carthaginian moves first. Uncaptioned Carthaginian leaders at 2,2 (with MC) and 3,6 (with AX) have name '' (only Hannibal and Flaminius are captioned). DISCREPANCY: official roster lists 2 Roman leaders but the map image shows only one (Flaminius at 7,4); image trusted, so Roman LDR=1. A forum post on the scenario page says the setup image is in error and a second Roman leader should be attached to the Roman heavy infantry in the Roman right section - that would be the HI at 8,9 (the only HI right of the section line); not added because it is not on the image. Terrain: 'steep' = the four captioned 'Steep' hill hexes (impassable per special rules); 'lake' = Lake Trasimenus along the bottom edge (8,2-8,6, impassable). Hills at 3,5 and 4,1 are partly hidden under unit blocks (hill texture visible around the blocks in the un-gridded map)."
+  "notes": "Roman War Council shows '2* Command Cards': cards=4 with initialCommand 2 and handGrowth to 4 (the hand ramps up per cardsNote). Carthaginian moves first. Uncaptioned Carthaginian leaders at 2,2 (with MC) and 3,6 (with AX) have name '' (only Hannibal and Flaminius are captioned). DISCREPANCY: official roster lists 2 Roman leaders but the map image shows only one (Flaminius at 7,4); image trusted, so Roman LDR=1. A forum post on the scenario page says the setup image is in error and a second Roman leader should be attached to the Roman heavy infantry in the Roman right section - that would be the HI at 8,9 (the only HI right of the section line); not added because it is not on the image. The game adds him anyway as 'Legate' at 8,9, listed last so the other leaders keep their ids. Terrain: 'steep' = the four captioned 'Steep' hill hexes (impassable per special rules); 'lake' = Lake Trasimenus along the bottom edge (8,2-8,6, impassable). Hills at 3,5 and 4,1 are partly hidden under unit blocks (hill texture visible around the blocks in the un-gridded map)."
 }

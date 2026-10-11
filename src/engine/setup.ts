@@ -91,9 +91,12 @@ export interface ScenarioSetup {
    * it could not take is eliminated instead of losing blocks. Left out: the ordinary retreat rule.
    */
   lastRowRetreat?: Side;
-  /** Castulo: name of the leader whose loss ends the game. */
+  /** The leader whose loss loses the battle at once (010 Castulo's Publius Scipio): a leader of `side` named `name`. */
   sacredLeader?: { side: Side; name: string };
-  /** Starting Command for a side when different from `cards` (Trasimenus Romans start with 2). */
+  /**
+   * Starting Command (and hand) of a side when different from `cards` (006 Trasimenus: the Romans start with 2 of their 4,
+   * 313: 2 of 5; hand growth brings them up, §18.8). A whole number from 1; never for a side with dice orders.
+   */
   initialCommand?: Partial<Record<Side, number>>;
   /**
    * Hand growth (006 Trasimenus, 313 Brindisi Raid; rules-reference §18.8): at the end of each of `side`'s turns, while its
@@ -222,6 +225,16 @@ const has = (table: object, k: unknown): boolean => typeof k === 'string' && Obj
 /** The unit types a legion rule gives the pilum to (§18.2). */
 const LEGION_TYPES: readonly UnitType[] = ['MI', 'HI'];
 
+/** `initialCommand` names sides, each with a whole number from 1 (a side with dice orders has none: `orderDiceOf`). */
+function checkInitialCommand(ic: unknown) {
+  if (ic === undefined) return;
+  if (typeof ic !== 'object' || ic === null || Array.isArray(ic)) throw new Error('initialCommand must be an object of sides');
+  for (const [side, n] of Object.entries(ic)) {
+    if (side !== 'top' && side !== 'bottom') throw new Error(`initialCommand: unknown side ${side}`);
+    if (!Number.isInteger(n) || (n as number) < 1) throw new Error(`initialCommand: ${side} must be a whole number, 1 or more`);
+  }
+}
+
 /** `legions` names sides and legions of the types (`marius`, `julian`). */
 function checkLegions(legions: unknown) {
   if (legions === undefined) return;
@@ -291,7 +304,7 @@ function withLegion(unit: Unit, legions: ScenarioSetup['legions']): Unit {
 
 /**
  * Ids and values of the scenario data that the types promise but JSON cannot (spec "Error handling"): block sets, looks,
- * special rules, terrain types, ford values and unit types (on the board and in reserve).
+ * order dice, starting Commands, special rules, terrain types, ford values and unit types (on the board and in reserve).
  */
 function checkIds(setup: ScenarioSetup) {
   for (const side of SIDES) {
@@ -300,6 +313,7 @@ function checkIds(setup: ScenarioSetup) {
     if (!known(ARMY_LOOKS, ss.look)) throw new Error(`${side} army: unknown look ${String(ss.look)}`);
   }
   orderDiceOf(setup);
+  checkInitialCommand(setup.initialCommand);
   for (const r of setup.rules) if (!known(SPECIAL_RULE_IDS, r)) throw new Error(`unknown special rule ${String(r)}`);
   checkLegions(setup.legions);
   for (const [name, side] of [
@@ -637,9 +651,9 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   const rngHolder = { rng: seed >>> 0, rngCalls: 0 };
   const deck = shuffle(rngHolder, CARD_LIST.map((_, i) => i));
 
-  const sacred = setup.sacredLeader
-    ? leaders.find((l) => l.side === setup.sacredLeader!.side && l.name === setup.sacredLeader!.name)?.id ?? null
-    : null;
+  const sl = setup.sacredLeader;
+  const sacred = sl ? leaders.find((l) => l.side === sl.side && l.name === sl.name)?.id : null;
+  if (sacred === undefined) throw new Error(`sacredLeader ${String(sl?.name)} is no leader of the ${String(sl?.side)} army`);
 
   const s: GameState = {
     scenarioId: setup.id,

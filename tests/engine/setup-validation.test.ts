@@ -54,6 +54,19 @@ describe('scenario data validation', () => {
     expect(build(changed((st) => { st.rules = ['magoAmbush', 'dragons' as SpecialRuleId]; }))).toThrow(/^unknown special rule dragons \(test\)$/);
   });
 
+  it('a starting Command (`initialCommand`) names sides, each a whole number from 1', () => {
+    expect(build(changed((st) => { st.initialCommand = { bottom: 2 }; }))).not.toThrow();
+    expect(build(changed((st) => { st.initialCommand = 2 as ScenarioSetup['initialCommand']; }))).toThrow(/^initialCommand must be an object of sides \(test\)$/);
+    expect(build(changed((st) => { st.initialCommand = { left: 2 } as ScenarioSetup['initialCommand']; }))).toThrow(/^initialCommand: unknown side left \(test\)$/);
+    expect(build(changed((st) => { st.initialCommand = { top: 0 }; }))).toThrow(/^initialCommand: top must be a whole number, 1 or more \(test\)$/);
+  });
+
+  it('the sacred leader (010) must be a leader of the side named', () => {
+    expect(createGame(changed((st) => { st.sacredLeader = { side: 'bottom', name: 'Scipio' }; }), 1).special.sacredLeaderId).toBe('L3');
+    expect(build(changed((st) => { st.sacredLeader = { side: 'top', name: 'Scipio' }; }))).toThrow(/^sacredLeader Scipio is no leader of the top army \(test\)$/);
+    expect(build(changed((st) => { st.sacredLeader = { side: 'bottom', name: 'Publius' }; }))).toThrow(/^sacredLeader Publius is no leader of the bottom army \(test\)$/);
+  });
+
   it('unknown blocks', () => {
     expect(build(changed((st) => { st.top.blocks = 'xyz' as Blocks; }))).toThrow(/^top army: unknown blocks xyz \(test\)$/);
     expect(build(changed((st) => { st.bottom.blocks = 'constructor' as Blocks; }))).toThrow(/^bottom army: unknown blocks constructor \(test\)$/);

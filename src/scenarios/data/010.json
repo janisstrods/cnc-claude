@@ -18,6 +18,54 @@
   },
   "first": "bottom",
   "banners": 8,
+  "sacredLeader": {
+    "side": "bottom",
+    "name": "Scipio"
+  },
+  "objectives": [
+    {
+      "kind": "exit",
+      "side": "bottom",
+      "hexes": [
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          7
+        ],
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          9
+        ],
+        [
+          0,
+          10
+        ],
+        [
+          0,
+          11
+        ],
+        [
+          0,
+          12
+        ]
+      ]
+    }
+  ],
   "terrain": [
     {
       "r": 1,

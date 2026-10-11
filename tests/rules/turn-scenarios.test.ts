@@ -166,9 +166,9 @@ describe('2nd Beneventum: Roman hand grows to 6 at the 3rd banner', () => {
 });
 
 describe('Castulo', () => {
-  const castulo = {
-    sacredLeader: { side: 'bottom' as const, name: 'Scipio' }, objectives: scenarioById('010').setup.objectives,
-  };
+  // the exit objective alone (the sacred leader must be a leader on the board)
+  const exits = { objectives: scenarioById('010').setup.objectives };
+  const castulo = { ...exits, sacredLeader: { side: 'bottom' as const, name: 'Scipio' } };
   it('if Publius Scipio is eliminated Carthage wins at once', () => {
     const s = build({
       ...castulo, first: 'top',
@@ -181,30 +181,30 @@ describe('Castulo', () => {
     expect(d.state.winner).toBe('top');
   });
   it('a Roman unit may exit over the Carthaginian baseline from a centre or Roman-right hex: 1 banner, removed', () => {
-    const s = build({ ...castulo, units: [{ side: 'bottom', type: 'MI', at: [0, 6] }, { side: 'bottom', type: 'MI', at: [0, 10] }, { side: 'bottom', type: 'MI', at: [0, 2] }] });
+    const s = build({ ...exits, units: [{ side: 'bottom', type: 'MI', at: [0, 6] }, { side: 'bottom', type: 'MI', at: [0, 10] }, { side: 'bottom', type: 'MI', at: [0, 2] }] });
     const d = play(s, 'order3C', ['u1']);
     expect(pieceMoves(d.state, 'u1').map((m) => m.hex)).toContain(OFF_BOARD);
     must(d, { kind: 'move', piece: 'u1', to: OFF_BOARD });
     expect(u(d, 'u1')).toBeUndefined();
     expect(d.state.players.bottom.banners).toBe(1);
-    const s2 = build({ ...castulo, units: [{ side: 'bottom', type: 'MI', at: [0, 10] }, { side: 'bottom', type: 'MI', at: [0, 2] }] });
+    const s2 = build({ ...exits, units: [{ side: 'bottom', type: 'MI', at: [0, 10] }, { side: 'bottom', type: 'MI', at: [0, 2] }] });
     const d2 = play(s2, 'order2R', ['u1']);
     expect(pieceMoves(d2.state, 'u1').map((m) => m.hex)).toContain(OFF_BOARD);
-    const s3 = build({ ...castulo, units: [{ side: 'bottom', type: 'MI', at: [0, 2] }] });
+    const s3 = build({ ...exits, units: [{ side: 'bottom', type: 'MI', at: [0, 2] }] });
     const d3 = play(s3, 'order2L', ['u1']);
     expect(pieceMoves(d3.state, 'u1').map((m) => m.hex)).not.toContain(OFF_BOARD);
   });
   it('exiting counts as a hex of movement (light cavalry 3 hexes from the baseline row + 1 exit)', () => {
-    const s = build({ ...castulo, units: [{ side: 'bottom', type: 'LC', at: [3, 6] }] });
+    const s = build({ ...exits, units: [{ side: 'bottom', type: 'LC', at: [3, 6] }] });
     const d = play(s, 'order2C', ['u1']);
     const exit = pieceMoves(d.state, 'u1').find((m) => m.hex === OFF_BOARD);
     expect(exit?.dist).toBe(4);
-    const s2 = build({ ...castulo, units: [{ side: 'bottom', type: 'LC', at: [4, 6] }] });
+    const s2 = build({ ...exits, units: [{ side: 'bottom', type: 'LC', at: [4, 6] }] });
     const d2 = play(s2, 'order2C', ['u1']);
     expect(pieceMoves(d2.state, 'u1').map((m) => m.hex)).not.toContain(OFF_BOARD);
   });
   it('Carthaginian units cannot exit', () => {
-    const s = build({ ...castulo, first: 'top', units: [{ side: 'top', type: 'MI', at: [8, 6] }] });
+    const s = build({ ...exits, first: 'top', units: [{ side: 'top', type: 'MI', at: [8, 6] }] });
     const d = play(s, 'order2C', ['u1']);
     expect(pieceMoves(d.state, 'u1').map((m) => m.hex)).not.toContain(OFF_BOARD);
   });

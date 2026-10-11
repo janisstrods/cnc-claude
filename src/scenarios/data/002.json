@@ -176,7 +176,8 @@
       "side": "top",
       "type": "HI",
       "r": 3,
-      "c": 2
+      "c": 2,
+      "elite": "carthSacredBand"
     },
     {
       "side": "top",

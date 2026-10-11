@@ -1,14 +1,7 @@
 // Briefing texts of the 24 Expansion #1 battles (Greece & Eastern Kingdoms, 101-124): original summaries of the
 // historical battles and plain-language paraphrases of their special rules. The setups are in data/101.json-124.json.
 
-export interface ScenarioTexts {
-  /** Short original summary of the historical battle. */
-  blurb: string;
-  /** Plain-language special rules shown in the briefing. */
-  specialText?: string[];
-  /** One-line hint shown in the battle list. */
-  hint: string;
-}
+import type { ScenarioTexts } from './base-texts';
 
 /** Alexander's leader trait (rules-reference §17.2). */
 const ALEXANDER = 'Alexander: the unit he is attached to rolls 1 extra die in close combat.';
@@ -17,7 +10,7 @@ const COMPANIONS = 'The Companions (the medium cavalry with Alexander) ignore th
 /** The Silver Shields (elite, §17.1). */
 const SILVER_SHIELDS = 'The Silver Shields (the marked heavy infantry with Eumenes) score a hit with every helmet in close combat and may ignore one flag.';
 
-export const EXTRA_EXP1: Record<string, ScenarioTexts> = {
+export const EXP1_TEXTS: Record<string, ScenarioTexts> = {
   '101': {
     blurb: "A Persian expedition under Datis and Artaphernes lands on the plain of Marathon, a day's march from Athens. The Athenians and a small Plataean contingent, led by the polemarch Callimachus with Miltiades urging attack, cross the last stretch at a run to blunt the Persian archery. By tradition they thin their centre to strengthen the wings, then fold both flanks in on the enemy.",
     specialText: [

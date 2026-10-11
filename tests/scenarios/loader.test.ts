@@ -191,11 +191,31 @@ describe('scenario loader', () => {
     expect(raw).toEqual(RAW);
   });
 
-  it('base scenario files (no expansion field) are base scenarios and keep their rules from the texts table', () => {
+  it('base scenario files (no expansion field) are base scenarios and carry their rules in the file, like the expansions', () => {
     const sc = scenarioById('002');
     expect(sc.expansion).toBe('base');
-    expect(sc.setup.rules).toEqual([]);
+    expect(sc.setup.units.filter((u) => u.elite).map((u) => u.elite)).toEqual(['carthSacredBand']);
+    expect(scenarioById('005').setup.rules).toEqual(['magoAmbush']);
     expect(scenarioById('011').setup.objectives).toEqual([{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }]);
+    // 006 Trasimenus: 4 cards, 2 to start, hand growth to 4, and the Legate the forum post adds (listed last, §18.8)
+    const tr = scenarioById('006').setup;
+    expect([tr.bottom.cards, tr.initialCommand, tr.handGrowth, tr.leaders.at(-1)]).toEqual([
+      4, { bottom: 2 }, { side: 'bottom', to: 4 }, { side: 'bottom', name: 'Legate', r: 8, c: 9 },
+    ]);
+    expect(scenarioById('010').setup.sacredLeader).toEqual({ side: 'bottom', name: 'Scipio' });
+  });
+
+  it('the starting Command and the sacred leader reach the setup as copies', () => {
+    const raw: ScenarioJson = JSON.parse(JSON.stringify({ ...RAW, initialCommand: { bottom: 2 }, sacredLeader: { side: 'top', name: 'Alexander' } }));
+    const keep = JSON.parse(JSON.stringify(raw));
+    const { setup } = scenarioFromJson(raw);
+    expect([setup.initialCommand, setup.sacredLeader]).toEqual([{ bottom: 2 }, { side: 'top', name: 'Alexander' }]);
+    setup.initialCommand!.bottom = 3;
+    setup.sacredLeader!.name = 'X';
+    expect(raw).toEqual(keep);
+    const s = createGame(scenarioFromJson(raw).setup, 1);
+    expect([s.players.bottom.command, s.players.bottom.hand.length]).toEqual([2, 2]);
+    expect(s.special.sacredLeaderId).toBe(s.leaders.find((l) => l.name === 'Alexander')?.id);
   });
 
   it('the retired campCapture field is an error naming the scenario', () => {

@@ -1,7 +1,7 @@
 // Briefing texts of the 19 Expansion #3 battles (The Roman Civil Wars, 301-319): original summaries of the
 // historical battles and plain-language paraphrases of their special rules. The setups are in data/301.json-319.json.
 
-import type { ScenarioTexts } from './exp1-texts';
+import type { ScenarioTexts } from './base-texts';
 import { CAESAR, FORTIFIED_CAMPS, RAMPARTS } from './rule-texts';
 
 /** The Marian legions on both sides (rules-reference §18.2). */
@@ -11,7 +11,7 @@ const JULIAN_LEGIONS_BOTH = 'Julian legions (both armies): medium and heavy infa
 /** Close combat on a city wall (§18.7). */
 const WALLS = "Fighting on walls: any close combat in which either side stands on a wall hex is capped at 2 dice (card and leader bonus dice, Caesar's included, are added on top). A foot unit defending on a wall ignores 1 sword, may ignore 1 flag and may ignore 1 flag from missile fire, and it strikes first: it battles back before the attacker rolls, unless the attacker also stands on a wall.";
 
-export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
+export const EXP3_TEXTS: Record<string, ScenarioTexts> = {
   '301': {
     blurb: 'In November 82 BC the civil war between Sulla and the Marian party is nearly won, but the Samnite leader Pontius Telesinus, hoping to draw Sulla away from the siege of Praeneste, marches his army straight at Rome. Sulla races back and meets him outside the Colline Gate late in the afternoon. His own wing is driven back against the city walls, while Crassus on the right routs the enemy in front of him. The fighting goes on into the night; by morning the Samnites are broken and Pontius is dead. Thousands of prisoners were slaughtered afterwards, and Sulla became dictator.',
     specialText: [

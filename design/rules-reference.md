@@ -866,7 +866,8 @@ merely passing through a hex never counts (X2 Q9e). A side wins as soon as its *
 
 ### 18.8 Hand growth (006 Trasimenus, 313 Brindisi Raid)
 
-The generalised Trasimenus rule (X3 Q11): scenario data `handGrowth: { side, to }`.
+The generalised Trasimenus rule (X3 Q11): scenario data `handGrowth: { side, to }`, with the starting Command in
+`initialCommand` (006 and 313: 2).
 * At the end of each of that side's turns, **while its Command (hand size) is below `to`**, it draws 2 cards instead of 1
   and its Command rises by 1. Once it has reached `to`, it draws 1 as usual.
 * 006: the Romans, `to: 4`: Command 2 → 3 → 4, draws 2 after turns 1 and 2 (unchanged from §14). 313: the Caesarians
