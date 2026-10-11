@@ -109,6 +109,17 @@ export function runTurnUntil(s: GameState, policy: Policy, rng: Rng, stop: (d: D
   return null;
 }
 
+/**
+ * Play the rest of the active side's turn exactly where it stands (the engine's `continueTurn`: the rest of the movement,
+ * from `from` 'move', then the battle and the turn end), with the turn's orders and modifiers as they are. Returns false if
+ * it had to be aborted.
+ */
+export function continueRun(s: GameState, policy: Policy, rng: Rng, from: 'move' | 'battle'): boolean {
+  const st: Runner = { rejected: false };
+  const ctx: FlowCtx = { emit() {}, invalid() { st.rejected = true; } };
+  return drive(s, continueTurn(s, ctx, from), policy, rng, st, 600);
+}
+
 const FIRST_STRIKE_ID = CARD_LIST.indexOf('firstStrike');
 
 /**
@@ -130,11 +141,7 @@ function exactResume(s: GameState): boolean {
  * `continueTurn` resumes it where it stands instead. `from = 'battle'` skips any remaining movement.
  */
 export function resumeTurn(s: GameState, policy: Policy, rng: Rng, from: 'move' | 'battle'): boolean {
-  if (exactResume(s)) {
-    const st: Runner = { rejected: false };
-    const ctx: FlowCtx = { emit() {}, invalid() { st.rejected = true; } };
-    return drive(s, continueTurn(s, ctx, from), policy, rng, st, 600);
-  }
+  if (exactResume(s)) return continueRun(s, policy, rng, from);
   const side = s.active;
   const t = s.turn;
   const saved = { mods: { ...t.mods }, card: t.card, effective: t.effective, mirrored: t.mirrored };

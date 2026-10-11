@@ -4,12 +4,12 @@ import { battleTargets, rollingFirePaths, rollingFireRoutes } from '../engine/fl
 import { closeCombatDice, rangedDice, retreatPerFlag, swordIgnores, vsMountedIgnores, type StrikeRole } from '../engine/combat';
 import { neighbours } from '../engine/hex';
 import { other, unitById } from '../engine/query';
-import { isHill } from '../engine/terrain';
+import { isHill, isWall } from '../engine/terrain';
 import { canShoot, eliteHas, fireMoveLimit, rangeOf } from '../engine/elites';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType } from '../engine/units';
 import type { Answer, GameState, HexId, Leader, Unit } from '../engine/types';
 import {
-  Occ, attachedLeaderOcc, canEvadeOcc, canFireOcc, helmetsOcc, hexDist, ignorableOcc, retreatRoom, shortfall,
+  Occ, attachedLeaderOcc, canEvadeOcc, canFireOcc, helmetsOcc, hexDist, ignorableOcc, mayCloseCombat, retreatRoom, shortfall,
 } from './board';
 import { binom, pAnyHelmet, strikeDist, type Prof } from './dice';
 import { blockVal, leaderVal, nextBanner, type Weights } from './values';
@@ -209,11 +209,33 @@ export function evadeEV(s: GameState, occ: Occ, a: Unit, t: Unit, n: number): EV
   return { ev: ev + 0.015, pElim: pe, evade: true };
 }
 
+/**
+ * City wall (§18.7): does defender `t`, standing on a wall hex, strike first against `a` without a card (mirror of the
+ * engine's `wallStrikesFirst`)? Always, unless the attacker stands on a wall hex itself.
+ */
+export function wallStrikesFirst(s: GameState, t: Unit, a: Unit): boolean {
+  return t.hex >= 0 && isWall(s, t.hex) && !isWall(s, a.hex);
+}
+
+/**
+ * The defender on a city wall stands (§18.7): it strikes first (its battle-back dice, capped at 2, as First Strike), the
+ * attack goes on only if the attacker survives in its hex (also after losing blocks for a retreat it could not take), and
+ * the defender never battles back afterwards. Attacker's point of view, like `standEV` (whose expected gain it scales
+ * by the chance the attack happens at all).
+ */
+export function wallStandEV(s: GameState, occ: Occ, a: Unit, t: Unit, n: number, mom: number): EV {
+  const nb = closeCombatDice(s, t, a, { role: 'firstStrike', fullAtStart: t.blocks === t.maxBlocks, ordered: false });
+  const fs = nb > 0 ? strikeValue(s, occ, t, a, closeProfile(s, occ, t, a, nb, 'firstStrike'), 'close') : { ev: 0, pElim: 0, pRetreat: 0 };
+  const pStop = Math.min(1, fs.pElim + fs.pRetreat);
+  const after = standEV(s, occ, a, t, n, mom, 0); // the attacker's roll, no battle back
+  return { ev: -fs.ev + (1 - pStop) * after.ev, pElim: (1 - pStop) * after.pElim };
+}
+
 /** Full close-combat estimate from the attacker's point of view (defender plays its best of stand/evade). */
 export function closeAttackEV(s: GameState, occ: Occ, a: Unit, t: Unit, role: StrikeRole, ordered: boolean, W: Weights): EV {
   const n = closeCombatDice(s, a, t, { role, fullAtStart: a.blocks === a.maxBlocks, ordered });
   const mom = momentumValue(s, occ, a, role, W);
-  const st = standEV(s, occ, a, t, n, mom);
+  const st = wallStrikesFirst(s, t, a) ? wallStandEV(s, occ, a, t, n, mom) : standEV(s, occ, a, t, n, mom);
   if (canEvadeType(t.type, a.type) && canEvadeOcc(s, occ, t)) {
     const ev = evadeEV(s, occ, a, t, n);
     if (ev.ev <= st.ev) return ev;
@@ -386,15 +408,20 @@ export function attackOptions(s: GameState, W: Weights, occIn?: Occ): AttackOpt[
 
 /**
  * Best value of the attack a unit could make this turn from its current hex (used when planning moves).
- * The unit's hex must already be set to the candidate destination.
+ * The unit's hex must already be set to the candidate destination. `startHex`: where the unit began the turn (default:
+ * its ordered start hex, else where it stands), which decides whether a mounted unit may attack a city wall (§18.7).
  */
-export function attackNowValue(s: GameState, occ: Occ, u: Unit, moved: number, canBattle: boolean, mustBattle: boolean, W: Weights): number {
+export function attackNowValue(
+  s: GameState, occ: Occ, u: Unit, moved: number, canBattle: boolean, mustBattle: boolean, W: Weights, startHex?: HexId,
+): number {
   if (!canBattle) return 0;
   const m = s.turn.mods;
   let best = s.special.rollingFire === u.side ? rollingNow(s, occ, u, moved) : 0;
   let bestClose = -Infinity;
   if (!m.noClose) {
+    const start = startHex ?? s.turn.ordered[u.id]?.startHex ?? u.hex;
     for (const h of neighbours(u.hex)) {
+      if (!mayCloseCombat(s, u, h, start)) continue;
       const v = occ.unit[h];
       let ev: number;
       if (v) {

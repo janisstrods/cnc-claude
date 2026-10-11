@@ -2,19 +2,22 @@
 // with the engine's own turn generator, evaluated statically, and compared (minus the value of keeping the card).
 import { bannerTotal } from '../engine/banners';
 import { cardKind } from '../engine/cards';
-import { nextTurn, pieceMoves, turnFlow, type Gen } from '../engine/flow';
-import { other } from '../engine/query';
+import { continueTurn, nextTurn, pieceMoves, turnFlow, type Gen } from '../engine/flow';
+import { diceOrdered } from '../engine/orders';
+import { isLeaderId, leaderById, other, unitById } from '../engine/query';
 import { forcedDiceLeft } from '../engine/rng';
 import { cloneState } from '../engine/setup';
-import type { Answer, CardKind, Decision, FlowCtx, GameState, HexId, SectionName, Side } from '../engine/types';
+import {
+  OFF_BOARD, type Answer, type CardKind, type Decision, type FlowCtx, type GameState, type HexId, type SectionName, type Side,
+} from '../engine/types';
 import { cardRetention, quickCardScore } from './cardsense';
 import { attackAnswer, attackOptions, sameAttack } from './estimate';
 import { evaluate } from './evaluate';
 import { greedyMoveStep, scoreOption, type MoveCtx } from './moves';
 import { orderCandidates, pieceBenefits, type OrderCandidate } from './ordering';
-import { chooseCommandIndex, greedyBattle, pickAttack, reactiveFast } from './policies';
+import { chooseCommandIndex, greedyBattle, pickAttack, reactiveFast, type DiceAssignment } from './policies';
 import { Rng } from './rand';
-import { determinize, resumeTurn, runTurn, runTurnUntil, type Policy } from './sim';
+import { continueRun, determinize, resumeTurn, runTurn, runTurnUntil, type Policy } from './sim';
 import { WIN_SCORE, tweak, type Difficulty, type Weights } from './values';
 
 /** Search settings per difficulty level. */
@@ -108,8 +111,9 @@ function seedAt(ctx: PlanCtx, i: number): number {
 }
 
 export interface Cand {
+  /** The card played (-1 for a dice-order turn, §18.10). */
   card: number;
-  kind: CardKind;
+  kind: CardKind | null;
   effective: CardKind | null;
   orders: string[] | null;
   ambush?: SectionName;
@@ -125,6 +129,8 @@ export interface Cand {
   oc?: OrderCandidate | null;
   /** Per-sample evaluations in seed order (paired comparisons between candidates). */
   vals: number[];
+  /** A dice-order turn (§18.10): the assignment of the order dice (one id or null per face) the plan gives. */
+  dice?: (string | null)[];
 }
 
 export function candMean(c: Cand): number {
@@ -137,17 +143,33 @@ export function candScore(c: Cand, ctx: PlanCtx): number {
   return m - c.retention;
 }
 
-/** Steps the engine generator on a private clone. */
+/**
+ * Give the orders of a dice-order assignment (§18.10) on a state at its `diceOrders` decision, as the engine's dice step
+ * does (the pieces and each helmet leader's attached unit, ordered like any card's orders): the turn then goes on from its
+ * movement (`continueTurn`).
+ */
+export function applyDiceOrders(s: GameState, ids: (string | null)[]): void {
+  for (const id of diceOrdered(s, ids)) {
+    const isLeader = isLeaderId(id);
+    const hex = isLeader ? leaderById(s, id)?.hex ?? OFF_BOARD : unitById(s, id)?.hex ?? OFF_BOARD;
+    s.turn.ordered[id] = {
+      id, isLeader, startHex: hex, moved: 0, moveDone: false, move2Done: false, battlesLeft: isLeader ? 0 : s.turn.mods.shots,
+      canBattle: true, mustBattle: false, enteredHexThisTurn: false, attachedThisTurn: false,
+    };
+  }
+}
+
+/** Steps the engine generator on a private clone (the turn from its card, or `start`'s generator on the clone). */
 class Stepper {
   s: GameState;
   gen: Gen;
   cur: Decision | null;
   rejected = false;
-  constructor(root: GameState, me: Side, rng: Rng) {
+  constructor(root: GameState, me: Side, rng: Rng, start?: (s: GameState, ctx: FlowCtx) => Gen) {
     this.s = cloneState(root);
     determinize(this.s, me, rng);
     const ctx: FlowCtx = { emit() {}, invalid: () => { this.rejected = true; } };
-    this.gen = turnFlow(this.s, ctx);
+    this.gen = start ? start(this.s, ctx) : turnFlow(this.s, ctx);
     const r = this.gen.next();
     this.cur = r.done ? null : r.value;
   }
@@ -386,7 +408,11 @@ function sampleCand(root: GameState, ctx: PlanCtx, cand: Cand): void {
   const rng = new Rng(seedAt(ctx, cand.n) ^ 0x5bd1e995);
   const s = cloneState(root);
   determinize(s, ctx.me, rng);
-  runTurn(s, simPolicy(ctx, cand, rng), rng);
+  if (cand.dice) {
+    // a dice-order turn (§18.10), from its diceOrders decision: the orders, then the rest of the turn
+    applyDiceOrders(s, cand.dice);
+    continueRun(s, simPolicy(ctx, cand, rng), rng, 'move');
+  } else runTurn(s, simPolicy(ctx, cand, rng), rng);
   ctx.sims++;
   const v = evaluate(s, ctx.me, other(ctx.me), ctx.judgeW);
   cand.sum += v;
@@ -632,6 +658,93 @@ export function planTurn(root: GameState, ctx: PlanCtx): PlanResult {
     }
   }
   return { best, cands: all, sims: ctx.sims, ms: now() - ctx.start };
+}
+
+// ---------------------------------------------------------------------------
+// dice-order turns (310 Utica P1, §18.10)
+// ---------------------------------------------------------------------------
+
+/** Plan a dice-order assignment's movement greedily on a private clone (the same movement styles as a card's plans). */
+function buildDiceCand(root: GameState, ctx: PlanCtx, a: DiceAssignment, v: Variant): Cand | null {
+  const rng = new Rng(ctx.rng.u32());
+  const st = new Stepper(root, ctx.me, rng, (s, fc) => {
+    applyDiceOrders(s, a.ids);
+    return continueTurn(s, fc, 'move');
+  });
+  const moves: Answer[] = [];
+  if (st.cur?.kind === 'move' && !v.hold) {
+    const mc: MoveCtx = { me: ctx.me, W: v.W, rng, noise: v.noise, decided: new Set(), orderNoise: v.orderNoise, strikeFirst: v.strikeFirst };
+    let guard = 0;
+    while (st.cur && st.cur.kind === 'move' && st.cur.stage === 1 && guard++ < 40) {
+      const m = greedyMoveStep(st.s, 1, mc);
+      if (m.kind === 'endMove') break;
+      if (!st.answer(m)) break;
+      moves.push(m);
+    }
+  }
+  return {
+    card: -1, kind: null, effective: null, orders: a.pieces, moves, label: `dice [${a.pieces.join(',')}] ${v.tag}`,
+    retention: 0, n: 0, sum: 0, laN: 0, laSum: 0, vals: [], dice: a.ids,
+  };
+}
+
+/**
+ * Choose the dice-order assignment and its movement plan for this turn (§18.10), the way `planTurn` chooses a card's
+ * orders and moves: the best assignments by their summed benefits (`diceAssignments`, best first), each planned in the
+ * movement styles, played out on determinised clones from the diceOrders decision and compared by successive halving.
+ * No card is kept, so nothing is subtracted for one. Without simulations (the forceDice test hook, a recruit's hasty turn)
+ * the first assignment with moves planned online.
+ */
+export function planDiceTurn(root: GameState, assignments: DiceAssignment[], ctx: PlanCtx): PlanResult {
+  const cfg = ctx.cfg;
+  const quick = (a: DiceAssignment): Cand => ({
+    card: -1, kind: null, effective: null, orders: a.pieces, moves: null, label: `dice [${a.pieces.join(',')}] (quick)`,
+    retention: 0, n: 1, sum: a.benefit, laN: 0, laSum: 0, vals: [], dice: a.ids,
+  });
+  if (forcedDiceLeft() > 0 || ctx.hasty) {
+    const best = quick(assignments[0]);
+    return { best, cands: [best], sims: 0, ms: now() - ctx.start };
+  }
+  const cands: Cand[] = [];
+  const keys = new Set<string>();
+  const add = (c: Cand | null): Cand | null => {
+    if (!c) return null;
+    const key = `${(c.orders ?? []).join(',')}|${(c.moves ?? []).map((m) => (m.kind === 'move' ? `${m.piece}>${m.to}` : '')).join(';')}`;
+    if (keys.has(key)) return null;
+    keys.add(key);
+    cands.push(c);
+    return c;
+  };
+  const top = assignments.slice(0, Math.max(2, cfg.orderCands + 1));
+  // Stage A: the base plan of each leading assignment
+  for (const a of top) add(buildDiceCand(root, ctx, a, variants(ctx.W, 1)[0]));
+  sampleTo(root, ctx, cands, cfg.k0);
+  // Stage B: the other movement styles (and strike first) for the two leading assignments
+  const byScore = (x: Cand, y: Cand) => candScore(y, ctx) - candScore(x, ctx);
+  const lead = [...cands].sort(byScore).slice(0, 2);
+  const fresh: Cand[] = [];
+  for (const c of lead) {
+    const a = top.find((x) => x.ids === c.dice)!;
+    const vs: Variant[] = [...variants(ctx.W, cfg.moveVariants).slice(1), { tag: 'strike', W: ctx.W, noise: 0, strikeFirst: true }];
+    for (const v of vs) {
+      if (timeUp(ctx)) break;
+      const n = add(buildDiceCand(root, ctx, a, v));
+      if (n) fresh.push(n);
+    }
+  }
+  sampleTo(root, ctx, fresh, cfg.k0);
+  // Stage C: successive halving, then the leftover budget on close calls
+  let pool = [...cands].sort(byScore);
+  let k = cfg.k0;
+  while (!timeUp(ctx) && pool.length > 2 && k < cfg.kMax) {
+    pool = pool.slice(0, Math.max(2, Math.ceil(pool.length / 2)));
+    k = Math.min(k * 2, cfg.kMax);
+    sampleTo(root, ctx, pool, k);
+    pool.sort(byScore);
+  }
+  if (cfg.topUp > 0 && pool.length) pool = topUp(root, ctx, cands, pool);
+  const all = [...cands].sort(byScore);
+  return { best: pool[0] ?? all[0] ?? quick(assignments[0]), cands: all, sims: ctx.sims, ms: now() - ctx.start };
 }
 
 // ---------------------------------------------------------------------------

@@ -199,14 +199,14 @@ function holdPull(s: GameState, occ: Occ, o: ObjectiveOf<'hold'>): number {
   return v;
 }
 
-/** Majority objective from `me`'s point of view: the lead on the hexes and both sides' pull to the free ones. */
+/**
+ * Majority objective from `me`'s point of view: the lead on the hexes and the pull of the sides that can hold it to the
+ * free ones. With one side listed (309's hillock, §18.4) the lead counts too: the listed side holds the banner only while
+ * strictly ahead, so a wider lead is safer for it, and every unit the other side brings onto the hexes counts against it.
+ */
 function majorityTerm(s: GameState, occ: Occ, o: ObjectiveOf<'majority'>, me: Side): number {
-  const opp = other(me);
-  let v = 0;
-  if (o.sides.includes(me) && o.sides.includes(opp)) {
-    const lead = unitsOn(occ, o.hexes, me) - unitsOn(occ, o.hexes, opp);
-    v += MAJORITY_LEAD * Math.max(-3, Math.min(3, lead));
-  }
+  const lead = unitsOn(occ, o.hexes, me) - unitsOn(occ, o.hexes, other(me));
+  let v = MAJORITY_LEAD * Math.max(-3, Math.min(3, lead));
   for (const side of o.sides) {
     const ds: number[] = [];
     for (const h of o.hexes) if (!occ.unit[h]) ds.push(nearestFree(s, h, side, o.hexes));
