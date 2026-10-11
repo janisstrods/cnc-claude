@@ -1,7 +1,7 @@
 // Turn flow as a generator: yields Decisions, receives Answers (rules-reference §5-§13).
 import { CARD_DEFS, cardKind, defaultMods, drawCard, effectiveCard, modsFor } from './cards';
 import {
-  canFireAt, closeCombatDice, helmetsCount, ignorableFlags, rangedDice, retreatPerFlag, scoreClassOnly, scoreClose,
+  canFireUnengaged, closeCombatDice, helmetsCount, ignorableFlags, rangedDice, retreatPerFlag, scoreClassOnly, scoreClose,
   swordIgnores, vsMountedIgnores, type StrikeRole,
 } from './combat';
 import { ALL_HEXES, areAdjacent, neighbours, onBaseline, rearHexes } from './hex';
@@ -13,7 +13,7 @@ import {
   validateDiceOrders, validateOrders, validateRally, validateSpartacus,
 } from './orders';
 import {
-  attachedLeader, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, pieceHex, unitAt, unitById, unitsOf,
+  attachedLeader, enemyUnitAdjacent, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, pieceHex, unitAt, unitById, unitsOf,
 } from './query';
 import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption } from './retreat';
 import { randInt, rollDice, rollDie, shuffle } from './rng';
@@ -912,13 +912,14 @@ export function battleTargets(s: GameState, unitId: string): BattleTarget[] {
       if (t && closeCombatDice(s, u, t, { role: 'attack', fullAtStart: u.blocks === u.maxBlocks, ordered: true }) > 0) out.push({ hex: h, kind: 'close' });
     }
   }
-  if (!m.noRanged && canShoot(u) && op.moved < fireMoveLimit(u)) {
+  // a unit with an enemy unit next to it fires at nothing (canFireAt): asked once, not per target
+  if (!m.noRanged && canShoot(u) && op.moved < fireMoveLimit(u) && !enemyUnitAdjacent(s, u.hex, u.side)) {
     const hexes = new Set<HexId>();
     for (const v of s.units) if (v.side !== u.side && v.hex >= 0) hexes.add(v.hex);
     for (const l of s.leaders) if (l.side !== u.side && l.hex >= 0 && !leaderUnit(s, l)) hexes.add(l.hex);
     for (const h of hexes) {
       if (out.some((x) => x.hex === h)) continue;
-      if (canFireAt(s, u, h) && rangedDice(s, u, h, op.moved, true) > 0) out.push({ hex: h, kind: 'ranged' });
+      if (canFireUnengaged(s, u, h) && rangedDice(s, u, h, op.moved, true) > 0) out.push({ hex: h, kind: 'ranged' });
     }
   }
   return out;

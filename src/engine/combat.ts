@@ -115,11 +115,18 @@ export function lineOfSight(s: GameState, from: HexId, to: HexId): boolean {
 
 /** Can `firer` make a ranged attack at `targetHex` (ignoring order state)? */
 export function canFireAt(s: GameState, firer: Unit, targetHex: HexId): boolean {
+  return !enemyUnitAdjacent(s, firer.hex, firer.side) && canFireUnengaged(s, firer, targetHex);
+}
+
+/**
+ * `canFireAt` for a firer known to have no enemy unit next to it (an engaged unit may not fire, §8): the target hex in
+ * range (2 hexes or more), an enemy unit or lone leader on it, and a clear line of sight.
+ */
+export function canFireUnengaged(s: GameState, firer: Unit, targetHex: HexId): boolean {
   const range = rangeOf(firer);
   if (range === 0) return false;
   const d = distance(firer.hex, targetHex);
   if (d < 2 || d > range) return false;
-  if (enemyUnitAdjacent(s, firer.hex, firer.side)) return false;
   const tu = unitAt(s, targetHex);
   const tl = leaderAt(s, targetHex);
   if (tu) {
