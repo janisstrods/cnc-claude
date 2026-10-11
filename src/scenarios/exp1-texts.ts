@@ -10,6 +10,13 @@ export interface ScenarioTexts {
   hint: string;
 }
 
+/** Alexander's leader trait (rules-reference §17.2). */
+const ALEXANDER = 'Alexander: the unit he is attached to rolls 1 extra die in close combat.';
+/** The Companions (elite, §17.1). */
+const COMPANIONS = 'The Companions (the medium cavalry with Alexander) ignore the first sword rolled against them and may ignore 1 flag.';
+/** The Silver Shields (elite, §17.1). */
+const SILVER_SHIELDS = 'The Silver Shields (the marked heavy infantry with Eumenes) score a hit with every helmet in close combat and may ignore one flag.';
+
 export const EXTRA_EXP1: Record<string, ScenarioTexts> = {
   '101': {
     blurb: "A Persian expedition under Datis and Artaphernes lands on the plain of Marathon, a day's march from Athens. The Athenians and a small Plataean contingent, led by the polemarch Callimachus with Miltiades urging attack, cross the last stretch at a run to blunt the Persian archery. By tradition they thin their centre to strengthen the wings, then fold both flanks in on the enemy.",
@@ -52,8 +59,8 @@ export const EXTRA_EXP1: Record<string, ScenarioTexts> = {
     blurb: "On his first great day in Asia, Alexander finds the satraps of Asia Minor drawn up behind the steep-banked Granicus. Rather than wait for morning, he plunges across at once, leading the Companions at the Persian cavalry. Alexander is nearly killed when the satrap Spithridates splits his helmet, but the Persian line collapses and the road into Asia lies open.",
     specialText: [
       'The Granicus is fordable everywhere.',
-      'Alexander: the unit he is attached to rolls 1 extra die in close combat.',
-      'The Companions (the medium cavalry with Alexander) ignore the first sword rolled against them and may ignore 1 flag.',
+      ALEXANDER,
+      COMPANIONS,
       "Poor Persian leadership: a satrap's helmets count only for the unit he is attached to, and a Leadership card played on a satrap orders only him and his own unit. He still lets his unit ignore a flag.",
     ],
     hint: 'Alexander charges across a ford.',
@@ -63,7 +70,7 @@ export const EXTRA_EXP1: Record<string, ScenarioTexts> = {
     specialText: [
       'The Pinarus is fordable without the usual dice caps: units still stop on entering it, but they fight with their full dice from the river. The Persians start with units standing in it.',
       'The sea on the right edge is impassable. The Amanus hills on the left are ordinary, passable hills.',
-      'Alexander: the unit he is attached to rolls 1 extra die in close combat. The Companions (the medium cavalry with Alexander) ignore the first sword rolled against them and may ignore 1 flag.',
+      `${ALEXANDER} ${COMPANIONS}`,
       'The Persian Immortals (the marked medium infantry with Darius) carry bows: they may fire up to 3 hexes, 2 dice if they did not move or 1 if they moved, but never fire and fight in close combat in the same turn.',
     ],
     hint: 'Cross the river, strike Darius.',
@@ -71,8 +78,8 @@ export const EXTRA_EXP1: Record<string, ScenarioTexts> = {
   '109': {
     blurb: "Darius picks a broad plain near Gaugamela, levelled for his scythed chariots, and masses a huge host from across the empire. Alexander advances obliquely to drag the Persian left out of position, then leads the Companions through the gap that opens toward Darius. For a second time the Great King flees, and Persia's fate is sealed.",
     specialText: [
-      'Alexander: the unit he is attached to rolls 1 extra die in close combat.',
-      'The Companions (the medium cavalry with Alexander) ignore the first sword rolled against them and may ignore 1 flag.',
+      ALEXANDER,
+      COMPANIONS,
       'The Persian chariots are ordinary heavy chariots; there is no special scythed-chariot rule.',
     ],
     hint: 'Open plain; Alexander seeks Darius.',
@@ -81,7 +88,7 @@ export const EXTRA_EXP1: Record<string, ScenarioTexts> = {
     blurb: "Alexander is founding a new city on the Jaxartes when Scythian horsemen mass on the far bank. Macedonian catapults sweep the opposite shore to cover the crossing, and light troops and cavalry cross to meet the wheeling horse archers. A combined charge breaks the nomads' circling and drives them off into the open steppe.",
     specialText: [
       'The Jaxartes is fordable everywhere.',
-      'Alexander: the unit he is attached to rolls 1 extra die in close combat. The Companions (the medium cavalry with Alexander) ignore the first sword rolled against them and may ignore 1 flag.',
+      `${ALEXANDER} ${COMPANIONS}`,
       'The Macedonian catapults (heavy war machines) move 1 hex and cannot fire or fight after moving; they fire up to 6 hexes with 2 dice, but never at an adjacent enemy.',
       'The Scythian horse archers (light bow cavalry) shoot up to 3 hexes, with 2 dice if they did not move and 1 if they did, and can always evade.',
     ],
@@ -91,7 +98,7 @@ export const EXTRA_EXP1: Record<string, ScenarioTexts> = {
     blurb: "Porus waits with chariots and war elephants on the far bank of the swollen Hydaspes. Alexander feints at the main ford, then slips upstream by night and crosses in a storm with the better part of his cavalry. Porus turns to meet him, but the elephants, boxed in and harried by archers and javelins, trample their own side. Alexander, impressed by his foe, lets him keep his kingdom.",
     specialText: [
       'The river down the left edge is impassable.',
-      'Alexander: the unit he is attached to rolls 1 extra die in close combat.',
+      ALEXANDER,
       'Two Companion units: the cavalry with Alexander and the cavalry with Coenus each ignore the first sword rolled against them and may ignore 1 flag.',
     ],
     hint: 'Elephants and chariots against Alexander.',
@@ -108,14 +115,14 @@ export const EXTRA_EXP1: Record<string, ScenarioTexts> = {
     blurb: "Two of Alexander's former officers, Eumenes and Antigonus, fight for control of Asia in the highlands of Persia. Eumenes' veteran Silver Shields rip through the enemy phalanx, while Antigonus' stronger cavalry presses on the flank. Neither commander wins a clean victory, and the war grinds on toward a final showdown a year later.",
     specialText: [
       'The hills down the left edge are impassable.',
-      'The Silver Shields (the marked heavy infantry with Eumenes) score a hit with every helmet in close combat and may ignore one flag.',
+      SILVER_SHIELDS,
     ],
     hint: "Silver Shields against Antigonus' cavalry.",
   },
   '114': {
     blurb: "In the dust of the Persian desert, Eumenes' veterans again outfight Antigonus' infantry, but a cavalry raid slips round the battle and seizes the baggage camp, with the Silver Shields' families and plunder inside. The Shields, fighting for their possessions, hand Eumenes over, and Antigonus becomes master of the Persian east.",
     specialText: [
-      'The Silver Shields (the marked heavy infantry with Eumenes) score a hit with every helmet in close combat and may ignore one flag.',
+      SILVER_SHIELDS,
       "Camp capture: the first time a unit of Antigonus' army ends its move on Eumenes' camp (the bottom-right corner), Antigonus gains 1 banner. Only once, and it can never be lost; passing through is not enough, and Eumenes' units never capture.",
     ],
     hint: 'Race for the baggage camp.',
