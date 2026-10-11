@@ -24,7 +24,7 @@ import {
 import { canShoot, fireMoveLimit } from './elites';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forbidsTerrain, forestFighter } from './units';
 import {
-  OFF_BOARD,
+  OFF_BOARD, SECTIONS,
   type Answer, type CardKind, type Decision, type DieFace, type FlowCtx, type GameState, type HexId, type Leader,
   type OrderedPiece, type RetreatOption, type RollPurpose, type SectionName, type Side, type Unit,
 } from './types';
@@ -902,8 +902,6 @@ export function ambushAvailable(s: GameState, side: Side, kind: CardKind | null)
     !s.special.reserveReleased && s.special.turnsDone[side] >= a.afterOwnTurns && s.special.reserveUnits.length > 0;
 }
 
-const SECTIONS: readonly SectionName[] = ['left', 'center', 'right'];
-
 /** The sections an ambush card lets the force enter from (Inspired: its own; the other trigger cards: any). */
 export function ambushSections(kind: CardKind): SectionName[] {
   if (kind === 'inspiredL') return ['left'];
@@ -1442,7 +1440,7 @@ function* forcedPlacements(s: GameState, ctx: FlowCtx, side: Side): Gen {
   for (let i = 0; i < sp.placeUnits.length;) {
     const p = sp.placeUnits[i];
     const due = p.unit.side === side && p.after === 'ambush' && sp.reserveEntered;
-    const options = due ? p.hexes.filter((h) => !unitAt(s, h) && !leaderAt(s, h)) : [];
+    const options = due ? p.hexes.filter((h) => isEmptyHex(s, h)) : [];
     if (!options.length) {
       i++;
       continue;

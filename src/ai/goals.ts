@@ -8,7 +8,7 @@ import { sectionsOf } from '../engine/hex';
 import { other } from '../engine/query';
 import { canMarch } from '../engine/elites';
 import { UNIT_STATS } from '../engine/units';
-import type { GameState, HexId, ObjectiveOf, SectionName, Side, Unit } from '../engine/types';
+import { SECTIONS, type GameState, type HexId, type ObjectiveOf, type SectionName, type Side, type Unit } from '../engine/types';
 import { type Occ, hexDist } from './board';
 import { bannerStep, bannersWorth, type Weights } from './values';
 
@@ -30,7 +30,6 @@ const RAMPART_LEFT = 0.04;
 /** Ship markers (313): share of a capture for a free marker a unit of the capturing side can step onto next turn. */
 const MARKER_REACH = 0.25;
 
-const SECTIONS: readonly SectionName[] = ['left', 'center', 'right'];
 
 /** Does the battle have objectives that give held banners (hold, majority, section clear)? */
 export function hasHeldObjectives(s: GameState): boolean {

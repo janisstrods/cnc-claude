@@ -4,7 +4,7 @@ import { inSection } from '../engine/hex';
 import { leaderHas, leadersOf, unitsOf } from '../engine/query';
 import { canShoot, hasPilum } from '../engine/elites';
 import { UNIT_STATS } from '../engine/units';
-import type { CardKind, GameState, SectionName, Side, Unit } from '../engine/types';
+import { SECTIONS, type CardKind, type GameState, type SectionName, type Side, type Unit } from '../engine/types';
 import { areAdjacent } from '../engine/hex';
 import { rallyCandidates, spartacusDiceCount } from '../engine/orders';
 import { hexDist } from './board';
@@ -111,7 +111,7 @@ export function quickCardScore(s: GameState, side: Side, kind: CardKind, ben: Ma
     case 'outFlanked':
       return topN(units.filter((u) => inSection(u.hex, side, 'left')), 2) + topN(units.filter((u) => inSection(u.hex, side, 'right')), 2);
     case 'coordinated':
-      return (['left', 'center', 'right'] as SectionName[]).reduce((a, x) => a + topN(units.filter((u) => inSection(u.hex, side, x)), 1), 0);
+      return SECTIONS.reduce((a, x) => a + topN(units.filter((u) => inSection(u.hex, side, x)), 1), 0);
     case 'orderLight': return topN(units.filter((u) => UNIT_STATS[u.type].cls === 'light'), command) || topN(units, 1);
     case 'orderMedium': return topN(units.filter((u) => UNIT_STATS[u.type].cls === 'medium'), command) || topN(units, 1);
     case 'orderHeavy': return topN(units.filter((u) => UNIT_STATS[u.type].cls === 'heavy'), command) || topN(units, 1);

@@ -1,5 +1,5 @@
 // Retreat / evade / leader-evade path enumeration (rules-reference §9, §10, §11). Pure functions.
-import { rearHexes } from './hex';
+import { onBaseline, rearHexes } from './hex';
 import { attachedLeader, leaderAt, unitAt } from './query';
 import { isImpassable, steepSlopeUp, terrainAt } from './terrain';
 import { forbidsTerrain } from './units';
@@ -153,7 +153,7 @@ export function leaderEvadeOptions(s: GameState, l: Leader): RetreatOption[] {
   const out: RetreatOption[] = [];
   const walk = (cur: HexId, path: HexId[], escapes: string[], steps: number) => {
     if (steps === 3) return;
-    if (atBaseline(cur, l)) {
+    if (onBaseline(cur, l.side)) {
       out.push({ path: [...path, OFF_BOARD], end: OFF_BOARD, losses: 0, attachLeader: null, offBoard: true, escapes });
     }
     for (const h of rearHexes(cur, l.side)) {
@@ -186,9 +186,4 @@ export function leaderEvadeOptions(s: GameState, l: Leader): RetreatOption[] {
     if (!prev || e < pe || (e === pe && o.path.length < prev.path.length)) best.set(key, o);
   }
   return [...best.values()];
-}
-
-function atBaseline(h: HexId, l: Leader): boolean {
-  const r = Math.floor(h / 13);
-  return l.side === 'top' ? r === 0 : r === 8;
 }

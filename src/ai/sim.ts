@@ -4,7 +4,7 @@ import { continueTurn, turnFlow, type Gen } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
 import { orderDice } from '../engine/orders';
 import { other } from '../engine/query';
-import type { Answer, Decision, FlowCtx, GameState, HexId, Side } from '../engine/types';
+import { SIDES, type Answer, type Decision, type FlowCtx, type GameState, type HexId, type Side } from '../engine/types';
 import type { Rng } from './rand';
 
 export type Policy = (s: GameState, d: Decision) => Answer;
@@ -146,7 +146,7 @@ export function resumeTurn(s: GameState, policy: Policy, rng: Rng, from: 'move' 
   const side = s.active;
   const t = s.turn;
   const saved = { mods: { ...t.mods }, card: t.card, effective: t.effective };
-  for (const sd of ['top', 'bottom'] as Side[]) {
+  for (const sd of SIDES) {
     const h = s.players[sd].hand;
     const i = h.indexOf(FIRST_STRIKE_ID);
     if (i >= 0) h.splice(i, 1);

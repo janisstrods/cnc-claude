@@ -4,10 +4,7 @@
 // This module sits below banners.ts in the import graph.
 import { sectionsOf } from './hex';
 import { unitAt } from './query';
-import type { GameState, HexId, ObjectiveOf, ObjectiveState, SectionName, Side } from './types';
-
-const SIDES: readonly Side[] = ['top', 'bottom'];
-const SECTIONS: readonly SectionName[] = ['left', 'center', 'right'];
+import { SECTIONS, SIDES, type GameState, type HexId, type ObjectiveOf, type ObjectiveState, type SectionName, type Side } from './types';
 
 /** Banners `side` holds right now through its objectives (hold, majority, section clear); lost again when they lapse. */
 export function heldBanners(s: GameState, side: Side): number {

@@ -1,6 +1,6 @@
 // Build a GameState from a scenario definition.
 import { CARD_DEFS, CARD_LIST, defaultMods } from './cards';
-import { HEX_DIRS, hexId, onBoard } from './hex';
+import { HEX_DIRS, hexId, hexLabel, onBoard } from './hex';
 import { shuffle } from './rng';
 import { ELITES, type EliteDef } from './elites';
 import { newObjectiveState, resolveObjectives } from './objectives';
@@ -8,7 +8,7 @@ import { LEADER_TRAITS } from './query';
 import { TERRAIN_NAMES, isImpassable, isWall, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain } from './units';
 import {
-  ARMY_LOOKS, BLOCKS, COLS, LEGIONS, OFF_BOARD, ROWS, SPECIAL_RULE_IDS,
+  ARMY_LOOKS, BLOCKS, COLS, LEGIONS, OFF_BOARD, ROWS, SIDES, SPECIAL_RULE_IDS,
   type AmbushDef, type ArmyLook, type Blocks, type CommandDef, type EliteId, type GameState, type HandGrowth, type HexDir, type HexId, type Leader, type LeaderTrait,
   type Legion, type ObjectiveMarker, type PlaceUnitDef, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
@@ -269,7 +269,7 @@ function checkedCommand(commands: CommandDef[], side: Side, id: string, who: str
  */
 function checkCommandFallback(setup: ScenarioSetup, commands: CommandDef[]) {
   const need = (side: Side, who: string) => new Error(`rule commandFallback needs every ${side} unit and leader to name a command (${who} names none)`);
-  for (const side of ['top', 'bottom'] as const) {
+  for (const side of SIDES) {
     const n = commands.filter((c) => c.side === side).length;
     if (!n) continue;
     if (n > 2) throw new Error(`rule commandFallback allows at most 2 commands per army (${side} has ${n})`);
@@ -294,7 +294,7 @@ function withLegion(unit: Unit, legions: ScenarioSetup['legions']): Unit {
  * special rules, terrain types, ford values and unit types (on the board and in reserve).
  */
 function checkIds(setup: ScenarioSetup) {
-  for (const side of ['top', 'bottom'] as const) {
+  for (const side of SIDES) {
     const ss = setup[side];
     if (!known(BLOCKS, ss.blocks)) throw new Error(`${side} army: unknown blocks ${String(ss.blocks)}`);
     if (!known(ARMY_LOOKS, ss.look)) throw new Error(`${side} army: unknown look ${String(ss.look)}`);
@@ -371,7 +371,7 @@ function checkPositions(setup: ScenarioSetup, s: GameState) {
  */
 function orderDiceOf(setup: ScenarioSetup): Record<Side, number> {
   const out: Record<Side, number> = { top: 0, bottom: 0 };
-  for (const side of ['top', 'bottom'] as const) {
+  for (const side of SIDES) {
     const ss = setup[side] as SideSetup & { orders?: unknown; orderDice?: unknown };
     if (ss.orders === undefined) {
       if (ss.orderDice !== undefined) throw new Error(`${side} army: orderDice needs orders: 'dice'`);
@@ -523,17 +523,16 @@ function resolvePlaceUnits(setup: ScenarioSetup, ambush: AmbushDef | null, nextI
  * its unit type (no mounted unit on a city wall).
  */
 function checkReinforcementHexes(s: GameState) {
-  const where = (h: HexId) => `${Math.floor(h / COLS)},${h % COLS}`;
   for (const h of s.special.ambush?.entryHexes ?? []) {
-    if (isImpassable(s, h)) throw new Error(`ambush entry hex ${where(h)} is impassable`);
+    if (isImpassable(s, h)) throw new Error(`ambush entry hex ${hexLabel(h)} is impassable`);
     // a unit climbs onto a wall only by a move that begins next to it (§18.7): one entering from off the board never does
-    if (isWall(s, h)) throw new Error(`ambush entry hex ${where(h)} is a city wall, which a reserve cannot enter`);
+    if (isWall(s, h)) throw new Error(`ambush entry hex ${hexLabel(h)} is a city wall, which a reserve cannot enter`);
   }
   for (const p of s.special.placeUnits) {
     for (const h of p.hexes) {
-      if (isImpassable(s, h)) throw new Error(`placeUnits ${p.unit.type}: hex ${where(h)} is impassable`);
+      if (isImpassable(s, h)) throw new Error(`placeUnits ${p.unit.type}: hex ${hexLabel(h)} is impassable`);
       const t = terrainAt(s, h);
-      if (forbidsTerrain(p.unit.type, t)) throw new Error(`placeUnits ${p.unit.type}: hex ${where(h)} is ${t}, which it may not enter`);
+      if (forbidsTerrain(p.unit.type, t)) throw new Error(`placeUnits ${p.unit.type}: hex ${hexLabel(h)} is ${t}, which it may not enter`);
     }
   }
 }

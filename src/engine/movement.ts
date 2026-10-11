@@ -1,11 +1,11 @@
 // Movement: reachable hexes for ordered units and leaders (rules-reference §7).
 import { canMarch } from './elites';
-import { inSection, neighbours } from './hex';
+import { baselineRow, hexId, inSection, neighbours } from './hex';
 import { exitHexes, leaderExitHexes } from './objectives';
-import { attachedLeader, enemyPieceAdjacent, leaderAt, leaderById, leaderHas, unitAt, unitById } from './query';
+import { attachedLeader, enemyPieceAdjacent, isEmptyHex, leaderAt, leaderById, leaderHas, other, unitAt, unitById } from './query';
 import { isImpassable, isWall, steepClimb, steepSlope, steepSlopeUp, steepSlopes, stopsAll, stopsMounted, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain, forestFighter, isLightFoot } from './units';
-import { OFF_BOARD, type GameState, type HexId, type Leader, type OrderMods, type SectionName, type Side, type Unit } from './types';
+import { COLS, OFF_BOARD, type GameState, type HexId, type Leader, type OrderMods, type SectionName, type Side, type Unit } from './types';
 
 export interface MoveTarget {
   hex: HexId; // destination (OFF_BOARD = exits the battlefield: exit objectives, 010 Castulo)
@@ -282,15 +282,12 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
  */
 export function ambushEntryHexes(s: GameState, side: Side, section: SectionName): HexId[] {
   const fixed = s.special.ambush?.entryHexes;
-  if (fixed) return fixed.filter((h) => !isImpassable(s, h) && !unitAt(s, h) && !leaderAt(s, h));
-  const row = side === 'top' ? 8 : 0;
+  if (fixed) return fixed.filter((h) => !isImpassable(s, h) && isEmptyHex(s, h));
+  const row = baselineRow(other(side));
   const out: HexId[] = [];
-  for (let c = 0; c < 13; c++) {
-    const h = row * 13 + c;
-    if (s.terrain[h] === 'void') continue;
-    if (!inSection(h, side, section)) continue;
-    if (isImpassable(s, h)) continue;
-    if (unitAt(s, h) || leaderAt(s, h)) continue;
+  for (let c = 0; c < COLS; c++) {
+    const h = hexId(row, c);
+    if (isImpassable(s, h) || !inSection(h, side, section) || !isEmptyHex(s, h)) continue;
     out.push(h);
   }
   return out;
