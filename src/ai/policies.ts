@@ -623,22 +623,24 @@ export function spartacusAssign(s: GameState, side: Side, faces: DieFace[], W: W
 
 /**
  * The unit a flag or swords face of the side's own order roll falls on (§18.10), judged by the evaluation of the position
- * after it (the side acts next: its orders follow). A flag: the unit's best retreat for one flag that no flag ignore can
- * cancel (`retreatValue`: blocks lost for hexes it cannot take, the position it gives up, its leader carried along); only
- * units with a complete retreat are considered while there is one. Swords: 1 block lost where it stands; only units with 2
- * or more blocks while there is one. Blocks lost with a leader attached cost his casualty check (1 in 36 he falls). Ties to
- * the first option.
+ * after it, the enemy's threats counted in full (its turn comes before most of these units act again: the dice order one
+ * or two of them). A flag: the unit's best retreat for one flag that no flag ignore can cancel (`retreatValue`: blocks lost
+ * for hexes it cannot take, the position it gives up or the danger it leaves, its leader carried along); only units with a
+ * complete retreat are considered while there is one. Swords: 1 block lost where it stands; only units with 2 or more
+ * blocks while there is one. Blocks lost with a leader attached cost his casualty check (1 in 36 he falls). Ties to the
+ * first option.
  */
 export function diceVictimIndex(s: GameState, d: D<'diceVictim'>, W: Weights): number {
   const side = d.side;
-  const enemyBanner = nextBanner(s, other(side));
+  const foe = other(side);
+  const enemyBanner = nextBanner(s, foe);
   const scored = d.options.map((id) => {
     const u = unitById(s, id);
     if (!u) return { v: -Infinity, free: false };
     const l = attachedLeader(s, u);
     const check = l ? (enemyBanner + leaderVal(s, l)) / 36 : 0;
     if (d.face === 'swords') {
-      return { v: evalUnitAt(s, u, u.hex, 1, W, side) - (u.blocks > 1 ? check : 0), free: u.blocks > 1 };
+      return { v: evalUnitAt(s, u, u.hex, 1, W, foe) - (u.blocks > 1 ? check : 0), free: u.blocks > 1 };
     }
     const per = retreatPerFlag(u, null);
     const opts: RetreatOption[] = UNIT_STATS[u.type].elephantTable ? elephantRetreatOptions(s, u, per) : retreatOptions(s, u, per);
@@ -648,7 +650,7 @@ export function diceVictimIndex(s: GameState, d: D<'diceVictim'>, W: Weights): n
       const loss = retreatLoss(s, u, o);
       const blocked = loss > 0 || ((o as ElephantRetreatOption).blockers?.length ?? 0) > 0;
       if (!blocked) free = true;
-      const x = retreatValue(s, u, o, W, side, false) - (loss > 0 && loss < u.blocks ? check : 0);
+      const x = retreatValue(s, u, o, W, foe, false) - (loss > 0 && loss < u.blocks ? check : 0);
       if (x > v) v = x;
     }
     return { v, free };
