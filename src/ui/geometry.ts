@@ -2,7 +2,7 @@
 // `onBoard`). Pointy-top hexes in "odd-r" offset layout: odd rows are shifted right by half a hex. Row 0 is the top army's
 // baseline. Centres are also defined for "virtual" off-board hexes (negative rows, column 13, ...), which the terrain
 // painters use to run rivers and lakes under the frame.
-import { colOf, onBoard, rowOf } from '../engine/hex';
+import { colOf, rowOf } from '../engine/hex';
 import { COLS, ROWS, type HexId } from '../engine/types';
 
 /** Hex circumradius in SVG user units. */
@@ -16,9 +16,6 @@ export const BOARD_MARGIN = 34;
 
 export const BOARD_W = COLS * HEX_W + BOARD_MARGIN * 2;
 export const BOARD_H = (ROWS - 1) * ROW_H + 2 * HEX_R + BOARD_MARGIN * 2;
-
-/** The engine's `onBoard`, under the name the terrain tests import. */
-export { onBoard as isOnBoard };
 
 /** 0 for an even row, 1 for an odd one (shifted right by half a hex); virtual rows above the board (negative) included. */
 export const parity = (r: number) => ((r % 2) + 2) % 2;
