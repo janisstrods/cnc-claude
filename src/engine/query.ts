@@ -80,13 +80,6 @@ export function enemyUnitAdjacent(s: GameState, h: HexId, side: Side): boolean {
   return false;
 }
 
-/** Enemy unit or enemy leader adjacent to h (used for the warrior charge rule). */
-export function enemyPieceAdjacent(s: GameState, h: HexId, side: Side): boolean {
-  if (enemyUnitAdjacent(s, h, side)) return true;
-  for (const l of s.leaders) if (l.side !== side && l.hex >= 0 && areAdjacent(l.hex, h)) return true;
-  return false;
-}
-
 /** Friendly units + lone friendly leaders adjacent to unit u (support for bolster morale). */
 export function supportCount(s: GameState, u: Unit): number {
   let n = 0;

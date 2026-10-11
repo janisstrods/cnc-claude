@@ -2,7 +2,7 @@
 import { canMarch } from './elites';
 import { baselineRow, hexId, inSection, neighbours } from './hex';
 import { exitHexes, leaderExitHexes } from './objectives';
-import { attachedLeader, enemyPieceAdjacent, isEmptyHex, leaderAt, leaderById, leaderHas, other, unitAt, unitById } from './query';
+import { attachedLeader, isEmptyHex, leaderAt, leaderById, leaderHas, other, unitAt, unitById } from './query';
 import {
   closedTo, isImpassable, isWall, mayBattleAfterEntering, oneHexOut, steepClimb, steepSlope, steepSlopes, stopsAll, stopsMounted,
   stopsOnEntry, terrainAt,
@@ -89,6 +89,20 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   const hasLeader = !!leader;
   const passThrough = mods.passThrough && isLightFoot(u);
   const results = new Map<HexId, MoveTarget>();
+  // the piece on each hex (the first one, as unitAt and leaderAt find it) and the hexes holding any enemy piece, once
+  const unitOn: (Unit | undefined)[] = [];
+  const leaderOn: (Leader | undefined)[] = [];
+  const enemyOn: boolean[] = [];
+  for (const x of s.units) {
+    if (x.hex < 0) continue;
+    unitOn[x.hex] ??= x;
+    if (x.side !== u.side) enemyOn[x.hex] = true;
+  }
+  for (const x of s.leaders) {
+    if (x.hex < 0) continue;
+    leaderOn[x.hex] ??= x;
+    if (x.side !== u.side) enemyOn[x.hex] = true;
+  }
 
   type Node = { hex: HexId; dist: number; path: HexId[]; stopped: boolean };
   const queue: Node[] = [];
@@ -97,14 +111,14 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   const canEnter = (h: HexId, from: HexId): 'no' | 'pass' | 'stop' | 'yes' | 'attach' => {
     // a city wall (§18.7) is climbed only by a move that begins next to it (never by a reserve entering)
     if (closedTo(s, u.type, from, h) || (isWall(s, h) && (fromReserve || from !== startHex))) return 'no';
-    const v = unitAt(s, h);
+    const v = unitOn[h];
     if (v) {
       // passing through means not stopping: impossible through a friend standing where the unit would have to stop (stopping
       // terrain, or a very steep hill climbed from lower ground)
       if (passThrough && v.side === u.side && !stopsOnEntry(s, u.type, from, h)) return 'pass';
       return 'no';
     }
-    const l = leaderAt(s, h);
+    const l = leaderOn[h];
     if (l) {
       if (l.side !== u.side) return 'no';
       return hasLeader ? 'no' : 'attach';
@@ -127,7 +141,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     for (const e of opts.entryHexes!) {
       const k = canEnter(e, OFF_BOARD);
       if (k === 'no' || k === 'pass') continue;
-      record(e, opts.entryOnly ? 0 : 1, [e], k === 'attach' ? leaderAt(s, e)!.id : undefined);
+      record(e, opts.entryOnly ? 0 : 1, [e], k === 'attach' ? leaderOn[e]!.id : undefined);
       if (k === 'yes' && !opts.entryOnly) {
         queue.push({ hex: e, dist: 1, path: [e], stopped: false });
         best.set(e, 1);
@@ -138,8 +152,8 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     best.set(startHex, 0);
   }
 
-  while (queue.length) {
-    const n = queue.shift()!;
+  for (let qi = 0; qi < queue.length; qi++) {
+    const n = queue[qi];
     if (n.stopped || n.dist >= lim.max) continue;
     for (const h of neighbours(n.hex)) {
       const k = canEnter(h, n.hex);
@@ -147,7 +161,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
       const d = n.dist + 1;
       const path = [...n.path, h];
       if (k === 'attach') {
-        record(h, d, path, leaderAt(s, h)!.id);
+        record(h, d, path, leaderOn[h]!.id);
         continue;
       }
       if (k !== 'pass') record(h, d, path);
@@ -181,12 +195,13 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     if (bestExit) results.set(OFF_BOARD, bestExit);
   }
 
-  // A warrior's long move must end next to an enemy piece it can close combat: not one across a steep slope (308, §18.7).
+  // A warrior's long move must end next to an enemy piece (unit or leader) it can close combat: not one across a steep
+  // slope (308, §18.7).
   const enemyToCharge = (h: HexId) => {
-    if (!steepSlopes(s)) return enemyPieceAdjacent(s, h, u.side);
+    if (!steepSlopes(s)) return neighbours(h).some((x) => enemyOn[x]);
     return neighbours(h).some((x) => {
       if (steepSlope(s, h, x)) return false;
-      const p = unitAt(s, x) ?? leaderAt(s, x);
+      const p = unitOn[x] ?? leaderOn[x];
       return !!p && p.side !== u.side;
     });
   };
