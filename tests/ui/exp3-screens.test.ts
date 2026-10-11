@@ -15,7 +15,7 @@ import { Board } from '../../src/ui/game/Board';
 import { GameController, newSessionConfig } from '../../src/ui/game/controller';
 import { RandomOpponent } from '../../src/ui/game/opponent';
 import {
-  IMMOBILE_TIP, ambushTexts, boardUi, commandFallbackNote, commandTipLine, counterAttackNote, diceAssignClick, diceOrderSlots, diceRollSummary,
+  IMMOBILE_TIP, ambushTexts, boardUi, commandFallbackNote, commandTipLine, counterAttackNote, currentDiceTurn, diceAssignClick, diceOrderSlots, diceRollSummary,
   diceSlotChoices, diceSlotText, diceTurnOrders, diceTurnText, diceTurnVictim, enteredTipLine, firstOrderDie, fixedEntryHexes,
   forcedMarchLine, objectiveTipLines, placeUnitPrompt, selectAllUnits, unitSummary, type DiceTurn, type UiSel,
 } from '../../src/ui/game/uiModel';
@@ -66,6 +66,13 @@ describe('rules reference: the Expansion #3 tab', () => {
       'Camp or wall on a hill', 'Steep slopes', 'Ship markers', 'Leaders score at the exit', 'The hillock', 'Dice orders', 'Counter Attack',
       'Reinforcements', 'Immobile recruits', 'A growing hand', 'Two commands', '301–319',
     ]) expect(tab, t).toContain(t);
+  });
+
+  it('says what the board shows: 310 has no legions, the reinforcements enter on the marked Entry hexes (no compass)', () => {
+    expect(tab).toContain('Julian legions (306–319 except 310,');
+    expect(tab).toContain('enter on the empty marked Entry hexes');
+    expect(tab).not.toMatch(/western|eastern|northern|southern/);
+    expect(tab).toContain('the card orders 1 unit of it instead'); // 304's commands
   });
 });
 
@@ -178,6 +185,32 @@ describe('dice orders: the turn panel model', () => {
     const h = diceTurnOrders(s, { side: 'top', turn: 1, faces: ['leader', 'swords'], used: [null, 'Light Infantry'], done: false }, [saburra, null]);
     expect(diceTurnText(h, true)).toBe('Order dice: helmet, swords. Lost a block: Light Infantry. Ordered: Saburra with his Heavy Infantry.');
     expect(diceTurnText({ side: 'top', turn: 1, faces: ['heavy', 'heavy'], used: [null, null], done: false }, true)).toBe('Order dice: heavy (red), heavy (red). Ordered: nothing.');
+  });
+
+  it('a battle resumed from its save mid dice turn: the panel starts from the pending decision (no roll on record)', () => {
+    const turn = s.turn.number;
+    const orders: Decision = { kind: 'diceOrders', side: 'top', faces: ['flag', 'light'] };
+    const victim: Decision = { kind: 'diceVictim', side: 'top', face: 'flag', options: ['u1', 'u2'] };
+    const swords: Decision = { kind: 'diceVictim', side: 'top', face: 'swords', options: ['u1', 'u2'] };
+    expect(currentDiceTurn(s, 'top', null, orders)).toEqual({ side: 'top', turn, faces: ['flag', 'light'], used: [null, null], done: false });
+    // at a flag or swords: that die alone is known
+    const atFlag = currentDiceTurn(s, 'top', null, victim)!;
+    expect(atFlag).toEqual({ side: 'top', turn, faces: ['flag'], used: [null], done: false });
+    const fell = diceTurnVictim(atFlag, 'flag', 'Numidian Light Cavalry');
+    // a second victim die is added to what is known
+    expect(currentDiceTurn(s, 'top', fell, swords)).toEqual({ side: 'top', turn, faces: ['flag', 'swords'], used: ['Numidian Light Cavalry', null], done: false });
+    // then the orders bring the whole roll, the victims already chosen kept on their faces
+    expect(currentDiceTurn(s, 'top', fell, { kind: 'diceOrders', side: 'top', faces: ['light', 'flag'] })).toEqual(
+      { side: 'top', turn, faces: ['light', 'flag'], used: [null, 'Numidian Light Cavalry'], done: false },
+    );
+    // a roll on record is the turn itself
+    const rolled: DiceTurn = { side: 'top', turn, faces: ['flag', 'light'], used: ['Numidian Light Cavalry', null], done: false };
+    expect(currentDiceTurn(s, 'top', rolled, orders)).toBe(rolled);
+    expect(currentDiceTurn(s, 'top', rolled, null)).toBe(rolled);
+    // none for the other side, an old turn, or no dice decision
+    expect(currentDiceTurn(s, 'bottom', null, orders)).toBeNull();
+    expect(currentDiceTurn(s, 'top', { ...rolled, turn: turn - 1 }, null)).toBeNull();
+    expect(currentDiceTurn(s, 'top', null, { kind: 'playCard', side: 'top' })).toBeNull();
   });
 
   it('Counter Attack against a dice side copies nothing, and says so', () => {
@@ -370,6 +403,25 @@ describe('reinforcements with fixed entry (308)', () => {
     expect(ambushTexts(s, 'Vercingetorix').button).toBe("Vercingetorix's reinforcements cannot enter now: every entry hex is occupied.");
     // an ambush on the baseline (206) keeps a button per section
     expect(ambushTexts(game('206'), 'Marcellus')).toMatchObject({ fixed: false, free: null, label: 'Ambush' });
+  });
+
+  it('the move prompt says Vercingetorix joins a unit only while he is still off the board', () => {
+    const s = game('308');
+    const JOINS = 'Vercingetorix joins one of them.';
+    expect(ambushTexts(s, 'Vercingetorix').move).toContain(JOINS); // in the reserve
+    // the force is released: he waits off the board among the leaders
+    s.leaders.push(...s.special.reserveLeaders);
+    s.special.reserveLeaders = [];
+    const v = s.leaders.find((l) => l.name === 'Vercingetorix')!;
+    expect(v.hex).toBe(-1);
+    expect(ambushTexts(s, 'Vercingetorix').move).toContain(JOINS);
+    // on the board (he came in with the first units), later reinforcements enter without him
+    v.hex = hexId(4, 0);
+    expect(ambushTexts(s, 'Vercingetorix').move).toBe(
+      "Vercingetorix's reinforcements enter on the marked entry hexes: pick a piece, then a highlighted hex. They cannot move on this turn, but may battle.");
+    // nor when he has fallen
+    s.leaders = s.leaders.filter((l) => l !== v);
+    expect(ambushTexts(s, 'Vercingetorix').move).not.toContain(JOINS);
   });
 
   it('an entered unit says it cannot move again this turn', () => {

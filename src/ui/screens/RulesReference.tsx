@@ -325,7 +325,7 @@ export function Expansion3() {
       <h3>The legions</h3>
       <ul>
         <li><b>Marian legions</b> (301–305, both armies): every medium and heavy infantry unit of the side throws the pilum (range 2, always 1 die, not after moving 2 hexes), Samnites and Sertorians included.</li>
-        <li><b>Julian legions</b> (306–319, the sides each battle names): the pilum and the march. A unit may move 2 hexes if it does not battle at all that turn, or 1 hex and battle. Line Command still allows 1 hex; Double Time gives 2 hexes and close combat, never 3.</li>
+        <li><b>Julian legions</b> (306–319 except 310, the sides each battle names): the pilum and the march. A unit may move 2 hexes if it does not battle at all that turn, or 1 hex and battle. Line Command still allows 1 hex; Double Time gives 2 hexes and close combat, never 3.</li>
         <li><b>Julius Caesar</b> (306–309, 314–319): +1 close combat die for his unit, also in its first strike from a wall. An infantry unit that has him with it when its move begins may move 2 hexes and still close combat, but a pilum unit never throws after 2 hexes.</li>
       </ul>
       <h3>Terrain</h3>
@@ -341,10 +341,10 @@ export function Expansion3() {
       <h3>Battle rules</h3>
       <ul>
         <li><b>Dice orders</b> (310 Utica): the Numidians hold no cards. At the start of each of their turns they roll 2 order dice. Each flag makes one of their own units, their choice, fall back as for one flag that cannot be ignored; each crossed swords costs one of their units a block. Then each green, blue or red die orders one unit of that class anywhere on the board, and a helmet orders Saburra with his unit; a die with nothing to order is lost. The Numidian player, human or computer, makes every choice. A Caesarian Counter Attack has no card to copy and orders nothing.</li>
-        <li><b>Reinforcements</b> (308 Gergovia): Vercingetorix and four Gallic units wait off the board. When the Gauls play a Leadership card, from the first turn, they may bring them in instead of ordering units: they enter on the empty marked hexes at the western edge, Vercingetorix with one of them, and may battle but not move that turn. At the start of the next Roman turn, before the card, the Roman player must place an extra medium infantry unit on an empty hex of his left baseline.</li>
+        <li><b>Reinforcements</b> (308 Gergovia): Vercingetorix and four Gallic units wait off the board. When the Gauls play a Leadership card, from the first turn, they may bring them in instead of ordering units: they enter on the empty marked Entry hexes, Vercingetorix with one of them, and may battle but not move that turn. At the start of the next Roman turn, before the card, the Roman player must place an extra medium infantry unit on an empty hex of his left baseline.</li>
         <li><b>Immobile recruits</b> (306 Bibracte, marked with an anchor): the two Roman auxiliaries in the camps never move or advance, but are ordered, fire, fight and battle back, and retreat when flags force them.</li>
         <li><b>A growing hand</b> (313): the Caesarians start with 2 cards and draw 2 after each turn, gaining 1 Command each time, until they hold 5.</li>
-        <li><b>Two commands</b> (304 Valentia): the Sertorian army is Herennius&apos; command and Perpenna&apos;s (light-blue blocks); each unit shows its commander&apos;s initial. Every card orders units of one command only, and here each leader belongs to his own command, so a Leadership card must use a leader of the command it orders.</li>
+        <li><b>Two commands</b> (304 Valentia): the Sertorian army is Herennius&apos; command and Perpenna&apos;s (light-blue blocks); each unit shows its commander&apos;s initial. Every card orders units of one command only, and here each leader belongs to his own command, so a Leadership card must use a leader of the command it orders. If that command has none of the troops a card names, the card orders 1 unit of it instead.</li>
       </ul>
     </div>
   );

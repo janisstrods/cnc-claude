@@ -7,7 +7,7 @@ import {
 } from '../../engine';
 import { SCENARIOS, scenarioById } from '../../scenarios';
 import type { Opponent } from './opponent';
-import { FACE_WORDS, diceRollSummary, diceTurnOrders, diceTurnVictim, pieceName, type DiceTurn } from './uiModel';
+import { FACE_WORDS, currentDiceTurn, diceRollSummary, diceTurnOrders, diceTurnVictim, pieceName, type DiceTurn } from './uiModel';
 import { sfx } from '../sound';
 
 export type Difficulty = 'recruit' | 'tribune' | 'consul';
@@ -527,8 +527,9 @@ export class GameController {
    * or the orders given), named from the state before the answer; null for any other decision.
    */
   private diceNote(d: Decision, a: Answer): DiceTurn | null {
-    const t = this.view.diceTurn;
-    if (!t || t.side !== d.side || t.turn !== this.driver.state.turn.number) return null;
+    // the roll on record, or, in a battle resumed from its save mid-turn, the turn started from the decision
+    const t = currentDiceTurn(this.driver.state, d.side, this.view.diceTurn, d);
+    if (!t) return null;
     if (d.kind === 'diceVictim' && a.kind === 'choose') {
       const id = d.options[a.index];
       return id ? diceTurnVictim(t, d.face, pieceName(this.driver.state, id)) : null;

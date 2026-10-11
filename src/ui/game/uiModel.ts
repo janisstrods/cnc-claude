@@ -1,7 +1,8 @@
 // Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges, plus the unit
 // descriptions shown in tooltips and the rules reference.
 import {
-  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, ambushAvailable, attachedLeader, bannerTotal, baselineRow, battleReady,
+  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, ambushAvailable, ambushEntryHexes, attachedLeader, bannerTotal,
+  baselineRow, battleReady,
   battleTargets, canMarch, cardKind, closeCombatDice, closeHitChance, commandClash, commandModes, commandOf, diceOrderPieces, eligiblePieces, inCommand, eliteDef,
   fireMoveLimit, heldBanners, inSection, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces,
   nextCaptureBanners, orderCommander, orderDice, orderMode, other, pieceMoves, rangeOf, rangedBaseDice, rangedDice, rollingFirePaths, rowOf,
@@ -714,8 +715,8 @@ export function possessive(name: string): string {
 /**
  * Wording of an ambush reserve (Trebbia 005, Aquae Sextiae 206) or of reinforcements with fixed entry hexes (308 Gergovia,
  * §18.9): the button's label (`fixed`: one button, whatever the section; otherwise one per section, "Ambush: Left"), its
- * tooltip and the move prompt while the pieces enter. `leader` = the reserve's leader (the scenario setup's first reserve
- * leader), if any. For fixed entry, `free` is the number of entry hexes still empty (0: no unit can enter, so the button is
+ * tooltip and the move prompt while the pieces enter (naming the leader who joins them only while he is off the board).
+ * `leader` = the reserve's leader (the scenario setup's first reserve leader), if any. For fixed entry, `free` is the number of entry hexes still empty (0: no unit can enter, so the button is
  * not offered); it is null for an ambush on the baseline.
  */
 export function ambushTexts(s: GameState, leader?: string): { button: string; move: string; label: string; fixed: boolean; free: number | null } {
@@ -724,11 +725,15 @@ export function ambushTexts(s: GameState, leader?: string): { button: string; mo
   const a = s.special.ambush;
   if (a?.entryHexes) {
     const force = leader ? `${possessive(leader)} reinforcements` : 'The reinforcements';
+    // the leader joins an entering unit only while he is still off the board (in the reserve, or released and waiting)
+    const leaderOff = !!leader && (
+      s.special.reserveLeaders.some((l) => l.name === leader) || s.leaders.some((l) => l.name === leader && l.hex === OFF_BOARD)
+    );
     const after = [
       a.noMove ? 'They cannot move on this turn, but may battle.' : '',
-      a.attachLeader && leader ? `${leader} joins one of them.` : '',
+      a.attachLeader && leaderOff ? `${leader} joins one of them.` : '',
     ].filter(Boolean).join(' ');
-    const free = freeEntryHexes(s).length;
+    const free = freeEntryHexes(s, side).length;
     return {
       fixed: true,
       free,
@@ -887,6 +892,31 @@ export function diceTurnVictim(t: DiceTurn, face: 'flag' | 'swords', name: strin
   return i < 0 ? t : { ...t, used: t.used.map((x, j) => (j === i ? name : x)) };
 }
 
+/**
+ * The dice-order turn of `side` to show and to record answers on (310, §18.10): `t`, the roll on record, while it is that
+ * side's current turn. A battle resumed from its save mid-turn has no roll on record, so the turn starts from the pending
+ * decision: `diceOrders` carries the whole roll, `diceVictim` only the flag or swords die it asks about (added to what is
+ * known). When the orders come with a roll other than the one known, the whole roll replaces it, and the victims already
+ * chosen keep their names on the matching dice. Null: nothing to show.
+ */
+export function currentDiceTurn(s: GameState, side: Side, t: DiceTurn | null, d: Decision | null): DiceTurn | null {
+  const own = t && t.side === side && t.turn === s.turn.number ? t : null;
+  const pending = d && d.side === side && s.active === side ? d : null;
+  const fresh = (faces: DieFace[]): DiceTurn => ({ side, turn: s.turn.number, faces, used: faces.map(() => null), done: false });
+  if (pending?.kind === 'diceOrders' && (!own || own.faces.join() !== pending.faces.join())) {
+    let next = fresh(pending.faces);
+    own?.faces.forEach((f, j) => {
+      const name = own.used[j];
+      if ((f === 'flag' || f === 'swords') && name) next = diceTurnVictim(next, f, name);
+    });
+    return next;
+  }
+  if (pending?.kind === 'diceVictim' && !own?.faces.some((f, j) => f === pending.face && own.used[j] === null)) {
+    return own ? { ...own, faces: [...own.faces, pending.face], used: [...own.used, null] } : fresh([pending.face]);
+  }
+  return own;
+}
+
 /** The turn after its orders were given (`ids`: the `assign` answer, one entry per die). */
 export function diceTurnOrders(s: GameState, t: DiceTurn, ids: readonly (string | null)[]): DiceTurn {
   return { ...t, used: t.used.map((x, j) => (t.faces[j] === 'flag' || t.faces[j] === 'swords' ? x : ids[j] ? pieceName(s, ids[j]!) : null)), done: true };
@@ -930,12 +960,15 @@ export function placeUnitPrompt(s: GameState, d: Extract<Decision, { kind: 'plac
  * ones (no unit, no leader). Empty in every other case.
  */
 export function fixedEntryHexes(s: GameState, side: Side, card: CardKind): HexId[] {
-  return ambushAvailable(s, side, card) ? freeEntryHexes(s) : [];
+  return ambushAvailable(s, side, card) ? freeEntryHexes(s, side) : [];
 }
 
-/** The fixed entry hexes (308) with no unit and no leader on them, whoever may bring the reinforcements in. */
-function freeEntryHexes(s: GameState): HexId[] {
-  return (s.special.ambush?.entryHexes ?? []).filter((h) => !unitAt(s, h) && !leaderAt(s, h));
+/**
+ * The fixed entry hexes (308) with no unit and no leader on them, as the engine offers them to the entering units
+ * (`ambushEntryHexes`, the same whatever the section); none for an ambush without fixed entry.
+ */
+function freeEntryHexes(s: GameState, side: Side): HexId[] {
+  return s.special.ambush?.entryHexes ? ambushEntryHexes(s, side, 'center') : [];
 }
 
 /** Tooltip line of an immobile unit (306, §18.11). */

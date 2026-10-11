@@ -14,7 +14,8 @@ import { Board } from './Board';
 import type { GameController, LogLine } from './controller';
 import {
   FACE_WORDS, IMMOBILE_TIP, ambushTexts, attackDice, bannerCounts, boardUi, commandBlocks, commandById, commandTipLine, counterAttackNote,
-  deploymentSide, diceAssignClick, diceOrderSlots, diceSlotText, diceTurnText, effectiveKind, enteredTipLine, expectedHits, firstOrderDie,
+  currentDiceTurn, deploymentSide, diceAssignClick, diceOrderSlots, diceSlotText, diceTurnText, effectiveKind, enteredTipLine, expectedHits,
+  firstOrderDie,
   commandFallbackNote, forcedMarchLine, leaderTraitLines, leadershipHint, objectiveTipLines, pieceHexOf, pieceName, placeUnitPrompt, possessive,
   retreatEliminates, rollingFireStep, selectAllUnits, unitSummary, type DiceTurn, type UiSel,
 } from './uiModel';
@@ -387,7 +388,8 @@ export function GameScreen({ controller, onExit, onRematch }: {
           const moves = pieceMoves(s, sel, d.stage);
           text = d.stage === 2
             ? `${name}: may move again (no further combat this turn).`
-            : `${name}: green = may battle after moving, amber = no battle, red = must charge into combat.${moves.some((m) => m.hex === OFF_BOARD) ? ' This unit can exit the battlefield.' : ''}`;
+            : `${name}: green = may battle after moving, amber = no battle, red = must charge into combat.${
+              moves.some((m) => m.hex === OFF_BOARD) ? ` This ${isLeaderId(sel) ? 'leader' : 'unit'} can exit the battlefield.` : ''}`;
         }
         if (reserve.length) text = ambushTexts(s, ambushLeader).move;
         const buttons = [btn(d.stage === 2 ? 'Finish second move' : 'End movement', () => answer({ kind: 'endMove' }), { variant: 'secondary' })];
@@ -935,9 +937,8 @@ function DiceTurnPanel(p: {
   onSelect: (i: number) => void;
 }) {
   const { state: s, side, pending: d } = p;
-  // a battle resumed from its save during the orders has no roll on record: the decision has the dice
-  const resumed = d?.kind === 'diceOrders' && d.side === side ? { side, turn: s.turn.number, faces: d.faces, used: d.faces.map(() => null), done: false } : null;
-  const t = p.turn && p.turn.side === side && p.turn.turn === s.turn.number ? p.turn : resumed;
+  // a battle resumed from its save mid-turn has no roll on record: the pending decision has the dice
+  const t = currentDiceTurn(s, side, p.turn, d);
   const mine = !!t && s.active === side;
   const assigning = mine && d?.kind === 'diceOrders' && d.side === side;
   const slots = mine ? diceOrderSlots(s, side, t!.faces) : [];
