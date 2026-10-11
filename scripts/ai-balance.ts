@@ -15,8 +15,8 @@
 import { writeFileSync } from 'node:fs';
 import {
   GameDriver, OFF_BOARD, UNIT_STATS, areAdjacent, bannerTotal, canFireAt, cloneState, createGame, diceOrderPieces, hasPilum, heldBanners,
-  isWall, leaderHas, modsFor, randomAnswer, retreatOptions, retreatPerFlag, type Decision, type GameEvent, type GameState, type Side,
-  type Unit,
+  isWall, leaderHas, modsFor, randomAnswer, retreatOptions, retreatPerFlag, validateDiceOrders, type Decision, type DieFace, type GameEvent,
+  type GameState, type Side, type Unit,
 } from '../src/engine';
 import { SCENARIOS } from '../src/scenarios';
 import { chooseAnswer, newMemory, personalityById, personalityFor, type AiOptions, type Difficulty } from '../src/ai';
@@ -80,10 +80,10 @@ const zeroX2 = (): X2 => ({
 /**
  * Expansion #3 counters (Expansion #3 battles only). City walls: units climbing onto a wall hex (move or momentum advance),
  * close combats against a unit on a wall (by mounted units too), first strikes from a wall. Dice orders (310): order turns,
- * faces rolled, faces that could order a piece, faces used; flag and swords victims chosen, flag victims whose retreat was
- * blocked (and of them, ones chosen although a unit with a free retreat existed), swords victims on their last block (and
- * avoidably so). Forced placements made, and of them on the first offered hex; reinforcement units entered; ships taken;
- * leader exits (317); moves of immobile units (306, never expected).
+ * faces rolled, faces that could order a piece together (`usableFaces`), faces used; flag and swords victims chosen, flag
+ * victims whose retreat was blocked (and of them, ones chosen although a unit with a free retreat existed), swords victims
+ * on their last block (and avoidably so). Forced placements made, and of them on the first offered hex; reinforcement units
+ * entered; ships taken; leader exits (317); moves of immobile units (306, never expected).
  */
 interface X3 {
   wallClimbs: number; wallAssaults: number; wallAssaultsMounted: number; wallFirstStrikes: number;
@@ -97,12 +97,33 @@ const zeroX3 = (): X3 => ({
   placements: 0, placementsFirst: 0, reinforcements: 0, ships: 0, leaderExits: 0, immobileMoves: 0,
 });
 
+/** The most faces of a dice-order roll that can order a piece together (two equal faces need two units; a helmet's unit). */
+function usableFaces(s: GameState, side: Side, faces: DieFace[]): number {
+  let best = 0;
+  const ids: (string | null)[] = faces.map(() => null);
+  const walk = (i: number, n: number) => {
+    if (i === faces.length) {
+      if (!validateDiceOrders(s, side, faces, ids)) best = Math.max(best, n);
+      return;
+    }
+    ids[i] = null;
+    walk(i + 1, n);
+    for (const id of diceOrderPieces(s, side, faces[i])) {
+      ids[i] = id;
+      walk(i + 1, n + 1);
+    }
+    ids[i] = null;
+  };
+  walk(0, 0);
+  return best;
+}
+
 /** Count one decision and its answer for the Expansion #3 counters (before the answer is applied). */
 function countX3Decision(x: X3, s: GameState, dec: Decision, ans: ReturnType<typeof chooseAnswer>['answer']) {
   if (dec.kind === 'diceOrders' && ans.kind === 'assign') {
     x.diceTurns++;
     x.diceFaces += dec.faces.length;
-    x.diceFacesUsable += dec.faces.filter((f) => diceOrderPieces(s, dec.side, f).length > 0).length;
+    x.diceFacesUsable += usableFaces(s, dec.side, dec.faces);
     x.diceFacesUsed += ans.ids.filter((id) => id !== null).length;
   } else if (dec.kind === 'diceVictim' && ans.kind === 'choose') {
     x.victims++;
