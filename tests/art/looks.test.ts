@@ -13,7 +13,6 @@ import baselineJson from './palette-baseline.json';
 import { createGame } from '../../src/engine';
 import type { ArmyLook, Blocks, EliteId, Side, UnitType } from '../../src/engine/types';
 import { createElement as h } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { BLOCK_COLORS, LOOKS, blockColors, lookDef, paletteFor, type Kit } from '../../src/art/palettes';
 import { LeaderToken, UnitIcon, UnitToken } from '../../src/art';
 import { ELITE_FOOT, FootFigure, crewFigure, figurePalette, footKit } from '../../src/art/foot';
@@ -21,6 +20,7 @@ import { KITS as ART_KITS } from '../../src/art/kits';
 import { bannerCloth } from '../../src/ui/kit/theme';
 import { SCENARIOS } from '../../src/scenarios';
 import { deltaE, lab } from './delta-e';
+import { ALL_TYPES, MAX, svg } from './helpers';
 
 const baseline = baselineJson as unknown as {
   FACTION_PALETTES: Record<string, Record<string, unknown>>;
@@ -195,9 +195,6 @@ describe('opposing armies are told apart by their colours, not only by the base 
   });
 });
 
-const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
-const MAX: Record<UnitType, number> = { LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HC: 3, EL: 2, HCH: 2, LBC: 3, CAM: 3, HWM: 2, BCH: 3 };
-const ALL_TYPES = Object.keys(MAX) as UnitType[];
 const BASE_TYPES: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI', 'LC', 'MC', 'HC', 'EL', 'HCH'];
 
 describe('base armies are drawn exactly as before Expansion #1 (rendered SVG)', () => {

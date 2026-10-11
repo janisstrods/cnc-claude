@@ -3,7 +3,6 @@
 // elephants, and Pompey as a named leader. The battles are read from their scenario files (src/scenarios/data/3xx.json).
 import { describe, expect, it } from 'vitest';
 import { createElement as h } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import type { ArmyLook, Blocks, UnitType } from '../../src/engine/types';
 import { LEADER_LOOKS, LOOKS, leaderLook, paletteFor, type EmblemKind, type Palette } from '../../src/art/palettes';
 import { KITS } from '../../src/art/kits';
@@ -14,10 +13,8 @@ import { Miniature } from '../../src/art/token';
 import { lookMount } from '../../src/art/mounted';
 import { warMachineOf } from '../../src/art/machine';
 import { deltaE } from './delta-e';
+import { ALL_TYPES, MAX, svg } from './helpers';
 
-const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
-const MAX: Record<UnitType, number> = { LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HC: 3, EL: 2, HCH: 2, LBC: 3, CAM: 3, HWM: 2, BCH: 3 };
-const ALL_TYPES = Object.keys(MAX) as UnitType[];
 const FOOT: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI'];
 const EXP3: ArmyLook[] = ['sullan', 'samnite', 'sertorian', 'pompeian', 'caesarian', 'helvetii', 'numidian', 'pontic'];
 

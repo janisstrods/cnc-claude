@@ -3,13 +3,11 @@
 // Lentulus' legions) draws only its base edge in that set's colour.
 import { describe, expect, it } from 'vitest';
 import { createElement as h } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { BLOCKS, type Blocks } from '../../src/engine/types';
 import { BASE_TOP, BLOCK_COLORS, LeaderToken, UnitToken } from '../../src/art';
 import { P } from '../../src/ui/terrain/palette';
 import { deltaE } from './delta-e';
-
-const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
+import { svg } from './helpers';
 
 /**
  * What a base edge is seen against: every solid colour of the terrain paint palette (grass, hills, rock, woods, water, sea,

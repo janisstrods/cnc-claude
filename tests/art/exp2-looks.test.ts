@@ -2,7 +2,6 @@
 // Marian looks, the Tenth Legion, and the named leaders Caesar and Spartacus.
 import { describe, expect, it } from 'vitest';
 import { createElement as h } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import type { ArmyLook, Blocks, EliteId, UnitType } from '../../src/engine/types';
 import { LEADER_LOOKS, LOOKS, leaderLook, paletteFor, type EmblemKind, type Palette } from '../../src/art/palettes';
 import { KITS } from '../../src/art/kits';
@@ -13,15 +12,14 @@ import { EliteStandard, Miniature } from '../../src/art/token';
 import { lightChariotCrew } from '../../src/art/chariot';
 import { lookMount } from '../../src/art/mounted';
 import { deltaE } from './delta-e';
+import { MAX, svg } from './helpers';
 
-const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
-const MAX: Partial<Record<UnitType, number>> = { LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HWM: 2, BCH: 3 };
 const FOOT: UnitType[] = ['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI'];
 const BARBARIANS: ArmyLook[] = ['gallic', 'belgic', 'briton', 'germanic', 'slave'];
 const EXP2: ArmyLook[] = [...BARBARIANS, 'marian'];
 const blocksOf = (look: ArmyLook): Blocks => (look === 'marian' ? 'rom' : 'bar');
 const token = (type: UnitType, look: ArmyLook, extra: { elite?: EliteId; facing?: 'left' | 'right' } = {}) =>
-  svg(h(UnitToken, { type, look, blockColor: blocksOf(look), blocks: MAX[type] ?? 4, maxBlocks: MAX[type] ?? 4, facing: extra.facing ?? 'right', elite: extra.elite }));
+  svg(h(UnitToken, { type, look, blockColor: blocksOf(look), blocks: MAX[type], maxBlocks: MAX[type], facing: extra.facing ?? 'right', elite: extra.elite }));
 
 /** The foot figure of a look as drawn: the kit's, then the look's override for the type and figure (perhaps another kit's). */
 function drawnKit(look: ArmyLook, type: UnitType, i: number): FootKit {

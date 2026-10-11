@@ -2,7 +2,6 @@
 // stand-ins), kits and looks differ where the armies did, elites reach the figures, and nothing renders broken.
 import { describe, expect, it } from 'vitest';
 import { createElement as h } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import type { ArmyLook, Blocks, EliteId, UnitType } from '../../src/engine/types';
 import { LOOKS, paletteFor } from '../../src/art/palettes';
 import { LeaderToken, UnitIcon, UnitToken } from '../../src/art';
@@ -10,10 +9,8 @@ import { EliteStandard, Miniature, figureKind } from '../../src/art/token';
 import { FootFigure, figurePalette, footKit } from '../../src/art/foot';
 import type { Kit } from '../../src/art/palettes';
 import { SCENARIOS } from '../../src/scenarios';
+import { ALL_TYPES, MAX, svg } from './helpers';
 
-const svg = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(h('svg', null, el));
-const MAX: Record<UnitType, number> = { LI: 4, LB: 4, LS: 4, AX: 4, WA: 4, MI: 4, HI: 4, LC: 3, MC: 3, HC: 3, EL: 2, HCH: 2, LBC: 3, CAM: 3, HWM: 2, BCH: 3 };
-const ALL_TYPES = Object.keys(MAX) as UnitType[];
 const ALL_LOOKS = Object.keys(LOOKS) as ArmyLook[];
 const KIT_LOOKS: ArmyLook[] = ['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian'];
 
