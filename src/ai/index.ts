@@ -565,7 +565,11 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
         kind: d.kind, ms: res.ms, sims: res.sims, plan: `${b.label} = ${candScore(b, ctx).toFixed(3)}`,
         alternatives: res.cands.slice(0, 6).map((c) => `${c.label}: ${candScore(c, ctx).toFixed(3)} (n=${c.n})`),
       };
-      return { answer: { kind: 'assign', ids: b.dice ?? all[0].ids }, say: stallSay ?? commentCard(s, me, P, mem, rng, b) };
+      // a face the plan left unused still orders the best piece it can: that unit stays where it is (the plan's moves end
+      // the movement) but may still battle; an order never costs anything
+      const planned = b.orders ?? [];
+      const ids = all.find((a) => planned.every((id) => a.pieces.includes(id)))?.ids ?? b.dice ?? all[0].ids;
+      return { answer: { kind: 'assign', ids }, say: stallSay ?? commentCard(s, me, P, mem, rng, b) };
     }
   }
 }
