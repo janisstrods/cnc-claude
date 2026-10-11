@@ -459,7 +459,7 @@ function settled(c: Cand): boolean {
  * with it. Settled plans (several ways of holding still, say) would otherwise fill the top places and take the
  * budget while rivals cut by the halving after a few unlucky rolls are never sampled again.
  */
-export function closeRivals(lead: Cand, cands: Cand[], ctx: PlanCtx): Cand[] {
+export function closeRivals(lead: Cand, cands: Cand[]): Cand[] {
   const byScore = (a: Cand, b: Cand) => candScore(b) - candScore(a);
   return [...cands].sort(byScore).filter((c) => c !== lead && c.n > 0 && !settled(c) && closeCall(lead, c)).slice(0, 2);
 }
@@ -483,7 +483,7 @@ function topUp(root: GameState, ctx: PlanCtx, cands: Cand[], pool: Cand[]): Cand
   for (let guard = 0; guard < 24 && !timeUp(ctx); guard++) {
     pool.sort(byScore);
     const lead = pool[0];
-    const close = closeRivals(lead, cands, ctx);
+    const close = closeRivals(lead, cands);
     if (!close.length) break;
     const group = [lead, ...close].filter((c) => !settled(c) && c.n < ctx.cfg.topUp);
     if (!group.length) break;
