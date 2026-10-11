@@ -86,7 +86,8 @@ for (const job of mine) {
     else {
       const t0 = performance.now();
       ans = chooseAnswer(d.state, dec, isA ? optA : optB, isA ? memA : memB).answer;
-      if (dec.kind === 'playCard') (isA ? timeA : timeB).push(performance.now() - t0);
+      // the turn plans: a card decision, or a dice-order side's assignment of its order dice (310, §18.10)
+      if (dec.kind === 'playCard' || dec.kind === 'diceOrders') (isA ? timeA : timeB).push(performance.now() - t0);
     }
     if (!d.answer(ans)) {
       rejects++;
@@ -104,4 +105,4 @@ for (const job of mine) {
 const avg = (x: number[]) => (x.length ? x.reduce((a, b) => a + b, 0) / x.length : 0);
 const max = (x: number[]) => (x.length ? Math.max(...x) : 0);
 console.log(`RESULT A=${A} wins ${aWins}, B=${botB || (randomB ? 'random' : B)} wins ${bWins}, games ${mine.length}`);
-console.log(`TIME A playCard avg ${avg(timeA).toFixed(0)}ms max ${max(timeA).toFixed(0)}ms; B avg ${avg(timeB).toFixed(0)}ms max ${max(timeB).toFixed(0)}ms`);
+console.log(`TIME A turn plans (playCard, diceOrders) avg ${avg(timeA).toFixed(0)}ms max ${max(timeA).toFixed(0)}ms; B avg ${avg(timeB).toFixed(0)}ms max ${max(timeB).toFixed(0)}ms`);

@@ -1,5 +1,5 @@
-// AI-vs-AI balance runs with behaviour counters for the Expansion #1 and #2 units and rules.
-// Usage: npx vite-node scripts/ai-balance.ts -- [--scenarios 101,110 | --expansion exp2] [--games 2] [--a tribune]
+// AI-vs-AI balance runs with behaviour counters for the Expansion #1, #2 and #3 units and rules.
+// Usage: npx vite-node scripts/ai-balance.ts -- [--scenarios 101,110 | --expansion exp2 | --expansion exp3] [--games 2] [--a tribune]
 //        [--b tribune] [--scale 0.5] [--shard 0/4] [--seedOffset 0] [--json out.json] [--persTop veteran] [--persBottom veteran]
 //   Each game is played once per side assignment (A as bottom, then A as top), so with --a = --b the win rates
 //   measure the battle's balance; with --a tribune --b recruit they measure strength. Without --scenarios every battle of
@@ -7,12 +7,16 @@
 //   to the enemy; light bow cavalry closing on heavy units; camels attacking horses; leaders lost in Hellespont; decision
 //   times; AI answers replaced by the fallback (AI bugs). Expansion #2 battles add their own counters (`X2`, below):
 //   Rolling Fire, exits, camps captured, held banners, pilum throws, 2-hex infantry moves with Caesar, commands named,
-//   ambush entries, last-row losses, ramparts broken.
-//   Banners are banner totals (permanent + held; the same as permanent banners outside Expansion #2).
+//   ambush entries, last-row losses, ramparts broken. Expansion #3 battles count those too, and their own (`X3`, below):
+//   city walls climbed, assaulted and defended with the first strike, dice-order turns and faces, the victims of their flags
+//   and swords, forced placements, reinforcements entered, ships taken, leader exits, immobile units moved (always 0).
+//   Banners are banner totals (permanent + held; the same as permanent banners outside Expansions #2 and #3). Decision
+//   times are the turn plans: the card decisions, and a dice-order side's order assignment (310).
 import { writeFileSync } from 'node:fs';
 import {
-  GameDriver, OFF_BOARD, UNIT_STATS, areAdjacent, bannerTotal, canFireAt, cloneState, createGame, hasPilum, heldBanners, leaderHas,
-  modsFor, randomAnswer, type GameEvent, type GameState, type Side, type Unit,
+  GameDriver, OFF_BOARD, UNIT_STATS, areAdjacent, bannerTotal, canFireAt, cloneState, createGame, diceOrderPieces, hasPilum, heldBanners,
+  isWall, leaderHas, modsFor, randomAnswer, retreatOptions, retreatPerFlag, type Decision, type GameEvent, type GameState, type Side,
+  type Unit,
 } from '../src/engine';
 import { SCENARIOS } from '../src/scenarios';
 import { chooseAnswer, newMemory, personalityById, personalityFor, type AiOptions, type Difficulty } from '../src/ai';
@@ -73,9 +77,75 @@ const zeroX2 = (): X2 => ({
   pilumShots: 0, caesarMarches: 0, marches: 0, chooseCommand: 0, ambush: 0, lastRow: 0, ramparts: 0,
 });
 
+/**
+ * Expansion #3 counters (Expansion #3 battles only). City walls: units climbing onto a wall hex (move or momentum advance),
+ * close combats against a unit on a wall (by mounted units too), first strikes from a wall. Dice orders (310): order turns,
+ * faces rolled, faces that could order a piece, faces used; flag and swords victims chosen, flag victims whose retreat was
+ * blocked (and of them, ones chosen although a unit with a free retreat existed), swords victims on their last block (and
+ * avoidably so). Forced placements made, and of them on the first offered hex; reinforcement units entered; ships taken;
+ * leader exits (317); moves of immobile units (306, never expected).
+ */
+interface X3 {
+  wallClimbs: number; wallAssaults: number; wallAssaultsMounted: number; wallFirstStrikes: number;
+  diceTurns: number; diceFaces: number; diceFacesUsable: number; diceFacesUsed: number;
+  victims: number; victimsBlocked: number; victimsBlockedAvoidable: number; victimsLastBlock: number; victimsLastBlockAvoidable: number;
+  placements: number; placementsFirst: number; reinforcements: number; ships: number; leaderExits: number; immobileMoves: number;
+}
+const zeroX3 = (): X3 => ({
+  wallClimbs: 0, wallAssaults: 0, wallAssaultsMounted: 0, wallFirstStrikes: 0, diceTurns: 0, diceFaces: 0, diceFacesUsable: 0,
+  diceFacesUsed: 0, victims: 0, victimsBlocked: 0, victimsBlockedAvoidable: 0, victimsLastBlock: 0, victimsLastBlockAvoidable: 0,
+  placements: 0, placementsFirst: 0, reinforcements: 0, ships: 0, leaderExits: 0, immobileMoves: 0,
+});
+
+/** Count one decision and its answer for the Expansion #3 counters (before the answer is applied). */
+function countX3Decision(x: X3, s: GameState, dec: Decision, ans: ReturnType<typeof chooseAnswer>['answer']) {
+  if (dec.kind === 'diceOrders' && ans.kind === 'assign') {
+    x.diceTurns++;
+    x.diceFaces += dec.faces.length;
+    x.diceFacesUsable += dec.faces.filter((f) => diceOrderPieces(s, dec.side, f).length > 0).length;
+    x.diceFacesUsed += ans.ids.filter((id) => id !== null).length;
+  } else if (dec.kind === 'diceVictim' && ans.kind === 'choose') {
+    x.victims++;
+    const units = dec.options.map((id) => s.units.find((u) => u.id === id)!);
+    const u = units[ans.index];
+    if (dec.face === 'flag') {
+      const blocked = (v: Unit) => Math.min(...retreatOptions(s, v, retreatPerFlag(v, null)).map((o) => o.losses)) > 0;
+      if (blocked(u)) {
+        x.victimsBlocked++;
+        if (units.some((v) => !blocked(v))) x.victimsBlockedAvoidable++;
+      }
+    } else if (u.blocks === 1) {
+      x.victimsLastBlock++;
+      if (units.some((v) => v.blocks > 1)) x.victimsLastBlockAvoidable++;
+    }
+  } else if (dec.kind === 'placeUnit' && ans.kind === 'hex') {
+    x.placements++;
+    if (ans.hex === dec.options[0]) x.placementsFirst++;
+  }
+}
+
+/** Count one engine event for the Expansion #3 counters (`known`: the units as they stood before the answer). */
+function countX3(x: X3, s: GameState, e: GameEvent, known: Map<string, Unit>) {
+  if ((e.t === 'move' || e.t === 'advance') && known.has(e.id)) {
+    const end = e.path[e.path.length - 1];
+    if (end >= 0 && isWall(s, end) && e.path.length >= 2) x.wallClimbs++;
+    if (e.t === 'move' && known.get(e.id)!.immobile && e.path.length >= 2) x.immobileMoves++;
+  } else if (e.t === 'combat' && (e.purpose === 'close' || e.purpose === 'bonus')) {
+    const t = known.get(e.target);
+    const a = known.get(e.attacker);
+    if (t && t.hex >= 0 && isWall(s, t.hex) && a) {
+      x.wallAssaults++;
+      if (!UNIT_STATS[a.type].infantry) x.wallAssaultsMounted++;
+    }
+  } else if (e.t === 'log' && /strikes first from the wall/.test(e.text)) x.wallFirstStrikes++;
+  else if (e.t === 'reserveEnter') x.reinforcements++;
+  else if (e.t === 'banner' && e.reason === 'ship taken') x.ships++;
+  else if (e.t === 'banner' && e.reason === 'leader exited') x.leaderExits++;
+}
+
 interface GameResult {
   sc: string; aSide: Side; seed: number; winner: string; banners: [number, number]; turns: number; reason: string;
-  msA: number[]; msB: number[]; c: Counters & Partial<X2>;
+  msA: number[]; msB: number[]; c: Counters & Partial<X2> & Partial<X3>;
   /** Leaders killed, by name (Alexander's fate, Hellespont). */
   killed: string[];
   /** War machine evades: attacker type and the machine's blocks. */
@@ -131,7 +201,9 @@ for (const job of mine) {
   const opt = { [job.aSide]: mk(job.aSide, A), [bSide]: mk(bSide, B) } as Record<Side, AiOptions>;
   const mem = { top: newMemory(), bottom: newMemory() };
   const c = zero();
-  const x2 = info.expansion === 'exp2' ? zeroX2() : null;
+  // the Expansion #2 counters serve Expansion #3 too (pilum, march, Caesar, exits, captures, held banners, commands)
+  const x2 = info.expansion === 'exp2' || info.expansion === 'exp3' ? zeroX2() : null;
+  const x3 = info.expansion === 'exp3' ? zeroX3() : null;
   const takenNow = () => d.state.special.objState.reduce((n, st) => n + st.taken.length, 0);
   let taken = takenNow();
   const killed: string[] = [];
@@ -201,7 +273,9 @@ for (const job of mine) {
     const fallbacks = mem[dec.side].fallbacks ?? 0;
     const ans = chooseAnswer(d.state, dec, opt[dec.side], mem[dec.side]).answer;
     c.aiFallbacks += (mem[dec.side].fallbacks ?? 0) - fallbacks;
-    if (dec.kind === 'playCard') ms[dec.side].push(performance.now() - t0);
+    // the turn plans: a card decision, or a dice-order side's assignment of its order dice (310)
+    if (dec.kind === 'playCard' || dec.kind === 'diceOrders') ms[dec.side].push(performance.now() - t0);
+    if (x3) countX3Decision(x3, d.state, dec, ans);
     if (x2 && ans.kind === 'rollingFire') x2.rollingFire++;
     if (x2 && dec.kind === 'chooseCommand') x2.chooseCommand++;
     const terrainBefore = d.state.terrain;
@@ -215,6 +289,7 @@ for (const job of mine) {
     }
     for (const { e } of d.drainEvents()) {
       if (x2) countX2(x2, d.state, e, known, terrainBefore);
+      if (x3) countX3(x3, d.state, e, known);
       if (e.t === 'removed' && known.get(e.id)?.type === 'HWM') c.hwmAbandoned++;
       else if (e.t === 'eliminated' && known.get(e.id)?.type === 'HWM') c.hwmEliminated++;
       else if (e.t === 'move' && e.path.length >= 2 && known.get(e.id)?.type === 'HWM') c.hwmMoves++;
@@ -255,7 +330,7 @@ for (const job of mine) {
   const res: GameResult = {
     sc: job.sc, aSide: job.aSide, seed, winner: w === null ? 'none' : String(w),
     banners: [bannerTotal(d.state, 'bottom'), bannerTotal(d.state, 'top')],
-    turns: d.state.turn.number, reason: d.state.winReason, msA: ms[job.aSide], msB: ms[bSide], c: x2 ? { ...c, ...x2 } : c, killed, hwmEvades,
+    turns: d.state.turn.number, reason: d.state.winReason, msA: ms[job.aSide], msB: ms[bSide], c: { ...c, ...(x2 ?? {}), ...(x3 ?? {}) }, killed, hwmEvades,
   };
   results.push(res);
   const avg = (x: number[]) => (x.length ? x.reduce((a, b) => a + b, 0) / x.length : 0);
