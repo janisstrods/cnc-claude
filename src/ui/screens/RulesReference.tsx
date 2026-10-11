@@ -1,26 +1,48 @@
 import { useState } from 'react';
-import { CARD_DEFS, ELITES, UNIT_STATS, UNIT_TYPES, type ArmyLook, type Blocks, type CardKind, type EliteId, type UnitType } from '../../engine';
-import type { ScenarioInfo } from '../../scenarios';
+import {
+  CARD_DEFS, ELITES, SIDES, UNIT_STATS, UNIT_TYPES,
+  type ArmyLook, type Blocks, type CardKind, type EliteId, type ExpansionNumber, type UnitType,
+} from '../../engine';
+import { SCENARIOS, type ScenarioInfo } from '../../scenarios';
 import { UnitIcon } from '../../art';
 import { CardView, DieView } from '../kit';
-import { EXP2_UNIT_TYPES, unitCardLines } from '../game/unitText';
+import { unitCardLines } from '../game/unitText';
 import './screens.css';
 
 type Tab = 'basics' | 'units' | 'combat' | 'terrain' | 'cards' | 'exp1' | 'exp2' | 'exp3';
 
-/** Unit types new in Expansion #1 (§15): described in the Expansion #1 tab, not in the base Units list. */
-export const EXP1_UNIT_TYPES: readonly UnitType[] = ['LBC', 'CAM', 'HWM'];
-/** Unit types new in Expansion #2 (§18; defined in unitText): described in the Expansion #2 tab, not in the base Units list. */
-export { EXP2_UNIT_TYPES };
-const BASE_UNIT_TYPES = UNIT_TYPES.filter((t) => !EXP1_UNIT_TYPES.includes(t) && !EXP2_UNIT_TYPES.includes(t));
-/** Elite presets of Expansion #1 (§17.1): in the Expansion #1 tab. A new preset must be added to exactly one of the two lists. */
-export const EXP1_ELITES: readonly EliteId[] = ['carthSacredBand', 'thebanSacredBand', 'silverShields', 'companions', 'immortals', 'bowAuxilia'];
-/** Elite presets new in Expansion #2 (§18.2): in the Expansion #2 tab. */
-export const EXP2_ELITES: readonly EliteId[] = ['tenthLegion'];
-/** Figure look of each expansion unit card (an army that fields it): Expansion #1's and Expansion #2's new unit types. */
-const EXPANSION_UNIT_LOOK: Partial<Record<UnitType, [ArmyLook, Blocks]>> = {
-  LBC: ['scythian', 'eas'], CAM: ['seleucid', 'grk'], HWM: ['macedonian', 'grk'], BCH: ['briton', 'bar'],
-};
+/**
+ * The unit types a box brings (`UnitStats.expansion`), in table order: the base game's in the Units tab, an expansion's in
+ * its own tab.
+ */
+export function unitTypesOf(box: ExpansionNumber): UnitType[] {
+  return UNIT_TYPES.filter((t) => UNIT_STATS[t].expansion === box);
+}
+
+/**
+ * The elite presets an expansion's tab lists (`EliteDef.expansion`), in table order. Elite presets come with Expansion #1,
+ * whose tab also lists the base game's Sacred Band.
+ */
+export function elitesOf(box: ExpansionNumber): EliteId[] {
+  return (Object.keys(ELITES) as EliteId[]).filter((id) => Math.max(ELITES[id].expansion, 1) === box);
+}
+
+/**
+ * Figure look of a unit card: the base types are drawn Roman, an expansion type as the army that fields most of them in
+ * one battle (the earliest such battle on a tie).
+ */
+function cardLook(t: UnitType): [ArmyLook, Blocks] {
+  let look: [ArmyLook, Blocks] = ['roman', 'rom'];
+  if (UNIT_STATS[t].expansion === 0) return look;
+  let most = 0;
+  for (const sc of SCENARIOS) {
+    for (const side of SIDES) {
+      const n = sc.setup.units.filter((u) => u.side === side && u.type === t).length;
+      if (n > most) [most, look] = [n, [sc.setup[side].look, sc.setup[side].blocks]];
+    }
+  }
+  return look;
+}
 
 /** In a battle, pass its scenario to show that battle's special rules above the tabs. */
 export function RulesReference({ scenario }: { scenario?: ScenarioInfo } = {}) {
@@ -99,7 +121,7 @@ export function UnitCards({ types }: { types: readonly UnitType[] }) {
       {types.map((t) => {
         const st = UNIT_STATS[t];
         const [statsLine, notesLine] = unitCardLines(t);
-        const [look, blocks] = EXPANSION_UNIT_LOOK[t] ?? ['roman', 'rom'];
+        const [look, blocks] = cardLook(t);
         return (
           <div key={t} className="unit-card">
             <svg width={64} height={64} viewBox="-30 -34 60 60">
@@ -121,7 +143,7 @@ export function UnitCards({ types }: { types: readonly UnitType[] }) {
 export function Units() {
   return (
     <>
-      <UnitCards types={BASE_UNIT_TYPES} />
+      <UnitCards types={unitTypesOf(0)} />
       <p className="rules-note">Light bow cavalry, camels and heavy war machines come with Expansion #1, Barbarian light chariots with Expansion #2: see their tabs.</p>
     </>
   );
@@ -180,19 +202,33 @@ function TerrainTable({ rows }: { rows: [string, string][] }) {
   );
 }
 
-/** Reference wording of each elite preset's abilities, and the battles that field it (§17.1, §18.2). */
-const ELITE_REF: Record<EliteId, [string, string]> = {
-  carthSacredBand: ['Every helmet it rolls in close combat hits, leader or not; may ignore 1 flag.', '002 (base game)'],
-  thebanSacredBand: ['Every helmet it rolls in close combat hits, leader or not; may ignore 1 flag.', '104'],
-  silverShields: ['Every helmet it rolls in close combat hits, leader or not; may ignore 1 flag.', '113, 114'],
-  companions: ['Ignores the first sword rolled against it in close combat; may ignore 1 flag.', '107–111'],
-  immortals: ['Fires like a missile unit, range 3 (1 die after moving); never fires and fights in the same turn. Not light.', '108'],
-  bowAuxilia: ['Fires at range 3 instead of 2; as auxilia it cannot fire after moving 2 hexes.', '123'],
-  tenthLegion: [
+/** Reference wording of each elite preset's abilities (§17.1, §18.2). */
+const ELITE_REF: Record<EliteId, string> = {
+  carthSacredBand: 'Every helmet it rolls in close combat hits, leader or not; may ignore 1 flag.',
+  thebanSacredBand: 'Every helmet it rolls in close combat hits, leader or not; may ignore 1 flag.',
+  silverShields: 'Every helmet it rolls in close combat hits, leader or not; may ignore 1 flag.',
+  companions: 'Ignores the first sword rolled against it in close combat; may ignore 1 flag.',
+  immortals: 'Fires like a missile unit, range 3 (1 die after moving); never fires and fights in the same turn. Not light.',
+  bowAuxilia: 'Fires at range 3 instead of 2; as auxilia it cannot fire after moving 2 hexes.',
+  tenthLegion:
     "Caesar's favourite legion: throws the pilum and may march; otherwise an ordinary heavy infantry unit (5 dice, retreat 1, no flag or helmet ability). The two units at the Sabis are ordered and fight separately.",
-    '215, 217',
-  ],
 };
+
+/**
+ * The battles that field an elite preset, from the scenario data: "104", "113, 114", "107–111" (three or more in a row),
+ * "002 (base game)".
+ */
+function eliteBattles(id: EliteId): string {
+  const runs: ScenarioInfo[][] = [];
+  for (const sc of SCENARIOS) {
+    if (!sc.setup.units.some((u) => u.elite === id)) continue;
+    const run = runs[runs.length - 1];
+    if (run && Number(sc.id) === Number(run[run.length - 1].id) + 1) run.push(sc);
+    else runs.push([sc]);
+  }
+  const ids = runs.flatMap((r) => (r.length >= 3 ? [`${r[0].id}–${r[r.length - 1].id}`] : r.map((sc) => sc.id))).join(', ');
+  return runs.every((r) => r.every((sc) => sc.expansion === 'base')) ? `${ids} (base game)` : ids;
+}
 
 /** The elite presets of an expansion: name, unit types, battles and abilities. */
 function EliteTable({ ids }: { ids: readonly EliteId[] }) {
@@ -201,8 +237,8 @@ function EliteTable({ ids }: { ids: readonly EliteId[] }) {
       <tbody>
         {ids.map((id) => (
           <tr key={id}>
-            <th>{ELITES[id].name}<div className="muted rules-sub">{ELITES[id].types.map((t) => UNIT_STATS[t].name).join(', ')} · {ELITE_REF[id][1]}</div></th>
-            <td>{ELITE_REF[id][0]}</td>
+            <th>{ELITES[id].name}<div className="muted rules-sub">{ELITES[id].types.map((t) => UNIT_STATS[t].name).join(', ')} · {eliteBattles(id)}</div></th>
+            <td>{ELITE_REF[id]}</td>
           </tr>
         ))}
       </tbody>
@@ -222,7 +258,7 @@ export function Expansion() {
     <div className="rules-text">
       <p><i>Greece &amp; Eastern Kingdoms</i> adds 24 battles (101–124), from Marathon to Pydna, with three new unit types, elite units, leader traits and new terrain. Everything in the other tabs still applies unless a rule here says otherwise.</p>
       <h3>New units</h3>
-      <UnitCards types={EXP1_UNIT_TYPES} />
+      <UnitCards types={unitTypesOf(1)} />
       <ul>
         <li><b>Light bow cavalry</b> are light and mounted for the cards (Order Light Troops, Move-Fire-Move, Order Mounted, Mounted Charge), but cannot pass through friendly units.</li>
         <li><b>Camels</b> are medium and mounted, but not cavalry: they take no extra hex after an advance. Cavalry and chariots fighting a camel lose one blue-triangle hit from each roll, and every flag a camel rolls drives them back one extra hex, as an elephant's does.</li>
@@ -231,7 +267,7 @@ export function Expansion() {
       </ul>
       <h3>Elite units</h3>
       <p>An elite is an ordinary unit carrying a special marker (a standard on its figures). It keeps its abilities until its last block is lost, and they add to leaders and support.</p>
-      <EliteTable ids={EXP1_ELITES} />
+      <EliteTable ids={elitesOf(1)} />
       <h3>Leader traits</h3>
       <ul>
         <li><b>Alexander</b> (107–111): the unit he is attached to rolls one extra die in every close combat, on top of any terrain limit. Nothing in ranged combat, and nothing for units he is only next to.</li>
@@ -265,7 +301,7 @@ export function Expansion2() {
     <div className="rules-text">
       <p><i>Rome &amp; the Barbarians</i> adds 23 battles (201–223), from the Gallic invasion of 225 BC to the war in Britain in AD 51: Gauls, Germans, Spartacus' slaves, Belgae and Britons against the legions. Everything in the other tabs still applies unless a rule here says otherwise.</p>
       <h3>New unit</h3>
-      <UnitCards types={EXP2_UNIT_TYPES} />
+      <UnitCards types={unitTypesOf(2)} />
       <ul>
         <li><b>Barbarian light chariots</b> count as light troops and as mounted units for the cards. At full strength they roll 3 dice and may ignore 1 flag. They ignore one sword hit in every close combat and can always evade. After a winning combat they may advance and make a bonus attack, but never take the cavalry's extra hex. They cannot be rallied.</li>
         <li>An elephant rolls 2 dice against Barbarian light chariots.</li>
@@ -276,7 +312,7 @@ export function Expansion2() {
         <li><b>Pilum:</b> range 2, always 1 die, whether the unit stood or moved 1 hex; not after moving 2 hexes. It is ranged combat in every other way: not while next to an enemy, never in the same turn as close combat, twice with Darken the Sky. The unit is not light troops, and from a fortified camp it cannot throw (1 die − 1 = none).</li>
         <li><b>March:</b> the unit may move 2 hexes if it does not battle that turn, or 1 hex and battle. With Double Time: 2 hexes and battle, never 3.</li>
       </ul>
-      <EliteTable ids={EXP2_ELITES} />
+      <EliteTable ids={elitesOf(2)} />
       <h3>Leaders</h3>
       <ul>
         <li><b>Julius Caesar</b> (215, 217, 218): the unit he is attached to rolls one extra die in every close combat, as Alexander's. <b>Forced march:</b> an infantry unit that has Caesar with it when it begins its move may move 2 hexes and still battle (terrain still stops it, Line Command still allows 1 hex, and a pilum unit still cannot throw after 2 hexes).</li>

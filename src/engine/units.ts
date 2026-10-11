@@ -3,9 +3,14 @@ import type { TerrainType, Unit, UnitClass, UnitType } from './types';
 
 export type EvadeRule = 'always' | 'vsFootHeavyMounted' | 'vsFootElephant' | 'never';
 
+/** The box that brings a unit type or an elite preset: 0 the base game, 1–3 Expansion #1–#3. */
+export type ExpansionNumber = 0 | 1 | 2 | 3;
+
 export interface UnitStats {
   type: UnitType;
   name: string;
+  /** The box that brings the type (0: the base game); the rules reference describes it in that box's tab. */
+  expansion: ExpansionNumber;
   cls: UnitClass;
   /** Symbol drawn with a white border (AX, WA). */
   whiteBorder: boolean;
@@ -79,13 +84,14 @@ export interface UnitStats {
   evadeRemoves: boolean;
 }
 
-/** Ability fields a table row may leave out (it then has none of these abilities). */
+/** Fields a table row may leave out: it then has none of these abilities, and comes with the base game. */
 type OptionalAbilities = Pick<UnitStats,
-  | 'elephantTable' | 'ignoreAllSwords' | 'swordIgnore' | 'frightenedBy' | 'vsMountedIgnoreHit' | 'vsMountedIgnoreFlag'
+  | 'expansion' | 'elephantTable' | 'ignoreAllSwords' | 'swordIgnore' | 'frightenedBy' | 'vsMountedIgnoreHit' | 'vsMountedIgnoreFlag'
   | 'momentumExtraHex' | 'fullStrengthBonus' | 'chargeMove' | 'noFireAfterMove' | 'lightFoot' | 'forestFighter' | 'noRally'
   | 'noLeaderBenefit' | 'doubleTimeMove' | 'mountedChargeMove' | 'forbiddenTerrain' | 'noMomentum' | 'evadeRemoves'>;
 
 const noAbilities = (): OptionalAbilities => ({
+  expansion: 0,
   elephantTable: false,
   ignoreAllSwords: false,
   swordIgnore: 0,
@@ -136,17 +142,17 @@ export const UNIT_STATS: Record<UnitType, UnitStats> = {
   HCH: U({ type: 'HCH', name: 'Heavy Chariots', cls: 'heavy', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: false, chariot: true, blocks: 2, move: 2, moveBattle: 2, cc: 4, ccBack: 3, range: 0, retreat: 2, swordHits: true, evade: 'vsFootElephant',
     elephantDiceAgainst: 3, swordIgnore: 1, frightenedBy: ['EL', 'CAM'], noRally: true, mountedChargeMove: true }),
   // Expansion #1 (§15). Camels: 3 dice attacking, 2 battling back and on First Strike; ignore 1 blue triangle from horses.
-  LBC: U({ type: 'LBC', name: 'Light Bow Cavalry', cls: 'light', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 4, moveBattle: 4, cc: 2, ccBack: 2, range: 3, retreat: 4, swordHits: false, evade: 'always',
+  LBC: U({ type: 'LBC', name: 'Light Bow Cavalry', expansion: 1, cls: 'light', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: true, chariot: false, blocks: 3, move: 4, moveBattle: 4, cc: 2, ccBack: 2, range: 3, retreat: 4, swordHits: false, evade: 'always',
     elephantDiceAgainst: 2, frightenedBy: ['EL', 'CAM'], momentumExtraHex: true }),
-  CAM: U({ type: 'CAM', name: 'Camels', cls: 'medium', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: false, chariot: false, blocks: 3, move: 3, moveBattle: 3, cc: 3, ccBack: 2, range: 0, retreat: 3, swordHits: true, evade: 'vsFootHeavyMounted',
+  CAM: U({ type: 'CAM', name: 'Camels', expansion: 1, cls: 'medium', whiteBorder: false, foot: false, infantry: false, mounted: true, cavalry: false, chariot: false, blocks: 3, move: 3, moveBattle: 3, cc: 3, ccBack: 2, range: 0, retreat: 3, swordHits: true, evade: 'vsFootHeavyMounted',
     elephantDiceAgainst: 3, vsMountedIgnoreHit: 'medium', vsMountedIgnoreFlag: false }),
   // Heavy war machines: move 1 and then no battle at all (moveBattle 0, so close combat only when it did not move); no fire
   // after moving; evade only along a legal path, then abandoned (no banner).
-  HWM: U({ type: 'HWM', name: 'Heavy War Machines', cls: 'heavy', whiteBorder: false, foot: true, infantry: false, mounted: false, cavalry: false, chariot: false, blocks: 2, move: 1, moveBattle: 0, cc: 2, ccBack: 2, range: 6, retreat: 1, swordHits: false, evade: 'always',
+  HWM: U({ type: 'HWM', name: 'Heavy War Machines', expansion: 1, cls: 'heavy', whiteBorder: false, foot: true, infantry: false, mounted: false, cavalry: false, chariot: false, blocks: 2, move: 1, moveBattle: 0, cc: 2, ccBack: 2, range: 6, retreat: 1, swordHits: false, evade: 'always',
     elephantDiceAgainst: 2, noFireAfterMove: 1, forbiddenTerrain: ['broken', 'marsh'], noMomentum: true, evadeRemoves: true }),
   // Expansion #2 (§18). Barbarian light chariots: a light chariot (not cavalry, so no extra momentum hex) with the warrior
   // bonus (+1 die and 1 flag ignored at full strength), 1 sword ignored like all chariots, no rally.
-  BCH: U({ type: 'BCH', name: 'Barbarian Chariots', cls: 'light', whiteBorder: true, foot: false, infantry: false, mounted: true, cavalry: false, chariot: true, blocks: 3, move: 3, moveBattle: 3, cc: 2, ccBack: 2, range: 0, retreat: 3, swordHits: true, evade: 'always',
+  BCH: U({ type: 'BCH', name: 'Barbarian Chariots', expansion: 2, cls: 'light', whiteBorder: true, foot: false, infantry: false, mounted: true, cavalry: false, chariot: true, blocks: 3, move: 3, moveBattle: 3, cc: 2, ccBack: 2, range: 0, retreat: 3, swordHits: true, evade: 'always',
     elephantDiceAgainst: 2, swordIgnore: 1, fullStrengthBonus: true, frightenedBy: ['EL', 'CAM'], noRally: true }),
 };
 

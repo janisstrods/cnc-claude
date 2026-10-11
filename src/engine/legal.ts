@@ -1,4 +1,5 @@
-// Legal-answer helpers: enumerate simple answers and produce random legal answers (used by tests and AI).
+// Legal-answer helpers: enumerate simple answers and produce random legal answers (used by tests and AI); the greedy dice
+// assignment also suggests the Rally and I Am Spartacus dialog's first choice.
 import { ambushAvailable, ambushSections, battleTargets, movablePieces, pieceMoves, rollingFirePaths } from './flow';
 import {
   diceOrderPieces, eligiblePieces, orderMode, rallyCandidates, validateDiceOrders, validateOrders, validateRally, validateSpartacus,
@@ -19,6 +20,22 @@ function shuffled<T>(arr: T[], rnd: Rand): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+/**
+ * Greedy assignment of dice to pieces (Rally, I Am Spartacus, dice orders): each die in turn takes the first of its
+ * `choices` that leaves the assignment valid (`check` finds no error) with the dice after it unused, or none (null).
+ * `choices` is called once per die, in order.
+ */
+export function greedyAssign(
+  dice: number, choices: (i: number) => readonly string[], check: (ids: (string | null)[]) => string | null,
+): (string | null)[] {
+  const ids: (string | null)[] = [];
+  for (let i = 0; i < dice; i++) {
+    const unused: null[] = Array(dice - i - 1).fill(null);
+    ids.push(choices(i).find((id) => !check([...ids, id, ...unused])) ?? null);
+  }
+  return ids;
 }
 
 /** Greedy random valid order selection for the current card. */
@@ -100,30 +117,13 @@ export function randomAnswer(s: GameState, d: Decision, rnd: Rand): Answer {
     case 'chooseCommand':
       return { kind: 'choose', index: Math.floor(rnd() * d.options.length) };
     case 'rally': {
-      const cands = rallyCandidates(s, d.side, d.command);
-      const ids: (string | null)[] = [];
-      for (let i = 0; i < d.faces.length; i++) {
-        const opts = shuffled(cands, rnd);
-        let chosen: string | null = null;
-        for (const u of opts) {
-          const trial = [...ids, u.id, ...Array(d.faces.length - i - 1).fill(null)];
-          if (!validateRally(s, d.side, d.faces, trial, d.command)) { chosen = u.id; break; }
-        }
-        ids.push(chosen);
-      }
+      const cands = rallyCandidates(s, d.side, d.command).map((u) => u.id);
+      const ids = greedyAssign(d.faces.length, () => shuffled(cands, rnd), (trial) => validateRally(s, d.side, d.faces, trial, d.command));
       return { kind: 'assign', ids };
     }
     case 'spartacus': {
       const pieces = [...unitsOf(s, d.side).map((u) => u.id), ...leadersOf(s, d.side).map((l) => l.id)];
-      const ids: (string | null)[] = [];
-      for (let i = 0; i < d.faces.length; i++) {
-        let chosen: string | null = null;
-        for (const id of shuffled(pieces, rnd)) {
-          const trial = [...ids, id, ...Array(d.faces.length - i - 1).fill(null)];
-          if (!validateSpartacus(s, d.side, d.faces, trial, d.command)) { chosen = id; break; }
-        }
-        ids.push(chosen);
-      }
+      const ids = greedyAssign(d.faces.length, () => shuffled(pieces, rnd), (trial) => validateSpartacus(s, d.side, d.faces, trial, d.command));
       return { kind: 'assign', ids };
     }
     case 'placeLeader':
@@ -133,14 +133,8 @@ export function randomAnswer(s: GameState, d: Decision, rnd: Rand): Answer {
       return { kind: 'choose', index: Math.floor(rnd() * d.options.length) };
     case 'diceOrders': {
       // dice orders (310): each face in turn, a random piece it may order that keeps the assignment legal (or none)
-      const ids: (string | null)[] = d.faces.map(() => null);
-      d.faces.forEach((f, i) => {
-        for (const id of shuffled(diceOrderPieces(s, d.side, f), rnd)) {
-          ids[i] = id;
-          if (!validateDiceOrders(s, d.side, d.faces, ids)) return;
-        }
-        ids[i] = null;
-      });
+      const pieces = (i: number) => shuffled(diceOrderPieces(s, d.side, d.faces[i]), rnd);
+      const ids = greedyAssign(d.faces.length, pieces, (trial) => validateDiceOrders(s, d.side, d.faces, trial));
       return { kind: 'assign', ids };
     }
   }

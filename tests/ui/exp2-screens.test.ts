@@ -5,7 +5,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import {
-  UNIT_STATS, cloneState, createGame, eligiblePieces, hexId, rollingFirePaths, validateOrders,
+  UNIT_STATS, cloneState, createGame, eligiblePieces, hexId, possessive, rollingFirePaths, validateOrders,
   type Decision, type GameEvent, type GameState, type HexId, type QueuedEvent, type RetreatOption, type Side, type Unit, type UnitType,
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
@@ -15,8 +15,7 @@ import { GameController, newSessionConfig } from '../../src/ui/game/controller';
 import { RandomOpponent } from '../../src/ui/game/opponent';
 import { bannerCounts, objectiveTipLines } from '../../src/ui/game/objectiveText';
 import {
-  ambushTexts, boardUi, commandTipLine, edgeBlocksOf, possessive, retreatEliminates, rollingFireStep, selectAllUnits, selectionCommand,
-  type UiSel,
+  ambushTexts, boardUi, commandTipLine, edgeBlocksOf, retreatEliminates, rollingFireStep, selectAllUnits, selectionCommand, type UiSel,
 } from '../../src/ui/game/uiModel';
 import { leaderTraitLines, unitSummary } from '../../src/ui/game/unitText';
 import { PICKER_TABS, battlesOf } from '../../src/ui/screens/picker';

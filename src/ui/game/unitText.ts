@@ -5,9 +5,6 @@ import {
   type EliteAbility, type EvadeRule, type Leader, type LeaderTrait, type Unit, type UnitClass, type UnitStats, type UnitType,
 } from '../../engine';
 
-/** Unit types new in Expansion #2 (§18). */
-export const EXP2_UNIT_TYPES: readonly UnitType[] = ['BCH'];
-
 /** Short plural noun for a unit type ("Heavy Chariots" → "chariots"). */
 function unitNoun(t: UnitType): string {
   const words = UNIT_STATS[t].name.split(' ');
@@ -64,14 +61,13 @@ function missileText(u: Unit, range: number): string {
 
 /**
  * Where elephants' dice differ from what the enemy would roll: "3 vs elephants, warriors, chariots" (elephants first,
- * then units whose base attacking dice the elephant does not copy, or whose dice vary with strength). Camels roll 3
- * attacking and 2 battling back; the elephant's 3 matches their attack, so they are not listed. Expansion #2 types are
- * left out so the base-game wording stays as it is (the Expansion #2 text names the elephant's dice against them).
+ * then units whose base attacking dice the elephant does not copy, or whose dice vary with strength). Expansion types are
+ * left out so the base-game wording stays as it is: each expansion's tab names the elephant's dice against its new types.
  */
 function elephantDiceNote(): string {
   const odd = UNIT_TYPES.filter((t) => {
-    if (EXP2_UNIT_TYPES.includes(t)) return false;
     const st = UNIT_STATS[t];
+    if (st.expansion > 0) return false;
     return st.elephantTable || st.fullStrengthBonus || st.elephantDiceAgainst !== st.cc;
   }).sort((a, b) => Number(UNIT_STATS[b].elephantTable) - Number(UNIT_STATS[a].elephantTable));
   const byDice = new Map<number, string[]>();

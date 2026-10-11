@@ -3,9 +3,10 @@
 // tooltips in objectiveText.ts, the dice orders of 310 in diceOrders.ts.
 import {
   ALL_HEXES, CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushEntryHexes, attachedLeader, baselineRow, battleReady,
-  battleTargets, cardKind, closeCombatDice, closeHitChance, commandClash, commandModes, commandOf, eligiblePieces, inCommand,
-  inSection, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces, orderCommander,
-  orderMode, other, pieceHex, pieceMoves, rangeOf, rangedDice, rollingFirePaths, rowOf, selectionCommand, unitAt, unitById,
+  battleTargets, closeCombatDice, closeHitChance, commandClash, commandModes, commandOf, defaultMods, effectiveCard, eligiblePieces,
+  inCommand, inSection, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf, movablePieces, orderCommander, orderMode,
+  other, pieceById, pieceHex, pieceMoves, possessive, rangeOf, rangedDice, rollingFirePaths, rowOf, selectionCommand, unitAt, unitById,
+  unitMoveLimits,
   type Blocks, type CardKind, type CommandDef, type Decision, type GameState, type HexId, type RetreatOption, type SectionName,
   type Side, type Unit,
 } from '../../engine';
@@ -53,16 +54,6 @@ export interface BoardUi extends Omit<BoardMarks, 'pathAt'> {
   pathPreview: HexId[] | null;
 }
 
-/** The card kind a played card would actually execute (Counter Attack copies the opponent's last card). */
-export function effectiveKind(s: GameState, side: Side, cardId: number): { kind: CardKind | null; mirrored: boolean } {
-  const k = cardKind(cardId);
-  if (k !== 'counterAttack') return { kind: k, mirrored: false };
-  const last = s.lastCard[other(side)];
-  if (!last) return { kind: null, mirrored: false };
-  const m = mirrorKind(last);
-  return { kind: m, mirrored: m !== last };
-}
-
 function shadeSections(side: Side, secs: SectionName[]): Set<HexId> {
   const out = new Set<HexId>();
   if (!secs.length || secs.length === 3) return out;
@@ -102,16 +93,12 @@ export function boardMarks(s: GameState, d: Decision | null, ui: Omit<UiSel, 'ho
   const badges = new Map<HexId, string>();
   let sectionShade = new Set<HexId>();
   let pathAt: BoardMarks['pathAt'] = () => null;
+  // a leader with a unit is marked on his own token, any other piece on its hex
   const markPiece = (id: string, h: Highlight) => {
-    if (isLeaderId(id)) {
-      const l = leaderById(s, id);
-      if (!l || l.hex < 0) return;
-      if (leaderUnit(s, l)) leaderHighlights.set(id, h);
-      else highlights.set(l.hex, h);
-    } else {
-      const u = unitById(s, id);
-      if (u && u.hex >= 0) highlights.set(u.hex, h);
-    }
+    const p = pieceById(s, id);
+    if (!p || p.hex < 0) return;
+    if (!('type' in p) && leaderUnit(s, p)) leaderHighlights.set(id, h);
+    else highlights.set(p.hex, h);
   };
 
   if (!d || d.side !== human) {
@@ -122,7 +109,7 @@ export function boardMarks(s: GameState, d: Decision | null, ui: Omit<UiSel, 'ho
     case 'playCard': {
       const card = ui.hoverCard ?? ui.selCard;
       if (card !== null) {
-        const { kind } = effectiveKind(s, human, card);
+        const { kind } = effectiveCard(s, human, card);
         if (kind) {
           sectionShade = shadeSections(human, CARD_DEFS[kind].sections);
           for (const id of eligiblePieces(s, human, kind)) markPiece(id, 'eligible');
@@ -428,11 +415,6 @@ export function retreatEliminates(s: GameState, d: Extract<Decision, { kind: 're
     rowOf(o.end) === baselineRow(u.side);
 }
 
-/** "Mago's", "Marcellus'" */
-export function possessive(name: string): string {
-  return name.endsWith('s') ? `${name}'` : `${name}'s`;
-}
-
 /**
  * Wording of an ambush reserve (Trebbia 005, Aquae Sextiae 206) or of reinforcements with fixed entry hexes (308 Gergovia,
  * §18.9): the button's label (`fixed`: one button, whatever the section; otherwise one per section, "Ambush: Left"), its
@@ -518,13 +500,16 @@ export function enteredTipLine(s: GameState, u: Unit): string | null {
 }
 
 /**
- * Tooltip line of Caesar's forced march (§18.3) on the unit he is attached to, when it gains from it: an infantry unit (not
- * a war machine) that cannot otherwise move 2 hexes and battle. A pilum unit still never throws after 2 hexes (§18.2).
+ * Tooltip line of Caesar's forced march (§18.3) on the unit he is attached to, when it gains from it: with him it may move
+ * further and still battle under an ordinary order (`unitMoveLimits`: no card, no start hex to limit the move), as an
+ * infantry unit (not a war machine) that cannot otherwise move 2 hexes and battle. A pilum unit still never throws after
+ * 2 hexes (§18.2).
  */
 export function forcedMarchLine(s: GameState, u: Unit): string | null {
   const l = attachedLeader(s, u);
-  const st = UNIT_STATS[u.type];
-  if (!l || !leaderHas(l, 'forcedMarch') || st.mounted || st.moveBattle === 0 || st.moveBattle >= 2) return null;
+  if (!l || !leaderHas(l, 'forcedMarch')) return null;
+  const mods = defaultMods();
+  if (unitMoveLimits(u, mods, OFF_BOARD, s, l).battleMax <= unitMoveLimits(u, mods, OFF_BOARD, s).battleMax) return null;
   const pilum = !!u.legion && rangeOf(u) > 0;
   return `${possessive(l.name || 'Caesar')} forced march: with him from the start of its move, it may move 2 hexes and still ${pilum ? 'close combat (no pilum after 2 hexes)' : 'battle'}`;
 }
