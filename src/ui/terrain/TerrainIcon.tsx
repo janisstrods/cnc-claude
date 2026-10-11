@@ -4,7 +4,7 @@ import type { TerrainType } from '../../engine/types';
 import { hexPoints } from '../geometry';
 import { paintDitches } from './ditch';
 import { paintBroken, paintCamps } from './ground';
-import { iconCtx } from './hexmath';
+import { hexVariant, iconCtx } from './hexmath';
 import { paintHills, paintSteep } from './hills';
 import { paintRamparts } from './rampart';
 import { P } from './palette';
@@ -24,10 +24,11 @@ const iconSeaCell = (r: number, c: number) => !(c === -1 && (r === 0 || r === 1)
 const ICON_TO_LAND = { x: -Math.sqrt(3) / 2, y: 0.5 };
 
 function iconArt(t: TerrainType, ford: boolean, hexArt?: string, hill = false): JSX.Element | null {
-  // a coast played as a ford (217): a fordable river in the rules, drawn as sea shallows
-  if (hexArt === 'coast' && t === 'river') t = 'sea';
-  // Expansion #3: an impassable city wall or town (`steep` with art 'wall' or 'town'); a hill under a camp or wall
-  const city = t === 'steep' && (hexArt === 'wall' || hexArt === 'town') ? hexArt : undefined;
+  // a coast played as a ford (217): a fordable river in the rules, drawn as sea shallows; Expansion #3: an impassable city
+  // wall or town (`steep` with art 'wall' or 'town'); a hill under a camp or wall
+  const v = hexVariant(t, hexArt);
+  if (v === 'coast') t = 'sea';
+  const city = v === 'coast' ? undefined : v;
   const under = hill && (t === 'camp' || t === 'wall');
   const key = `${t}:${ford ? 1 : 0}${city ? `:${city}` : ''}${under ? ':hill' : ''}`;
   if (cache.has(key)) return cache.get(key)!;

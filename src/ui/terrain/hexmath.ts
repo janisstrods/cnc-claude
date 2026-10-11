@@ -80,6 +80,24 @@ export function hexBoundaryDist(a: number): number {
   return RI / Math.cos(off);
 }
 
+/** City art: an impassable city wall (`'wall'`, 301) or walled town (`'town'`, 303, 304) on a `steep` hex. */
+export type CityArt = 'wall' | 'town';
+
+/** `art` if it is city art, else undefined. */
+export function cityArt(art: string | undefined): CityArt | undefined {
+  return art === 'wall' || art === 'town' ? art : undefined;
+}
+
+/**
+ * What a hex's art (`terrainArtOf`) makes of its terrain, where it changes how the hex is drawn and named: `'coast'`, a
+ * fordable river with coast art, is a coast played as a ford (217), painted as (fordable) sea; `'wall'` or `'town'`, a
+ * `steep` hex with city art, an impassable city wall or walled town, which has its own painter. Undefined elsewhere.
+ */
+export function hexVariant(t: TerrainType, art: string | undefined): 'coast' | CityArt | undefined {
+  if (t === 'river') return art === 'coast' ? 'coast' : undefined;
+  return t === 'steep' ? cityArt(art) : undefined;
+}
+
 export interface HexInfo {
   id: number;
   r: number;
@@ -92,7 +110,7 @@ export interface HexInfo {
   /** A hill under the hex's camp or wall: painted as a hill beneath it. */
   hillUnder?: boolean;
   /** The hex's art where it differs from its terrain (`terrainArtOf`): 'wall' or 'town' on an impassable `steep` hex. */
-  art?: string;
+  art?: CityArt;
 }
 
 /** What a board knows of its hexes beyond terrain and fords (Expansion #3): hills under camps and walls, the hex art. */
@@ -128,8 +146,8 @@ export function boardCtx(terrain: readonly TerrainType[], fords: readonly boolea
     const t = terrain[id] ?? 'plain';
     const h: HexInfo = { id, r, c, x: p.x, y: p.y, t: t === 'void' ? 'plain' : t, ford: !!fords[id] };
     if (extras.hillUnder?.[id]) h.hillUnder = true;
-    const art = extras.art?.[id];
-    if (art === 'wall' || art === 'town') h.art = art;
+    const art = cityArt(extras.art?.[id]);
+    if (art) h.art = art;
     hexes.push(h);
     byId.set(id, h);
   }
@@ -157,7 +175,8 @@ export function iconCtx(t: TerrainType, ford: boolean, hill = false, art?: strin
   const o = hexCenter(0, 0, false);
   const h: HexInfo = { id: 0, r: 0, c: 0, x: 0, y: 0, t, ford };
   if (hill) h.hillUnder = true;
-  if (art === 'wall' || art === 'town') h.art = art;
+  const city = cityArt(art);
+  if (city) h.art = city;
   const inHex = (x: number, y: number) => {
     const ax = Math.abs(x);
     const ay = Math.abs(y);

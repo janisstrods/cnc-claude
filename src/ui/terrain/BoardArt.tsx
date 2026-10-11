@@ -5,7 +5,7 @@ import { BOARD_H, BOARD_W, hexCenter } from '../geometry';
 import { Frame, grassDefs, GrassBase, HexGrid, SectionDividers } from './base';
 import { paintDitches } from './ditch';
 import { paintBroken, paintCamps } from './ground';
-import { boardCtx, fieldOutline } from './hexmath';
+import { boardCtx, fieldOutline, hexVariant } from './hexmath';
 import { paintHills, paintSteep } from './hills';
 import { paintRamparts } from './rampart';
 import { paintCoastFords, paintSea } from './sea';
@@ -52,17 +52,17 @@ const NO_RAMPARTS: readonly number[] = [];
 const NO_ART: readonly (string | undefined)[] = [];
 const NO_HILLS: readonly boolean[] = [];
 
-/** Art that stands for an impassable `steep` hex: the wall of a city (301) or a walled town (303, 304). */
-const isCityArt = (a: string | undefined) => a === 'wall' || a === 'town';
-
 /**
  * The terrain as painted: a fordable river hex with `'coast'` art is drawn as (fordable) sea; an impassable city wall or
  * town (`steep` with art 'wall' or 'town') is not a rocky plateau but ground for its own painter (`paintRomeWalls`,
  * `paintTowns`).
  */
 function paintedTerrain(terrain: readonly TerrainType[], art: readonly (string | undefined)[]): readonly TerrainType[] {
-  if (!art.some((a) => a === 'coast' || isCityArt(a))) return terrain;
-  return terrain.map((t, i) => (art[i] === 'coast' && t === 'river' ? 'sea' : t === 'steep' && isCityArt(art[i]) ? 'plain' : t));
+  if (!art.some((a, i) => hexVariant(terrain[i], a))) return terrain;
+  return terrain.map((t, i) => {
+    const v = hexVariant(t, art[i]);
+    return v === 'coast' ? 'sea' : v ? 'plain' : t;
+  });
 }
 
 function BoardArtImpl({
