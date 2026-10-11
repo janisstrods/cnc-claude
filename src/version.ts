@@ -3,6 +3,7 @@
  * suits what it brought (no fixed order, never reused). Bump for every publish, together with package.json's version.
  */
 export const RELEASES = [
+  { number: '1.6.2', name: 'Dyrrhachium', notes: 'Undo card: take back the command card you just played, and the orders it gave, until a unit moves or battles' },
   { number: '1.6.1', name: 'Cefn Carnedd', notes: 'Camps, ramparts and city walls protect only the defender: a unit that attacks out of one gets no help against the battle back; the terrain tooltips say so' },
   { number: '1.6.0', name: 'Pydna', notes: 'Triumphs: bronze, silver and gold medals for each side of each battle won against the Recruit, Tribune and Consul, shown in the battle picker and in a record of every battle on the main menu, which can be saved and loaded' },
   { number: '1.5.1', name: 'Ilerda', notes: 'Under the hood: a leaner engine, rules kept in one place, and a computer opponent that thinks about twice as fast and starts planning while the board still moves' },
