@@ -275,7 +275,7 @@ describe('city walls and steep slopes', () => {
     // worth more than from below, where the defender's roll may stop the attack before it is made
     const along = (attackerOnWall: boolean) => {
       const s = build({
-        first: 'bottom', terrain: [{ at: [2, 6], t: 'wall' }, ...(attackerOnWall ? [{ at: [2, 7], t: 'wall' as const }] : [])],
+        first: 'bottom', terrain: [{ at: [2, 6], t: 'wall' }, ...(attackerOnWall ? [{ at: [2, 7] as [number, number], t: 'wall' as const }] : [])],
         units: [top('AX', [2, 6]), bottom('MI', [2, 7])],
       });
       return closeAttackEV(s, new Occ(s), s.units[1], s.units[0], 'attack', true, NEUTRAL_W).ev;
@@ -419,6 +419,18 @@ describe('Expansion #3 objectives', () => {
       const { d } = aiTurn(s, seed);
       expect([H(0, 1), H(0, 2)], `seed ${seed}`).toContain(d.state.units[0].hex);
     }
+  });
+
+  it('313: a raider one move from a free ship marker threatens it; a defender standing on the marker blocks it', () => {
+    const mk = (defender: [number, number]) =>
+      build({
+        first: 'bottom', banners: 6, legions: { top: 'julian' },
+        objectives: [{ kind: 'capture', side: 'top', hexes: [[0, 8]], when: 'turnStart', marker: 'ship' }],
+        units: [top('AX', [1, 7]), top('MI', [2, 2]), bottom('LI', defender), bottom('MI', [7, 6])],
+      });
+    const blocking = evaluate(mk([0, 8]), 'bottom', 'top', NEUTRAL_W);
+    const aside = evaluate(mk([1, 10]), 'bottom', 'top', NEUTRAL_W);
+    expect(blocking - aside).toBeGreaterThan(0.2 * bannerStep(1, 6));
   });
 
   it('309: the Pompeians gain by contesting the hillock the Caesarians hold, and the Caesarians by widening their lead', () => {
