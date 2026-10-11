@@ -105,7 +105,6 @@ const EXTRA: Record<string, Extra> = {
       'The Crimissos can only be forded at its five bends (shallow crossings); other river hexes are impassable.',
       'The Carthaginian Sacred Band (marked with a gold standard) scores a hit with every helmet in close combat and may ignore one flag.',
     ],
-    rules: ['sacredBand'],
     hint: 'River crossing, elite Sacred Band.',
     patch: (s) => {
       // The Sacred Band is the Carthaginian heavy infantry at r3 c2; the ELITES type list guards against another unit type there.
@@ -169,7 +168,6 @@ const EXTRA: Record<string, Extra> = {
       'If Publius Scipio is killed, Carthage wins immediately.',
       "A Roman unit that exits the battlefield over the Carthaginian baseline from a centre or Roman-right hex scores a banner and is removed.",
     ],
-    rules: ['castulo'], // a marker only: the sacred leader (patch below) and the exit objective carry the rules
     objectives: [{ kind: 'exit', side: 'bottom', hexes: CASTULO_EXITS }],
     hint: 'Break out or die; protect Scipio.',
     patch: (s) => {

@@ -19,7 +19,7 @@ const RAW: ScenarioJson = {
   bottom: { army: 'Persian', blocks: 'eas', look: 'persian', commander: 'Darius III', cards: 4 },
   first: 'top',
   banners: 8,
-  rules: ['leaderPlacement'],
+  rules: [],
   options: { tacticalFlexibility: true },
   objectives: [{ kind: 'capture', side: 'top', hexes: [[8, 12]], text: 'The camp falls!' }],
   terrain: [
@@ -78,12 +78,12 @@ describe('scenario loader', () => {
   it('reads rules, options, the camp objective and the leaders to place from the JSON', () => {
     const info = scenarioFromJson(RAW);
     expect(info.expansion).toBe('exp1');
-    expect(info.setup.rules).toEqual(['leaderPlacement']);
+    expect(info.setup.rules).toEqual([]);
     expect(info.setup.options).toEqual({ tacticalFlexibility: true });
     expect(info.setup.objectives).toEqual([{ kind: 'capture', side: 'top', hexes: [[8, 12]], text: 'The camp falls!' }]);
     expect(info.setup.placeLeaders).toEqual([{ side: 'bottom', name: 'Darius', traits: ['attachedOnly'] }, { side: 'top', name: 'Craterus' }]);
     const s = createGame(info.setup, 1);
-    expect(s.special.rules).toEqual(['leaderPlacement', 'tacticalFlexibility']);
+    expect(s.special.rules).toEqual(['tacticalFlexibility']);
     expect(createGame(info.setup, 1, { tacticalFlexibility: false }).special.rules).not.toContain('tacticalFlexibility');
     expect(s.special.objectives).toEqual([{
       kind: 'capture', side: 'top', hexes: [H(8, 12)], when: 'stop', banners: [1], together: 0, remove: false, text: 'The camp falls!',
@@ -194,7 +194,7 @@ describe('scenario loader', () => {
   it('base scenario files (no expansion field) are base scenarios and keep their rules from the texts table', () => {
     const sc = scenarioById('002');
     expect(sc.expansion).toBe('base');
-    expect(sc.setup.rules).toEqual(['sacredBand']);
+    expect(sc.setup.rules).toEqual([]);
     expect(scenarioById('011').setup.objectives).toEqual([{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }]);
   });
 
@@ -267,8 +267,8 @@ describe('setup errors name the scenario', () => {
 
   it('a message that already names the scenario is left alone', () => {
     const st = setup();
-    st.rules = ['leaderPlacement'];
-    expect(() => createGame(st, 1)).toThrow(/^rule leaderPlacement needs scenario data placeLeaders \(199\)$/);
+    st.placeLeaders = [{ side: 'left' as 'top', name: 'X' }];
+    expect(() => createGame(st, 1)).toThrow(/^placeLeaders: unknown side left \(199\)$/);
     try {
       createGame(st, 1);
     } catch (e) {

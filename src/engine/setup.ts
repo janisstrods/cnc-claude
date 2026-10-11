@@ -47,8 +47,8 @@ export interface ScenarioSetup {
   reserves: { side: Side; type: UnitType }[];
   reserveLeaders: { side: Side; name: string; traits?: LeaderTrait[] }[];
   /**
-   * Leaders placed by the players before the first turn, in placement order (needs rule `leaderPlacement`; 117
-   * Asculum, §17.4: the Roman leaders first). They start off the board and are listed in `special.unplaced`.
+   * Leaders placed by the players before the first turn, in placement order (117 Asculum, §17.4: the Roman leaders first).
+   * They start off the board and are listed in `special.unplaced`. Left out or empty: no placement.
    */
   placeLeaders?: { side: Side; name: string; traits?: LeaderTrait[] }[];
   rules: SpecialRuleId[];
@@ -401,13 +401,9 @@ function leaderCount(setup: ScenarioSetup): Record<Side, number> {
   return n;
 }
 
-/** Validate the pre-battle placement list against the `leaderPlacement` rule (the two come together). */
-function checkPlacement(setup: ScenarioSetup, rules: SpecialRuleId[]) {
-  const list = setup.placeLeaders ?? [];
-  const ruled = rules.includes('leaderPlacement');
-  if (ruled && !list.length) throw new Error(`rule leaderPlacement needs scenario data placeLeaders (${setup.id})`);
-  if (!ruled && list.length) throw new Error(`placeLeaders data needs the leaderPlacement rule (${setup.id})`);
-  for (const l of list) {
+/** Validate the pre-battle placement list (its sides). */
+function checkPlacement(setup: ScenarioSetup) {
+  for (const l of setup.placeLeaders ?? []) {
     if (l.side !== 'top' && l.side !== 'bottom') throw new Error(`placeLeaders: unknown side ${String(l.side)} (${setup.id})`);
   }
 }
@@ -620,7 +616,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   });
   // Asculum: leaders still to be placed wait off the board (placement order = id order)
   const rules = effectiveRules(setup, options);
-  checkPlacement(setup, rules);
+  checkPlacement(setup);
   const ambush = resolveAmbush(setup, rules);
   const handGrowth = resolveHandGrowth(setup);
   const unplaced: string[] = [];

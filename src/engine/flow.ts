@@ -1503,8 +1503,8 @@ export function nextTurn(s: GameState) {
 // ---------------------------------------------------------------------------
 
 /**
- * Hexes where a leader of `side` may be placed before the battle (rule `leaderPlacement`), ascending: an own unit
- * without a leader (he attaches), or an empty passable hex (no unit, no leader; he stands alone). Leaders placed
+ * Hexes where a leader of `side` may be placed before the battle (117, `ScenarioSetup.placeLeaders`), ascending: an own
+ * unit without a leader (he attaches), or an empty passable hex (no unit, no leader; he stands alone). Leaders placed
  * already occupy their hexes.
  */
 export function placementOptions(s: GameState, side: Side): HexId[] {

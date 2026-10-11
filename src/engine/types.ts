@@ -185,28 +185,25 @@ export interface TurnState {
 }
 
 /**
- * Scenario special rules (§14, §17). `castulo` (010) has no effect of its own and is kept so that saved and scenario data
- * stay valid: the sacred leader whose loss loses the battle is `ScenarioSetup.sacredLeader`, and Castulo's exit is a
- * battle objective. Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112 Hellespont),
- * `frightAtFirstSight` (116 Heraclea), `leaderPlacement` (117 Asculum: leaders are placed before the first turn) and
- * `tacticalFlexibility` (the optional Roman rule of 120, 121, 124, §17.3). Camp capture (011 Baecula, 114 Gabiene) is a
- * battle objective (`ObjectiveDef`), not a rule. Expansion #2: `magoAmbush` also serves 206 (§18.5) and
- * `veryHills` (223, §18.6) makes every hill very steep: a unit climbing onto one stops and may not battle, and the
- * close-combat caps change. The Trasimenus hand (006) is no rule of its own any more: it is hand growth
- * (`ScenarioSpecial.handGrowth`, §18.8). Expansion #3: `steepSlopes` (308, §18.7) makes every hexside between a hill (a
- * hill under a camp or wall included) and a forest too steep to climb from the forest and closed to close combat;
- * `commandFallback` (304, §18.5) judges the type a card names within the command the card is played for, so a command
- * without that type orders 1 unit of its own (needs `ScenarioSetup.commands`). Scenario data is validated against this list.
+ * Scenario special rules (§14, §17): battle-wide switches. A rule that needs data is turned on by its data instead: 002's
+ * Sacred Band is an elite unit, 010's Scipio `ScenarioSetup.sacredLeader` and its exit a battle objective, 117's leader
+ * placement `ScenarioSetup.placeLeaders`. Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112
+ * Hellespont), `frightAtFirstSight` (116 Heraclea) and `tacticalFlexibility` (the optional Roman rule of 120, 121, 124,
+ * §17.3). Camp capture (011 Baecula, 114 Gabiene) is a battle objective (`ObjectiveDef`), not a rule. Expansion #2:
+ * `magoAmbush` also serves 206 (§18.5) and `veryHills` (223, §18.6) makes every hill very steep: a unit climbing onto one
+ * stops and may not battle, and the close-combat caps change. The Trasimenus hand (006) is no rule of its own any more: it
+ * is hand growth (`ScenarioSpecial.handGrowth`, §18.8). Expansion #3: `steepSlopes` (308, §18.7) makes every hexside
+ * between a hill (a hill under a camp or wall included) and a forest too steep to climb from the forest and closed to close
+ * combat; `commandFallback` (304, §18.5) judges the type a card names within the command the card is played for, so a
+ * command without that type orders 1 unit of its own (needs `ScenarioSetup.commands`). Scenario data is validated against
+ * this list.
  */
 export const SPECIAL_RULE_IDS = [
-  'sacredBand',
   'magoAmbush',
   'beneventumHand',
-  'castulo',
   'leaderLossCostsCard',
   'allLeadersSuddenDeath',
   'frightAtFirstSight',
-  'leaderPlacement',
   'tacticalFlexibility',
   'veryHills',
   'steepSlopes',
@@ -373,8 +370,8 @@ export interface ScenarioSpecial {
   /** Leaders each side had at the start (on the board, in reserve or still to be placed). */
   leadersAtStart: Record<Side, number>;
   /**
-   * Asculum (`leaderPlacement`): ids of the leaders still to be placed before the first turn, in placement order. They
-   * wait in `GameState.leaders` at `OFF_BOARD`; empty once placement is over (and in every other battle).
+   * Asculum (`ScenarioSetup.placeLeaders`): ids of the leaders still to be placed before the first turn, in placement
+   * order. They wait in `GameState.leaders` at `OFF_BOARD`; empty once placement is over (and in every other battle).
    */
   unplaced: string[];
   /** Leaders each side has had eliminated (killed for a banner; not leaders who left the board by evading or exiting). */

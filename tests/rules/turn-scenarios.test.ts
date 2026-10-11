@@ -83,11 +83,11 @@ describe('scenario data', () => {
     expect(SCENARIOS.filter((x) => x.expansion === 'base').map((x) => x.id)).toEqual(['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015']);
   });
   it('special rules are attached to the right scenarios', () => {
-    expect(scenarioById('002').setup.rules).toContain('sacredBand');
+    expect(scenarioById('002').setup.units.filter((u) => u.elite).map((u) => [u.side, u.type, u.r, u.c, u.elite])).toEqual([['top', 'HI', 3, 2, 'carthSacredBand']]);
     expect(scenarioById('005').setup.rules).toContain('magoAmbush');
     expect(scenarioById('006').setup.handGrowth).toEqual({ side: 'bottom', to: 4 });
     expect(scenarioById('009').setup.rules).toContain('beneventumHand');
-    expect(scenarioById('010').setup.rules).toContain('castulo');
+    expect(scenarioById('010').setup.sacredLeader).toEqual({ side: 'bottom', name: 'Scipio' });
     expect(scenarioById('011').setup.objectives).toEqual([{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }]);
   });
   it('river fordability: Ticinus and Beneventum not fordable, Trebbia and Metaurus fordable', () => {
@@ -167,7 +167,7 @@ describe('2nd Beneventum: Roman hand grows to 6 at the 3rd banner', () => {
 
 describe('Castulo', () => {
   const castulo = {
-    rules: ['castulo' as const], sacredLeader: { side: 'bottom' as const, name: 'Scipio' }, objectives: scenarioById('010').setup.objectives,
+    sacredLeader: { side: 'bottom' as const, name: 'Scipio' }, objectives: scenarioById('010').setup.objectives,
   };
   it('if Publius Scipio is eliminated Carthage wins at once', () => {
     const s = build({

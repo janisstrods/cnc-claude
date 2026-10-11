@@ -64,7 +64,6 @@ describe('Castulo: Publius Scipio (losing him loses the battle)', () => {
     // (the original AI ended 5 of these 6 turns with him adjacent to the enemy).
     for (const seed of [1, 2, 3, 4, 5, 6]) {
       const s = position({
-        rules: ['castulo'],
         objectives: scenarioById('010').setup.objectives,
         sacredLeader: { side: 'bottom', name: 'Scipio' },
         units: [

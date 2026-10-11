@@ -19,9 +19,7 @@
   },
   "first": "bottom",
   "banners": 6,
-  "rules": [
-    "leaderPlacement"
-  ],
+  "rules": [],
   "options": {},
   "terrain": [],
   "units": [

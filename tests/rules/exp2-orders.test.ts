@@ -431,7 +431,7 @@ describe('separate commands', () => {
         .toThrow(/^reserve unit MC: command len is only for pieces on the board \(qa\)$/);
       expect(bad({ rules: ['magoAmbush'], reserves: [{ side: 'bottom', type: 'MC' }], reserveLeaders: [withCommand({ side: 'bottom' as const, name: 'Marius' })] }))
         .toThrow(/^reserve leader Marius: command len is only for pieces on the board \(qa\)$/);
-      expect(bad({ rules: ['leaderPlacement'], placeLeaders: [withCommand({ side: 'bottom' as const, name: 'Gaius' })] }))
+      expect(bad({ placeLeaders: [withCommand({ side: 'bottom' as const, name: 'Gaius' })] }))
         .toThrow(/^leader to place Gaius: command len is only for pieces on the board \(qa\)$/);
     });
     it('a scenario file carries commands, unit command and leader command into the setup (copied)', () => {

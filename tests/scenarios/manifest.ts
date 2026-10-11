@@ -302,7 +302,7 @@ export const MANIFEST: Record<string, BattleManifest> = {
       top: { LB: 2, WA: 1, MI: 2, HI: 3, LC: 2, MC: 2, EL: 1 },
       bottom: { LI: 3, AX: 2, MI: 4, HI: 2, MC: 2 },
     },
-    elites: [], rules: ['leaderPlacement'],
+    elites: [], rules: [],
     terrain: { types: {}, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
     checksum: { terrain: '811c9dc5', pieces: '30765fc7' },
   },

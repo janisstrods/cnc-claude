@@ -522,8 +522,8 @@ block colours. Fordable rivers use the §4/§7/§9.6 rules, except 108 (§16).
     First Strike. It concerns only flags the elephant rolls; the Roman unit's own rolls and the elephant's ignores are
     unchanged, and Roman MC are unaffected **[Interp]** (plain reading of the scenario text, Q9).
 * **117 Asculum (279 BC):** **6 banners** (War Council text; the site's "7 banners" tag is ignored, Q11). Leaders are placed
-  after the deal (`leaderPlacement`): each player has seen his hand, then before the first turn the Roman side places its
-  2 leaders one at a time, then the Epirote side its 2; the Romans move first in play. A legal hex holds an own unit that has
+  after the deal (scenario data `placeLeaders`): each player has seen his hand, then before the first turn the Roman side
+  places its 2 leaders one at a time, then the Epirote side its 2; the Romans move first in play. A legal hex holds an own unit that has
   no leader (the leader attaches) or is empty (no unit, no leader) and passable (not lake, sea, steep hill or
   non-fordable river). No other restriction is stated (RAW), so empty hexes anywhere, including next to the enemy, are
   legal; a leader on an empty hex stands alone (§11). Placement is not movement and costs no order.

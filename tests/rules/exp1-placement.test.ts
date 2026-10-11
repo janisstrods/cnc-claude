@@ -1,4 +1,4 @@
-// Pre-battle leader placement (rules-reference §17.4 117 Asculum, rule `leaderPlacement`; §11 leaders): after the deal
+// Pre-battle leader placement (rules-reference §17.4 117 Asculum, scenario data `placeLeaders`; §11 leaders): after the deal
 // the Roman side places its leaders one at a time, then the Epirote side, before the first turn. A legal hex holds an
 // own unit without a leader (the leader attaches) or is empty (no unit, no leader) and passable (not lake, sea, steep
 // hill or non-fordable river); a leader on an empty hex stands alone.
@@ -25,7 +25,6 @@ const sorted = (hs: HexId[]) => [...hs].sort((a, b) => a - b);
  * alone at (8,6). Decius and Sulpicius (Roman), then Pyrrhus and Leonnatus (Epirote) are still to be placed.
  */
 const ASC: Pos = {
-  rules: ['leaderPlacement'],
   topArmy: 'Epirote',
   bottomArmy: 'Roman',
   first: 'bottom',
@@ -346,15 +345,15 @@ describe('leader placement (117 Asculum)', () => {
     expect(run().placed).toEqual(a);
   });
 
-  it('without the rule there is no placement: the first decision is the first card', () => {
-    const s = build({ ...ASC, rules: [], placeLeaders: undefined });
+  it('without leaders to place there is no placement: the first decision is the first card', () => {
+    const s = build({ ...ASC, placeLeaders: undefined });
     expect(s.special.unplaced).toEqual([]);
     expect(new GameDriver(s).pending).toEqual({ kind: 'playCard', side: 'bottom' });
   });
 
-  it('setup: the placement list and the leaderPlacement rule come together', () => {
-    expect(() => createGame(setupOf({ ...ASC, rules: [] }), 1)).toThrow(/leaderPlacement/);
-    expect(() => createGame(setupOf({ ...ASC, placeLeaders: [] }), 1)).toThrow(/leaderPlacement/);
+  it('setup: the placement list alone turns placement on (an empty one places nobody), and names known sides', () => {
+    expect(createGame(setupOf(ASC), 1).special.unplaced).toHaveLength(4);
+    expect(createGame(setupOf({ ...ASC, placeLeaders: [] }), 1).special.unplaced).toEqual([]);
     expect(() => createGame(setupOf({ ...ASC, placeLeaders: [{ side: 'left' as Side, name: 'X' }] }), 1)).toThrow(/side/);
   });
 
@@ -366,7 +365,6 @@ describe('leader placement (117 Asculum)', () => {
       leaders: [],
       placeLeaders: [...base.leaders].sort((x, y) => Number(x.side !== roman) - Number(y.side !== roman))
         .map(({ side, name, traits }) => ({ side, name, traits })),
-      rules: [...base.rules, 'leaderPlacement'],
     };
     for (const seed of [1, 2, 3]) {
       const initial = createGame(setup, seed);

@@ -120,7 +120,7 @@ describe('objectives core', () => {
 
   it('010 Castulo: the exit hexes are the Carthaginian baseline in the Roman centre and right sections', () => {
     const sc = scenarioById('010');
-    expect(sc.setup.rules).toEqual(['castulo']);
+    expect(sc.setup.rules).toEqual([]);
     const cols = [4, 5, 6, 7, 8, 9, 10, 11, 12];
     expect(sc.setup.objectives).toEqual([{ kind: 'exit', side: 'bottom', hexes: cols.map((c) => [0, c]) }]);
     const s = createGame(sc.setup, 1);

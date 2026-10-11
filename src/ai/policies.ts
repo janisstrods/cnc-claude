@@ -110,8 +110,8 @@ function placeCands(s: GameState, side: Side, options: HexId[]): PlaceCand[] {
 }
 
 /**
- * Leader placement: before the battle (117 Asculum, rule `leaderPlacement`), and a reserve leader joining a unit of his
- * force that entered without him (308's Vercingetorix, `ambush.attachLeader`, §18.9). The best of up to 12 candidate
+ * Leader placement: before the battle (117 Asculum, `ScenarioSetup.placeLeaders`), and a reserve leader joining a unit of
+ * his force that entered without him (308's Vercingetorix, `ambush.attachLeader`, §18.9). The best of up to 12 candidate
  * hexes by the evaluation plus the quick score (unit strength and health, front line, helmet aura, hand). When the side
  * places another leader next, each candidate is judged together with that leader's best follow-up. Never an empty hex
  * while an own unit is free; deterministic (no random choices, ties to the higher quick score, then the lower hex).
