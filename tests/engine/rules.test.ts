@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  CARD_DEFS, CARD_LIST, battleTargets, closeCombatDice, distance, evadeOptions, forceDice, forcedDiceLeft, hexId, ignorableFlags,
+  CARD_DEFS, CARD_LIST, battleTargets, closeCombatDice, distance, evadeOptions, forceDice, forcedDiceLeft, ignorableFlags,
   lineOfSight, neighbours, pieceMoves, rangedDice, rearHexes, retreatOptions, scoreClose, sectionsOf, unitMoves, validateOrders,
   leaderEvadeOptions, elephantRetreatOptions, answerError, type Answer, type Decision,
 } from '../../src/engine';
