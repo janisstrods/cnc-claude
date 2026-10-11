@@ -18,8 +18,9 @@ import { UNIT_STATS } from '../engine/units';
 import {
   OFF_BOARD, type Answer, type CardKind, type Decision, type EliteId, type GameState, type HexId, type SectionName, type Side, type UnitType,
 } from '../engine/types';
-import { hexDist } from './board';
+import { hexDist, nearestEnemy } from './board';
 import { attackAnswer, attackOptions } from './estimate';
+import { evalCacheFor } from './evaluate';
 import { greedyMoveStep, type MoveCtx } from './moves';
 import { orderCandidates } from './ordering';
 import { PERSONALITIES, personalityById, personalityFor, type Personality } from './personality';
@@ -157,13 +158,12 @@ function planShape(
   let fwd = 0;
   let focus: UnitType | undefined;
   let elite: EliteId | undefined;
-  const enemies = s.units.filter((u) => u.side !== me && u.hex >= 0);
   const noRanged = b.effective ? modsFor(b.effective).noRanged : false;
   for (const u of ordered) {
     const h = dest.get(u.id) ?? u.hex;
     if (h < 0) continue;
-    const near = Math.min(99, ...enemies.map((e) => hexDist(e.hex, h)));
-    const nearBefore = Math.min(99, ...enemies.map((e) => hexDist(e.hex, u.hex)));
+    const near = nearestEnemy(s, h, me);
+    const nearBefore = nearestEnemy(s, u.hex, me);
     const range = rangeOf(u);
     if (near <= 1 || (range > 0 && near <= range && !noRanged)) {
       attacking = true;
@@ -526,6 +526,7 @@ export function chooseAnswer(state: GameState, decision: Decision, opts: AiOptio
   const rng = new Rng(mem.rngState);
   let out: { answer: Answer; say?: string };
   setViewer(decision.side);
+  evalCacheFor(true);
   try {
     // Work on a private copy: the planner moves pieces around temporarily.
     const camp = campLine(state, decision.side, opts.personality, mem, rng);
@@ -542,6 +543,7 @@ export function chooseAnswer(state: GameState, decision: Decision, opts: AiOptio
     out = { answer: fallback(state, decision, rng) };
   }
   setViewer(null);
+  evalCacheFor(false);
   mem.rngState = rng.state;
   return out;
 }

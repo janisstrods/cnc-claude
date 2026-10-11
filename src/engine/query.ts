@@ -1,5 +1,5 @@
 // Board queries shared by rules, AI and UI.
-import { areAdjacent, neighbours } from './hex';
+import { neighbours } from './hex';
 import type { GameState, HexId, Leader, LeaderTrait, Side, Unit } from './types';
 
 export function other(side: Side): Side {
@@ -14,6 +14,26 @@ export function unitAt(s: GameState, h: HexId): Unit | undefined {
 export function leaderAt(s: GameState, h: HexId): Leader | undefined {
   for (const l of s.leaders) if (l.hex === h) return l;
   return undefined;
+}
+
+/**
+ * The pieces by hex, for the rules that look at a hex and its neighbours (`at` parameters): the AI passes its occupancy
+ * table (ai/board.ts `Occ`, one lookup per hex); without one the rules scan the state (`unitAt`, `leaderAt`). A hex
+ * holds at most one unit and one leader, so both find the same pieces.
+ */
+export interface PieceIndex {
+  readonly unit: readonly (Unit | null | undefined)[];
+  readonly leader: readonly (Leader | null | undefined)[];
+}
+
+/** The unit on hex h (`at`: see PieceIndex). */
+export function unitOn(s: GameState, h: HexId, at?: PieceIndex): Unit | null | undefined {
+  return at ? at.unit[h] : unitAt(s, h);
+}
+
+/** The leader on hex h (`at`: see PieceIndex). */
+export function leaderOn(s: GameState, h: HexId, at?: PieceIndex): Leader | null | undefined {
+  return at ? at.leader[h] : leaderAt(s, h);
 }
 
 export function unitById(s: GameState, id: string): Unit | undefined {
@@ -40,11 +60,11 @@ export function pieceHex(s: GameState, id: string): HexId | undefined {
   return pieceById(s, id)?.hex;
 }
 
-/** Leader attached to (sharing the hex of) a unit. */
-export function attachedLeader(s: GameState, u: Unit): Leader | undefined {
+/** Leader attached to (sharing the hex of) a unit (`at`: see PieceIndex). */
+export function attachedLeader(s: GameState, u: Unit, at?: PieceIndex): Leader | undefined {
   if (u.hex < 0) return undefined;
-  for (const l of s.leaders) if (l.hex === u.hex && l.side === u.side) return l;
-  return undefined;
+  const l = leaderOn(s, u.hex, at);
+  return l && l.side === u.side ? l : undefined;
 }
 
 /** Unit a leader is attached to, if any. */
@@ -74,29 +94,25 @@ export function isLoneLeader(s: GameState, l: Leader): boolean {
   return l.hex >= 0 && !leaderUnit(s, l);
 }
 
-/** True if any enemy unit (not leader) is adjacent to hex h, from `side`'s point of view. */
-export function enemyUnitAdjacent(s: GameState, h: HexId, side: Side): boolean {
-  for (const u of s.units) if (u.side !== side && u.hex >= 0 && areAdjacent(u.hex, h)) return true;
+/** True if any enemy unit (not leader) is adjacent to hex h, from `side`'s point of view (`at`: see PieceIndex). */
+export function enemyUnitAdjacent(s: GameState, h: HexId, side: Side, at?: PieceIndex): boolean {
+  for (const x of neighbours(h)) {
+    const v = unitOn(s, x, at);
+    if (v && v.side !== side) return true;
+  }
   return false;
 }
 
-/** Enemy unit or enemy leader adjacent to h (used for the warrior charge rule). */
-export function enemyPieceAdjacent(s: GameState, h: HexId, side: Side): boolean {
-  if (enemyUnitAdjacent(s, h, side)) return true;
-  for (const l of s.leaders) if (l.side !== side && l.hex >= 0 && areAdjacent(l.hex, h)) return true;
-  return false;
-}
-
-/** Friendly units + lone friendly leaders adjacent to unit u (support for bolster morale). */
-export function supportCount(s: GameState, u: Unit): number {
+/** Friendly units + lone friendly leaders adjacent to unit u (support for bolster morale; `at`: see PieceIndex). */
+export function supportCount(s: GameState, u: Unit, at?: PieceIndex): number {
   let n = 0;
   for (const h of neighbours(u.hex)) {
-    const v = unitAt(s, h);
+    const v = unitOn(s, h, at);
     if (v) {
       if (v.side === u.side) n++;
       continue;
     }
-    const l = leaderAt(s, h);
+    const l = leaderOn(s, h, at);
     if (l && l.side === u.side) n++;
   }
   return n;
@@ -104,12 +120,15 @@ export function supportCount(s: GameState, u: Unit): number {
 
 /**
  * A friendly leader attached to or adjacent to hex h (for leader helmet hits). An `attachedOnly` leader (a satrap, §17.2)
- * counts only for the unit he is attached to, i.e. only on his own hex.
+ * counts only for the unit he is attached to, i.e. only on his own hex. `at`: see PieceIndex.
  */
-export function leaderNear(s: GameState, h: HexId, side: Side): boolean {
-  for (const l of s.leaders) {
-    if (l.side !== side || l.hex < 0) continue;
-    if (l.hex === h || (areAdjacent(l.hex, h) && !leaderHas(l, 'attachedOnly'))) return true;
+export function leaderNear(s: GameState, h: HexId, side: Side, at?: PieceIndex): boolean {
+  if (h < 0) return false;
+  const own = leaderOn(s, h, at);
+  if (own && own.side === side) return true;
+  for (const x of neighbours(h)) {
+    const l = leaderOn(s, x, at);
+    if (l && l.side === side && !leaderHas(l, 'attachedOnly')) return true;
   }
   return false;
 }

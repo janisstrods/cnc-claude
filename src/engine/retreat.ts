@@ -1,6 +1,6 @@
 // Retreat / evade / leader-evade path enumeration (rules-reference §9, §10, §11). Pure functions.
 import { onBaseline, rearHexes } from './hex';
-import { attachedLeader, leaderAt, unitAt } from './query';
+import { attachedLeader, leaderAt, leaderOn, unitAt, unitOn, type PieceIndex } from './query';
 import { closedTo, entryRollCount } from './terrain';
 import { OFF_BOARD, type GameState, type HexId, type Leader, type RetreatOption, type Unit } from './types';
 
@@ -127,6 +127,22 @@ export function evadeOptions(s: GameState, u: Unit): RetreatOption[] {
     if (!any) one.push({ path: [h1], end: h1, losses: 0, attachLeader: null });
   }
   return prune(s, two.length ? two : one);
+}
+
+/**
+ * Can unit u evade at all (`evadeOptions` is not empty)? A first evade hex it may enter: not into a unit, nor onto a lone
+ * enemy leader, nor onto a friendly one when it has a leader of its own. `at`: see PieceIndex.
+ */
+export function canEvade(s: GameState, u: Unit, at?: PieceIndex): boolean {
+  if (u.immobile) return false;
+  const hasLeader = !!attachedLeader(s, u, at);
+  for (const h of rearHexes(u.hex, u.side)) {
+    if (closedTo(s, u.type, u.hex, h) || unitOn(s, h, at)) continue;
+    const l = leaderOn(s, h, at);
+    if (l && (l.side !== u.side || hasLeader)) continue;
+    return true;
+  }
+  return false;
 }
 
 /**

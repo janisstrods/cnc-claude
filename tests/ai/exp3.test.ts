@@ -5,12 +5,12 @@
 // fixed seeds, constructed positions built with the rules suite's helpers).
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  GameDriver, OFF_BOARD, createGame, diceOrderPieces, diceOrdered, forceDice, newTurn, pieceMoves, randomAnswer, retreatOptions,
+  GameDriver, OFF_BOARD, canEvade, createGame, diceOrderPieces, diceOrdered, forceDice, newTurn, pieceMoves, randomAnswer, retreatOptions,
   retreatPerFlag, validateDiceOrders, validateOrders, type Decision, type DieFace, type GameEvent, type GameState, type Side, type Unit,
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
 import { chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
-import { Occ, canEvadeOcc } from '../../src/ai/board';
+import { Occ } from '../../src/ai/board';
 import { attackNowValue, closeAttackEV } from '../../src/ai/estimate';
 import { evaluate, orderingPower, singleUnitRisk } from '../../src/ai/evaluate';
 import { scoreOption } from '../../src/ai/moves';
@@ -451,11 +451,11 @@ describe('Expansion #3 objectives', () => {
 // ---------------------------------------------------------------------------------------------------------------------
 
 describe('Expansion #3 units', () => {
-  it('306: an immobile unit can never evade (the board mirror), and is never planned to move', () => {
+  it('306: an immobile unit can never evade (with the occupancy index), and is never planned to move', () => {
     const mk = (immobile: boolean) => build({ first: 'bottom', units: [bottom('LI', [6, 6], { immobile }), top('MI', [5, 6]), top('WA', [1, 1])] });
     for (const immobile of [false, true]) {
       const s = mk(immobile);
-      expect(canEvadeOcc(s, new Occ(s), s.units[0]), `immobile ${immobile}`).toBe(!immobile);
+      expect(canEvade(s, s.units[0], new Occ(s)), `immobile ${immobile}`).toBe(!immobile);
     }
     for (const seed of [1, 2]) {
       const s = build({ first: 'bottom', units: [bottom('MI', [6, 6], { immobile: true }), bottom('MI', [6, 8]), top('WA', [3, 6]), top('WA', [3, 8])] });

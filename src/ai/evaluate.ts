@@ -1,20 +1,22 @@
 // Static evaluation of a position from one side's point of view (1.0 ~ one banner).
 import { defaultMods } from '../engine/cards';
 import {
-  baseSwordIgnores, closeCombatDice, frightAtFirstSight, leaderDiceBonus, rampartShields, rangedDice, wallShields,
+  baseSwordIgnores, canFireAt, closeCombatDice, frightAtFirstSight, helmetsCount, leaderDiceBonus, rampartShields, rangedDice,
+  wallShields,
 } from '../engine/combat';
 import { unitMoves } from '../engine/movement';
 import { halfCol, neighbours, rowOf } from '../engine/hex';
 import { exitAllows, leaderExitAllows } from '../engine/objectives';
 import { diceOrderPieces, orderDice } from '../engine/orders';
-import { isRomanArmy, leaderHas, other } from '../engine/query';
+import { isRomanArmy, leaderHas, other, supportCount } from '../engine/query';
+import { canEvade } from '../engine/retreat';
 import { ccCapOfHex, isHill, isImpassable, isWall, steepSlope, steepSlopes, terrainAt, veryHills } from '../engine/terrain';
 import { eliteHas, hasPilum, rangeOf } from '../engine/elites';
 import { UNIT_STATS, canEvadeType, elephantDiceVs, forbidsTerrain, type UnitStats } from '../engine/units';
 import type { DieFace, GameState, HexId, Leader, ObjectiveOf, Side, Unit } from '../engine/types';
 import {
-  Occ, advanceGap, attachedLeaderOcc, canEvadeOcc, canFireOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, hasTerrain, helmetsOcc,
-  hexDist, ignorableOcc, isRangedLight, isWarMachine, reachOf, retreatRoom, rowsToOwnEdge, stopAwareReach, supportOcc,
+  NHEX, Occ, advanceGap, attachedLeaderOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, hasTerrain, hexDist, ignorableOcc,
+  isRangedLight, isWarMachine, reachOf, retreatRoom, rowsToOwnEdge, stopAwareReach,
 } from './board';
 import { closeProfile, strikeValue } from './estimate';
 import { goalTerms } from './goals';
@@ -38,8 +40,8 @@ export function battered(u: Unit): boolean {
 }
 
 /** Do helmets score for `e` in close combat (a leader with or next to it, or an elite whose helmets hit)? */
-function helmetsHit(occ: Occ, e: Unit): boolean {
-  return helmetsOcc(occ, e) || eliteHas(e, 'helmetHits');
+function helmetsHit(s: GameState, occ: Occ, e: Unit): boolean {
+  return helmetsCount(s, e, occ) || eliteHas(e, 'helmetHits');
 }
 
 /**
@@ -209,7 +211,7 @@ function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number, frightRule: boo
   // Fright at First Sight (116): a Roman infantry unit ignores no flag an elephant rolls (decided per threat)
   const frightProne = st.infantry && frightRule && isRomanArmy(s, u.side);
   // a war machine that evades is abandoned anyway (§15): price its threats as if it stands
-  const canEv = st.evade !== 'never' && !st.evadeRemoves && canEvadeOcc(s, occ, u);
+  const canEv = st.evade !== 'never' && !st.evadeRemoves && canEvade(s, u, occ);
   const l = attachedLeaderOcc(occ, u);
   return {
     pFlagHit, pFlagHitShielded, pFlagHitFright: frightProne ? flagHitOf(lossPerFlag, 0) : pFlagHit,
@@ -334,10 +336,10 @@ function threatsAgainst(
         if (x3.walls && isWall(s, u.hex) && !isWall(s, e.hex)) base *= 1 - wallFirstStop(s, occ, u, e);
         const shield = shielded(s, vi, u, e, 'close');
         fk = flagCase(s, vi, u, e, 'close', shield);
-        p = evades ? SIXTH : hitP(S, vi, shield, (helmets ??= helmetsHit(occ, e))) + flagHitP(vi, fk);
+        p = evades ? SIXTH : hitP(S, vi, shield, (helmets ??= helmetsHit(s, occ, e))) + flagHitP(vi, fk);
         p -= camelIgnoreP(S, vi, n);
         flags = !evades;
-      } else if (range && d <= range && canFireOcc(s, occ, e, u.hex) && !(pilumOnly && d - 1 <= reach && canReach(u.hex))) {
+      } else if (range && d <= range && canFireAt(s, e, u.hex, occ) && !(pilumOnly && d - 1 <= reach && canReach(u.hex))) {
         n = rangedDice(s, e, u.hex, 0, false);
         base = pAdj * 0.85;
         fk = flagCase(s, vi, u, e, 'ranged', shielded(s, vi, u, e, 'ranged'));
@@ -350,7 +352,7 @@ function threatsAgainst(
         // not adjacent yet: the rampart counts when e lies on its protected side
         const shield = shielded(s, vi, u, e, 'close');
         fk = flagCase(s, vi, u, e, 'close', shield);
-        p = evades ? SIXTH : hitP(S, vi, shield, (helmets ??= helmetsHit(occ, e))) + flagHitP(vi, fk);
+        p = evades ? SIXTH : hitP(S, vi, shield, (helmets ??= helmetsHit(s, occ, e))) + flagHitP(vi, fk);
         p -= camelIgnoreP(S, vi, n);
         flags = !evades;
       } else continue;
@@ -367,7 +369,7 @@ function threatsAgainst(
         if (x3.slopes && steepSlope(s, e.hex, l.hex)) continue;
         n = closeCombatDice(s, e, l, { role: 'attack', fullAtStart: e.blocks === e.maxBlocks, ordered: false });
         base = pAdj;
-      } else if (range && d <= range && canFireOcc(s, occ, e, l.hex) && !(pilumOnly && d - 1 <= reach && canReach(l.hex))) {
+      } else if (range && d <= range && canFireAt(s, e, l.hex, occ) && !(pilumOnly && d - 1 <= reach && canReach(l.hex))) {
         n = rangedDice(s, e, l.hex, 0, false);
         base = pAdj * 0.85;
       } else if (d - 1 <= reach && !(noWall && isWall(s, l.hex)) && canReach(l.hex)) {
@@ -471,14 +473,23 @@ export function singleUnitRisk(s: GameState, occ: Occ, u: Unit, W: Weights): num
   return unitRisk(s, occ, u, info[0], per[0], bm);
 }
 
-/** Distance from u to the nearest of `enemies` (99 if none). */
+/** Distance from u to the nearest of `enemies` (99 if none). 1 is the least there is (no two units share a hex). */
 export function nearestDist(u: Unit, enemies: readonly Unit[]): number {
   let best = 99;
   for (const e of enemies) {
     const d = hexDist(u.hex, e.hex);
-    if (d < best) best = d;
+    if (d < best) {
+      best = d;
+      if (d === 1) break;
+    }
   }
   return best;
+}
+
+/** Is there another of `units` within 2 hexes of u? */
+function friendWithin2(u: Unit, units: readonly Unit[]): boolean {
+  for (const f of units) if (f !== u && hexDist(f.hex, u.hex) <= 2) return true;
+  return false;
 }
 
 function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side: Side, W: Weights, own: boolean): number {
@@ -490,13 +501,9 @@ function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side
     if (walls && isWall(s, u.hex)) v += WALL_HOLD;
     const d = nearestDist(u, enemies);
     near.set(u, d);
-    if (d <= 4) {
-      let fd = 99;
-      for (const f of units) if (f !== u) fd = Math.min(fd, hexDist(f.hex, u.hex));
-      if (fd > 2) v -= W.stray;
-    }
+    if (d <= 4 && !friendWithin2(u, units)) v -= W.stray;
     if (d > 2) continue;
-    const sc = supportOcc(occ, u);
+    const sc = supportCount(s, u, occ);
     if (sc >= 2) v += W.support;
     else if (sc === 0) v -= W.isolated;
   }
@@ -604,12 +611,25 @@ function advancePenalty(s: GameState, units: Unit[], enemies: Unit[], W: Weights
   return pen * W.adv;
 }
 
+/** `exitDistance` of every hex, per exit objective (objectives never change in play: `cloneState` shares them). */
+const exitDistances = new WeakMap<ObjectiveOf<'exit'>, Float64Array>();
+
 /**
  * Distance from hex h to the hexes of exit objective `o`: along one board row (010 Castulo: row 0 from half-column 8 on;
  * 210, 212, 221, 317: a whole baseline) rows to go plus half the columns outside the exit hexes (for a whole row, the hex
- * distance); other shapes the hex distance to the nearest exit hex.
+ * distance); other shapes the hex distance to the nearest exit hex. Tabled per objective on first use.
  */
 function exitDistance(o: ObjectiveOf<'exit'>, h: HexId): number {
+  let t = exitDistances.get(o);
+  if (!t) {
+    t = new Float64Array(NHEX);
+    for (let x = 0; x < NHEX; x++) t[x] = exitDistanceOf(o, x);
+    exitDistances.set(o, t);
+  }
+  return t[h];
+}
+
+function exitDistanceOf(o: ObjectiveOf<'exit'>, h: HexId): number {
   const row = rowOf(o.hexes[0]);
   if (o.hexes.every((x) => rowOf(x) === row)) {
     let lo = Infinity;
@@ -677,7 +697,73 @@ export interface EvalBreakdown {
 }
 
 /**
- * Evaluate the position for `me`. `next` = the side that will act next (its threats are imminent).
+ * Caches of the current AI decision (null = off), per weights object: evaluations by `${me}${next}` + `positionKey`, and
+ * memos of position-only scores (`positionMemo`). A search meets the same position again and again (every piece's "stay"
+ * option, the same moves in another order, each card's order benefits), so `chooseAnswer` turns them on for each
+ * decision and off after it; they stay off for everyone else (tests and scripts change a state in place and evaluate it
+ * again).
+ */
+let evalCache: WeakMap<Weights, Map<string, number>> | null = null;
+let memoCache: WeakMap<Weights, Map<string, Map<string, number>>> | null = null;
+
+/** Start (`true`) or end (`false`) the caches of one AI decision (`chooseAnswer`). */
+export function evalCacheFor(on: boolean): void {
+  evalCache = on ? new WeakMap() : null;
+  memoCache = on ? new WeakMap() : null;
+}
+
+/** Ids of the terrain and rampart arrays (a changed hex replaces both, `setTerrain`, the AI's rampart breakers). */
+const arrayIds = new WeakMap<object, number>();
+let arraySeq = 0;
+function arrayId(a: object): number {
+  let id = arrayIds.get(a);
+  if (id === undefined) arrayIds.set(a, (id = ++arraySeq));
+  return id;
+}
+
+/**
+ * Everything `evaluate` (with its threat model, goals and values) reads from a state that is not winning, besides `me` and
+ * `next`, apart from the game's fixed data (scenario rules and objectives, unit and leader types, sides, elites and
+ * traits, armies, fords, hills under camps, banners to win, the dice-order counts) and the AI's `viewer`, which are fixed
+ * for a decision: the active side; the terrain and rampart arrays; each side's banners, hand size and Command; the leaders
+ * each side has lost; every unit's id, hex and blocks and every leader's id and hex, in state order; the reserve's units
+ * and leaders; each objective's captured hexes, held banners and scored sections. It reads nothing of the turn (the exact
+ * threat model moves units under the default card modifiers) nor any other hand content, the deck or the dice. `head`
+ * starts the key.
+ */
+function positionKey(s: GameState, head = ''): string {
+  const { top, bottom } = s.players;
+  const sp = s.special;
+  let k = `${head}${s.active}${arrayId(s.terrain)},${arrayId(s.rampart)}|${top.banners},${top.hand.length},${top.command}|`
+    + `${bottom.banners},${bottom.hand.length},${bottom.command}|${sp.leadersEliminated.top},${sp.leadersEliminated.bottom}|`;
+  for (const u of s.units) k += `${u.id}:${u.hex}:${u.blocks},`;
+  k += '|';
+  for (const l of s.leaders) k += `${l.id}:${l.hex},`;
+  k += '|';
+  for (const u of sp.reserveUnits) k += `${u.id},`;
+  for (const l of sp.reserveLeaders) k += `${l.id},`;
+  for (const o of sp.objState) k += `|${o.taken}/${o.held.top},${o.held.bottom}/${o.sections}`;
+  return k;
+}
+
+/**
+ * Inside an AI decision, a memo for scores that read no more of the state than `evaluate` does (`positionKey`) and are
+ * worked out with weights `W` from state `s` (e.g. ordering.ts's local scores of each unit and destination); null
+ * outside one.
+ */
+export function positionMemo(s: GameState, W: Weights): Map<string, number> | null {
+  if (!memoCache) return null;
+  let byKey = memoCache.get(W);
+  if (!byKey) memoCache.set(W, (byKey = new Map()));
+  const key = positionKey(s);
+  let memo = byKey.get(key);
+  if (!memo) byKey.set(key, (memo = new Map()));
+  return memo;
+}
+
+/**
+ * Evaluate the position for `me`. `next` = the side that will act next (its threats are imminent). Inside an AI
+ * decision the value of a position seen before comes from the cache (`evalCacheFor`); never with `breakdown`.
  */
 export function evaluate(s: GameState, me: Side, next: Side, W: Weights, breakdown?: EvalBreakdown): number {
   if (s.winner) {
@@ -685,6 +771,16 @@ export function evaluate(s: GameState, me: Side, next: Side, W: Weights, breakdo
     const margin = s.players[me].banners - s.players[other(me)].banners;
     return s.winner === me ? WIN_SCORE + margin : -WIN_SCORE + margin;
   }
+  if (!evalCache || breakdown) return evaluatePosition(s, me, next, W, breakdown);
+  let byKey = evalCache.get(W);
+  if (!byKey) evalCache.set(W, (byKey = new Map()));
+  const key = positionKey(s, me + next);
+  let v = byKey.get(key);
+  if (v === undefined) byKey.set(key, (v = evaluatePosition(s, me, next, W)));
+  return v;
+}
+
+function evaluatePosition(s: GameState, me: Side, next: Side, W: Weights, breakdown?: EvalBreakdown): number {
   const opp = other(me);
   const T = s.bannersToWin;
   const occ = new Occ(s);
@@ -767,13 +863,9 @@ export function rawFeatures(s: GameState, me: Side, next: Side, W: Weights): Rec
     let stray = 0;
     for (const u of units) {
       const d = nearestDist(u, enemies);
-      if (d <= 4) {
-        let fd = 99;
-        for (const x of units) if (x !== u) fd = Math.min(fd, hexDist(x.hex, u.hex));
-        if (fd > 2) stray++;
-      }
+      if (d <= 4 && !friendWithin2(u, units)) stray++;
       if (d > 2) continue;
-      const sc = supportOcc(occ, u);
+      const sc = supportCount(s, u, occ);
       if (sc >= 2) support++;
       else if (sc === 0) isolated++;
     }

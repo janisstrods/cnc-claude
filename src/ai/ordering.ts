@@ -4,25 +4,19 @@ import { ambushAvailable, ambushSections } from '../engine/flow';
 import { areAdjacent, inSection } from '../engine/hex';
 import { leaderMoves, unitMoves } from '../engine/movement';
 import { commandClash, commandModes, inCommand, leadershipChain, orderMode, validateOrders, type OrderMode } from '../engine/orders';
-import { isLoneLeader, leaderUnit, leadersOf, unitsOf } from '../engine/query';
+import { isLoneLeader, leaderUnit, leadersOf, supportCount, unitsOf } from '../engine/query';
 import { cloneState } from '../engine/setup';
 import { UNIT_STATS } from '../engine/units';
 import { OFF_BOARD, type CardKind, type GameState, type Leader, type SectionName, type Side, type Unit } from '../engine/types';
-import { Occ, hasTerrain, hexDist, isWarMachine, supportOcc } from './board';
+import { Occ, hasTerrain, hexDist, isWarMachine, nearestEnemy } from './board';
 import { attackNowValue, shotValue } from './estimate';
-import { battered, holdsWall, nearestDist, singleUnitRisk, unitGap } from './evaluate';
+import { battered, holdsWall, nearestDist, positionMemo, singleUnitRisk, unitGap } from './evaluate';
 import { isSacredLeader, type Weights } from './values';
 
 export interface OrderCandidate {
   pieces: string[];
   ambush?: SectionName;
   benefit: number;
-}
-
-function nearestEnemy(s: GameState, h: number, side: Side): number {
-  let best = 99;
-  for (const u of s.units) if (u.side !== side && u.hex >= 0) best = Math.min(best, hexDist(h, u.hex));
-  return best;
 }
 
 /**
@@ -36,7 +30,7 @@ function localScore(s: GameState, occ: Occ, u: Unit, enemies: readonly Unit[], W
   const gap = walls && holdsWall(s, u) ? 0 : unitGap(u, enemies, d);
   if (gap) v -= W.adv * gap * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1) * 1.5;
   if (d <= 2) {
-    const sc = supportOcc(occ, u);
+    const sc = supportCount(s, u, occ);
     if (sc >= 2) v += W.support;
     else if (sc === 0) v -= W.isolated;
   }
@@ -58,8 +52,20 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
   // only own pieces move (temporarily) below
   const enemies = s.units.filter((x) => x.side !== side && x.hex >= 0);
   const walls = hasTerrain(s, 'wall');
+  // the local score of a unit where it stands or moves to is the same for every card (it reads only the position): in
+  // an AI decision it is kept per unit and hex for this position (`positionMemo`)
+  const memo = positionMemo(s, W);
+  const local = (u: Unit): number => {
+    const k = `${u.id}@${u.hex}`;
+    let v = memo?.get(k);
+    if (v === undefined) {
+      v = localScore(s, occ, u, enemies, W, walls);
+      memo?.set(k, v);
+    }
+    return v;
+  };
   for (const u of unitsOf(s, side)) {
-    const base = localScore(s, occ, u, enemies, W, walls);
+    const base = local(u);
     let best = base + W.attackNow * attackNowValue(s, occ, u, 0, true, false, W);
     if (!m.noMove) {
       const from = u.hex;
@@ -78,7 +84,7 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
           l.hex = t.hex;
         }
         u.hex = t.hex;
-        const v = localScore(s, occ, u, enemies, W, walls) + W.attackNow * attackNowValue(s, occ, u, t.dist, t.canBattle, t.mustBattle, W, from);
+        const v = local(u) + W.attackNow * attackNowValue(s, occ, u, t.dist, t.canBattle, t.mustBattle, W, from);
         u.hex = from;
         occ.unit[t.hex] = null;
         occ.unit[from] = u;

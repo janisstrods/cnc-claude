@@ -1,9 +1,11 @@
 // Pure combat calculations: dice counts, hit scoring, flag ignores (rules-reference §3, §4, §10).
 import { distance, hasLineOfSight, neighbours } from './hex';
-import { attachedLeader, enemyUnitAdjacent, isRomanArmy, leaderAt, leaderHas, leaderNear, supportCount, unitAt } from './query';
+import {
+  attachedLeader, enemyUnitAdjacent, isRomanArmy, leaderHas, leaderNear, leaderOn, supportCount, unitOn, type PieceIndex,
+} from './query';
 import {
   ccCapOfHex, hillGroups, isCamp, isHill, isWall, rampartProtects, rangedFromCap, rangedTargetCap, terrainAt, terrainBlocksSight,
-  veryHills, wallGroups,
+  veryHills, wallGroups, type BoardTerrain, type SightGroups,
 } from './terrain';
 import { eliteHas, rangeOf, rangedBaseDice } from './elites';
 import { UNIT_STATS, elephantDiceVs, frightens } from './units';
@@ -98,34 +100,59 @@ export function rangedDice(s: GameState, firer: Unit, targetHex: HexId, moved: n
   return Math.max(0, dice);
 }
 
+/** Sight groups per terrain array, with the `hillUnder` array they were made for (see `sightGroupsOf`). */
+const sightCache = new WeakMap<readonly TerrainType[], { hillUnder: readonly boolean[]; groups: SightGroups }>();
+
+/**
+ * The hill and wall groups of a board for `terrainBlocksSight`, each worked out on first use and kept per terrain array: a
+ * changed hex replaces the array (`setTerrain`), and `hillUnder`, the other input, never changes in play.
+ */
+export function sightGroupsOf(s: BoardTerrain): SightGroups {
+  const c = sightCache.get(s.terrain);
+  if (c && c.hillUnder === s.hillUnder) return c.groups;
+  const board: BoardTerrain = { terrain: s.terrain, hillUnder: s.hillUnder };
+  let hills: Map<HexId, number> | undefined;
+  let walls: Map<HexId, number> | undefined;
+  const groups: SightGroups = {
+    hills: () => (hills ??= hillGroups(board, neighbours)),
+    walls: () => (walls ??= wallGroups(board, neighbours)),
+  };
+  sightCache.set(s.terrain, { hillUnder: s.hillUnder, groups });
+  return groups;
+}
+
 /**
  * Is the line of sight from `from` to `to` clear (§8)? Pieces between block it; the terrain between is decided by
  * `terrainBlocksSight` (forest, camps, impassable hills, hills off the firer's and target's hill, city walls except along a
- * connected wall, §18.7).
+ * connected wall, §18.7). `at`: see PieceIndex.
  */
-export function lineOfSight(s: GameState, from: HexId, to: HexId): boolean {
-  let hills: Map<HexId, number> | null = null;
-  let walls: Map<HexId, number> | null = null;
-  const groups = {
-    hills: () => (hills ??= hillGroups(s, neighbours)),
-    walls: () => (walls ??= wallGroups(s, neighbours)),
-  };
-  return hasLineOfSight(from, to, (h) => !!unitAt(s, h) || !!leaderAt(s, h) || terrainBlocksSight(s, from, to, h, groups));
+export function lineOfSight(s: GameState, from: HexId, to: HexId, at?: PieceIndex): boolean {
+  const groups = sightGroupsOf(s);
+  return hasLineOfSight(from, to, (h) => !!unitOn(s, h, at) || !!leaderOn(s, h, at) || terrainBlocksSight(s, from, to, h, groups));
 }
 
-/** Can `firer` make a ranged attack at `targetHex` (ignoring order state)? */
-export function canFireAt(s: GameState, firer: Unit, targetHex: HexId): boolean {
+/** Can `firer` make a ranged attack at `targetHex` (ignoring order state)? `at`: see PieceIndex. */
+export function canFireAt(s: GameState, firer: Unit, targetHex: HexId, at?: PieceIndex): boolean {
+  return !enemyUnitAdjacent(s, firer.hex, firer.side, at) && canFireUnengaged(s, firer, targetHex, at);
+}
+
+/**
+ * `canFireAt` for a firer known to have no enemy unit next to it (an engaged unit may not fire, §8): the target hex in
+ * range (2 hexes or more), an enemy unit or lone leader on it, and a clear line of sight.
+ */
+export function canFireUnengaged(s: GameState, firer: Unit, targetHex: HexId, at?: PieceIndex): boolean {
   const range = rangeOf(firer);
   if (range === 0) return false;
   const d = distance(firer.hex, targetHex);
   if (d < 2 || d > range) return false;
-  if (enemyUnitAdjacent(s, firer.hex, firer.side)) return false;
-  const tu = unitAt(s, targetHex);
-  const tl = leaderAt(s, targetHex);
+  const tu = unitOn(s, targetHex, at);
   if (tu) {
     if (tu.side === firer.side) return false;
-  } else if (!tl || tl.side === firer.side) return false;
-  return lineOfSight(s, firer.hex, targetHex);
+  } else {
+    const tl = leaderOn(s, targetHex, at);
+    if (!tl || tl.side === firer.side) return false;
+  }
+  return lineOfSight(s, firer.hex, targetHex, at);
 }
 
 export interface Scored {
@@ -243,11 +270,11 @@ export function scoreClose(
 
 /**
  * Whether helmets score for this striker (leader attached/adjacent, and the striker benefits from leaders). A satrap
- * (`attachedOnly`) counts only for his own unit.
+ * (`attachedOnly`) counts only for his own unit. `at`: see PieceIndex.
  */
-export function helmetsCount(s: GameState, striker: Unit): boolean {
+export function helmetsCount(s: GameState, striker: Unit, at?: PieceIndex): boolean {
   if (UNIT_STATS[striker.type].noLeaderBenefit) return false;
-  return leaderNear(s, striker.hex, striker.side);
+  return leaderNear(s, striker.hex, striker.side, at);
 }
 
 /**
@@ -279,7 +306,7 @@ export interface IgnoreContext {
   kind: 'close' | 'ranged';
   striker: Unit | null;
   /** Close combat: the striker's role (a rampart protects only against an attack or bonus combat roll, §16). */
-  role?: StrikeRole;
+  role?: StrikeRole | null;
   /** Leader attached at the time flags are applied and still alive. */
   leaderAlive: boolean;
   /** Target was a full-strength warrior when this combat began. */
@@ -296,14 +323,17 @@ export function frightAtFirstSight(s: GameState, target: Unit, striker: Unit | n
   return UNIT_STATS[striker.type].elephantTable && UNIT_STATS[target.type].infantry && isRomanArmy(s, target.side);
 }
 
-/** Number of flags the target may ignore (bolster morale, terrain incl. the rampart and city wall, special). */
-export function ignorableFlags(s: GameState, target: Unit, ctx: IgnoreContext): number {
+/**
+ * Number of flags the target may ignore (bolster morale, terrain incl. the rampart and city wall, special). `at`: see
+ * PieceIndex.
+ */
+export function ignorableFlags(s: GameState, target: Unit, ctx: IgnoreContext, at?: PieceIndex): number {
   if (frightAtFirstSight(s, target, ctx.striker, ctx.kind)) return 0;
   const t = UNIT_STATS[target.type];
   let n = 0;
   if (!t.noLeaderBenefit) {
-    if (ctx.leaderAlive && attachedLeader(s, target)) n++;
-    if (supportCount(s, target) >= 2) n++;
+    if (ctx.leaderAlive && attachedLeader(s, target, at)) n++;
+    if (supportCount(s, target, at) >= 2) n++;
   }
   if (isCamp(s, target.hex) && t.foot) n++;
   if (t.fullStrengthBonus && ctx.fullAtStart) n++;
