@@ -94,9 +94,6 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   const queue: Node[] = [];
   const best = new Map<HexId, number>();
 
-  /** Is entering `h` from `from` (OFF_BOARD for a reserve) the end of the move? Stopping terrain, or a climb onto a very steep hill. */
-  const stopsThere = (from: HexId, h: HexId) => stopsOnEntry(s, u.type, from, h);
-
   const canEnter = (h: HexId, from: HexId): 'no' | 'pass' | 'stop' | 'yes' | 'attach' => {
     // a city wall (§18.7) is climbed only by a move that begins next to it (never by a reserve entering)
     if (closedTo(s, u.type, from, h) || (isWall(s, h) && (fromReserve || from !== startHex))) return 'no';
@@ -104,7 +101,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     if (v) {
       // passing through means not stopping: impossible through a friend standing where the unit would have to stop (stopping
       // terrain, or a very steep hill climbed from lower ground)
-      if (passThrough && v.side === u.side && !stopsThere(from, h)) return 'pass';
+      if (passThrough && v.side === u.side && !stopsOnEntry(s, u.type, from, h)) return 'pass';
       return 'no';
     }
     const l = leaderAt(s, h);
@@ -112,7 +109,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
       if (l.side !== u.side) return 'no';
       return hasLeader ? 'no' : 'attach';
     }
-    if (stopsThere(from, h)) return 'stop';
+    if (stopsOnEntry(s, u.type, from, h)) return 'stop';
     return 'yes';
   };
 
@@ -173,7 +170,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     if (exits.includes(startHex)) candidates.push({ hex: startHex, dist: opts.alreadyMoved ?? 0, path: [startHex] });
     for (const t of results.values()) if (exits.includes(t.hex) && !t.attachesTo) candidates.push(t);
     for (const t of candidates) {
-      if (t.hex !== startHex && stopsThere(t.path[t.path.length - 2] ?? OFF_BOARD, t.hex)) continue;
+      if (t.hex !== startHex && stopsOnEntry(s, u.type, t.path[t.path.length - 2] ?? OFF_BOARD, t.hex)) continue;
       if (t.dist + 1 > lim.max) continue;
       // warriors move 2 or more hexes only to charge into close combat, which leaving the battlefield is not
       if (lim.chargeFrom !== null && t.dist + 1 >= lim.chargeFrom) continue;
