@@ -7,9 +7,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { BLOCK_COLORS } from '../../src/art';
 import { COLS, createGame, ROWS, type ObjectiveDef, type ObjectiveState, type Side, type TerrainType } from '../../src/engine';
-import { rampartMask, type TerrainSetup } from '../../src/engine/setup';
+import { boardFromTerrain, type TerrainSetup } from '../../src/engine/setup';
 import { scenarioById } from '../../src/scenarios';
-import { hexCenter, isOnBoard } from '../../src/ui/geometry';
+import { hexCenter } from '../../src/ui/geometry';
 import { BoardArt, boardArtPropsEqual, ObjectiveMarkers, terrainArtOf, terrainName, TerrainIcon, type BoardArtProps } from '../../src/ui/terrain';
 
 const svg = (el: ReturnType<typeof createElement>) => renderToStaticMarkup(createElement('svg', null, el));
@@ -24,19 +24,7 @@ const battle = (id: string) => BATTLES.find((b) => b.id === id)!;
 
 /** A board from a terrain list (the scenario format, with the Expansion #3 `hill` and `art`). */
 function boardOf(terrainList: Entry[]) {
-  const terrain: TerrainType[] = [];
-  const fords: boolean[] = [];
-  const rampart: number[] = [];
-  const hillUnder: boolean[] = [];
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) terrain.push(isOnBoard(r, c) ? 'plain' : 'void'), fords.push(false), rampart.push(0), hillUnder.push(false);
-  for (const t of terrainList) {
-    const id = hx(t.r, t.c);
-    const seaFord = t.t === 'sea' && !!t.ford;
-    terrain[id] = (seaFord ? 'river' : t.t) as TerrainType;
-    fords[id] = (t.t === 'river' || seaFord) && !!t.ford;
-    rampart[id] = rampartMask(t as TerrainSetup);
-    if (t.hill) hillUnder[id] = true;
-  }
+  const { terrain, fords, rampart, hillUnder } = boardFromTerrain(terrainList as TerrainSetup[]);
   return { terrain, fords, rampart, hillUnder, art: terrainArtOf({ terrain: terrainList }) };
 }
 

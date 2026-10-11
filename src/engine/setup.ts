@@ -551,8 +551,15 @@ export function createGame(setup: ScenarioSetup, seed: number, options?: GameOpt
   }
 }
 
-function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | undefined): GameState {
-  checkIds(setup);
+/** The board arrays of a game state (`GameState.terrain`, `fords`, `noCap`, `rampart`, `hillUnder`). */
+export type BoardArrays = Pick<GameState, 'terrain' | 'fords' | 'noCap' | 'rampart' | 'hillUnder'>;
+
+/**
+ * The board arrays of a scenario's terrain list: open ground on every board hex (`void` off it), then each entry. A coast
+ * played as a ford (217, §18.6) becomes a fordable river; a rampart's hexsides are validated (`rampartMask`). Throws on an
+ * entry off the board or a ford that is no river.
+ */
+export function boardFromTerrain(list: readonly TerrainSetup[]): BoardArrays {
   const terrain: TerrainType[] = [];
   const fords: boolean[] = [];
   const noCap: boolean[] = [];
@@ -567,7 +574,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
       hillUnder.push(false);
     }
   }
-  for (const t of setup.terrain) {
+  for (const t of list) {
     if (!onBoard(t.r, t.c)) throw new Error(`terrain off board ${t.r},${t.c}`);
     // a coast played as a ford (217, §18.6) is a fordable river in every respect: only the art is sea
     const coastFord = t.t === 'sea' && t.ford === true;
@@ -579,6 +586,12 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     rampart[h] = rampartMask(t);
     hillUnder[h] = t.hill === true;
   }
+  return { terrain, fords, noCap, rampart, hillUnder };
+}
+
+function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | undefined): GameState {
+  checkIds(setup);
+  const { terrain, fords, noCap, rampart, hillUnder } = boardFromTerrain(setup.terrain);
   const commands = resolveCommands(setup);
   // 304 (§18.5): the type a card names is judged within the command it is played for, so there must be commands
   if (setup.rules.includes('commandFallback') && !commands.length) throw new Error('rule commandFallback needs separate commands');

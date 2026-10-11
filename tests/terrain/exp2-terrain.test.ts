@@ -5,9 +5,9 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { BLOCK_COLORS } from '../../src/art';
-import { COLS, createGame, ROWS, type ObjectiveDef, type ObjectiveState, type Side, type TerrainType } from '../../src/engine';
+import { boardFromTerrain, COLS, createGame, ROWS, type ObjectiveDef, type ObjectiveState, type Side, type TerrainType } from '../../src/engine';
 import { scenarioById } from '../../src/scenarios';
-import { BOARD_W, hexCenter, isOnBoard } from '../../src/ui/geometry';
+import { BOARD_W, hexCenter } from '../../src/ui/geometry';
 import { BoardArt, boardArtPropsEqual, ObjectiveMarkers, terrainArtOf, terrainName, TerrainIcon, type BoardArtProps } from '../../src/ui/terrain';
 
 const svg = (el: ReturnType<typeof createElement>) => renderToStaticMarkup(createElement('svg', null, el));
@@ -16,13 +16,7 @@ const hx = (r: number, c: number) => r * COLS + c;
 
 /** An open board with the given terrain. */
 function board(cells: [number, number, TerrainType, boolean?][]): { terrain: TerrainType[]; fords: boolean[] } {
-  const terrain: TerrainType[] = [];
-  const fords: boolean[] = [];
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) terrain.push(isOnBoard(r, c) ? 'plain' : 'void'), fords.push(false);
-  for (const [r, c, t, f] of cells) {
-    terrain[hx(r, c)] = t;
-    fords[hx(r, c)] = !!f;
-  }
+  const { terrain, fords } = boardFromTerrain(cells.map(([r, c, t, ford]) => ({ r, c, t, ford })));
   return { terrain, fords };
 }
 
