@@ -12,9 +12,7 @@ import {
   GameController, devRouteConfig, initialState, loadSaved, newSessionConfig, type SessionConfig,
 } from '../../src/ui/game/controller';
 import { RandomOpponent } from '../../src/ui/game/opponent';
-import {
-  boardUi, deploymentSide, leadershipHint, rampartSidesText, type UiSel,
-} from '../../src/ui/game/uiModel';
+import { boardUi, deploymentSide, leadershipHint, rampartSidesText, type UiSel } from '../../src/ui/game/uiModel';
 import {
   OPTIONAL_RULES, PICKER_TABS, battlesOf, chosenOptions, loadOptionChoices, loadPickerTab, offeredOptions, optionValue,
   saveOptionChoice, savePickerTab, tabForKey,

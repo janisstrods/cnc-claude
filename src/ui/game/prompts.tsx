@@ -3,16 +3,17 @@
 import type { Dispatch, SetStateAction } from 'react';
 import {
   CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, battleReady, battleTargets, cardKind, eligiblePieces, isLeaderId,
-  leaderById, movablePieces, orderLimit, orderMode, pieceMoves, rollingFirePaths, selectionMode, unitById, validateDiceOrders, validateOrders,
+  leaderById, movablePieces, orderLimit, orderMode, pieceHex, pieceMoves, rollingFirePaths, selectionMode, unitById, validateDiceOrders,
+  validateOrders,
   type Answer, type Decision, type DieFace, type GameState, type RetreatOption, type SectionName, type Side,
 } from '../../engine';
 import { BLOCK_COLORS, unitTypeName } from '../../art';
 import { Button } from '../kit';
 import type { GameController, ViewState } from './controller';
+import { FACE_WORDS, counterAttackNote, diceTurnText, firstOrderDie } from './diceOrders';
 import {
-  FACE_WORDS, ambushTexts, attackDice, commandBlocks, commandById, commandFallbackNote, counterAttackNote, diceTurnText, effectiveKind,
-  expectedHits, firstOrderDie, leadershipHint, pieceHexOf, placeUnitPrompt, possessive, retreatEliminates, rollingFireStep, selectAllUnits,
-  type UiSel,
+  ambushTexts, attackDice, commandBlocks, commandById, commandFallbackNote, effectiveKind, expectedHits, leadershipHint,
+  placeUnitPrompt, possessive, retreatEliminates, rollingFireStep, selectAllUnits, type UiSel,
 } from './uiModel';
 
 /** What the prompt bar shows. `tone`: 'warn' or 'danger' colouring; `dice`: dice drawn before the text (310). */
@@ -224,7 +225,7 @@ function movePrompt(c: PromptCtx, d: D<'move'>): Prompt {
   const { s, ui, setUi } = c;
   const movers = movablePieces(s, d.stage);
   const sel = ui.selPiece;
-  const reserve = movers.filter((id) => pieceHexOf(s, id) < 0);
+  const reserve = movers.filter((id) => (pieceHex(s, id) ?? -1) < 0);
   let text = `${movers.length} ordered piece${movers.length === 1 ? '' : 's'} can still move. Select one, then click a destination.`;
   if (sel) {
     const name = isLeaderId(sel) ? leaderById(s, sel)?.name || 'Leader' : unitTypeName(unitById(s, sel)!.type);
@@ -319,7 +320,7 @@ function ignoreFlagsPrompt(c: PromptCtx, d: D<'ignoreFlags'>): Prompt {
 
 function retreatPrompt(c: PromptCtx, d: D<'retreat'>): Prompt {
   const { s } = c;
-  const uh = pieceHexOf(s, d.unit);
+  const uh = pieceHex(s, d.unit) ?? -1;
   // last-row retreat (214): short of hexes on its own baseline row, the unit is eliminated
   const lost = (o: RetreatOption) => retreatEliminates(s, d, o);
   const lbl = (o: RetreatOption, i: number) =>

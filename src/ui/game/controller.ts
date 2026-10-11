@@ -7,7 +7,7 @@ import {
 } from '../../engine';
 import { SCENARIOS, scenarioById } from '../../scenarios';
 import type { Opponent } from './opponent';
-import { FACE_WORDS, currentDiceTurn, diceRollSummary, diceTurnOrders, diceTurnVictim, pieceName, type DiceTurn } from './uiModel';
+import { FACE_WORDS, currentDiceTurn, diceRollSummary, diceTurnOrders, diceTurnVictim, pieceName, type DiceTurn } from './diceOrders';
 import { sfx } from '../sound';
 
 export type Difficulty = 'recruit' | 'tribune' | 'consul';

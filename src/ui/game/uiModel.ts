@@ -1,17 +1,16 @@
-// Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges, plus the unit
-// descriptions shown in tooltips and the rules reference.
+// Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges, and the texts of
+// the prompts and tooltips that go with the expansions' rules. The unit descriptions are in unitText.ts, the objective
+// tooltips in objectiveText.ts, the dice orders of 310 in diceOrders.ts.
 import {
-  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, ambushAvailable, ambushEntryHexes, attachedLeader, bannerTotal,
-  baselineRow, battleReady,
-  battleTargets, canMarch, cardKind, closeCombatDice, closeHitChance, commandClash, commandModes, commandOf, diceOrderPieces, eligiblePieces, inCommand, eliteDef,
-  fireMoveLimit, heldBanners, inSection, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces,
-  nextCaptureBanners, orderCommander, orderDice, orderMode, other, pieceMoves, rangeOf, rangedBaseDice, rangedDice, rollingFirePaths, rowOf,
-  sectionsOf, selectionCommand, terrainAt, unitAt, unitById, validateDiceOrders,
-  type Blocks, type CardKind, type CommandDef, type Decision, type DieFace, type EliteAbility, type EvadeRule, type GameState, type HexId,
-  type Leader, type LeaderTrait, type ObjectiveDef, type RetreatOption, type SectionName, type Side, type Unit, type UnitClass, type UnitStats,
-  type UnitType,
+  ALL_HEXES, CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushEntryHexes, attachedLeader, baselineRow, battleReady,
+  battleTargets, cardKind, closeCombatDice, closeHitChance, commandClash, commandModes, commandOf, eligiblePieces, inCommand,
+  inSection, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces, orderCommander,
+  orderMode, other, pieceHex, pieceMoves, rangeOf, rangedDice, rollingFirePaths, rowOf, selectionCommand, unitAt, unitById,
+  type Blocks, type CardKind, type CommandDef, type Decision, type GameState, type HexId, type RetreatOption, type SectionName,
+  type Side, type Unit,
 } from '../../engine';
 import type { Highlight } from './Board';
+import { diceSlotChoices } from './diceOrders';
 
 export interface UiSel {
   selCard: number | null;
@@ -43,10 +42,6 @@ export function effectiveKind(s: GameState, side: Side, cardId: number): { kind:
   if (!last) return { kind: null, mirrored: false };
   const m = mirrorKind(last);
   return { kind: m, mirrored: m !== last };
-}
-
-export function pieceHexOf(s: GameState, id: string): HexId {
-  return (isLeaderId(id) ? leaderById(s, id)?.hex : unitById(s, id)?.hex) ?? -1;
 }
 
 function shadeSections(side: Side, secs: SectionName[]): Set<HexId> {
@@ -125,7 +120,7 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       for (const id of movablePieces(s, d.stage)) {
         markPiece(id, 'mover');
         if (pieceMoves(s, id, d.stage).some((m) => m.hex === OFF_BOARD)) {
-          const h = pieceHexOf(s, id);
+          const h = pieceHex(s, id) ?? -1;
           if (h >= 0) badges.set(h, 'Exit');
         }
       }
@@ -161,7 +156,7 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
         const op = s.turn.ordered[id];
         markPiece(id, op?.mustBattle ? 'moveMustBattle' : 'attacker');
         // a unit that may roll burning logs down its hill (210)
-        if (rollingFirePaths(s, id).length) badges.set(pieceHexOf(s, id), 'Logs');
+        if (rollingFirePaths(s, id).length) badges.set(pieceHex(s, id) ?? -1, 'Logs');
       }
       if (ui.selPiece) {
         markPiece(ui.selPiece, 'selected');
@@ -179,7 +174,7 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
     case 'retreat':
     case 'leaderEvade': {
       const id = d.kind === 'retreat' ? d.unit : d.leader;
-      const h = pieceHexOf(s, id);
+      const h = pieceHex(s, id) ?? -1;
       if (h >= 0) highlights.set(h, 'focus');
       for (const o of d.options) if (!o.offBoard && o.end >= 0) highlights.set(o.end, 'option');
       // last-row retreat (214): an option that eliminates the unit says so
@@ -192,10 +187,10 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
     }
     case 'momentum':
       highlights.set(d.hex, 'option');
-      highlights.set(pieceHexOf(s, d.unit), 'focus');
+      highlights.set(pieceHex(s, d.unit) ?? -1, 'focus');
       break;
     case 'cavalryExtra':
-      highlights.set(pieceHexOf(s, d.unit), 'focus');
+      highlights.set(pieceHex(s, d.unit) ?? -1, 'focus');
       for (const h of d.options) highlights.set(h, 'option');
       break;
     case 'placeLeader':
@@ -222,7 +217,7 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       ids.forEach((id, i) => {
         if (!id) return;
         markPiece(id, 'selected');
-        const h = pieceHexOf(s, id);
+        const h = pieceHex(s, id) ?? -1;
         if (h >= 0) badges.set(h, `Die ${i + 1}`);
       });
       break;
@@ -242,10 +237,10 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
     case 'defend':
     case 'ignoreFlags': {
       const target = d.kind === 'defend' ? d.target : d.unit;
-      const th = pieceHexOf(s, target);
+      const th = pieceHex(s, target) ?? -1;
       if (th >= 0) highlights.set(th, 'focus');
       if (d.kind === 'defend') {
-        const ah = pieceHexOf(s, d.attacker);
+        const ah = pieceHex(s, d.attacker) ?? -1;
         if (ah >= 0) highlights.set(ah, 'targetClose');
       }
       break;
@@ -254,216 +249,6 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       break;
   }
   return { highlights, leaderHighlights, badges, sectionShade, pathPreview };
-}
-
-// ---------------------------------------------------------------------------
-// unit descriptions (tooltips and the rules reference), generated from the unit table
-// ---------------------------------------------------------------------------
-
-/** Unit types new in Expansion #2 (§18). */
-export const EXP2_UNIT_TYPES: readonly UnitType[] = ['BCH'];
-
-/** Short plural noun for a unit type ("Heavy Chariots" → "chariots"). */
-function unitNoun(t: UnitType): string {
-  const words = UNIT_STATS[t].name.split(' ');
-  return words[words.length - 1].toLowerCase();
-}
-
-/** Capitalise the first letter. */
-function cap(x: string): string {
-  return x.charAt(0).toUpperCase() + x.slice(1);
-}
-
-/** Wording of the movement allowance of a unit that cannot battle after a full move: tooltip and rules reference. */
-interface MoveFormat {
-  /** Moves `battle` hexes and battles, or up to `max` without battle (auxilia). */
-  withoutBattle: (battle: number, max: number) => string;
-  /** May not battle at all after moving (heavy war machines). */
-  noBattle: (max: number) => string;
-}
-
-const MOVE_TOOLTIP: MoveFormat = {
-  withoutBattle: (b, m) => `${b}, or ${m} without battle`,
-  noBattle: (m) => `${m}, no battle after moving`,
-};
-
-const MOVE_REFERENCE: MoveFormat = {
-  withoutBattle: (b, m) => `${b} (${m} without battle)`,
-  noBattle: (m) => `${m} (no battle after moving)`,
-};
-
-/**
- * Movement allowance: warriors "1 (2 to charge)" (moving 2 or more must end in close combat); a unit that moves further
- * when it does not battle (auxilia) or may not battle after moving at all is described by `fmt`; otherwise the plain number.
- */
-function moveText(st: UnitStats, fmt: MoveFormat): string {
-  if (st.chargeMove) return `1 (${st.move} to charge)`;
-  if (st.moveBattle === 0) return fmt.noBattle(st.move);
-  if (st.moveBattle < st.move) return fmt.withoutBattle(st.moveBattle, st.move);
-  return String(st.move);
-}
-
-/**
- * Missile line of a tooltip: 2 dice standing and 1 after moving, or no fire after moving at all (heavy war machines). A
- * unit whose only missile is the pilum always rolls 1 and cannot fire after moving 2 hexes (§18.2).
- */
-function missileText(u: Unit, range: number): string {
-  const st = UNIT_STATS[u.type];
-  const limit = fireMoveLimit(u);
-  const noFireAfterMoving = limit <= 1 || st.moveBattle === 0;
-  if (rangedBaseDice(u, 0) === rangedBaseDice(u, 1)) {
-    return `Missiles: range ${range}, 1 die (${noFireAfterMoving ? 'not after moving' : `not after moving ${limit} hexes`})`;
-  }
-  return `Missiles: range ${range}, 2 dice (${noFireAfterMoving ? 'not after moving' : '1 after moving'})`;
-}
-
-/**
- * Where elephants' dice differ from what the enemy would roll: "3 vs elephants, warriors, chariots" (elephants first,
- * then units whose base attacking dice the elephant does not copy, or whose dice vary with strength). Camels roll 3
- * attacking and 2 battling back; the elephant's 3 matches their attack, so they are not listed. Expansion #2 types are
- * left out so the base-game wording stays as it is (the Expansion #2 text names the elephant's dice against them).
- */
-function elephantDiceNote(): string {
-  const odd = UNIT_TYPES.filter((t) => {
-    if (EXP2_UNIT_TYPES.includes(t)) return false;
-    const st = UNIT_STATS[t];
-    return st.elephantTable || st.fullStrengthBonus || st.elephantDiceAgainst !== st.cc;
-  }).sort((a, b) => Number(UNIT_STATS[b].elephantTable) - Number(UNIT_STATS[a].elephantTable));
-  const byDice = new Map<number, string[]>();
-  for (const t of odd) {
-    const n = UNIT_STATS[t].elephantDiceAgainst;
-    byDice.set(n, [...(byDice.get(n) ?? []), unitNoun(t)]);
-  }
-  return [...byDice].map(([n, names]) => `${n} vs ${names.join(', ')}`).join('; ');
-}
-
-/** Sword hits a unit type ignores, or null (`one` spells out a single hit). */
-function swordIgnoreText(st: UnitStats, all: string, one: string): string | null {
-  if (st.ignoreAllSwords) return all;
-  const n = st.swordIgnore;
-  if (!n) return null;
-  return `ignores ${n === 1 ? one : n} sword hit${n === 1 ? '' : 's'}`;
-}
-
-/** Name of the die symbol that hits a class ("blue-triangle"). */
-const CLASS_SYMBOL: Record<UnitClass, string> = { light: 'green-circle', medium: 'blue-triangle', heavy: 'red-square' };
-
-/**
- * The hit / flag a unit ignores when cavalry or chariots roll against it (camels: "ignores 1 blue-triangle hit when
- * cavalry or chariots roll against it"), or null. Elephants have the same fields but keep their base-game wording.
- */
-function vsMountedText(st: UnitStats): string | null {
-  if (st.elephantTable) return null;
-  const what: string[] = [];
-  if (st.vsMountedIgnoreHit !== null) what.push(st.vsMountedIgnoreHit === 'any' ? '1 hit' : `1 ${CLASS_SYMBOL[st.vsMountedIgnoreHit]} hit`);
-  if (st.vsMountedIgnoreFlag) what.push('1 flag');
-  return what.length ? `ignores ${what.join(' and ')} when cavalry or chariots roll against it` : null;
-}
-
-/** "a, b or c" */
-function orList(xs: string[]): string {
-  return xs.length > 1 ? `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}` : xs.join('');
-}
-
-/** Terrain the unit may not enter ("cannot enter broken ground or marsh"), or null. */
-function forbiddenTerrainText(st: UnitStats): string | null {
-  if (!st.forbiddenTerrain.length) return null;
-  return `cannot enter ${orList(st.forbiddenTerrain.map((t) => TERRAIN_NAMES[t].toLowerCase()))}`;
-}
-
-/** Abilities of war machines and the like: abandoned after evading, no momentum, forbidden terrain (in this order). */
-function machineTexts(st: UnitStats): (string | null)[] {
-  return [
-    st.evadeRemoves ? 'abandoned after evading (no banner)' : null,
-    st.noMomentum ? 'no momentum advance' : null,
-    forbiddenTerrainText(st),
-  ];
-}
-
-/** Unit types whose retreats this type lengthens (elephants and camels: cavalry and chariots). */
-function frightenedTypes(t: UnitType): UnitType[] {
-  return UNIT_TYPES.filter((x) => UNIT_STATS[x].frightenedBy.includes(t));
-}
-
-/** Evade rule wording: [tooltip, rules reference]. */
-const EVADE_TEXT: Record<EvadeRule, [string, string]> = {
-  always: ['Can evade', 'Evades any attack.'],
-  never: ['Cannot evade', 'Cannot evade.'],
-  vsFootElephant: ['Can evade foot & elephants', 'Evades foot and elephants.'],
-  vsFootHeavyMounted: ['Can evade foot & heavy mounted', 'Evades foot and heavy mounted.'],
-};
-
-const ELITE_TEXT: Record<EliteAbility, (u: Unit) => string> = {
-  helmetHits: () => 'helmets always hit',
-  ignoreFlag: () => 'ignores 1 flag',
-  ignoreSword: () => 'ignores 1 sword hit',
-  ranged: (u) => `missile fire (range ${rangeOf(u)})`,
-  pilum: () => 'throws the pilum',
-  march: () => 'marches 2 hexes without battle',
-};
-
-/** Stats line for tooltips. */
-export function unitSummary(u: Unit): string[] {
-  const st = UNIT_STATS[u.type];
-  const lines: string[] = [];
-  // a marching unit (§18.2) may move 2 hexes if it does not battle
-  const move = canMarch(u) && st.moveBattle < 2 ? MOVE_TOOLTIP.withoutBattle(st.moveBattle, 2) : moveText(st, MOVE_TOOLTIP);
-  lines.push(`Move ${move} · Retreat ${st.retreat}/flag`);
-  if (st.elephantTable) lines.push(`Close combat: same dice as the enemy unit (${elephantDiceNote()})`);
-  else lines.push(`Close combat ${st.cc}${st.ccBack !== st.cc ? ` (${st.ccBack} battling back)` : ''} dice${st.fullStrengthBonus ? ' (+1 at full strength)' : ''}${st.swordHits ? '' : ', swords miss'}`);
-  const range = rangeOf(u);
-  if (range) lines.push(missileText(u, range));
-  lines.push(EVADE_TEXT[st.evade][0]);
-  const special = [
-    swordIgnoreText(st, 'ignores sword hits', '1'),
-    vsMountedText(st),
-    // camels; elephants keep their base-game line
-    !st.elephantTable && frightenedTypes(u.type).length > 0 && 'frightens horses (+1 retreat hex per flag)',
-    st.elephantTable && 'rampages when it retreats',
-    ...machineTexts(st),
-  ].filter(Boolean);
-  if (special.length) lines.push(cap(special.join(' · ')));
-  const elite = eliteDef(u);
-  if (elite) {
-    const perks = elite.abilities.map((a) => ELITE_TEXT[a](u));
-    if (perks.length) lines.push(`${elite.name}: ${perks.join(', ')}`);
-  }
-  return lines;
-}
-
-const LEADER_TRAIT_TEXT: Record<LeaderTrait, string> = {
-  ccBonus: '+1 close combat die to his unit',
-  attachedOnly: 'Satrap: commands only his own unit; his helmets help only that unit',
-  forcedMarch: 'his infantry unit may move 2 hexes and still battle',
-  spartacusDice: 'I Am Spartacus rolls 2 more dice',
-};
-
-/** Tooltip lines for a leader's traits (none for an ordinary leader). */
-export function leaderTraitLines(l: Leader): string[] {
-  return (l.traits ?? []).map((t) => LEADER_TRAIT_TEXT[t]);
-}
-
-/** Rules-reference card of a unit type: [stats line, notes line]. */
-export function unitCardLines(t: UnitType): [string, string] {
-  const st = UNIT_STATS[t];
-  const cc = st.elephantTable ? 'as enemy' : `${st.cc}${st.ccBack !== st.cc ? `/${st.ccBack} back` : ''}`;
-  const stats =
-    `${st.blocks} blocks · move ${moveText(st, MOVE_REFERENCE)} · close combat ${cc}` +
-    `${st.range ? ` · range ${st.range}` : ''} · retreat ${st.retreat}`;
-  const notes = [EVADE_TEXT[st.evade][1]];
-  if (!st.swordHits) notes.push('Swords do not score hits.');
-  if (st.fullStrengthBonus) notes.push('+1 die and ignores a flag at full strength.');
-  const scared = frightenedTypes(t);
-  const special = [
-    swordIgnoreText(st, 'ignores swords', 'one'),
-    st.elephantTable && 're-rolls its own swords',
-    vsMountedText(st),
-    scared.length > 0 && `frightens ${scared.every((x) => UNIT_STATS[x].mounted) ? 'horses' : scared.map(unitNoun).join(', ')}`,
-    st.elephantTable && 'rampages on retreat',
-    ...machineTexts(st),
-  ].filter(Boolean);
-  if (special.length) notes.push(`${cap(special.join(', '))}.`);
-  return [stats, notes.join(' ')];
 }
 
 // ---------------------------------------------------------------------------
@@ -526,109 +311,8 @@ export function rampartSidesText(mask: number, flipped: boolean): string {
 }
 
 // ---------------------------------------------------------------------------
-// Expansion #2: banners held through objectives, objective tooltips, separate commands, Rolling Fire, last-row
-// retreat and the ambush wording (§18.4–§18.5)
+// Expansion #2: separate commands, Rolling Fire, last-row retreat and the ambush wording (§18.5)
 // ---------------------------------------------------------------------------
-
-/** A side's banners for the track: `total` (permanent + held, the number that wins) and `held` (of them, can be lost). */
-export function bannerCounts(s: GameState, side: Side): { total: number; held: number } {
-  return { total: bannerTotal(s, side), held: heldBanners(s, side) };
-}
-
-const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
-const ORDINAL = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'];
-/** "a Roman", "an Antigonus'..." */
-const aOrAn = (w: string) => `${/^[AEIOU]/i.test(w) ? 'an' : 'a'} ${w}`;
-
-/** The units an exit objective lets leave: "unit", "foot unit", "cavalry unit". */
-const EXIT_UNITS: Record<'any' | 'foot' | 'cavalry', string> = { any: 'unit', foot: 'foot unit', cavalry: 'cavalry unit' };
-
-/**
- * What a hold or majority hex is called in its tooltip: a camp after its owner, a rampart, a city wall (308), a hill, or
- * just an objective.
- */
-function placeName(s: GameState, h: HexId, owner: Side | null): string {
-  const t = terrainAt(s, h);
-  if (t === 'camp') return owner ? `${s.players[owner].army} camp` : 'Camp';
-  if (t === 'rampart') return 'Rampart';
-  if (t === 'wall') return 'City wall';
-  if (t === 'hill') return 'Hill';
-  return 'Objective';
-}
-
-/** Tooltip lines of one objective for hex `h` (none when the hex plays no part in it). */
-function objectiveLines(s: GameState, o: ObjectiveDef, i: number, h: HexId): string[] {
-  const st = s.special.objState[i];
-  const army = (side: Side) => s.players[side].army;
-  switch (o.kind) {
-    case 'capture': {
-      if (!o.hexes.includes(h)) return [];
-      // ship markers (313, §18.4): the enemy's ships off this beach; the marker is taken, the hex does not change
-      if (o.marker === 'ship') {
-        const ship = `${army(other(o.side))} ship`;
-        if (st.taken.includes(h)) return [`${ship}: taken by the ${army(o.side)} army`];
-        const n = nextCaptureBanners(s, i);
-        return [`${ship}: ${aOrAn(army(o.side))} unit here at the start of its turn takes the marker — ${plural(n, 'banner')} (the hex does not change)`];
-      }
-      const camp = `${army(other(o.side))} camp`;
-      if (st.taken.includes(h)) return [`${camp}: captured by the ${army(o.side)} army`];
-      if (o.together) {
-        const n = o.banners[0] ?? 1;
-        return [`${camp}: ${army(o.side)} units on ${o.together} of these ${o.hexes.length} camps at the start of their turn capture them all — ${plural(n, 'banner')}`];
-      }
-      const who = o.when === 'stop' ? 'ending its move here' : 'here at the start of its turn';
-      const n = nextCaptureBanners(s, i);
-      let gain = `${plural(n, 'banner')}`;
-      if (n === 0) {
-        const k = o.banners.findIndex((b, j) => j >= st.taken.length && b > 0);
-        gain = k >= 0 ? `no banner until the ${ORDINAL[k] ?? `${k + 1}th`} camp taken` : 'no banner';
-      }
-      // a camp on a hill (308, §18.7) leaves the hill when it is removed
-      const removed = o.remove ? `; the camp is then removed${s.hillUnder[h] ? ' (the hill remains)' : ''}` : '';
-      return [`${camp}: ${aOrAn(army(o.side))} unit ${who} captures it — ${gain}${removed}`];
-    }
-    case 'hold': {
-      if (!o.hexes.includes(h)) return [];
-      const cap = o.max < o.hexes.length ? ` (at most ${o.max} for all ${o.hexes.length} hexes)` : '';
-      const now = unitAt(s, h)?.side === o.side ? ' Held now.' : '';
-      return [`${placeName(s, h, other(o.side))}: the ${army(o.side)} army holds 1 banner while one of its units stands here${cap} — held while occupied, can be lost.${now}`];
-    }
-    case 'majority': {
-      if (!o.hexes.includes(h)) return [];
-      const holder = o.sides.find((side) => st.held[side] > 0);
-      if (o.sides.length === 1) {
-        // one side only (309's hillock, §18.4): it holds the banners while it has strictly more units there than the enemy
-        const side = o.sides[0];
-        return [
-          `${placeName(s, h, null)} objective: ${o.when === 'turnEnd' ? 'at the end of every turn ' : ''}the ${army(side)} army holds ${plural(o.banners, 'banner')} while it has more units on the ${o.hexes.length} marked hexes than the ${army(other(side))} army; the ${army(other(side))} army cannot hold it`,
-          holder ? `Held now by the ${army(holder)} army` : 'Not held now',
-        ];
-      }
-      const when = o.when === 'turnEnd' ? 'at the end of every turn the side with' : 'the side with';
-      return [
-        `${placeName(s, h, null)} objective: ${when} more units on the ${o.hexes.length} marked hexes holds ${plural(o.banners, 'banner')} (a tie: nobody)`,
-        holder ? `Held now by the ${army(holder)} army` : 'Held by nobody now',
-      ];
-    }
-    case 'sectionClear': {
-      const scored = st.sections.filter((sec) => sectionsOf(h, o.side).includes(sec));
-      if (!scored.length) return [];
-      return [`Section cleared: the ${army(o.side)} army holds 1 banner while no ${army(other(o.side))} unit enters this section`];
-    }
-    case 'exit':
-      if (!o.hexes.includes(h)) return [];
-      // leaders score too (317, §18.4): a lone leader may leave, and a unit leaving with its leader scores 2
-      if (o.leadersScore) {
-        return [`Exit: ${aOrAn(army(o.side))} ${EXIT_UNITS[o.units]} or lone leader here may leave the battlefield — 1 banner each, 2 for a unit with its leader (they are removed)`];
-      }
-      return [`Exit: ${aOrAn(army(o.side))} ${EXIT_UNITS[o.units]} here may leave the battlefield — 1 banner (the unit is removed)`];
-  }
-}
-
-/** Tooltip lines of the battle objectives on hex `h` (§18.4): what the hex scores, for whom, and its state now. */
-export function objectiveTipLines(s: GameState, h: HexId): string[] {
-  return s.special.objectives.flatMap((o, i) => objectiveLines(s, o, i, h));
-}
 
 /** The command of an order selection (the engine's, kept here for the screens). */
 export { selectionCommand };
@@ -757,193 +441,9 @@ export function ambushTexts(s: GameState, leader?: string): { button: string; mo
 }
 
 // ---------------------------------------------------------------------------
-// Expansion #3: dice orders (310), forced placement and reinforcements with fixed entry (308), immobile units (306), Caesar's
-// forced march with the legions (§18.3), §18.8–§18.11
+// Expansion #3: forced placement and reinforcements with fixed entry (308), immobile units (306), Caesar's forced march
+// with the legions (§18.3), §18.8–§18.11
 // ---------------------------------------------------------------------------
-
-/** A die face in prompts and the log: "light (green)", "helmet", "flag". */
-export const FACE_WORDS: Record<DieFace, string> = {
-  light: 'light (green)', medium: 'medium (blue)', heavy: 'heavy (red)', leader: 'helmet', flag: 'flag', swords: 'swords',
-};
-
-/** What one die of a dice-order roll does (§18.10): a flag or swords falls on a unit, a symbol orders one, or it is lost. */
-export type DiceSlotRole = 'flag' | 'swords' | 'order' | 'lost';
-
-export interface DiceSlot {
-  face: DieFace;
-  role: DiceSlotRole;
-  /** The pieces the die could order (`diceOrderPieces`), before anything is assigned; empty for the other roles. */
-  options: string[];
-}
-
-/** The dice of a dice-order roll (§18.10) and what each can do now: a symbol with no piece of its kind is lost. */
-export function diceOrderSlots(s: GameState, side: Side, faces: readonly DieFace[]): DiceSlot[] {
-  return faces.map((face): DiceSlot => {
-    if (face === 'flag' || face === 'swords') return { face, role: face, options: [] };
-    const options = diceOrderPieces(s, side, face);
-    return { face, role: options.length ? 'order' : 'lost', options };
-  });
-}
-
-/**
- * The pieces die `i` may order with the other dice as assigned in `ids` (one entry per die, null = unused): its pieces that
- * keep the whole assignment legal (`validateDiceOrders`: no piece twice, a helmet's leader with his unit).
- */
-export function diceSlotChoices(s: GameState, side: Side, faces: readonly DieFace[], ids: readonly (string | null)[], i: number): string[] {
-  const all = [...faces];
-  return diceOrderPieces(s, side, faces[i]).filter((id) => validateDiceOrders(s, side, all, ids.map((x, j) => (j === i ? id : x))) === null);
-}
-
-/** The next die after `from` (wrapping round) that is still unused and could order a piece, or null. */
-function nextFreeDie(s: GameState, side: Side, faces: readonly DieFace[], ids: readonly (string | null)[], from: number): number | null {
-  for (let k = 1; k <= faces.length; k++) {
-    const i = (from + k) % faces.length;
-    if (ids[i] === null && diceSlotChoices(s, side, faces, ids, i).length) return i;
-  }
-  return null;
-}
-
-/** The first die that could order a piece (where the assignment starts), or null when none can. */
-export function firstOrderDie(s: GameState, side: Side, faces: readonly DieFace[]): number | null {
-  return nextFreeDie(s, side, faces, faces.map(() => null), faces.length - 1);
-}
-
-/**
- * A click on piece `piece` while the dice orders are assigned (310): a piece already ordered frees its die (which becomes the
- * selected one); otherwise the selected die (`active`) orders it, or else the first free die that can, and the selection
- * moves on to the next free die. Null: no die can order that piece.
- */
-export function diceAssignClick(
-  s: GameState, side: Side, faces: readonly DieFace[], ids: readonly (string | null)[], active: number | null, piece: string,
-): { ids: (string | null)[]; active: number | null } | null {
-  const at = ids.indexOf(piece);
-  if (at >= 0) return { ids: ids.map((x, j) => (j === at ? null : x)), active: at };
-  const fits = (i: number) => diceSlotChoices(s, side, faces, ids, i).includes(piece);
-  let die = active !== null && fits(active) ? active : -1;
-  if (die < 0) die = faces.findIndex((_, i) => ids[i] === null && fits(i));
-  if (die < 0) return null;
-  const next = ids.map((x, j) => (j === die ? piece : x));
-  return { ids: next, active: nextFreeDie(s, side, faces, next, die) };
-}
-
-/** Name of a piece in the dice-order texts: "Light Cavalry", "Saburra with his Medium Infantry". */
-export function pieceName(s: GameState, id: string): string {
-  if (isLeaderId(id)) {
-    const l = leaderById(s, id);
-    const own = l && leaderUnit(s, l);
-    return `${l?.name || 'Leader'}${own ? ` with his ${UNIT_STATS[own.type].name}` : ''}`;
-  }
-  const u = unitById(s, id);
-  return u ? UNIT_STATS[u.type].name : 'unit';
-}
-
-/** What a die does before its piece is chosen (the caption under it in the turn panel). */
-export function diceSlotText(slot: DiceSlot): string {
-  switch (slot.role) {
-    case 'flag':
-      return 'A unit falls back';
-    case 'swords':
-      return 'A unit loses a block';
-    case 'order':
-      return slot.face === 'leader' ? 'Orders a leader and his unit' : `Orders a ${slot.face} unit`;
-    case 'lost':
-      return slot.face === 'leader' ? 'No leader: lost' : `No ${slot.face} unit: lost`;
-  }
-}
-
-/**
- * Subtitle of a dice-order roll in the dice tray (§18.10), from the state right after the roll (`s`): its flags and swords,
- * then how many pieces it can order. A roll that can order nothing says nothing about orders; `mine`: the human rolled.
- */
-export function diceRollSummary(s: GameState, side: Side, faces: readonly DieFace[], mine: boolean): string {
-  const count = (f: DieFace) => faces.filter((x) => x === f).length;
-  const flags = count('flag');
-  const swords = count('swords');
-  // pieces it can order: per symbol, at most as many as there are pieces of its kind
-  let orders = 0;
-  for (const f of ['light', 'medium', 'heavy', 'leader'] as const) orders += Math.min(count(f), diceOrderPieces(s, side, f).length);
-  const parts: string[] = [];
-  if (flags) parts.push(flags === 1 ? 'a unit falls back' : `${flags} units fall back`);
-  if (swords) parts.push(swords === 1 ? 'a unit loses a block' : `${swords} units lose a block`);
-  if (orders) {
-    const what = orders === 1 ? '1 unit to order' : `up to ${orders} units to order`;
-    parts.push(mine ? `choose ${what}` : what);
-  }
-  if (!parts.length) return 'No effect';
-  const text = parts.join('; ');
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-/**
- * A side's dice-order turn as the screen tells it (§18.10): the roll, and for each die the piece it fell on (flag, swords)
- * or ordered, by name (null: not yet, or unused). `done`: the orders are given.
- */
-export interface DiceTurn {
-  side: Side;
-  turn: number;
-  faces: DieFace[];
-  used: (string | null)[];
-  done: boolean;
-}
-
-/** The turn after a victim of a flag or swords face was chosen: the first such die without one gets `name`. */
-export function diceTurnVictim(t: DiceTurn, face: 'flag' | 'swords', name: string): DiceTurn {
-  const i = t.faces.findIndex((f, j) => f === face && t.used[j] === null);
-  return i < 0 ? t : { ...t, used: t.used.map((x, j) => (j === i ? name : x)) };
-}
-
-/**
- * The dice-order turn of `side` to show and to record answers on (310, §18.10): `t`, the roll on record, while it is that
- * side's current turn. A battle resumed from its save mid-turn has no roll on record, so the turn starts from the pending
- * decision: `diceOrders` carries the whole roll, `diceVictim` only the flag or swords die it asks about (added to what is
- * known). When the orders come with a roll other than the one known, the whole roll replaces it, and the victims already
- * chosen keep their names on the matching dice. Null: nothing to show.
- */
-export function currentDiceTurn(s: GameState, side: Side, t: DiceTurn | null, d: Decision | null): DiceTurn | null {
-  const own = t && t.side === side && t.turn === s.turn.number ? t : null;
-  const pending = d && d.side === side && s.active === side ? d : null;
-  const fresh = (faces: DieFace[]): DiceTurn => ({ side, turn: s.turn.number, faces, used: faces.map(() => null), done: false });
-  if (pending?.kind === 'diceOrders' && (!own || own.faces.join() !== pending.faces.join())) {
-    let next = fresh(pending.faces);
-    own?.faces.forEach((f, j) => {
-      const name = own.used[j];
-      if ((f === 'flag' || f === 'swords') && name) next = diceTurnVictim(next, f, name);
-    });
-    return next;
-  }
-  if (pending?.kind === 'diceVictim' && !own?.faces.some((f, j) => f === pending.face && own.used[j] === null)) {
-    return own ? { ...own, faces: [...own.faces, pending.face], used: [...own.used, null] } : fresh([pending.face]);
-  }
-  return own;
-}
-
-/** The turn after its orders were given (`ids`: the `assign` answer, one entry per die). */
-export function diceTurnOrders(s: GameState, t: DiceTurn, ids: readonly (string | null)[]): DiceTurn {
-  return { ...t, used: t.used.map((x, j) => (t.faces[j] === 'flag' || t.faces[j] === 'swords' ? x : ids[j] ? pieceName(s, ids[j]!) : null)), done: true };
-}
-
-/**
- * One line telling a dice-order turn (the opponent's turn banner): "Order dice: flag, light (green). Fell back: Light
- * Cavalry. Ordered: Light Cavalry." `over`: the orders step is past (with nothing to order, no orders were asked).
- */
-export function diceTurnText(t: DiceTurn, over: boolean): string {
-  const parts = [`Order dice: ${t.faces.map((f) => FACE_WORDS[f]).join(', ')}.`];
-  const named = (face: DieFace) => t.used.filter((x, j) => t.faces[j] === face && x).join(', ');
-  if (named('flag')) parts.push(`Fell back: ${named('flag')}.`);
-  if (named('swords')) parts.push(`Lost a block: ${named('swords')}.`);
-  if (t.done || over) {
-    const ordered = t.used.filter((x, j) => x && t.faces[j] !== 'flag' && t.faces[j] !== 'swords');
-    parts.push(`Ordered: ${ordered.length ? ordered.join(', ') : 'nothing'}.`);
-  }
-  return parts.join(' ');
-}
-
-/** Counter Attack against a side that orders by dice (310): there is no card to copy, so it orders nothing. */
-export function counterAttackNote(s: GameState, side: Side): string | null {
-  const enemy = other(side);
-  if (!orderDice(s, enemy)) return null;
-  return `The ${s.players[enemy].army} army orders by dice and plays no cards: Counter Attack has nothing to copy and orders nothing.`;
-}
 
 /** Prompt of a forced placement (308, §18.9): the unit waiting off the board, and where it may go. */
 export function placeUnitPrompt(s: GameState, d: Extract<Decision, { kind: 'placeUnit' }>): { title: string; text: string } {

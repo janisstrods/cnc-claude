@@ -8,7 +8,7 @@ import {
 import { unitTypeName } from '../../art';
 import { Button, DieView, Panel } from '../kit';
 import type { LogLine } from './controller';
-import { currentDiceTurn, diceOrderSlots, diceSlotText, pieceName, type DiceTurn } from './uiModel';
+import { currentDiceTurn, diceOrderSlots, diceSlotText, pieceName, type DiceTurn } from './diceOrders';
 
 /**
  * Floating unit tooltip that follows the mouse without re-rendering the game screen. It is kept inside the window by its

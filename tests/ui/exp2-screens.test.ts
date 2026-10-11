@@ -13,10 +13,12 @@ import { BannerTrack, HELD_BANNER_TIP } from '../../src/ui/kit/BannerTrack';
 import { Board } from '../../src/ui/game/Board';
 import { GameController, newSessionConfig } from '../../src/ui/game/controller';
 import { RandomOpponent } from '../../src/ui/game/opponent';
+import { bannerCounts, objectiveTipLines } from '../../src/ui/game/objectiveText';
 import {
-  ambushTexts, bannerCounts, boardUi, commandTipLine, edgeBlocksOf, leaderTraitLines, objectiveTipLines, possessive, retreatEliminates,
-  rollingFireStep, selectAllUnits, selectionCommand, unitSummary, type UiSel,
+  ambushTexts, boardUi, commandTipLine, edgeBlocksOf, possessive, retreatEliminates, rollingFireStep, selectAllUnits, selectionCommand,
+  type UiSel,
 } from '../../src/ui/game/uiModel';
+import { leaderTraitLines, unitSummary } from '../../src/ui/game/unitText';
 import { PICKER_TABS, battlesOf } from '../../src/ui/screens/picker';
 import { Expansion2 } from '../../src/ui/screens/RulesReference';
 import { H, build, toBattle, type Pos } from '../rules/helpers';

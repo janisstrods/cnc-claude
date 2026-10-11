@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
-  CARD_DEFS, UNIT_STATS, battleReady, battleTargets, cardKind, eligiblePieces, isLeaderId, leaderAt, leaderById, leaderUnit, movablePieces, orderDice,
-  other, pieceMoves, unitAt, unitsOf,
+  CARD_DEFS, UNIT_STATS, battleReady, battleTargets, cardKind, eligiblePieces, isLeaderId, leaderAt, leaderById, leaderUnit, movablePieces,
+  orderDice, other, pieceHex, pieceMoves, unitAt, unitsOf,
   type Answer, type Decision, type GameState, type HexId, type Side,
 } from '../../engine';
 import { UnitIcon, unitTypeName } from '../../art';
@@ -12,10 +12,10 @@ import { Board } from './Board';
 import type { GameController } from './controller';
 import { AssignDialog, DiceTurnPanel, HoverTip, LogPanel } from './panels';
 import { gamePrompt, mustCharge } from './prompts';
-import {
-  IMMOBILE_TIP, bannerCounts, boardUi, commandTipLine, deploymentSide, diceAssignClick, enteredTipLine, firstOrderDie, forcedMarchLine,
-  leaderTraitLines, objectiveTipLines, pieceHexOf, rollingFireStep, unitSummary, type UiSel,
-} from './uiModel';
+import { diceAssignClick, firstOrderDie } from './diceOrders';
+import { bannerCounts, objectiveTipLines } from './objectiveText';
+import { IMMOBILE_TIP, boardUi, commandTipLine, deploymentSide, enteredTipLine, forcedMarchLine, rollingFireStep, type UiSel } from './uiModel';
+import { leaderTraitLines, unitSummary } from './unitText';
 import { TerrainTipBlock } from './TerrainTipBlock';
 import { terrainTip } from './terrainTips';
 import { RulesReference } from '../screens/RulesReference';
@@ -84,7 +84,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
     setCmdFocus(null);
     if (d?.kind === 'move' && d.side === human) {
       const movers = movablePieces(s, d.stage);
-      const reserve = movers.find((id) => pieceHexOf(s, id) < 0);
+      const reserve = movers.find((id) => (pieceHex(s, id) ?? -1) < 0);
       if (reserve) setUi((u) => ({ ...u, selPiece: reserve }));
       else if (movers.length === 1) setUi((u) => ({ ...u, selPiece: movers[0] }));
     }
@@ -110,7 +110,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
     const b = boardUi(s, d, ui, human);
     if (d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus')) {
       for (const id of assignFocus) {
-        const h = pieceHexOf(s, id);
+        const h = pieceHex(s, id) ?? -1;
         if (h >= 0) b.highlights.set(h, 'selected');
       }
     }

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ELITES, UNIT_STATS, UNIT_TYPES, type Leader, type LeaderTrait, type Unit, type UnitStats, type UnitType } from '../../src/engine';
-import { leaderTraitLines, unitCardLines, unitSummary } from '../../src/ui/game/uiModel';
+import { leaderTraitLines, unitCardLines, unitSummary } from '../../src/ui/game/unitText';
 import { EXP1_ELITES, EXP1_UNIT_TYPES, EXP2_ELITES, EXP2_UNIT_TYPES, Expansion, Expansion2, Units } from '../../src/ui/screens/RulesReference';
 
 const unit = (t: UnitType, extra: Partial<Unit> = {}): Unit =>
