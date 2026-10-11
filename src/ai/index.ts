@@ -9,8 +9,9 @@ import { bannerTotal } from '../engine/banners';
 import { CARD_DEFS, cardKind, modsFor, sectionOrders } from '../engine/cards';
 import { ambushAvailable, ambushSectionAllowed, battleTargets, isRollingFirePath, pieceMoves } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
-import { validateDiceOrders, validateOrders, validateRally, validateSpartacus } from '../engine/orders';
+import { orderDice, validateDiceOrders, validateOrders, validateRally, validateSpartacus } from '../engine/orders';
 import { other, unitById } from '../engine/query';
+import { isWall } from '../engine/terrain';
 import { cloneState, newTurn } from '../engine/setup';
 import { rangeOf } from '../engine/elites';
 import { UNIT_STATS } from '../engine/units';
@@ -22,10 +23,10 @@ import { attackAnswer, attackOptions } from './estimate';
 import { greedyMoveStep, type MoveCtx } from './moves';
 import { orderCandidates } from './ordering';
 import { PERSONALITIES, personalityById, personalityFor, type Personality } from './personality';
-import { DIFFICULTY, candScore, decideBattle, makeCtx, planTurn, type Cand, type DiffCfg } from './planner';
+import { DIFFICULTY, candScore, decideBattle, makeCtx, planDiceTurn, planTurn, type Cand, type DiffCfg } from './planner';
 import {
-  chooseBonusCombat, chooseCavalryExtra, chooseCommandIndex, chooseIgnoreFlags, chooseLeaderEvade, chooseMomentum, choosePlacement,
-  chooseRetreat, defendChoice, diceOrdersAssign, diceVictimIndex, rallyAssign, spartacusAssign,
+  chooseBonusCombat, chooseCavalryExtra, chooseCommandIndex, chooseIgnoreFlags, chooseLeaderEvade, chooseMomentum, choosePlaceUnit,
+  choosePlacement, chooseRetreat, defendChoice, diceAssignments, diceVictimIndex, rallyAssign, spartacusAssign,
 } from './policies';
 import { Rng, entropySeed } from './rand';
 import { safeAnswer } from './sim';
@@ -55,8 +56,9 @@ export interface AiOptions {
 interface StoredPlan {
   turn: number;
   side: Side;
+  /** The card played (-1 on a dice-order turn, §18.10). */
   card: number;
-  kind: CardKind;
+  kind: CardKind | null;
   effective: CardKind | null;
   orders: string[] | null;
   ambush?: SectionName;
@@ -89,8 +91,9 @@ export interface AiMemory {
   /** Own-turn index (turns completed) at which each held card was first seen; keep value decays with time held. */
   cardSeen?: Record<string, number>;
   cardSeenIdx?: number;
-  /** Camps our side had captured at the previous decision (commentary). */
+  /** Camps our side had captured at the previous decision (commentary), and of them ship markers (313). */
   campsSeen?: number;
+  shipsSeen?: number;
   /**
    * Decisions where `decide` gave an illegal answer or threw, answered by `fallback()` instead: an AI bug whenever it is
    * not 0 (each is also reported with console.error, which tests/ai turn into failures).
@@ -241,7 +244,8 @@ function commentCard(s: GameState, me: Side, P: Personality, mem: AiMemory, rng:
   const T = s.bannersToWin;
   const prev = mem.seenBanners;
   mem.seenBanners = { mine, theirs };
-  if (b.ambush) return speak(s, me, P, 'ambush', mem.voice, rng, { chance: 2 });
+  // reinforcements on fixed entry hexes (308) are no trap: they march in
+  if (b.ambush) return speak(s, me, P, s.special.ambush?.entryHexes ? 'reinforce' : 'ambush', mem.voice, rng, { chance: 2 });
   if (prev && mine > prev.mine && rng.chance(0.6)) {
     const line = speak(s, me, P, mine >= T - 1 ? 'nearVictory' : 'gained', mem.voice, rng, { chance: 1.2 });
     if (line) return line;
@@ -257,22 +261,36 @@ function commentCard(s: GameState, me: Side, P: Personality, mem: AiMemory, rng:
   return speak(s, me, P, m, mem.voice, rng, { troops: shape.focus, elite: shape.elite, chance: important ? 0.75 : 0.35 });
 }
 
-/** A break-out: a unit leaving the board by an exit objective (010 Castulo). */
-function exitLine(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rng, a: Answer): string | undefined {
-  if (a.kind !== 'move' || a.to !== OFF_BOARD) return undefined;
-  return speak(s, me, P, 'exit', mem.voice, rng, { chance: 1.2 });
+/**
+ * A break-out: a unit (or, in 317, a lone leader) leaving the board by an exit objective (010 Castulo); a unit climbing a
+ * city wall (308, 309).
+ */
+function moveLine(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rng, a: Answer): string | undefined {
+  if (a.kind !== 'move') return undefined;
+  if (a.to === OFF_BOARD) return speak(s, me, P, 'exit', mem.voice, rng, { chance: 1.2 });
+  const u = unitById(s, a.piece);
+  if (u && u.hex >= 0 && isWall(s, a.to)) return speak(s, me, P, 'wall', mem.voice, rng, { troops: u.type, chance: 0.8 });
+  return undefined;
 }
 
-/** Camp capture: a camp captured by our side since the previous decision (the engine credits it once the unit stops). */
+/**
+ * Camp capture: a camp captured by our side since the previous decision (the engine credits it once the unit stops); a
+ * ship marker taken (313) has its own lines.
+ */
 function campLine(s: GameState, me: Side, P: Personality, mem: AiMemory, rng: Rng): string | undefined {
   let n = 0;
+  let ships = 0;
   s.special.objectives.forEach((o, i) => {
-    if (o.kind === 'capture' && o.side === me) n += s.special.objState[i].taken.length;
+    if (o.kind !== 'capture' || o.side !== me) return;
+    n += s.special.objState[i].taken.length;
+    if (o.marker === 'ship') ships += s.special.objState[i].taken.length;
   });
   const before = mem.campsSeen ?? -1;
+  const shipsBefore = mem.shipsSeen ?? 0;
   mem.campsSeen = n;
+  mem.shipsSeen = ships;
   if (before < 0 || n <= before) return undefined;
-  return speak(s, me, P, 'camp', mem.voice, rng, { chance: 2 });
+  return speak(s, me, P, ships > shipsBefore ? 'ship' : 'camp', mem.voice, rng, { chance: 2 });
 }
 
 // ---------------------------------------------------------------------------
@@ -369,6 +387,11 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
   const turn = s.turn.number;
   const det = !!opts.deterministic;
   const ourPlan = () => (mem.plan && mem.plan.turn === turn && mem.plan.side === me ? mem.plan : null);
+  // a side with dice orders (§18.10) plays no card: its turn starts with its first dice decision
+  let stallSay: string | undefined;
+  if ((d.kind === 'diceVictim' || d.kind === 'diceOrders') && s.active === me && mem.quietTurn !== turn && orderDice(s, me)) {
+    if (stallPressure(s, P, mem) === 1) stallSay = speak(s, me, P, 'stallBreak', mem.voice, rng, { chance: 2 });
+  }
   // a stand-off pushes this whole turn forward (planning, moves and battles)
   if (d.kind !== 'playCard' && s.active === me && mem.quietTurn === turn) W = applyStall(W, mem.quietX ?? 0, P);
   switch (d.kind) {
@@ -421,7 +444,7 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
           };
           const a: Answer | null = b.ambush ? { kind: 'orders', pieces: [], ambushSection: b.ambush } : b.orders ? { kind: 'orders', pieces: b.orders } : null;
           if (a && isLegal(s, d, a)) return { answer: a };
-          mem.plan.moves = null;
+          if (mem.plan) mem.plan.moves = null;
         }
       }
       const oc = orderCandidates(s, me, d.card, W, 1)[0];
@@ -434,7 +457,7 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       if (d.stage === 1 && p && p.moves) {
         if (p.moveIdx < p.moves.length) {
           const a = p.moves[p.moveIdx++];
-          if (isLegal(s, d, a)) return { answer: a, say: exitLine(s, me, P, mem, rng, a) };
+          if (isLegal(s, d, a)) return { answer: a, say: moveLine(s, me, P, mem, rng, a) };
           p.moves = null; // the plan broke (e.g. a marsh casualty): continue greedily
         } else return { answer: { kind: 'endMove' } };
       }
@@ -446,7 +469,7 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
       const mc: MoveCtx = { me, W, rng, noise: cfg.evalNoise * 0.15, decided: new Set(mem.decided) };
       const a = greedyMoveStep(s, d.stage, mc);
       mem.decided = [...mc.decided];
-      return { answer: a, say: exitLine(s, me, P, mem, rng, a) };
+      return { answer: a, say: moveLine(s, me, P, mem, rng, a) };
     }
     case 'battle': {
       if (opts.difficulty === 'recruit' && rng.chance(RECRUIT_SCATTER)) {
@@ -519,13 +542,35 @@ function decide(s: GameState, d: Decision, opts: AiOptions, mem: AiMemory, rng: 
     case 'placeLeader':
       return { answer: { kind: 'hex', hex: choosePlacement(s, d, W) } };
     case 'placeUnit':
-      // forced placement (308): the first free hex for now (scored in the AI phase)
-      return { answer: { kind: 'hex', hex: d.options[0] } };
+      // forced placement (308, §18.9): the offered hex the evaluation likes best
+      return { answer: { kind: 'hex', hex: choosePlaceUnit(s, d, W) } };
     case 'diceVictim':
-      // dice orders (310): the least costly unit for now (refined in the AI phase)
-      return { answer: { kind: 'choose', index: diceVictimIndex(s, d) } };
-    case 'diceOrders':
-      return { answer: { kind: 'assign', ids: diceOrdersAssign(s, me, d.faces, W) } };
+      // dice orders (310, §18.10): the unit whose retreat or lost block costs least
+      return { answer: { kind: 'choose', index: diceVictimIndex(s, d, W) }, say: stallSay };
+    case 'diceOrders': {
+      // dice orders (310, §18.10): the assignment and its movement plan, searched like a card's orders and moves
+      const all = diceAssignments(s, me, d.faces, W);
+      if (!all.length) return { answer: { kind: 'assign', ids: d.faces.map(() => null) } };
+      const ctx = makeCtx(me, W, NEUTRAL_W, rng, cfg, scale, det);
+      ctx.hasty = opts.difficulty === 'recruit' && rng.chance(RECRUIT_HASTY);
+      const res = planDiceTurn(s, all, ctx);
+      const b = res.best;
+      mem.plan = {
+        turn, side: me, card: -1, kind: null, effective: null, orders: b.orders, moves: b.moves, moveIdx: 0, label: b.label,
+        score: candScore(b, ctx),
+      };
+      mem.decided = [];
+      mem.decidedKey = '';
+      mem.last = {
+        kind: d.kind, ms: res.ms, sims: res.sims, plan: `${b.label} = ${candScore(b, ctx).toFixed(3)}`,
+        alternatives: res.cands.slice(0, 6).map((c) => `${c.label}: ${candScore(c, ctx).toFixed(3)} (n=${c.n})`),
+      };
+      // a face the plan left unused still orders the best piece it can: that unit stays where it is (the plan's moves end
+      // the movement) but may still battle; an order never costs anything
+      const planned = b.orders ?? [];
+      const ids = all.find((a) => planned.every((id) => a.pieces.includes(id)))?.ids ?? b.dice ?? all[0].ids;
+      return { answer: { kind: 'assign', ids }, say: stallSay ?? commentCard(s, me, P, mem, rng, b) };
+    }
   }
 }
 

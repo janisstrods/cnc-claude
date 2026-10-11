@@ -30,6 +30,15 @@ function nearestEnemy(s: GameState, hex: HexId, side: Side): number {
   return best;
 }
 
+/**
+ * Banners unit `u` scores by stepping off the board from where it stands (the exit objective whose hexes its move leaves
+ * from is not known here: 1, and 1 more for its attached leader `l` when an exit of its side scores leaders, 317).
+ */
+function exitBanners(s: GameState, u: { side: Side }, l: unknown): number {
+  if (!l) return 1;
+  return s.special.objectives.some((o) => o.kind === 'exit' && o.side === u.side && o.leadersScore) ? 2 : 1;
+}
+
 /** Score the position if `id` moves to `m` (null = stays). */
 export function scoreOption(s: GameState, id: string, m: MoveTarget | null, stage: 1 | 2, mc: MoveCtx): number {
   const { me, W } = mc;
@@ -38,9 +47,22 @@ export function scoreOption(s: GameState, id: string, m: MoveTarget | null, stag
   if (isLeaderId(id)) {
     const l = leaderById(s, id)!;
     const old = l.hex;
-    if (m) l.hex = m.hex;
+    const p = s.players[me];
+    const bannersBefore = p.banners;
+    if (m) {
+      // a lone leader stepping off the board by an exit that scores leaders (317, §18.4): his banner, and he is gone
+      if (m.hex === OFF_BOARD) {
+        p.banners += 1;
+        if (p.banners >= s.bannersToWin) {
+          p.banners = bannersBefore;
+          return WIN_SCORE;
+        }
+      }
+      l.hex = m.hex;
+    }
     const v = evaluate(s, me, opp, W);
     l.hex = old;
+    p.banners = bannersBefore;
     return v + noise;
   }
   const u = unitById(s, id)!;
@@ -54,8 +76,9 @@ export function scoreOption(s: GameState, id: string, m: MoveTarget | null, stag
   if (m) {
     if (m.hex !== OFF_BOARD) captured = stopCaptureAt(s, me, m.hex);
     if (m.hex === OFF_BOARD || captured >= 0) {
-      // an exit objective (1 banner; the unit and its leader leave) or a captured hex
-      p.banners += captured >= 0 ? nextCaptureBanners(s, captured) : 1;
+      // an exit objective (1 banner, and 1 for an attached leader where leaders score, 317; the unit and its leader leave)
+      // or a captured hex
+      p.banners += captured >= 0 ? nextCaptureBanners(s, captured) : exitBanners(s, u, l);
       if (p.banners >= s.bannersToWin) {
         p.banners = bannersBefore;
         return WIN_SCORE;

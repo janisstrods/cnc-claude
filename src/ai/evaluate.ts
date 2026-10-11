@@ -1,20 +1,22 @@
 // Static evaluation of a position from one side's point of view (1.0 ~ one banner).
 import { defaultMods } from '../engine/cards';
 import {
-  baseSwordIgnores, closeCombatDice, frightAtFirstSight, leaderDiceBonus, rampartShields, rangedDice,
+  baseSwordIgnores, closeCombatDice, frightAtFirstSight, leaderDiceBonus, rampartShields, rangedDice, wallShields,
 } from '../engine/combat';
 import { unitMoves } from '../engine/movement';
 import { halfCol, neighbours, rowOf } from '../engine/hex';
-import { exitAllows } from '../engine/objectives';
+import { exitAllows, leaderExitAllows } from '../engine/objectives';
+import { diceOrderPieces, orderDice } from '../engine/orders';
 import { isRomanArmy, leaderHas, other } from '../engine/query';
-import { ccCapOfHex, isHill, isImpassable, veryHills } from '../engine/terrain';
+import { ccCapOfHex, isHill, isImpassable, isWall, steepSlope, steepSlopes, veryHills } from '../engine/terrain';
 import { eliteHas, hasPilum, rangeOf } from '../engine/elites';
 import { UNIT_STATS, barredTerrain, canEvadeType, elephantDiceVs, type UnitStats } from '../engine/units';
-import type { GameState, Leader, Side, TerrainType, Unit } from '../engine/types';
+import type { DieFace, GameState, HexId, Leader, ObjectiveOf, Side, TerrainType, Unit } from '../engine/types';
 import {
   Occ, advanceGap, attachedLeaderOcc, canEvadeOcc, canFireOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, hasTerrain, helmetsOcc,
   hexDist, ignorableOcc, isRangedLight, isWarMachine, reachOf, retreatRoom, rowsToOwnEdge, stopAwareReach, supportOcc, terrainForbids,
 } from './board';
+import { closeProfile, strikeValue } from './estimate';
 import { goalTerms } from './goals';
 import { binom, pAnyHelmet } from './dice';
 import {
@@ -28,6 +30,8 @@ const LEADER_ATTACHED = 0.03;
 const CC_BONUS_FRONT = 1.6;
 /** A camel's advance gap is measured to the enemy horse while that is at most this many hexes further away. */
 const CAMEL_HORSE_PULL = 2;
+/** A foot unit standing on a city wall (§18.7): holding it is worth this much (and it is not pushed forward from it). */
+const WALL_HOLD = 0.03;
 
 export function battered(u: Unit): boolean {
   return u.blocks === 1 || u.blocks * 2 < u.maxBlocks;
@@ -92,17 +96,28 @@ function attackHexes(s: GameState, e: Unit): Set<number> {
   return out;
 }
 
+/** Expansion #3 terrain the threat model checks (§18.7): city walls on the board, the steep slopes rule. */
+interface X3Terrain {
+  walls: boolean;
+  slopes: boolean;
+}
+
 /**
  * Is there a hex next to `target` within `reach` of `e` that `e` may move to and attack from: free, passable, not
  * terrain it may not enter (`forbidden`, its `barredTerrain`: broken ground or marsh for a war machine, a city wall for a
- * mounted unit or war machine) and without an enemy leader?
+ * mounted unit or war machine) and without an enemy leader? Not across a steep slope from the target, and not a city wall
+ * `e` does not start next to (a wall is climbed only from an adjacent hex, §18.7).
  */
-function hasFreeApproach(s: GameState, occ: Occ, e: Unit, forbidden: readonly TerrainType[], target: number, reach: number): boolean {
+function hasFreeApproach(
+  s: GameState, occ: Occ, e: Unit, forbidden: readonly TerrainType[], target: number, reach: number, x3: X3Terrain,
+): boolean {
   // very steep hills (223): a unit climbing onto a hill from lower ground may not battle that turn
   const noClimb = veryHills(s) && !isHill(s, e.hex);
   for (const nb of neighbours(target)) {
     if (hexDist(e.hex, nb) > reach || occ.unit[nb] || isImpassable(s, nb) || terrainForbids(s, forbidden, nb)) continue;
     if (noClimb && isHill(s, nb)) continue;
+    if (x3.slopes && steepSlope(s, nb, target)) continue;
+    if (x3.walls && isWall(s, nb) && hexDist(e.hex, nb) > 1) continue;
     const l = occ.leader[nb];
     if (!(l && l.side !== e.side)) return true;
   }
@@ -145,9 +160,24 @@ interface Threat {
   fk: FlagCase;
 }
 
-function orderFactor(s: GameState, side: Side): number {
+const ORDER_FACES: readonly DieFace[] = ['light', 'medium', 'heavy', 'leader'];
+
+/**
+ * A side's ordering power: its hand (Command, or the cards held if more) for a side that plays cards; for a side that
+ * orders by dice (§18.10) its expected orders per turn: each order die orders a piece when it shows a class with a unit of
+ * the side on the board, or a helmet with a leader there (2 dice and every face usable: 1⅓).
+ */
+export function orderingPower(s: GameState, side: Side): number {
+  const dice = orderDice(s, side);
   const p = s.players[side];
-  const k = Math.max(p.command, p.hand.length);
+  if (!dice) return Math.max(p.command, p.hand.length);
+  let usable = 0;
+  for (const f of ORDER_FACES) if (diceOrderPieces(s, side, f).length) usable++;
+  return (dice * usable) / 6;
+}
+
+function orderFactor(s: GameState, side: Side): number {
+  const k = orderingPower(s, side);
   return Math.min(1.25, Math.max(0.7, 0.55 + 0.09 * k));
 }
 
@@ -169,7 +199,9 @@ function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number, frightRule: boo
   let lossPerFlag = Math.min(2, per - room);
   // last-row retreat (214): a retreat that ends on its own baseline short of hexes eliminates the unit
   if (lossPerFlag > 0 && s.special.lastRowRetreat === u.side && room === rowsToOwnEdge(u.hex, u.side)) lossPerFlag = u.blocks;
-  const ign = ignorableOcc(s, occ, u, 'close', null);
+  // a foot unit defending on a city wall (§18.7) ignores 1 more flag (attacks and fire) and 1 sword (attacks)
+  const wall = wallShields(s, u, 'close', 'attack') ? 1 : 0;
+  const ign = ignorableOcc(s, occ, u, 'close', null) + wall;
   const unignored = unignoredOf(ign);
   const pFlagHit = flagHitOf(lossPerFlag, ign);
   // a foot unit on a rampart: one more ignorable flag against rolls coming across a protected side (decided per threat)
@@ -184,7 +216,7 @@ function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number, frightRule: boo
     pFlagHit, pFlagHitShielded, pFlagHitFright: frightProne ? flagHitOf(lossPerFlag, 0) : pFlagHit,
     unignored, unignoredShielded: onRampart ? unignoredOf(ign + 1) : unignored, onRampart, frightProne,
     lossPerFlag, canEv, leaderBonus: l ? SIXTH * (bm + leaderVal(s, l)) : 0,
-    swordIgnores: baseSwordIgnores(s, u), ignoresSwords: st.ignoreAllSwords, camel: st.vsMountedIgnoreHit !== null && !st.elephantTable,
+    swordIgnores: baseSwordIgnores(s, u) + wall, ignoresSwords: st.ignoreAllSwords, camel: st.vsMountedIgnoreHit !== null && !st.elephantTable,
   };
 }
 
@@ -220,6 +252,17 @@ function attackValue(u: Unit, info: VictimInfo, n: number, p: number, bm: number
 }
 
 /**
+ * City wall (§18.7): the chance that `u`, defending on a wall, stops an attack by `e` with the first strike it makes without
+ * a card (`e` eliminated, or pushed out of the hex it attacks from): the attack never comes.
+ */
+function wallFirstStop(s: GameState, occ: Occ, u: Unit, e: Unit): number {
+  const nb = closeCombatDice(s, u, e, { role: 'firstStrike', fullAtStart: u.blocks === u.maxBlocks, ordered: false });
+  if (nb <= 0) return 0;
+  const fs = strikeValue(s, occ, u, e, closeProfile(s, occ, u, e, nb, 'firstStrike'), 'close');
+  return Math.min(1, fs.pElim + fs.pRetreat);
+}
+
+/**
  * Threats against every victim (units, then lone leaders): each enemy unit makes at most one attack and spreads its
  * attention over its possible targets in proportion to their value (juicy targets draw the blow).
  */
@@ -241,13 +284,17 @@ function threatsAgainst(
   const exact = W.exactReach > 0;
   // stopping terrain that cuts approaches (212's ditch): reach by a short walk instead of the straight-line distance
   const stopWalk = !exact && hasTerrain(s, 'ditch');
+  // city walls and steep slopes (308, 309, §18.7)
+  const x3: X3Terrain = { walls: hasTerrain(s, 'wall'), slopes: steepSlopes(s) };
   for (const e of attackers) {
     let nc = 0;
     const S = UNIT_STATS[e.type];
     // worked out on first use: most attackers have no target in reach
     let helmets: boolean | undefined;
     let diceBonus: number | undefined;
-    const reach = reachOf(e, occ);
+    const reach = reachOf(e, occ, x3.walls ? s : undefined);
+    // a mounted unit or war machine attacks a piece on a wall only if it began the turn next to it (§18.7)
+    const noWall = x3.walls && !S.infantry;
     const from = exact ? attackHexes(s, e) : null;
     const forbidden = barredTerrain(e.type);
     let walk: Set<number> | null = null;
@@ -261,7 +308,7 @@ function threatsAgainst(
         for (const nb of neighbours(target)) if (walk.has(nb)) return true;
         return false;
       }
-      return hasFreeApproach(s, occ, e, forbidden, target, reach);
+      return hasFreeApproach(s, occ, e, forbidden, target, reach, x3);
     };
     const range = rangeOf(e);
     // the pilum (§18.2) is a 1-die throw: a legion unit that can step into contact threatens its close combat instead
@@ -283,8 +330,10 @@ function threatsAgainst(
       let flags = false;
       let fk: FlagCase = 0;
       if (d === 1) {
+        if (x3.slopes && steepSlope(s, e.hex, u.hex)) continue; // no close combat across a steep slope (308)
         n = closeCombatDice(s, e, u, { role: 'attack', fullAtStart: e.blocks === e.maxBlocks, ordered: false });
         base = pAdj * (footSkirmisher ? 0.5 : 1);
+        if (x3.walls && isWall(s, u.hex) && !isWall(s, e.hex)) base *= 1 - wallFirstStop(s, occ, u, e);
         const shield = shielded(s, vi, u, e, 'close');
         fk = flagCase(s, vi, u, e, 'close', shield);
         p = evades ? SIXTH : hitP(S, vi, shield, (helmets ??= helmetsHit(occ, e))) + flagHitP(vi, fk);
@@ -296,9 +345,10 @@ function threatsAgainst(
         fk = flagCase(s, vi, u, e, 'ranged', shielded(s, vi, u, e, 'ranged'));
         p = SIXTH + flagHitP(vi, fk);
         flags = true;
-      } else if (d - 1 <= reach && canReach(u.hex)) {
+      } else if (d - 1 <= reach && !(noWall && isWall(s, u.hex)) && canReach(u.hex)) {
         n = reachDice(s, S, e, u, (diceBonus ??= leaderDiceBonus(s, e)));
         base = pReach * reachShare;
+        if (x3.walls && isWall(s, u.hex)) base *= 1 - wallFirstStop(s, occ, u, e);
         // not adjacent yet: the rampart counts when e lies on its protected side
         const shield = shielded(s, vi, u, e, 'close');
         fk = flagCase(s, vi, u, e, 'close', shield);
@@ -316,12 +366,13 @@ function threatsAgainst(
       let n = 0;
       let base = 0;
       if (d === 1) {
+        if (x3.slopes && steepSlope(s, e.hex, l.hex)) continue;
         n = closeCombatDice(s, e, l, { role: 'attack', fullAtStart: e.blocks === e.maxBlocks, ordered: false });
         base = pAdj;
       } else if (range && d <= range && canFireOcc(s, occ, e, l.hex) && !(pilumOnly && d - 1 <= reach && canReach(l.hex))) {
         n = rangedDice(s, e, l.hex, 0, false);
         base = pAdj * 0.85;
-      } else if (d - 1 <= reach && canReach(l.hex)) {
+      } else if (d - 1 <= reach && !(noWall && isWall(s, l.hex)) && canReach(l.hex)) {
         n = Math.min(S.elephantTable ? 1 : S.cc, ccCapOfHex(s, l.hex)) + (diceBonus ??= leaderDiceBonus(s, e));
         base = pReach;
       } else continue;
@@ -435,7 +486,10 @@ export function nearestDist(u: Unit, enemies: readonly Unit[]): number {
 function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side: Side, W: Weights, own: boolean): number {
   let v = 0;
   const near = new Map<Unit, number>();
+  const walls = hasTerrain(s, 'wall');
   for (const u of units) {
+    // a foot unit holding a city wall (§18.7: it strikes first and ignores a sword and a flag there)
+    if (walls && isWall(s, u.hex)) v += WALL_HOLD;
     const d = nearestDist(u, enemies);
     near.set(u, d);
     if (d <= 4) {
@@ -535,48 +589,67 @@ export function unitGap(u: Unit, enemies: readonly Unit[], d?: number): number {
   return penaltyGap(u, d);
 }
 
-function advancePenalty(units: Unit[], enemies: Unit[], W: Weights): number {
+/** Does unit u hold a city wall (§18.7)? It is not pushed forward from it (`advancePenalty`, order benefits). */
+export function holdsWall(s: GameState, u: Unit): boolean {
+  return u.hex >= 0 && isWall(s, u.hex);
+}
+
+function advancePenalty(s: GameState, units: Unit[], enemies: Unit[], W: Weights): number {
   if (!enemies.length) return 0;
+  const walls = hasTerrain(s, 'wall');
   let pen = 0;
   for (const u of units) {
+    if (walls && holdsWall(s, u)) continue;
     const gap = unitGap(u, enemies);
     if (gap) pen += gap * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1);
   }
   return pen * W.adv;
 }
 
+/**
+ * Distance from hex h to the hexes of exit objective `o`: along one board row (010 Castulo: row 0 from half-column 8 on;
+ * 210, 212, 221, 317: a whole baseline) rows to go plus half the columns outside the exit hexes (for a whole row, the hex
+ * distance); other shapes the hex distance to the nearest exit hex.
+ */
+function exitDistance(o: ObjectiveOf<'exit'>, h: HexId): number {
+  const row = rowOf(o.hexes[0]);
+  if (o.hexes.every((x) => rowOf(x) === row)) {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const x of o.hexes) {
+      lo = Math.min(lo, halfCol(x));
+      hi = Math.max(hi, halfCol(x));
+    }
+    const x2 = halfCol(h);
+    const lateral = x2 < lo ? (lo - x2) / 2 : x2 > hi ? (x2 - hi) / 2 : 0;
+    return Math.abs(rowOf(h) - row) + lateral;
+  }
+  let d = 99;
+  for (const x of o.hexes) d = Math.min(d, hexDist(h, x));
+  return d;
+}
+
 /** Scenario objectives (exits and camp captures), positive = good for `me`. */
-function objectives(s: GameState, me: Side, W: Weights): number {
+function objectives(s: GameState, occ: Occ, me: Side, W: Weights): number {
   const { objectives: list, objState } = s.special;
   let v = 0;
   for (let i = 0; i < list.length; i++) {
     const o = list[i];
     if (o.kind === 'exit') {
-      // units that may exit are drawn to the exit hexes, units that took losses more (they score as much). Exits along
-      // one board row (010 Castulo: row 0 from half-column 8 on; 210, 212, 221: a whole baseline) measure rows to go plus
-      // half the columns outside the exit hexes (for a whole row, the hex distance); other shapes the hex distance to the
-      // nearest exit hex.
-      const row = rowOf(o.hexes[0]);
-      const oneRow = o.hexes.every((h) => rowOf(h) === row);
-      let lo = Infinity;
-      let hi = -Infinity;
-      for (const h of o.hexes) {
-        lo = Math.min(lo, halfCol(h));
-        hi = Math.max(hi, halfCol(h));
-      }
+      // units that may exit are drawn to the exit hexes, units that took losses more (they score as much). Where leaders
+      // score too (317, §18.4) a unit with its leader attached scores 2 and is drawn twice as hard, and lone leaders are
+      // drawn as well.
       let r = 0;
       for (const u of s.units) {
         if (u.hex < 0 || !exitAllows(o, u)) continue;
-        let d: number;
-        if (oneRow) {
-          const x2 = halfCol(u.hex);
-          const lateral = x2 < lo ? (lo - x2) / 2 : x2 > hi ? (x2 - hi) / 2 : 0;
-          d = Math.abs(rowOf(u.hex) - row) + lateral;
-        } else {
-          d = 99;
-          for (const h of o.hexes) d = Math.min(d, hexDist(u.hex, h));
+        const two = o.leadersScore && attachedLeaderOcc(occ, u) ? 2 : 1;
+        r += 0.035 * (8 - Math.min(8, exitDistance(o, u.hex))) * (battered(u) ? 1.3 : 1) * two;
+      }
+      if (o.leadersScore) {
+        for (const l of s.leaders) {
+          if (l.hex < 0 || !leaderExitAllows(o, l) || occ.unit[l.hex]?.side === l.side) continue;
+          r += 0.035 * (8 - Math.min(8, exitDistance(o, l.hex)));
         }
-        r += 0.035 * (8 - Math.min(8, d)) * (battered(u) ? 1.3 : 1);
       }
       v += (me === o.side ? 1 : -1) * r * W.objective;
     } else if (o.kind === 'capture') {
@@ -635,8 +708,8 @@ export function evaluate(s: GameState, me: Side, next: Side, W: Weights, breakdo
   const wMine = W.riskSelf * (next === opp ? W.now : W.later);
   const wTheirs = W.riskEnemy * (next === me ? W.now : W.later);
   const pos = positional(s, occ, mine, theirs, me, W, true) - positional(s, occ, theirs, mine, opp, W, false);
-  const adv = advancePenalty(mine, theirs, W);
-  const obj = objectives(s, me, W);
+  const adv = advancePenalty(s, mine, theirs, W);
+  const obj = objectives(s, occ, me, W);
   // Expansion #2 objectives (held banners, turn-start captures, hold / majority / section clear, rampart breakers); 0 otherwise
   const goals = goalTerms(s, occ, me, W);
   const total = banners + material - wMine * riskMine + wTheirs * riskTheirs + pos - adv + obj + goals;
@@ -728,7 +801,7 @@ export function rawFeatures(s: GameState, me: Side, next: Side, W: Weights): Rec
   f.lonely = a.lonely - b.lonely;
   f.gapMe = a.gap;
   f.gapOpp = b.gap;
-  f.obj = objectives(s, me, { ...W, objective: 1 });
+  f.obj = objectives(s, occ, me, { ...W, objective: 1 });
   f.toMove = next === me ? 1 : 0;
   return f;
 }

@@ -6,21 +6,22 @@ import { closeCombatDice, retreatPerFlag } from '../engine/combat';
 import { nextCaptureBanners, stopCaptureAt } from '../engine/objectives';
 import { baselineRow, neighbours, rowOf, sectionsOf } from '../engine/hex';
 import {
-  autoOrders, diceOrderPieces, inCommand, rallyCandidates, spartacusDiceCount, validateDiceOrders, validateRally, validateSpartacus,
+  autoOrders, diceOrderPieces, diceOrdered, inCommand, rallyCandidates, spartacusDiceCount, validateDiceOrders, validateRally,
+  validateSpartacus,
 } from '../engine/orders';
-import { attachedLeader, leaderById, leaderUnit, other, unitById } from '../engine/query';
-import { retreatOptions, type ElephantRetreatOption } from '../engine/retreat';
+import { attachedLeader, leaderById, other, unitById } from '../engine/query';
+import { elephantRetreatOptions, retreatOptions, type ElephantRetreatOption } from '../engine/retreat';
 import { rangeOf } from '../engine/elites';
 import { terrainAt } from '../engine/terrain';
 import { UNIT_STATS, bonusCombatEligible, escapeDice, forestFighter } from '../engine/units';
 import {
   OFF_BOARD, type Answer, type Decision, type DieFace, type GameState, type HexId, type RetreatOption, type Side, type Unit,
 } from '../engine/types';
-import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist, isWarMachine } from './board';
+import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist, isWarMachine, mayCloseCombat } from './board';
 import { pAnyHelmet } from './dice';
 import {
   attackAnswer, attackNowValue, attackOptions, closeAttackEV, closeProfile, dmgValue, evadeEV, leaderAttackEV, momentumValue, standEV,
-  strikeValue, type AttackOpt,
+  strikeValue, wallStandEV, wallStrikesFirst, type AttackOpt,
 } from './estimate';
 import { battered, evaluate } from './evaluate';
 import { pieceBenefits } from './ordering';
@@ -216,8 +217,8 @@ export function defendChoice(s: GameState, d: D<'defend'>, W: Weights, fsKeepSca
   const role = d.bonus ? 'bonus' : 'attack';
   const n = closeCombatDice(s, a, t, { role, fullAtStart: a.blocks === a.maxBlocks, ordered: true });
   const mom = momentumValue(s, occ, a, role, W);
-  // values from the defender's point of view
-  const stand = -standEV(s, occ, a, t, n, mom).ev;
+  // values from the defender's point of view (on a city wall it strikes first without a card, §18.7)
+  const stand = -(wallStrikesFirst(s, t, a) ? wallStandEV(s, occ, a, t, n, mom) : standEV(s, occ, a, t, n, mom)).ev;
   let best: 'stand' | 'evade' | 'firstStrike' = 'stand';
   let bestVal = stand;
   if (d.canEvade) {
@@ -283,6 +284,28 @@ export function retreatLoss(s: GameState, u: Unit, o: RetreatOption, evade = fal
   return rowOf(o.end) === baselineRow(u.side) ? u.blocks : o.losses;
 }
 
+/**
+ * Value for `u`'s side of unit u taking retreat (or evade) option o, `next` the side that acts next: the position after it
+ * (blocks lost included), an elephant's blockers' losses, a marsh check on the way.
+ */
+function retreatValue(s: GameState, u: Unit, o: RetreatOption, W: Weights, next: Side, evade: boolean): number {
+  let v = evalUnitAt(s, u, o.end, retreatLoss(s, u, o, evade), W, next);
+  const eo = o as ElephantRetreatOption;
+  if (eo.blockers) {
+    const occ = new Occ(s);
+    for (const b of eo.blockers) {
+      const bu = unitById(s, b.id);
+      if (bu) v += (bu.side === u.side ? -1 : 1) * dmgValue(s, occ, bu, b.n, nextBanner(s, other(bu.side)));
+      else {
+        const bl = leaderById(s, b.id);
+        if (bl) v += (bl.side === u.side ? -1 : 1) * (nextBanner(s, other(bl.side)) + leaderVal(s, bl));
+      }
+    }
+  }
+  for (const h of o.path) if (h >= 0 && terrainAt(s, h) === 'marsh') v -= blockVal(u) / 6;
+  return v;
+}
+
 /** Choose a retreat / evade destination. */
 export function chooseRetreat(s: GameState, d: D<'retreat'>, W: Weights): number {
   const u = unitById(s, d.unit);
@@ -291,20 +314,7 @@ export function chooseRetreat(s: GameState, d: D<'retreat'>, W: Weights): number
   let best = 0;
   let bestV = -Infinity;
   d.options.forEach((o, i) => {
-    let v = evalUnitAt(s, u, o.end, retreatLoss(s, u, o, d.reason === 'evade'), W, next);
-    const eo = o as ElephantRetreatOption;
-    if (eo.blockers) {
-      const occ = new Occ(s);
-      for (const b of eo.blockers) {
-        const bu = unitById(s, b.id);
-        if (bu) v += (bu.side === u.side ? -1 : 1) * dmgValue(s, occ, bu, b.n, nextBanner(s, other(bu.side)));
-        else {
-          const bl = leaderById(s, b.id);
-          if (bl) v += (bl.side === u.side ? -1 : 1) * (nextBanner(s, other(bl.side)) + leaderVal(s, bl));
-        }
-      }
-    }
-    for (const h of o.path) if (h >= 0 && terrainAt(s, h) === 'marsh') v -= blockVal(u) / 6;
+    const v = retreatValue(s, u, o, W, next, d.reason === 'evade');
     if (v > bestV) {
       bestV = v;
       best = i;
@@ -427,7 +437,9 @@ function bestBonusHere(s: GameState, u: Unit, W: Weights): number {
   const occ = new Occ(s);
   if (!bonusEligibleAt(s, u, u.hex, !!attachedLeaderOcc(occ, u))) return 0;
   let best = 0;
+  const start = s.turn.ordered[u.id]?.startHex ?? OFF_BOARD;
   for (const h of neighbours(u.hex)) {
+    if (!mayCloseCombat(s, u, h, start)) continue; // not across a steep slope; a wall only from where it began (§18.7)
     const v = occ.unit[h];
     if (v) {
       if (v.side !== u.side) best = Math.max(best, closeAttackEV(s, occ, u, v, 'bonus', true, W).ev);
@@ -606,82 +618,163 @@ export function spartacusAssign(s: GameState, side: Side, faces: DieFace[], W: W
 }
 
 // ---------------------------------------------------------------------------
-// dice orders (310 Utica P1, §18.10): a simple policy for now (the AI phase refines it)
+// dice orders (310 Utica P1, §18.10)
 // ---------------------------------------------------------------------------
 
 /**
- * The unit a flag or swords face of the side's own order roll falls on: the least costly one. Cost = the blocks it loses
- * (swords 1; a flag the hexes its best retreat cannot take, `retreatLoss`) at their block value, a unit that would be
- * destroyed costing the enemy's next banner on top; a leader's casualty check when blocks are lost; then the cheaper unit.
- * Positions only (an elephant's retreat is judged as an ordinary one); ties to the first option.
+ * The unit a flag or swords face of the side's own order roll falls on (§18.10), judged by the evaluation of the position
+ * after it, the enemy's threats counted in full (its turn comes before most of these units act again: the dice order one
+ * or two of them). A flag: the unit's best retreat for one flag that no flag ignore can cancel (`retreatValue`: blocks lost
+ * for hexes it cannot take, the position it gives up or the danger it leaves, its leader carried along); only units with a
+ * complete retreat are considered while there is one. Swords: 1 block lost where it stands; only units with 2 or more
+ * blocks while there is one. Blocks lost with a leader attached cost his casualty check (1 in 36 he falls). Ties to the
+ * first option.
  */
-export function diceVictimIndex(s: GameState, d: D<'diceVictim'>): number {
-  let best = 0;
-  let bestCost = Infinity;
-  d.options.forEach((id, i) => {
+export function diceVictimIndex(s: GameState, d: D<'diceVictim'>, W: Weights): number {
+  const side = d.side;
+  const foe = other(side);
+  const enemyBanner = nextBanner(s, foe);
+  const scored = d.options.map((id) => {
     const u = unitById(s, id);
-    if (!u) return;
-    let loss = 1;
-    if (d.face === 'flag') {
-      const opts = retreatOptions(s, u, retreatPerFlag(u, null));
-      loss = opts.length ? Math.min(...opts.map((o) => retreatLoss(s, u, o))) : 0;
-    }
+    if (!u) return { v: -Infinity, free: false };
     const l = attachedLeader(s, u);
-    let cost = 0.05 * unitWeight(u);
-    if (loss >= u.blocks) cost += unitWeight(u) + nextBanner(s, other(u.side)) + (l ? leaderVal(s, l) / 6 : 0);
-    else if (loss > 0) cost += loss * blockVal(u) + (l ? leaderVal(s, l) / 36 : 0);
-    if (cost < bestCost - 1e-9) {
-      bestCost = cost;
+    const check = l ? (enemyBanner + leaderVal(s, l)) / 36 : 0;
+    if (d.face === 'swords') {
+      return { v: evalUnitAt(s, u, u.hex, 1, W, foe) - (u.blocks > 1 ? check : 0), free: u.blocks > 1 };
+    }
+    const per = retreatPerFlag(u, null);
+    const opts: RetreatOption[] = UNIT_STATS[u.type].elephantTable ? elephantRetreatOptions(s, u, per) : retreatOptions(s, u, per);
+    let v = -Infinity;
+    let free = false;
+    for (const o of opts) {
+      const loss = retreatLoss(s, u, o);
+      const blocked = loss > 0 || ((o as ElephantRetreatOption).blockers?.length ?? 0) > 0;
+      if (!blocked) free = true;
+      const x = retreatValue(s, u, o, W, foe, false) - (loss > 0 && loss < u.blocks ? check : 0);
+      if (x > v) v = x;
+    }
+    return { v, free };
+  });
+  const anyFree = scored.some((x) => x.free);
+  let best = 0;
+  let bestV = -Infinity;
+  scored.forEach((x, i) => {
+    if (anyFree && !x.free) return;
+    if (x.v > bestV + 1e-9) {
+      bestV = x.v;
       best = i;
     }
   });
   return best;
 }
 
+/** One way to use a dice-order roll (§18.10): an answer (one id or null per face), the pieces it orders, their benefit. */
+export interface DiceAssignment {
+  ids: (string | null)[];
+  pieces: string[];
+  benefit: number;
+}
+
+/** More combinations than this (never with 2 dice: at most (units + 1)²) and the assignment is built greedily. */
+const DICE_COMBOS_MAX = 4096;
+
 /**
- * Dice-order assignment (§18.10), greedy on each piece's benefit from an order (`pieceBenefits`): helmets first, each on
- * the leader worth most together with his attached unit; then each class face on the best unit of its class not yet
- * ordered. Every usable face is used. A rejected assignment (never expected) uses no face.
+ * Every distinct way to use the order dice (§18.10), best first: each face gives one piece it may order or none (a helmet
+ * its leader, who brings his attached unit), no piece twice. The assignment is judged as a whole: the summed benefit of the
+ * pieces it orders (`pieceBenefits`, the estimate the card orders use, under no card's modifiers), never below 0 for a
+ * piece (an ordered unit may stay put), ties to the one ordering more pieces. Assignments ordering the same pieces through
+ * different faces count once.
  */
+export function diceAssignments(s: GameState, side: Side, faces: DieFace[], W: Weights): DiceAssignment[] {
+  const ben = pieceBenefits(s, side, null, W);
+  const b = (id: string) => Math.max(0, ben.get(id) ?? 0);
+  const choices = faces.map((f) => [null, ...diceOrderPieces(s, side, f)]);
+  const out: DiceAssignment[] = [];
+  const seen = new Set<string>();
+  const add = (ids: (string | null)[]) => {
+    const pieces = diceOrdered(s, ids);
+    if (new Set(pieces).size !== pieces.length) return;
+    const key = [...pieces].sort().join(',');
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ ids, pieces, benefit: pieces.reduce((a, id) => a + b(id), 0) });
+  };
+  if (choices.reduce((n, c) => n * c.length, 1) > DICE_COMBOS_MAX) {
+    // greedy fallback (more dice than any battle rolls): each face in turn takes the best piece still free
+    const ids: (string | null)[] = faces.map(() => null);
+    const used = new Set<string>();
+    choices.forEach((cs, i) => {
+      let bestV = -Infinity;
+      for (const id of cs) {
+        if (!id) continue;
+        const ps = diceOrdered(s, [id]);
+        if (ps.some((p) => used.has(p))) continue;
+        const v = ps.reduce((a, p) => a + b(p), 0);
+        if (v > bestV) {
+          bestV = v;
+          ids[i] = id;
+        }
+      }
+      for (const p of diceOrdered(s, [ids[i]])) used.add(p);
+    });
+    add(ids);
+  } else {
+    const cur: (string | null)[] = faces.map(() => null);
+    const walk = (i: number) => {
+      if (i === faces.length) {
+        add([...cur]);
+        return;
+      }
+      for (const c of choices[i]) {
+        cur[i] = c;
+        walk(i + 1);
+      }
+    };
+    walk(0);
+  }
+  return out
+    .filter((x) => !validateDiceOrders(s, side, faces, x.ids))
+    .sort((x, y) => y.benefit - x.benefit || y.pieces.length - x.pieces.length);
+}
+
+/** The best dice-order assignment (`diceAssignments`); no face used if, unexpectedly, none is valid. */
 export function diceOrdersAssign(s: GameState, side: Side, faces: DieFace[], W: Weights): (string | null)[] {
   if (!faces.some((f) => diceOrderPieces(s, side, f).length)) return faces.map(() => null);
-  const ben = pieceBenefits(s, side, null, W);
-  const b = (id: string) => ben.get(id) ?? 0;
-  const used = new Set<string>();
-  const ids: (string | null)[] = faces.map(() => null);
-  faces.forEach((f, i) => {
-    if (f !== 'leader') return;
-    let best: string | null = null;
-    let bv = -Infinity;
-    for (const id of diceOrderPieces(s, side, f)) {
-      const own = leaderUnit(s, leaderById(s, id)!);
-      if (used.has(id) || (own && used.has(own.id))) continue;
-      const v = b(id) + (own ? b(own.id) : 0);
-      if (v > bv) {
-        bv = v;
-        best = id;
+  return diceAssignments(s, side, faces, W)[0]?.ids ?? faces.map(() => null);
+}
+
+// ---------------------------------------------------------------------------
+// forced placement (308 Gergovia, §18.9)
+// ---------------------------------------------------------------------------
+
+/**
+ * Where to place a forced-placement unit (`placeUnit`, 308's Roman MI): the offered hex whose position the evaluation likes
+ * best with the unit standing there (the side plays its card next, so its own threats count in full): support for friends
+ * under attack and threats against the enemy, without walking into danger. Ties to the first (lowest) hex.
+ */
+export function choosePlaceUnit(s: GameState, d: D<'placeUnit'>, W: Weights): HexId {
+  const p = s.special.placeUnits.find((x) => x.unit.id === d.unit);
+  if (!p || d.options.length <= 1) return d.options[0];
+  const u = p.unit;
+  const from = u.hex;
+  let best = d.options[0];
+  let bestV = -Infinity;
+  s.units.push(u);
+  try {
+    for (const h of d.options) {
+      u.hex = h;
+      const v = evaluate(s, d.side, d.side, W);
+      if (v > bestV + 1e-9) {
+        bestV = v;
+        best = h;
       }
     }
-    if (best) {
-      ids[i] = best;
-      used.add(best);
-      const own = leaderUnit(s, leaderById(s, best)!);
-      if (own) used.add(own.id);
-    }
-  });
-  faces.forEach((f, i) => {
-    if (f === 'leader') return;
-    let best: string | null = null;
-    for (const id of diceOrderPieces(s, side, f)) {
-      if (used.has(id)) continue;
-      if (best === null || b(id) > b(best)) best = id;
-    }
-    if (best) {
-      ids[i] = best;
-      used.add(best);
-    }
-  });
-  return validateDiceOrders(s, side, faces, ids) ? faces.map(() => null) : ids;
+  } finally {
+    u.hex = from;
+    const i = s.units.indexOf(u);
+    if (i >= 0) s.units.splice(i, 1);
+  }
+  return best;
 }
 
 // ---------------------------------------------------------------------------
@@ -879,8 +972,8 @@ export function reactiveFast(s: GameState, d: Decision, W: Weights, rng: Rng): A
     case 'orders': return { kind: 'orders', pieces: [] };
     case 'playCard': return { kind: 'playCard', card: s.players[d.side].hand[0] };
     case 'placeLeader': return { kind: 'hex', hex: choosePlacement(s, d, W) };
-    case 'placeUnit': return { kind: 'hex', hex: d.options[0] };
-    case 'diceVictim': return { kind: 'choose', index: diceVictimIndex(s, d) };
+    case 'placeUnit': return { kind: 'hex', hex: choosePlaceUnit(s, d, W) };
+    case 'diceVictim': return { kind: 'choose', index: diceVictimIndex(s, d, W) };
     case 'diceOrders': return { kind: 'assign', ids: diceOrdersAssign(s, d.side, d.faces, W) };
   }
 }

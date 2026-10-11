@@ -1,8 +1,8 @@
 // Fast board helpers for the AI: distance table, occupancy, retreat room, LOS and flag rules mirrored with O(1) lookups.
 import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
 import {
-  hillGroups, isCamp, isImpassable, steepClimb, steepSlopeUp, stopsAll, stopsMounted, terrainAt, terrainBlocksSight, wallGroups,
-  type BoardTerrain, type SightGroups,
+  hillGroups, isCamp, isImpassable, isWall, steepClimb, steepSlope, steepSlopeUp, stopsAll, stopsMounted, terrainAt, terrainBlocksSight,
+  wallGroups, type BoardTerrain, type SightGroups,
 } from '../engine/terrain';
 import { frightAtFirstSight, rampartShields, wallShields, type StrikeRole } from '../engine/combat';
 import { canShoot, eliteHas, rangeOf } from '../engine/elites';
@@ -223,16 +223,31 @@ export function rowsToEnemyEdge(h: HexId, side: Side): number {
 /**
  * Max hexes an enemy unit can move and still close combat with a normal order (warriors' charge included). With `occ`,
  * Caesar's forced march counts (§18.3: infantry he is attached to moves 2 and battles). The march of the Tenth Legion
- * and the Julian legions (`canMarch`, §18.2) is 2 hexes without a battle, so it adds nothing to an attack's reach.
+ * and the Julian legions (`canMarch`, §18.2) is 2 hexes without a battle, so it adds nothing to an attack's reach. An
+ * immobile unit (306, §18.11) reaches nothing; with `s`, a unit on a city wall moves 1 hex at most (§18.7).
  */
-export function reachOf(u: Unit, occ?: Occ): number {
+export function reachOf(u: Unit, occ?: Occ, s?: GameState): number {
+  if (u.immobile) return 0;
   const st = UNIT_STATS[u.type];
   let r = st.moveBattle;
   if (occ && st.infantry && r < 2) {
     const l = attachedLeaderOcc(occ, u);
     if (l && leaderHas(l, 'forcedMarch')) r = 2;
   }
+  if (s && u.hex >= 0 && isWall(s, u.hex)) r = Math.min(r, 1);
   return r;
+}
+
+/**
+ * May `u`, standing on its hex, close combat the piece on its neighbour `h` as far as the terrain goes (mirror of the
+ * engine's `mayAttackInto`, §18.7)? Never across a steep slope (308); a mounted unit or war machine attacks a piece on a
+ * city wall only if it began the turn next to that wall hex (`startHex`, the hex it began the turn on). Always true in a
+ * battle with neither walls nor steep slopes. A battle back is no attack: callers use this for attacks only.
+ */
+export function mayCloseCombat(s: GameState, u: Unit, h: HexId, startHex: HexId): boolean {
+  if (steepSlope(s, u.hex, h)) return false;
+  if (!isWall(s, h) || UNIT_STATS[u.type].infantry) return true;
+  return startHex >= 0 && hexDist(startHex, h) === 1;
 }
 
 /** Rows from hex h to `side`'s own baseline (0 on it). */

@@ -2,15 +2,15 @@
 import { CARD_DEFS, modsFor } from '../engine/cards';
 import { ambushAvailable, ambushSections } from '../engine/flow';
 import { areAdjacent, inSection } from '../engine/hex';
-import { unitMoves } from '../engine/movement';
+import { leaderMoves, unitMoves } from '../engine/movement';
 import { commandClash, leadershipChain, orderMode, validateOrders } from '../engine/orders';
 import { isLoneLeader, leaderUnit, leadersOf, unitsOf } from '../engine/query';
 import { cloneState } from '../engine/setup';
 import { UNIT_STATS } from '../engine/units';
-import type { CardKind, GameState, Leader, SectionName, Side, Unit } from '../engine/types';
-import { Occ, hexDist, isWarMachine, supportOcc } from './board';
+import { OFF_BOARD, type CardKind, type GameState, type Leader, type SectionName, type Side, type Unit } from '../engine/types';
+import { Occ, hasTerrain, hexDist, isWarMachine, supportOcc } from './board';
 import { attackNowValue, shotValue } from './estimate';
-import { battered, nearestDist, singleUnitRisk, unitGap } from './evaluate';
+import { battered, holdsWall, nearestDist, singleUnitRisk, unitGap } from './evaluate';
 import { isSacredLeader, type Weights } from './values';
 
 export interface OrderCandidate {
@@ -29,10 +29,11 @@ function nearestEnemy(s: GameState, h: number, side: Side): number {
  * Cheap local score of unit u where it stands (no attack). `enemies`: the enemy units on the board; the advance gap is
  * the evaluation's (unitGap: a camel measures to the enemy horse).
  */
-function localScore(s: GameState, occ: Occ, u: Unit, enemies: readonly Unit[], W: Weights): number {
+function localScore(s: GameState, occ: Occ, u: Unit, enemies: readonly Unit[], W: Weights, walls: boolean): number {
   let v = -W.riskSelf * singleUnitRisk(s, occ, u, W);
   const d = nearestDist(u, enemies);
-  const gap = unitGap(u, enemies, d);
+  // a unit holding a city wall (§18.7) is not pushed forward from it
+  const gap = walls && holdsWall(s, u) ? 0 : unitGap(u, enemies, d);
   if (gap) v -= W.adv * gap * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1) * 1.5;
   if (d <= 2) {
     const sc = supportOcc(occ, u);
@@ -56,8 +57,9 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
   const m = s.turn.mods;
   // only own pieces move (temporarily) below
   const enemies = s.units.filter((x) => x.side !== side && x.hex >= 0);
+  const walls = hasTerrain(s, 'wall');
   for (const u of unitsOf(s, side)) {
-    const base = localScore(s, occ, u, enemies, W);
+    const base = localScore(s, occ, u, enemies, W, walls);
     let best = base + W.attackNow * attackNowValue(s, occ, u, 0, true, false, W);
     if (!m.noMove) {
       const from = u.hex;
@@ -76,7 +78,7 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
           l.hex = t.hex;
         }
         u.hex = t.hex;
-        const v = localScore(s, occ, u, enemies, W) + W.attackNow * attackNowValue(s, occ, u, t.dist, t.canBattle, t.mustBattle, W);
+        const v = localScore(s, occ, u, enemies, W, walls) + W.attackNow * attackNowValue(s, occ, u, t.dist, t.canBattle, t.mustBattle, W, from);
         u.hex = from;
         occ.unit[t.hex] = null;
         occ.unit[from] = u;
@@ -94,6 +96,7 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
     if (isWarMachine(u)) ben = Math.max(ben, shotValue(s, occ, u, 0));
     out.set(u.id, ben);
   }
+  const leaderExits = s.special.objectives.some((o) => o.kind === 'exit' && o.side === side && o.leadersScore);
   for (const l of leadersOf(s, side)) {
     if (!isLoneLeader(s, l)) {
       // a leader riding with a battered unit near the enemy should move to a healthier one
@@ -122,6 +125,8 @@ export function pieceBenefits(s0: GameState, side: Side, kind: CardKind | null, 
     if (isSacredLeader(s, l) && unitsOf(s, side).some((u) => u.blocks >= 2 && hexDist(u.hex, l.hex) <= 3 && !occ.leader[u.hex])) {
       b = Math.max(b, 0.3); // a lone instant-loss leader always wants to rejoin a sound unit
     }
+    // a lone leader who can step off the board where leaders score (317, §18.4) is worth ordering like an exiting unit
+    if (leaderExits && !m.noMove && leaderMoves(s, l.id).some((t) => t.hex === OFF_BOARD)) b = Math.max(b, 0.6);
     out.set(l.id, b);
   }
   return out;
@@ -282,8 +287,10 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
   let res = dedupe(out).slice(0, max);
   if (ambushAvailable(s, side, kind)) {
     // the ambush entry (Trebbia's Leadership cards, 206's Order Light Troops too): one candidate per section the card
-    // allows, the same for every trigger card; the turn search plays each out (its benefit only labels it)
-    for (const sec of ambushSections(kind)) res.push({ pieces: [], ambush: sec, benefit: AMBUSH_BENEFIT });
+    // allows, the same for every trigger card; the turn search plays each out (its benefit only labels it). With fixed
+    // entry hexes (308, §18.9) the section named changes nothing: a single candidate.
+    const secs = ambushSections(kind);
+    for (const sec of s.special.ambush?.entryHexes ? secs.slice(0, 1) : secs) res.push({ pieces: [], ambush: sec, benefit: AMBUSH_BENEFIT });
     res = dedupe(res);
   }
   return res;

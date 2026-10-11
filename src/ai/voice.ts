@@ -8,7 +8,7 @@ import type { Rng } from './rand';
 export type Moment =
   | 'attack' | 'clash' | 'mounted' | 'light' | 'darken' | 'leadership' | 'ambush' | 'rally' | 'counter' | 'spartacus'
   | 'doubleTime' | 'line' | 'advance' | 'regroup' | 'hold' | 'firstStrike' | 'evade' | 'leaderEscape' | 'momentum' | 'gained'
-  | 'lost' | 'nearVictory' | 'desperate' | 'exit' | 'camp' | 'stallBreak';
+  | 'lost' | 'nearVictory' | 'desperate' | 'exit' | 'camp' | 'stallBreak' | 'wall' | 'ship' | 'reinforce';
 
 type Lines = Partial<Record<Voice | 'any', string[]>>;
 
@@ -125,6 +125,20 @@ const LINES: Record<Moment, Lines> = {
   camp: {
     any: ['Their camp is ours!', 'Into their camp!', 'The camp is taken. Plunder later, fight now!'],
   },
+  // Expansion #3: a unit climbing a city wall (308, 309), a ship marker taken (313), reinforcements on fixed hexes (308)
+  wall: {
+    any: ['Up the walls, {troops}!', 'Scale the wall and hold it!', 'Onto the battlements!'],
+    bold: ['Over the wall! Follow me!'],
+    reckless: ['Climb, {troops}! The town is ours!'],
+    methodical: ['Take the wall, then hold it. One step at a time.'],
+  },
+  ship: {
+    any: ['The ship is ours!', 'Seize the ships!', 'Their shipping is in our hands!'],
+  },
+  reinforce: {
+    any: ['Fresh troops, into the line!', 'Reinforcements, take your places!', 'To me! The relief has come!'],
+    cunning: ['Now they will see how many we are.'],
+  },
   stallBreak: {
     any: ['Enough waiting!', 'We have stood here long enough. Forward!', 'Time favours them, not us. Attack!'],
     bold: ['Enough of this. At them!'],
@@ -218,20 +232,35 @@ const TROOPS: Partial<Record<ArmyLook, Partial<Record<UnitType, string>>>> = {
     LI: 'skirmishers', LB: 'Cretan archers', LS: 'Balearic slingers', AX: 'auxilia', WA: 'Germanic allies', MI: 'legionaries',
     HI: 'veteran legionaries', LC: 'Numidian horse', MC: 'Roman horse', HWM: 'ballistae',
   },
-  // Expansion #3: the Roman Civil Wars (troop names are plain placeholders until the battles are transcribed into the game)
-  sullan: { LI: 'skirmishers', LB: 'Cretan archers', LS: 'slingers', AX: 'auxilia', MI: 'legionaries', HI: 'veteran legionaries', LC: 'light horse', MC: 'Roman horse' },
-  samnite: { LI: 'skirmishers', AX: 'Samnite foot', WA: 'Samnite warband', MI: 'Samnite spearmen', LC: 'Samnite light horse', MC: 'Samnite horse' },
+  // Expansion #3: the Roman Civil Wars
+  sullan: {
+    LI: 'skirmishers', LB: 'Cretan archers', LS: 'Balearic slingers', AX: 'Italian auxilia', WA: 'Gallic allies', MI: "Sulla's legionaries",
+    HI: "Sulla's veterans", LC: 'light horse', MC: 'Roman horse',
+  },
+  samnite: {
+    LI: 'skirmishers', LS: 'Samnite slingers', AX: 'Samnite foot', WA: 'Lucanian warband', MI: 'Samnite legionaries', LC: 'Samnite light horse',
+    MC: 'Samnite horse',
+  },
   sertorian: {
-    LI: 'Iberian skirmishers', LB: 'archers', LS: 'slingers', AX: 'Iberian foot', WA: 'Celtiberian warband', MI: 'Roman legionaries',
-    HI: 'veteran legionaries', LC: 'Iberian light horse', MC: 'Iberian horse',
+    LI: 'caetrati', LB: 'archers', LS: 'Balearic slingers', AX: 'Iberian foot', WA: 'Celtiberian warband', MI: 'Sertorian legionaries',
+    HI: 'Sertorian veterans', LC: 'Iberian light horse', MC: 'Iberian horse',
   },
-  pompeian: { LI: 'skirmishers', LB: 'archers', LS: 'slingers', AX: 'auxilia', MI: 'legionaries', HI: 'veteran legionaries', LC: 'light horse', MC: 'Roman horse' },
+  pompeian: {
+    LI: 'skirmishers', LB: 'archers', LS: 'slingers', AX: 'auxilia', MI: 'Pompeian legionaries', HI: 'Pompeian veterans',
+    LC: 'Numidian light horse', MC: 'Pompeian horse', EL: "Juba's elephants", HWM: 'ballistae',
+  },
   caesarian: {
-    LI: 'skirmishers', LB: 'archers', LS: 'slingers', AX: 'auxilia', WA: 'Gallic allies', MI: 'legionaries', HI: 'veteran legionaries',
-    LC: 'German horse', MC: 'Gallic horse',
+    LI: 'skirmishers', LB: 'archers', LS: 'slingers', AX: 'auxilia', WA: 'Gallic allies', MI: "Caesar's legionaries", HI: "Caesar's veterans",
+    LC: 'German horse', MC: 'Gallic horse', HWM: 'ballistae',
   },
-  helvetii: { LI: 'Helvetian skirmishers', AX: 'Helvetian foot', WA: 'Helvetian warband', MI: 'Helvetian spearmen', LC: 'Helvetian horse', MC: 'Helvetian horse' },
-  numidian: { LI: 'Numidian skirmishers', LB: 'archers', AX: 'Numidian foot', MI: 'Libyan spearmen', LC: 'Numidian horse', MC: 'Numidian cavalry' },
+  helvetii: {
+    LI: 'Helvetian skirmishers', AX: 'Helvetian foot', WA: 'Helvetian warband', MI: 'Helvetian spearmen', LC: 'Helvetian light horse',
+    MC: 'Helvetian horse',
+  },
+  numidian: {
+    LI: 'Numidian skirmishers', LB: 'archers', AX: 'Numidian foot', WA: 'Gaetulian warriors', MI: "Juba's legionaries",
+    HI: "Juba's royal legion", LC: 'Numidian horse', MC: 'Numidian cavalry',
+  },
   pontic: {
     LI: 'skirmishers', LB: 'archers', LS: 'slingers', AX: 'peltasts', WA: 'Galatians', MI: 'Pontic infantry', HI: 'phalanx',
     LC: 'light horse', MC: 'Pontic horse', HC: 'cataphracts', HCH: 'scythed chariots',
@@ -256,9 +285,14 @@ export function troopName(s: GameState, side: Side, t: UnitType | undefined, eli
   return TROOPS[look]?.[t] ?? DEFAULT_TROOPS[t];
 }
 
-/** The leader of `side`'s off-board ambush reserve (Mago at the Trebbia, Marcellus at Aquae Sextiae), if any. */
+/**
+ * The leader of `side`'s off-board ambush reserve (Mago at the Trebbia, Marcellus at Aquae Sextiae), if any, and not the
+ * commander himself (Vercingetorix leads his own reinforcements at Gergovia: no one to call on).
+ */
 function reserveLeaderName(s: GameState, side: Side): string | undefined {
-  return s.special.reserveSide === side ? s.special.reserveLeaders.find((l) => l.side === side)?.name || undefined : undefined;
+  if (s.special.reserveSide !== side) return undefined;
+  const name = s.special.reserveLeaders.find((l) => l.side === side)?.name;
+  return name && name !== s.players[side].commander ? name : undefined;
 }
 
 /** "The Romans", "Craterus' Successors" (an army name already plural keeps its form). */

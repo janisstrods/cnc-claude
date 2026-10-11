@@ -50,7 +50,7 @@ for (const sc of SCENARIOS) {
     `${avg(rs.map((r) => r.turns)).toFixed(0)}, ${Math.max(...rs.map((r) => r.turns))} | ${flag} | ${notes.join(', ')} |`);
 }
 const ms = rows.flatMap((r) => [...r.msA, ...r.msB]);
-console.log(`\nGames ${total}; flagged battles ${flagged}; playCard decision avg ${avg(ms).toFixed(0)} ms, max ${Math.max(0, ...ms).toFixed(0)} ms`);
+console.log(`\nGames ${total}; flagged battles ${flagged}; turn-plan decision (playCard, diceOrders) avg ${avg(ms).toFixed(0)} ms, max ${Math.max(0, ...ms).toFixed(0)} ms`);
 console.log(`Counters: ${Object.entries(all).filter(([, v]) => v).map(([k, v]) => `${k} ${Number.isInteger(v) ? v : v.toFixed(2)}`).join(', ')}`);
 const kills = rows.flatMap((r) => r.killed ?? []);
 const alex = kills.filter((k) => /alexander/i.test(k)).length;

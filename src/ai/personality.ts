@@ -52,6 +52,24 @@ export function personalityById(id: string): Personality {
   return PERSONALITIES.find((p) => p.id === id) ?? PERSONALITIES[5];
 }
 
+/**
+ * Expansion #3 commanders, matched before everything else; an army pattern (when given) must match too. Two names are
+ * shared with earlier battles and told apart by the army: Metellus Scipio at Thapsus (318, Pompeian) is not Africanus,
+ * and Attius Varus at Utica (311, Pompeian) is not Quinctilius Varus (220, Roman). "Gnaeus Pompey" (319) keeps the base
+ * game's `gnaeus` rule (the Lion), so Pompey the Great is matched by his name alone. Unlisted ones (Herennius & Perpenna,
+ * Divico, Marcius Rufus) take the army default.
+ */
+const BY_NAME_X3: [RegExp, RegExp | null, string][] = [
+  [/scipio/i, /pompeian/i, 'veteran'],
+  [/\bvarus\b/i, /pompeian/i, 'shield'],
+  [/\bsulla\b|^pompey\b/i, null, 'strategist'],
+  [/sertorius|saburra/i, null, 'fox'],
+  [/labienus|\bcurio\b|pharnaces|ariovistus|pontius/i, null, 'bull'],
+  [/afranius/i, null, 'shield'],
+  [/fufidius|\blibo\b/i, null, 'veteran'],
+  [/\bantony\b|antonius/i, null, 'lion'],
+];
+
 const BY_NAME: [RegExp, string][] = [
   // Expansion #2 commanders (first, like Expansion #1's). Unlisted ones take the army default below (Romans the Lion,
   // the others the Veteran).
@@ -82,6 +100,7 @@ const BY_NAME: [RegExp, string][] = [
 
 /** A fitting default personality for a historical commander. */
 export function personalityFor(commander: string, army: string): Personality {
+  for (const [re, armyRe, id] of BY_NAME_X3) if (re.test(commander) && (!armyRe || armyRe.test(army))) return personalityById(id);
   for (const [re, id] of BY_NAME) if (re.test(commander)) return personalityById(id);
   if (/roman/i.test(army)) return personalityById('lion');
   if (/carthag/i.test(army)) return personalityById('fox');
