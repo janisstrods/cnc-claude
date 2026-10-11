@@ -8,7 +8,7 @@ Browser game: TypeScript + Vite + React, pure rules engine in `src/engine`, AI i
 |---|---|
 | `npm install` | Install dependencies |
 | `npm run dev` | Dev server on http://localhost:5173 (launch config `dev`) |
-| `npm test` | All Vitest tests (engine, rules, scenarios, art, terrain, UI, AI, golden games; ~2550 tests, ~2–4 min) |
+| `npm test` | All Vitest tests (engine, rules, scenarios, art, terrain, UI, AI, golden games; ~2570 tests, ~75 s) |
 | `npm run typecheck` | `tsc --noEmit -p .` |
 | `npm run build` | Type-check, then build the static site into `docs/` |
 
@@ -39,6 +39,26 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
   `src/scenarios/data/<id>.json`.
 - Dev-only routes: `#/play/<scenario>/<top|bottom>/<recruit|tribune|consul>[/<seed>]` (e.g. `#/play/109/top/tribune`) and `#/gallery/art|terrain|kit|history`.
 - In dev, `window.__cca` is the GameController. `__cca.autoAnswer()` plays a random legal move for the human, and `__cca.setSpeed(4)` speeds up animations.
+- Browser tests must be silent: before playing on a dev-server origin, run `localStorage.setItem('cca-muted','1'); location.reload()`
+  (the flag is per origin, so each port needs it).
+
+## Where things live
+
+- One table per kind of thing: `UNIT_STATS` (`src/engine/units.ts`), `ELITES` (`elites.ts`), `TERRAIN_STATS` (`terrain.ts`)
+  and `EXPANSIONS` (`expansions.ts`). A new unit type, elite or terrain is a row there, and the compiler then asks for its
+  art (`FIGURE_KIND` and the slot tables in `src/art/token.tsx`; device, shield and helmet renderers in `src/art/parts.tsx`
+  and `exp2/exp3-parts.tsx`). A new expansion is an `EXPANSIONS` row plus its battle files and its texts module.
+- Battle rules are data: the scenario JSON → `ScenarioSetup` (`src/engine/setup.ts`) → `GameState.scenario` (readonly,
+  shared by `cloneState`). Play state lives in `GameState.special` (copied). A rule that falls on one side names it in the
+  data; it never goes by army name.
+- Turn engine, bottom layer first (each module imports only earlier ones): `options.ts` (pure queries of the turn's
+  options and the move/battle validators), `decisions.ts` (`ask`, `answerError`, the one answer check the AI also uses),
+  `casualties.ts`, `attacks.ts`, `phases.ts`, `flow.ts`.
+- The AI calls the engine's rules, passing its `Occ` board index as a `PieceIndex` (`src/engine/query.ts`) rather than
+  copying them. Deliberate approximations in `src/ai/board.ts` say so in a comment.
+- Test kits: `tests/rules/helpers.ts` (`build`/`setupOf` pass `ScenarioSetup` fields through), `tests/ai/helpers.ts`,
+  `tests/scenarios/helpers.ts`, `tests/support/rng.ts`. Scripts share `scripts/lib.ts`. Long AI tests go in
+  `*.slow.test.ts` files, which a sequencer in `vite.config.ts` starts first.
 
 ## Rules and docs
 
