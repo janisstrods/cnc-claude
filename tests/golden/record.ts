@@ -1,16 +1,13 @@
 import { GameDriver, createGame, randomAnswer, type GameEvent, type GameState } from '../../src/engine';
 import { SCENARIOS } from '../../src/scenarios';
 import { PERSONALITIES, chooseAnswer, newMemory, type AiOptions } from '../../src/ai';
+import { mulberry32 } from '../support/rng';
 
 export interface Golden { id: string; hash: string; answers: number; winner: string }
 
 export function fnv(str: string, h = 0x811c9dc5): number {
   for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
   return h >>> 0;
-}
-function mulberry(seed: number) {
-  let a = seed >>> 0;
-  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 /** Behaviour-level digest of a state: deliberately independent of field names that the refactor renames (faction, elite). */
 export function digest(s: GameState) {
@@ -29,7 +26,7 @@ function hashEvents(h: number, evs: GameEvent[]): number { for (const e of evs) 
 function randomGame(scId: string, seed: number): Golden {
   const sc = SCENARIOS.find((x) => x.id === scId)!;
   const d = new GameDriver(createGame(sc.setup, seed));
-  const rnd = mulberry(seed);
+  const rnd = mulberry32(seed);
   let h = hashEvents(0x811c9dc5, d.drainEvents().map((q) => q.e));
   let steps = 0;
   while (!d.over && steps++ < 20000) {

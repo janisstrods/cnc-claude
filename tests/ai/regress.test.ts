@@ -13,20 +13,10 @@ import { Rng } from '../../src/ai/rand';
 import { chooseCavalryExtra } from '../../src/ai/policies';
 import { NEUTRAL_W, weightsFor } from '../../src/ai/values';
 import { Bot, type Strategy } from './bots';
+import { mulberry32 } from '../support/rng';
 import { failOnAiErrors } from './no-ai-errors';
 
 const H = (r: number, c: number) => hexId(r, c);
-
-function mulberry(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 interface Pos {
   units: { side: Side; type: UnitType; at: [number, number]; blocks?: number }[];
@@ -91,7 +81,7 @@ describe('tempo against a passive opponent', () => {
     const opts: AiOptions = { ...detOpts(aiSide, 3001), personality: personalityFor(sc.setup.top.commander, sc.setup.top.army) };
     expect(opts.personality.id).toBe('shield');
     const mem = newMemory();
-    const rnd = mulberry(1000);
+    const rnd = mulberry32(1000);
     const bot = new Bot('turtle', rnd);
     let firstAttack = -1;
     while (!d.over && d.state.turn.number <= 30 && firstAttack < 0) {
@@ -156,7 +146,7 @@ describe('Castulo: Publius Scipio (losing him loses the battle)', () => {
       const sid = d.state.special.sacredLeaderId!;
       const opts: AiOptions = { ...detOpts('bottom', seed * 3 + 1), personality: personalityFor(sc.setup.bottom.commander, sc.setup.bottom.army) };
       const mem = newMemory();
-      const rnd = mulberry(seed);
+      const rnd = mulberry32(seed);
       const bot = new Bot('greedy' as Strategy, rnd);
       let wasAi = false;
       while (!d.over && d.state.turn.number <= 36) {
