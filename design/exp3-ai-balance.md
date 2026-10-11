@@ -23,7 +23,10 @@ with a 65% edge).
   under heavy load get fewer simulations, which adds noise but treats both sides alike.
 * The balance games of 17 battles were played with the AI of commit `d58ced1`; three later changes touch only ship markers
   (313) and dice-order sides (310), so those two battles were played again with the final AI (`ef12015`) and their rows
-  below are the final AI's. The strength check was played twice, with `d58ced1` and with `ef12015`.
+  below are the final AI's. The strength check was played twice, with `d58ced1` and with `ef12015`. 304's rule
+  `commandFallback` (a command without the troops a card names orders 1 unit of its own, §18.5) came after these runs;
+  it changes only positions where one Sertorian command has a unit of the type a card names and the other has none
+  (never at the start), so the 304 numbers predate it.
 
 Reproduce (add `--shard i/4` and run four in parallel):
 
@@ -56,27 +59,31 @@ turns).
 
 `--scale 0.5`, 8 games a battle (4 seeds × both sides), 152 games:
 
-| Battle | Games | Bottom wins | Top wins | Banners (bottom-top, avg) | Turns (avg, max) | Flag | Expansion #3 counters (totals) |
+| Battle | Games | Bottom wins | Top wins | Banners (bottom-top, avg) | Turns (avg, max) | Flag | Expansion #2 and #3 counters (totals) |
 |---|---|---|---|---|---|---|---|
 | 301 Colline Gate | 8 | 3 (Roman) | 5 (Samnite) | 3.4-4.1 | 19, 26 |  | camps 1, pilumShots 29 |
 | 302 Baetis River | 8 | 5 (Roman) | 3 (Sertorian) | 5.1-4.1 | 30, 43 |  | pilumShots 45 |
 | 303 Lauron | 8 | 2 (Roman) | 6 (Sertorian) | 3.1-6.3 | 29, 44 |  | pilumShots 83 |
-| 304 Valentia | 8 | 5 (Roman) | 3 (Sertorian) | 5.3-3.9 | 31, 45 |  | chooseCommand 5, pilumShots 92 |
+| 304 Valentia | 8 | 5 (Roman) | 3 (Sertorian) | 5.3-3.9 | 31, 45 |  | pilumShots 92, chooseCommand 5 |
 | 305 Sucro | 8 | 4 (Roman) | 4 (Sertorian) | 4.0-4.4 | 31, 56 |  | pilumShots 116 |
-| 306 Bibracte | 8 | 7 (Roman) | 1 (Helvetian) | 6.9-3.0 | 31, 42 | **bottom 88%** | camps 1, caesarMarches 21, marches 36, immobileMoves 0 |
-| 307 Plain of Alsace | 8 | 7 (Roman) | 1 (Germanic) | 6.8-3.4 | 25, 33 | **bottom 88%** | caesarMarches 12, marches 12 |
-| 308 Gergovia | 8 | 4 (Roman) | 4 (Gallic) | 5.6-6.6 | 29, 39 |  | wallClimbs 9, wallAssaults 2, wallFirstStrikes 2, ambush 19, placements 5 (first hex 0), camps 7, heldTop 34, heldBottom 4, heldWins 4 |
-| 309 Ilerda | 8 | 4 (Caesarian) | 4 (Pompeian) | 5.1-4.8 | 38, 45 |  | wallClimbs 3, camps 3, heldBottom 10, heldWins 1, marches 179 |
+| 306 Bibracte | 8 | 7 (Roman) | 1 (Helvetian) | 6.9-3.0 | 31, 42 | **bottom 88%** | camps 1, pilumShots 40, caesarMarches 21, marches 36, immobileMoves 0 |
+| 307 Plain of Alsace | 8 | 7 (Roman) | 1 (Germanic) | 6.8-3.4 | 25, 33 | **bottom 88%** | pilumShots 19, caesarMarches 12, marches 12 |
+| 308 Gergovia | 8 | 4 (Roman) | 4 (Gallic) | 5.6-6.6 | 29, 39 |  | camps 7, heldTop 34, heldBottom 4, heldWins 4, pilumShots 62, caesarMarches 19, marches 50, ambush 19, wallClimbs 9, wallAssaults 2, wallFirstStrikes 2, placements 5 (first hex 0), reinforcements 19 |
+| 309 Ilerda | 8 | 4 (Caesarian) | 4 (Pompeian) | 5.1-4.8 | 38, 45 |  | camps 3, heldBottom 10, heldWins 1, pilumShots 120, caesarMarches 8, marches 179, wallClimbs 3 |
 | 310 Utica P1 Delaying Action | 8 | 8 (Caesarian) | 0 (Numidian) | 4.0-0.5 | 10, 27 | **bottom 100%** | diceTurns 32, diceFaces 64, diceFacesUsable 44, diceFacesUsed 44, victims 26 (blocked 0, last block 0) |
-| 311 Utica P2 The Valley | 8 | 7 (Caesarian) | 1 (Pompeian) | 4.9-2.6 | 21, 28 | **bottom 88%** | exits 4, heldBottom 8, heldWins 2 |
+| 311 Utica P2 The Valley | 8 | 7 (Caesarian) | 1 (Pompeian) | 4.9-2.6 | 21, 28 | **bottom 88%** | exits 4, heldBottom 8, heldWins 2, pilumShots 19, marches 49 |
 | 312 Bagradas River | 8 | 6 (Caesarian) | 2 (Numidian) | 4.4-2.4 | 15, 18 |  | pilumShots 33, marches 40 |
-| 313 Brindisi Raid | 8 | 1 (Caesarian) | 7 (Pompeian) | 2.3-5.9 | 21, 30 | **top 88%** | ships 16, marches 94 |
-| 314 Dyrrhachium | 8 | 5 (Caesarian) | 3 (Pompeian) | 4.5-4.0 | 24, 38 |  | exits 6, caesarMarches 21, marches 117 |
-| 315 Pharsalus | 8 | 8 (Caesarian) | 0 (Pompeian) | 7.0-3.1 | 21, 40 | **bottom 100%** | caesarMarches 21, marches 58 |
-| 316 Zela | 8 | 7 (Caesarian) | 1 (Pontic) | 6.5-3.3 | 19, 28 | **bottom 88%** | caesarMarches 8, marches 20 |
-| 317 Ruspina | 8 | 8 (Caesarian) | 0 (Numidian) | 5.0-1.6 | 13, 18 | **bottom 100%** | exits 7, leaderExits 3, caesarMarches 22 |
-| 318 Thapsus | 8 | 7 (Caesarian) | 1 (Pompeian) | 6.9-4.3 | 35, 51 | **bottom 88%** | caesarMarches 20, marches 71 |
-| 319 Munda | 8 | 7 (Caesarian) | 1 (Pompeian) | 7.9-4.5 | 32, 49 | **bottom 88%** | caesarMarches 41, marches 70 |
+| 313 Brindisi Raid | 8 | 1 (Caesarian) | 7 (Pompeian) | 2.3-5.9 | 21, 30 | **top 88%** | camps 16 (the ship markers: `camps` counts every capture), pilumShots 67, marches 94, ships 16 |
+| 314 Dyrrhachium | 8 | 5 (Caesarian) | 3 (Pompeian) | 4.5-4.0 | 24, 38 |  | exits 6, pilumShots 71, caesarMarches 21, marches 117 |
+| 315 Pharsalus | 8 | 8 (Caesarian) | 0 (Pompeian) | 7.0-3.1 | 21, 40 | **bottom 100%** | pilumShots 61, caesarMarches 21, marches 58 |
+| 316 Zela | 8 | 7 (Caesarian) | 1 (Pontic) | 6.5-3.3 | 19, 28 | **bottom 88%** | pilumShots 27, caesarMarches 8, marches 20 |
+| 317 Ruspina | 8 | 8 (Caesarian) | 0 (Numidian) | 5.0-1.6 | 13, 18 | **bottom 100%** | exits 7, pilumShots 19, caesarMarches 22, marches 21, leaderExits 3 |
+| 318 Thapsus | 8 | 7 (Caesarian) | 1 (Pompeian) | 6.9-4.3 | 35, 51 | **bottom 88%** | pilumShots 87, caesarMarches 20, marches 71 |
+| 319 Munda | 8 | 7 (Caesarian) | 1 (Pompeian) | 7.9-4.5 | 32, 49 | **bottom 88%** | pilumShots 64, caesarMarches 41, marches 70 |
+
+The counters column lists every Expansion #2 and #3 counter that was not zero in the battle (and `immobileMoves`, which
+must be 0). The base-game counters of the same runs (leaders killed, 77 in all; the war machines of 306, 308 and 314) are
+in the raw report and left out here, as in the Expansion #2 log.
 
 Bottom 105, top 47. Turn plans averaged 305 ms (max 746 ms) at half budget; the Numidian dice plans 69 ms (max 208 ms).
 No game came near the 200-turn cap (longest 56 turns, 305), every game had a winner, no answer was rejected and no AI
@@ -99,25 +106,26 @@ tables): **no data doubt was found**; every flagged battle has the hands, first 
 traits and units §20 and the survey give. Nine of the ten are Caesarian (or Roman) wins, and seven of those nine are
 Caesar's battles.
 
-* **Caesar's battles: 306 Bibracte, 307 Plain of Alsace, 315 Pharsalus, 316 Zela, 318 Thapsus, 319 Munda (7–1 or 8–0
-  for Caesar).** In each Caesar has 6 cards against 4 (5 at Thapsus), his +1 die and forced march (193 2-hex infantry
-  moves with him in all), Julian legions that throw the pilum and march, and a leader worth fighting under; all six were
-  Caesar's victories. Checked: 306 Helvetians 4 cards and first, 21 units against 17 Romans (2 immobile AX, `immobile`
-  only on those two), 7 banners, both camp captures `turnStart`/`remove`; 307 all plain, Romans first with 6 cards,
-  Germans 4, 7 banners; 315 Pompeians 4 cards and first, 20 units against 13, 3 Caesarian leaders (the spec's decision),
-  the seven steep hills and the marsh; 316 the Pontic army on tan blocks with no legion rule, 4 cards, the camp captures
-  both ways; 318 two Pompeian elephants, Juba's HI with the Julian rule, the marsh band and the sea; 319 the 19-hex ridge,
-  Caesarians first, 8 banners. The same pattern showed in Expansion #2 (215–218: 75–100% Roman). Where Caesar faces a
-  balanced setup the AI splits the games: 308 Gergovia 4–4, 309 Ilerda 4–4, 314 Dyrrhachium 5–3. Caesar fell in 5 of 80
-  games he played.
-* **310 Utica P1: the Caesarians win 8 of 8, in 10 turns on average.** The Numidians roll 2 order dice and use 1.4
-  of them a turn (44 faces used in 32 dice turns, every face that could order something used); the Caesarians play 6 cards
-  and move first. Their six horse units pick off the forward Numidian light cavalry (2 blocks each) and medium cavalry
-  before the dice side can pull them back, and 4 banners come in 2–3 Caesarian turns. The setup matches §20 and §18.10
-  (Numidian `cards: 0`, `orders: "dice"`, `orderDice: 2`; 13 Numidian against 6 Caesarian units; 4 banners; no legion
-  rule). The page frames the battle as solo play, the human commanding the Caesarians against the dice; between two equal
-  players it is not meant to be even. A note for the rules, not the data: the survey reads the flag face as "retreat a full
-  move", §18.10 as a retreat for one flag (**[Interp]**); for every unit in 310 but the cavalry the two are the same.
+* **Caesar's battles: 306 Bibracte, 307 Plain of Alsace, 315 Pharsalus, 316 Zela, 318 Thapsus, 319 Munda (7–1 or 8–0 for
+  Caesar).** In each Caesar has 6 cards against 4 (5 at Thapsus), his +1 die and forced march (123 2-hex infantry moves
+  with him in these six battles, 193 over all ten of his), Julian legions that throw the pilum and march, and a leader
+  worth fighting under; all six were Caesar's victories. Checked: 306 Helvetians 4 cards and first, 21 units against 17
+  Romans (2 immobile AX, `immobile` only on those two), 7 banners, both camp captures `turnStart`/`remove`; 307 all
+  plain, Romans first with 6 cards, Germans 4, 7 banners; 315 Pompeians 4 cards and first, 20 units against 13, 3
+  Caesarian leaders (the spec's decision), the seven steep hills and the marsh; 316 the Pontic army on tan blocks with
+  no legion rule, 4 cards, the camp captures both ways; 318 two Pompeian elephants, Juba's HI with the Julian rule, the
+  marsh band and the sea; 319 the 19-hex ridge, Caesarians first, 8 banners. The same pattern showed in Expansion #2
+  (215–218: 75–100% Roman). Where Caesar faces a balanced setup the AI splits the games: 308 Gergovia 4–4, 309 Ilerda
+  4–4, 314 Dyrrhachium 5–3. Caesar himself was killed in 5 of his 80 games; his side lost 16.
+* **310 Utica P1: the Caesarians win 8 of 8, in 10 turns on average.** The Numidians roll 2 order dice a turn and order
+  with about 1.2 of them (44 faces used over their 37 turns; 1.4 over the 32 turns whose roll could order a piece, and
+  every face that could order one was used); the Caesarians play 6 cards and move first. Their six horse units pick off
+  the forward Numidian light cavalry (2 blocks each) and medium cavalry before the dice side can pull them back, and 4
+  banners come in 2–3 Caesarian turns. The setup matches §20 and §18.10 (Numidian `cards: 0`, `orders: "dice"`,
+  `orderDice: 2`; 13 Numidian against 6 Caesarian units; 4 banners; no legion rule). The page frames the battle as solo
+  play, the human commanding the Caesarians against the dice; between two equal players it is not meant to be even. A
+  note for the rules, not the data: the survey reads the flag face as "retreat a full move", §18.10 as a retreat for one
+  flag (**[Interp]**); for every unit in 310 but the cavalry the two are the same.
 * **313 Brindisi Raid: the Pompeians win 7 of 8.** The Caesarians start with 2 cards (growing to 5 after three turns) and
   move second; the Pompeians hold 5 and move first, and their targets, the transports at (0,8)–(0,11), are guarded by four
   light units, while the Caesarian targets, the beaches at (0,0)–(0,3), lie behind the whole Pompeian army. Two ships a
@@ -146,15 +154,19 @@ Caesar's battles.
 * **304 Valentia** (5–3 Roman): no order mixed the two Sertorian commands (also checked in `tests/ai/exp3.test.ts`);
   `chooseCommand` came up 5 times. In the strength check the Tribune won 5 of 8 here, 1 of 4 as the Sertorians.
 * **303 Lauron** (6–2 Sertorian) and **312 Bagradas River** (6–2 Caesarian) are just inside the line.
+* **312 and 313 run against history.** Curio's army was destroyed at the Bagradas, yet the Caesarians win 6 of 8 there;
+  Antony drove Libo off at Brundisium, yet the Pompeians win 7 of 8 at 313. Neither looks like an AI fault (the moves and
+  counters are ordinary): it is a question for the scenario data (hands, setups, the 313 ramparts' facing), worth a second
+  look against the pages.
 
 ## New units and rules in play
 
 * **Dice orders (310):** the dice side judges its order assignment as a whole (every valid assignment, by the summed
   benefits the card orders use) and plans its turn like a card turn (the best assignments in the movement styles, played
-  out from the `diceOrders` decision); every face that could order something did (44 of 44). Of 26 flag and swords victims,
-  none took a blocked retreat or lost a last block. In 55 sampled 310 positions the evaluation alone (the rule switched
-  off) never preferred a blocked retreat, so the rule (no blocked retreat while a free one exists) only bites in constructed positions, such as a
-  unit holding an objective hex being the only one free to fall back.
+  out from the `diceOrders` decision); every face that could order something did (44 of 44). Of 26 flag and swords
+  victims, none took a blocked retreat or lost a last block. In 55 sampled 310 positions the evaluation alone (the rule
+  switched off) never preferred a blocked retreat, so the rule (no blocked retreat while a free one exists) only bites
+  in constructed positions, such as a unit holding an objective hex being the only one free to fall back.
 * **City walls (308, 309):** assaults on a defended wall are rare (2 in 16 games), as they should be: the estimate now
   includes the defender's first strike, the cap of 2 and its sword and flag ignores, and mounted units never planned one
   (`wallAssaultsMounted` 0). Foot on a wall stays there. Walls were climbed 12 times (9 in 308, where the Romans hold them
@@ -182,5 +194,6 @@ and #2 battles give the same 4526 answers and commentary before (`2389fd1`) and 
 * 310: a defensive style for a dice side (keep units out of reach until they can be ordered together) if the battle is to
   be played two-handed against the AI.
 * 313: whether the garrison's ramparts face the right way (the [Interp] above), with the scenario's author's intent.
+* 312 and 313, which the AI wins for the side that lost historically: a second look at their data against the pages.
 * Shared improvements left out to keep the earlier battles unchanged: a reach term for turn-start camp captures like the
   ship markers' (the threat of a unit stepping onto an undefended camp next turn).

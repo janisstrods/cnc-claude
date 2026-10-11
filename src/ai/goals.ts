@@ -178,8 +178,8 @@ function captureTerm(s: GameState, occ: Occ, o: ObjectiveOf<'capture'>, taken: r
 
 /**
  * Ship markers (313, §18.4), from the capturing side's point of view: each untaken marker no unit stands on that one of its
- * units (each counted once, nearest marker first) could step onto in its next turn (within its move, the march included)
- * is a share of a capture. A marker an enemy unit stands on is blocked until that unit is driven off: the defender values
+ * units could step onto in its next turn (within its move, the march included) is a share of a capture. Each unit counts
+ * once: the markers, in hex order, each take the first unit (in unit order) not yet taken that can reach them. A marker an enemy unit stands on is blocked until that unit is driven off: the defender values
  * standing on its ships, and on the raiders that close in on them. Expansion #3 only (camp captures have no such term).
  */
 function markerReach(s: GameState, occ: Occ, o: ObjectiveOf<'capture'>, taken: readonly HexId[]): number {

@@ -137,8 +137,9 @@ function exactResume(s: GameState): boolean {
 /**
  * Continue a turn that is in its movement or battle phase. Generators cannot be cloned, so the turn is restarted on
  * the cloned state with a no-op card (First Strike, which orders nothing) and the real card's modifiers are restored
- * before the first decision is answered; in battles with turn-start captures or Rolling Fire the engine's
- * `continueTurn` resumes it where it stands instead. `from = 'battle'` skips any remaining movement.
+ * before the first decision is answered; in battles with turn-start captures or Rolling Fire, and on the turn of a side
+ * with dice orders (310), the engine's `continueTurn` resumes it where it stands instead (`exactResume`). `from =
+ * 'battle'` skips any remaining movement.
  */
 export function resumeTurn(s: GameState, policy: Policy, rng: Rng, from: 'move' | 'battle'): boolean {
   if (exactResume(s)) return continueRun(s, policy, rng, from);
