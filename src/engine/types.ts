@@ -219,7 +219,8 @@ export type ObjectiveMarker = (typeof OBJECTIVE_MARKERS)[number];
 
 /**
  * A battle objective (§18.4), resolved from scenario data (`ObjectiveSetup` in setup.ts) with every default filled in.
- * Objectives give banners on top of eliminated units and leaders; only units count, never lone leaders.
+ * Objectives give banners on top of eliminated units and leaders; only units count, never lone leaders (except an `exit`
+ * with `leadersScore`, 317, where a leader stepping off the board scores too).
  * - `capture`: `side` takes each of `hexes` once (camps, or ramparts standing in for camps, 215): `when: 'stop'` = a unit
  *   ends its move or its close-combat sequence there; `'turnStart'` = a unit stands there at the start of that side's
  *   turn, before its card. The n-th capture scores `banners[n - 1]` permanent banners (the last value repeats);

@@ -121,6 +121,8 @@ describe('Expansion #3 battle list', () => {
       if (!st.legions) expect(text, id).not.toMatch(/legions \(/);
       if (!st.leaders.some((l) => l.traits?.length)) expect(text, id).not.toMatch(/^Caesar: /m);
       if (!st.objectives?.length) expect(text, id).not.toMatch(/banner, kept for good|hold 1 banner/);
+      // the battle picker shows who moves first; as in Expansion #2 the texts leave it out
+      expect(text, id).not.toMatch(/\bmoves? first\b/);
     }
   });
 

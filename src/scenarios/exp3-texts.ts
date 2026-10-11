@@ -15,7 +15,7 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     hint: 'Defend Rome; tear down the Samnite camps.',
   },
   '302': {
-    blurb: 'In 80 BC the Marian exile Quintus Sertorius returns to Spain and raises the Lusitanians and other local peoples against the regime Sulla has set up in Rome. Sulla\'s governor Lucius Fufidius tries to bar the way at the river Baetis (the Guadalquivir), but is beaten with heavy loss by the rebels, led in the field by Sertorius\' able quaestor Hirtuleius. The victory gives the rebels most of southern Spain, and a base from which they will defy Rome for the best part of a decade. Sulla\'s answer is to send out Metellus Pius, one of his best generals.',
+    blurb: 'In 80 BC the Marian exile Quintus Sertorius returns to Spain and raises the Lusitanians and other local peoples against the regime Sulla has set up in Rome. Sulla\'s governor Lucius Fufidius tries to bar the way at the river Baetis (the Guadalquivir), but Sertorius himself routs him there, and some two thousand of Fufidius\' Romans are killed. The victory gives the rebels most of southern Spain, and a base from which they will defy Rome for the best part of a decade. Sulla\'s answer is to send out Metellus Pius, one of his best generals.',
     specialText: [
       'Marian legions (both armies): medium and heavy infantry on both sides may throw the pilum: range 2, always 1 die, not after moving 2 hexes.',
       'The Baetis, down the left side of the field, is fordable everywhere. Two Sertorian light infantry start standing in it.',
@@ -23,13 +23,13 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     hint: 'Sertorians against a Sullan army at a ford.',
   },
   '303': {
-    blurb: "In 76 BC Pompey the Great, newly sent against Sertorius, lays siege to Lauron, a town in eastern Spain loyal to the rebel. Sertorius seizes a hill beside the Roman camp and has Herennius hide a force in the hills behind the Roman lines. While Pompey's attention is on the hill and his foragers are out in the fields, the hidden force falls on them from the rear. Hemmed in by his own siege works, Pompey can only watch as a legion and its baggage are cut to pieces and the town burns. It is one of the worst days of his career, and Sertorius is said to have promised to teach Sulla's pupil to look behind him.",
+    blurb: "In 76 BC Sertorius lays siege to Lauron, a town in eastern Spain, and the young Pompey the Great, newly sent against him, marches to its relief. Sertorius wins the race for a hill commanding the town and keeps a strong force in his old camp, ready to fall on Pompey's rear. When Pompey's foragers venture out to the distant fields, troops hidden nearby burst upon them, and the legion sent to their rescue is cut to pieces with its commander. Pompey, who had thought Sertorius trapped against the walls, dares not risk a battle and can only watch as Lauron surrenders and burns. It is one of the worst days of his career, and Sertorius is said to have promised to teach Sulla's pupil to look behind him.",
     specialText: [
       'Marian legions (both armies): medium and heavy infantry on both sides may throw the pilum: range 2, always 1 die, not after moving 2 hexes.',
       'Lauron, the four hexes of the town at the upper left, is impassable and blocks line of sight.',
       "Herennius' ambush force (two warriors, light infantry, two auxiliaries and Herennius) starts on the nine hills of the bottom-right corner, deep in the Roman half. It is an ordinary part of the Sertorian army: it can be ordered from the first turn, and it retreats towards the Sertorian (top) edge.",
     ],
-    hint: 'Pompey besieges a town; a hidden force strikes his rear.',
+    hint: 'Pompey relieves a town; a hidden force strikes his rear.',
   },
   '304': {
     blurb: 'In 75 BC Pompey marches against the Sertorian lieutenants Herennius and Perpenna, who have drawn up their army near Valentia on the eastern coast while Sertorius is busy elsewhere. In a hard day\'s fighting Pompey\'s legions win a crushing victory: Herennius is killed, thousands of his men fall, and the city of Valentia is razed. The defeat is a heavy blow to the Sertorian cause. It brings Sertorius hurrying east for a reckoning with Pompey at the Sucro.',
@@ -37,7 +37,6 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
       'Marian legions (both armies): medium and heavy infantry on both sides may throw the pilum: range 2, always 1 die, not after moving 2 hexes.',
       'Valentia, the four hexes of the town just right of centre, is impassable and blocks line of sight.',
       "Two Sertorian commands: Herennius' (grey blocks) and Perpenna's (light-blue blocks). Every card orders units of one command only, tactic cards such as Clash of Shields, Darken the Sky and Rally included; the player names the command when a card could order either. If that command has none of the troops a card names (no light units for Order Light Troops, say), the card orders 1 unit of that command instead. Each Sertorian leader belongs to his own command, so a Leadership card must use a leader of the command named. The Romans have no commands.",
-      'The Romans move first.',
     ],
     hint: 'Two Sertorian commands against Pompey.',
   },
@@ -46,7 +45,7 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     specialText: [
       'Marian legions (both armies): medium and heavy infantry on both sides may throw the pilum: range 2, always 1 die, not after moving 2 hexes.',
     ],
-    hint: 'Open ground; legions on both sides.',
+    hint: 'Hills on the Sertorian flanks; legions on both sides.',
   },
   '306': {
     blurb: 'In 58 BC the Helvetii, a Celtic people from what is now Switzerland, set out on a mass migration towards western Gaul, and the new governor Julius Caesar goes after them. Near Bibracte he draws up his four veteran legions on a hillside and posts two newly raised legions and the auxiliaries on the crest with the baggage. The Helvetii charge uphill and are thrown back, but their Boii and Tulingi allies swing round against the Roman flank and rear, and Caesar\'s third line turns to meet them. The fight lasts until nightfall and ends with the storming of the wagon fort in which the Helvetii make their last stand. The survivors were sent back to their homeland.',
@@ -60,7 +59,7 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     hint: 'Helvetii storm the ridge; raw recruits hold the camps.',
   },
   '307': {
-    blurb: 'Later in 58 BC Caesar turns on Ariovistus, the Suebian king who has settled his warriors in eastern Gaul at the expense of the local tribes. After a failed parley, Caesar threatens the German supply line and forces a battle on the plain between the Vosges and the Rhine. He leads the Roman right in a rapid charge; the Germans, packed too tightly to use their spears, are attacked by legionaries who clamber onto their locked shields and stab downwards. The Roman left gives way until the young Publius Crassus, commanding the cavalry, sends in the third line. The Germans break and are hunted for miles to the Rhine, which Ariovistus crosses in a small boat.',
+    blurb: 'Later in 58 BC Caesar turns on Ariovistus, the Suebian king who has settled his warriors in eastern Gaul at the expense of the local tribes. A parley ends when German horsemen attack Caesar\'s escort; Ariovistus then marches past the Roman camp to cut its supply line, but will not fight until Caesar advances on his camp and forces him out onto the plain between the Vosges and the Rhine. Caesar leads the Roman right; the two lines charge so fast that the legionaries have no time to throw their pila, and some leap onto the Germans\' locked shields to stab down from above. The Roman left gives way until the young Publius Crassus, commanding the cavalry, sends in the third line. The Germans break and are hunted for miles to the Rhine, which Ariovistus crosses in a small boat.',
     specialText: [
       'Julian legions (Roman side only): Roman medium and heavy infantry may throw the pilum (range 2, always 1 die, not after moving 2 hexes) and may march: move 2 hexes if they do not battle that turn. The Germans have no such units.',
       'Caesar: the unit he is attached to rolls 1 extra die in close combat, and an infantry unit that starts its move with him may move 2 hexes and still battle.',
@@ -87,11 +86,10 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     hint: 'Storm the heights and walls; reinforcements on both sides.',
   },
   '309': {
-    blurb: 'In 49 BC Caesar\'s Spanish campaign begins at Ilerda, where the Pompeian legates Afranius and Petreius hold a strong position beside the river Sicoris. Both sides try to seize a hillock between the town and Caesar\'s camp, in fierce fighting with heavy losses. Then floods wash away Caesar\'s bridges and cut his supplies, and for a time he is the one under siege. He restores his communications with boats, bridges the river and uses his cavalry to cut the Pompeians off from food and water as they try to retreat. Afranius and Petreius surrender without a pitched battle, and Caesar lets their men go home after disbanding them.',
+    blurb: 'In 49 BC Caesar\'s Spanish campaign begins at Ilerda, where the Pompeian legates Afranius and Petreius hold a strong position beside the river Sicoris. Both sides try to seize a hillock between the town and the Pompeian camp, in fierce fighting with heavy losses. Then floods wash away Caesar\'s bridges and cut his supplies, and for a time he is the one under siege. He restores his communications with boats, bridges the river and uses his cavalry to cut the Pompeians off from food and water as they try to retreat. Afranius and Petreius surrender without a pitched battle, and Caesar lets their men go home after disbanding them.',
     specialText: [
       'Julian legions (both armies): medium and heavy infantry on both sides may throw the pilum (range 2, always 1 die, not after moving 2 hexes) and may march: move 2 hexes if they do not battle that turn.',
       'Caesar: the unit he is attached to rolls 1 extra die in close combat, and an infantry unit that starts its move with him may move 2 hexes and still battle.',
-      'The Pompeians move first.',
       'The river down the right edge (nine hexes) is impassable.',
       'City walls: the three wall hexes of Ilerda at the top right (a Pompeian bowman and an auxiliary start on two of them) can be used only by foot units and lone leaders. A foot unit may step onto a wall only by a move that begins next to it, and that move ends there; a unit that starts on a wall moves at most 1 hex. Cavalry, chariots and war machines cannot enter a wall, and can attack a unit standing on one only if they began the turn next to it.',
       "Fighting on walls: any close combat in which either side stands on a wall hex is capped at 2 dice (card and leader bonus dice, Caesar's included, are added on top). A foot unit defending on a wall ignores 1 sword, may ignore 1 flag and may ignore 1 flag from missile fire, and it strikes first: it battles back before the attacker rolls, unless the attacker also stands on a wall.",
@@ -102,17 +100,17 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     hint: 'Walled town, hillock and two camps.',
   },
   '310': {
-    blurb: 'In 49 BC Caesar sends the young Gaius Curio to Africa with a small army to dislodge the Pompeian governor Attius Varus and his ally, King Juba of Numidia. Soon after landing, Curio sends his cavalry forward under his quaestor Marcius Rufus against Saburra, Juba\'s general, who has orders to hold the Romans in play and to look weak while the king brings his main army up. Numidian horse and light troops harass the Caesarian riders without ever committing to a decisive fight. It is the first move in a trap that will close at the Bagradas.',
+    blurb: 'In 49 BC Caesar sends the young Gaius Curio to Africa with two legions and five hundred horse to take the province from the Pompeian governor Attius Varus, who is backed by King Juba of Numidia. Curio is still fortifying a camp close to Utica, Varus\' base, when his pickets report a column of Juba\'s horse and foot marching to the town. He sends his cavalry ahead to meet it and hold it up while he brings his legions out of the works and forms them for battle. Caught strung out on the march, the royal troops give way before the legions are even deployed: most of the horsemen escape along the shore into Utica, but many of the foot are cut down. The scenario plays the cavalry\'s delaying action.',
     specialText: [
       'Dice orders: the Numidians have no cards, never draw and cannot play First Strike, and a Caesarian Counter Attack has no card to copy and does nothing. Instead, at the start of every Numidian turn they roll 2 order dice, and the Numidian player (human or computer) makes every choice for its own side.',
       'A flag makes the Numidians pick any one of their own units, which retreats as if hit by one flag (no flag may be ignored, and every hex it cannot take costs a block). Swords make them pick a unit that loses 1 block; units lost this way score banners for the Caesarians as usual.',
       'A green, blue or red face orders one unit of their choice of that class (light, medium or heavy) anywhere on the board; two equal faces order two different units, and a face with no eligible unit is lost. A helmet orders Saburra with his attached unit, or Saburra alone; a second helmet is lost.',
-      'The Caesarians have 6 cards and move first. The river from the top edge to the right edge (eight hexes) is impassable. No legion rules apply. Either side may be played by a human or the computer.',
+      'The Caesarians have 6 cards. The river from the top edge to the right edge (eight hexes) is impassable. No legion rules apply. Either side may be played by a human or the computer.',
     ],
     hint: 'Numidians roll dice instead of cards.',
   },
   '311': {
-    blurb: 'Curio\'s landing is followed by a second clash outside Utica, where the Pompeian governor Attius Varus brings his army out to give battle in the valley between two ridges. Curio\'s cavalry charges and drives the Pompeian horse back into their own foot; the army falls into confusion and flees to Utica with heavy losses. Curio, hailed as imperator by his men, goes on to besiege the town. The easy victory leaves him dangerously confident.',
+    blurb: 'Already hailed as imperator by his men after a first cavalry skirmish, Curio fears that his soldiers, who changed sides once at Corfinium, may be talked into changing back, and offers battle outside Utica. The Pompeian governor Attius Varus draws up facing him across a small, steep-sided valley that neither general will cross first. Varus\' horse and light troops ride down into it; Curio\'s cavalry and two cohorts drive the riders back and cut down the light troops left behind. Curio then leads his legions across the valley and up the far side, and the shaken Pompeians flee for their camp, many dying in the crush at the gates. Varus withdraws into Utica and Curio begins to wall it in; the easy victory leaves him dangerously confident.',
     specialText: [
       'Julian legions (both armies): medium and heavy infantry on both sides may throw the pilum (range 2, always 1 die, not after moving 2 hexes) and may march: move 2 hexes if they do not battle that turn.',
       'Escape of the horse: any Pompeian cavalry unit (light, medium or heavy cavalry, not chariots) on one of the two left-edge hexes at the middle of the field may leave the board as one hex of movement. It scores 1 banner, kept for good, and is removed without scoring for the Caesarians; an attached leader leaves with it.',
@@ -133,7 +131,6 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     blurb: 'In January 48 BC Caesar has slipped across the Adriatic with part of his army, leaving Mark Antony and Fufius Calenus at Brundisium to bring over the rest. Pompey\'s admiral Libo arrives with fifty ships, seals the harbour mouth and lands marines to seize the transports. Antony has to organise the defence with his men scattered, and the garrison gathers slowly behind the town\'s ramparts. The raid is beaten off, and Libo, short of fresh water, gives up the blockade.',
     specialText: [
       'Julian legions (both armies): medium and heavy infantry on both sides may throw the pilum (range 2, always 1 die, not after moving 2 hexes) and may march: move 2 hexes if they do not battle that turn.',
-      'The Pompeians move first.',
       'Hand growth: the Caesarians start with only 2 cards. At the end of each of their turns, while their hand size is below 5, they draw 2 cards instead of 1 and their hand size rises by 1 (2, 3, 4, 5); after that they draw 1 as usual.',
       'The sea hexes along the top edge are played as a ford: units stop on entering, close combat in or into them is capped at 2 dice and missile fire from them at 1.',
       'Ship markers: the four sea hexes at the top right hold Caesarian transports and the four at the top left Pompeian landing beaches (markers, not units: they block nothing). At the start of its turn, before its card, a side with a unit on an enemy marker takes it: 1 banner, kept for good, and the marker is removed. The Pompeians take the transports; the Caesarians take the beaches.',
@@ -198,7 +195,6 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     specialText: [
       'Julian legions (both armies): medium and heavy infantry on both sides may throw the pilum (range 2, always 1 die, not after moving 2 hexes) and may march: move 2 hexes if they do not battle that turn.',
       'Caesar: the unit he is attached to rolls 1 extra die in close combat, and an infantry unit that starts its move with him may move 2 hexes and still battle.',
-      'The Caesarians move first.',
       'The Pompeians hold a two-row ridge of nineteen hills across their side of the field.',
     ],
     hint: 'Veterans storm the Pompeian ridge.',

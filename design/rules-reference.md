@@ -612,7 +612,8 @@ Used by the Expansion #2 battles (§19) and the Expansion #3 battles (§20). Par
 ### 18.4 Battle objectives
 
 Scenario objectives give banners in addition to eliminated units and leaders. **Only units count** (never lone
-leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side wins as soon as its **banner total**
+leaders; the one exception is 317's leader exit, below, where a leader stepping off the board scores too), and a unit
+merely passing through a hex never counts (X2 Q9e). A side wins as soon as its **banner total**
 (permanent banners + banners currently held) reaches the target; losing a held banner later never undoes a win.
 
 * **Capture** (`capture`): hexes (usually enemy camps) a side can take once each.
@@ -816,7 +817,8 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
 * **Hill under a camp or wall** (308; data `hill: true` on a `camp` or `wall` hex; X3 Q6). The hex has both terrains.
   * It counts as a hill (`isHill` = hill terrain or a hill under it) for the close-combat hill caps (§4, either combatant's
     hex), for the "same connected hill" line-of-sight rule (§8) and for rule `veryHills` (§18.6; not used in 308), and as
-    a hill hexside in the steep slopes below. It does not change movement.
+    a hill hexside in the steep slopes below. It does not change movement otherwise: the camp or wall rules decide who
+    may enter it and how far, and only a steep slope (below) can bar the climb onto it.
   * The camp rules apply as well (−1 die, a foot unit ignores 1 sword and may ignore 1 flag, blocks line of sight) or the
     wall rules (above; its cap of 2 is never above a hill cap, so the hill changes no dice there).
   * **Camp −1 against the hill cap:** the engine's order (§4) takes the cap first, then the camp's −1; the site FAQ takes
@@ -1036,14 +1038,14 @@ army is pre-Marian: the Romans use red blocks drawn with the base `roman` look a
 
 ## 20. Expansion #3 battles (301–319)
 
-Banner targets, hands, first player and unit lists are scenario data (`src/scenarios/data/3xx.json`, imported from the
-verified hex-by-hex transcriptions in `design/exp3-data/`, with the transcription notes and the verifiers' report beside
-them; import decisions in `design/exp3-scenario-notes.md`); only rules are listed here, using the mechanics of §18 (decisions: `design/exp3-rulings.md`, "X3 Qn"; per-battle
-survey: `design/exp3-survey.md`). The four Epic battles (EPIC01–04) are out of scope: they need a separate two-board
-mode. In the civil-war battles the top army is on grey Roman blocks (`gry`) and the bottom army on red (`rom`), told apart
-in play by look as well as block colour; 306–308 have the Barbarians (green `bar`) on top, 316 the Pontic army on tan
-(`eas`). "Roman", "Caesarian", "Julian" and so on name armies and rules, not block colours: the legion rule is stated per
-side in the data (`legions`), never through the army's name.
+Banner targets, hands, first player and unit lists are scenario data (`src/scenarios/data/3xx.json`, imported from
+verified hex-by-hex transcriptions; the transcription notes and the verifiers' report are in `design/exp3-data/`, the
+import decisions in `design/exp3-scenario-notes.md`). Only rules are listed here, using the mechanics of §18 (decisions:
+`design/exp3-rulings.md`, "X3 Qn"; per-battle survey: `design/exp3-survey.md`). The four Epic battles (EPIC01–04) are
+out of scope: they need a separate two-board mode. In the civil-war battles the top army is on grey Roman blocks (`gry`)
+and the bottom army on red (`rom`), told apart in play by look as well as block colour; 306–308 have the Barbarians
+(green `bar`) on top, 316 the Pontic army on tan (`eas`). "Roman", "Caesarian", "Julian" and so on name armies and
+rules, not block colours: the legion rule is stated per side in the data (`legions`), never through the army's name.
 
 | # | Battle | Top army (blocks, look, hand) | Bottom army (blocks, look, hand) | Moves first | Banners | Legions |
 |---|---|---|---|---|---|---|
@@ -1092,7 +1094,8 @@ research where they differ):
 * **304 Valentia (75 BC):** Marius legions for both armies. Valentia, (3,7), (3,8), (4,7), (4,8), is an impassable town
   (`steep`, town art). **Two Sertorian commands** (§18.5, X3 Q16): Herennius' (grey blocks: MC, LS 2, LB, AX 3, MI 3 and
   Herennius) and Perpenna's (light-blue `grk` blocks: LC, MI 4 and Perpenna); each card is played for one chosen command;
-  both leaders carry a command. The Romans move first.
+  both leaders carry a command; rule `commandFallback`: a command without the type a card names orders 1 unit of its own.
+  The Romans move first.
 * **305 Sucro (75 BC):** Marius legions for both armies. Eleven empty hills (seven top left, four top right). No other
   rules.
 * **306 Bibracte (58 BC):** Julian legions for the Romans (the Helvetii have no MI or HI), Caesar (§18.3). **Immobile
@@ -1147,9 +1150,9 @@ research where they differ):
   (4,5)–(4,12), `faces: 'top'`, with three gaps on the left; nine hills in the bottom-right corner. Objective: `exit` for
   the Pompeians over the Caesarian left-section baseline **(8,0)–(8,4)**, any unit, 1 permanent banner, removed; the side
   edges do not count (Designer erratum, X3 Q12). The Pompeian army has **LI 2 and LB 1** (map).
-* **315 Pharsalus (48 BC):** Julian legions for both armies, Caesar. The seven hills along the top edge (six in the right corner and one at 0,6) are impassable
-  (`steep`); one marsh hex at (4,0). The Caesarians have **3 leaders** (map); their WA is a red Roman one standing behind
-  Caesar. No other rules.
+* **315 Pharsalus (48 BC):** Julian legions for both armies, Caesar. The seven hills along the top edge (six in the right
+  corner and one at 0,6) are impassable (`steep`); one marsh hex at (4,0). The Caesarians have **3 leaders** (map); their
+  WA is a red Roman one standing behind Caesar. No other rules.
 * **316 Zela (47 BC):** Julian legions for the **Romans only** (the Pontic MI 4 and HI 2 have none, X3 Q1), Caesar. The
   Pontic army is on tan blocks. Objectives: `capture` for both sides, `turnStart`, `remove`, 1 permanent banner per camp:
   the Caesarians over the three Pontic camps (0,5), (0,6), (0,8), the Pontic army over the Caesarian camp (8,5).
