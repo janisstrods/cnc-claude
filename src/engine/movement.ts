@@ -286,16 +286,17 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
 
 /**
  * Entry hexes for an ambush reserve (§18.5) in a section: the empty passable enemy-baseline hexes of the section (from the
- * owner's view), or, when the ambush has fixed entry hexes (308, §18.9), the empty ones of those whatever the section.
+ * owner's view; of every section when none is given), or, when the ambush has fixed entry hexes (308, §18.9), the empty
+ * ones of those whatever the section.
  */
-export function ambushEntryHexes(s: GameState, side: Side, section: SectionName): HexId[] {
+export function ambushEntryHexes(s: GameState, side: Side, section?: SectionName): HexId[] {
   const fixed = s.special.ambush?.entryHexes;
   if (fixed) return fixed.filter((h) => !isImpassable(s, h) && isEmptyHex(s, h));
   const row = baselineRow(other(side));
   const out: HexId[] = [];
   for (let c = 0; c < COLS; c++) {
     const h = hexId(row, c);
-    if (isImpassable(s, h) || !inSection(h, side, section) || !isEmptyHex(s, h)) continue;
+    if (isImpassable(s, h) || (section && !inSection(h, side, section)) || !isEmptyHex(s, h)) continue;
     out.push(h);
   }
   return out;

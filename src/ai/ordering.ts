@@ -1,6 +1,6 @@
 // Which pieces to order with a card: per-piece benefit estimates and candidate order sets for every order mode.
 import { CARD_DEFS, modsFor } from '../engine/cards';
-import { ambushAvailable, ambushSections } from '../engine/flow';
+import { ambushAvailable, ambushSectionChoices } from '../engine/flow';
 import { areAdjacent, inSection } from '../engine/hex';
 import { leaderMoves, unitMoves } from '../engine/movement';
 import { commandClash, commandModes, inCommand, leadershipChain, orderMode, validateOrders, type OrderMode } from '../engine/orders';
@@ -304,9 +304,10 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
   if (ambushAvailable(s, side, kind)) {
     // the ambush entry (Trebbia's Leadership cards, 206's Order Light Troops too): one candidate per section the card
     // allows, the same for every trigger card; the turn search plays each out (its benefit only labels it). With fixed
-    // entry hexes (308, §18.9) the section named changes nothing: a single candidate.
-    const secs = ambushSections(kind);
-    for (const sec of s.special.ambush?.entryHexes ? secs.slice(0, 1) : secs) res.push({ pieces: [], ambush: sec, benefit: AMBUSH_BENEFIT });
+    // entry hexes (308, §18.9) the section named changes nothing: a single candidate. Not `ambushChoices`, which offers
+    // nothing while every fixed entry hex is occupied: the AI keeps its candidate then (its search plays it out, no unit
+    // entering), so its choices stay as they were.
+    for (const sec of ambushSectionChoices(s, kind)) res.push({ pieces: [], ambush: sec, benefit: AMBUSH_BENEFIT });
     res = dedupe(res);
   }
   return res;

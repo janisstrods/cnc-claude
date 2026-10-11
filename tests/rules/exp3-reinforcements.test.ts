@@ -3,7 +3,8 @@
 // forced placement of an off-board unit at the start of the other side's next turn.
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  GameDriver, OFF_BOARD, ambushAvailable, ambushSectionAllowed, battleTargets, cloneState, createGame, pieceMoves, randomAnswer,
+  GameDriver, OFF_BOARD, ambushAvailable, ambushChoices, ambushSections, ambushEntryHexes, ambushSectionAllowed, ambushSectionChoices, battleTargets,
+  cloneState, createGame, pieceMoves, randomAnswer,
   type Answer, type CardKind, type Decision, type SectionName, type Side,
 } from '../../src/engine';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory } from '../../src/ai';
@@ -179,6 +180,28 @@ describe('reinforcements: fixed entry hexes (§18.9)', () => {
     must(d, { kind: 'orders', pieces: [], ambushSection: 'left' });
     expect(d.state.turn.ambushSection).toBe('left');
     expect(d.pending?.kind).toBe('move');
+  });
+
+  it('the choices worth offering: one section for any Leadership card, none while every entry hex is occupied', () => {
+    const s = build(gergovia());
+    for (const k of LEADERSHIP) expect([k, ambushSectionChoices(s, k), ambushChoices(s, 'top', k)]).toEqual([k, [ambushSections(k)[0]], [ambushSections(k)[0]]]);
+    expect([ambushChoices(s, 'top', 'order3C'), ambushChoices(s, 'bottom', 'leadershipAny')]).toEqual([[], []]);
+    // the entry hexes, whatever the section (or none named)
+    expect(ambushEntryHexes(s, 'top')).toEqual(hexes(ENTRY));
+    for (const sec of SECTIONS) expect(ambushEntryHexes(s, 'top', sec)).toEqual(hexes(ENTRY));
+    // every entry hex held by a unit or a leader: nothing to offer (the card's section is still accepted)
+    const full = build(gergovia({
+      units: [{ side: 'top', type: 'MI', at: [1, 6] }, { side: 'bottom', type: 'MI', at: [7, 8] }, { side: 'bottom', type: 'LI', at: [7, 10] },
+        ...ENTRY.slice(1).map((at) => ({ side: 'bottom' as Side, type: 'LI' as const, at }))],
+      leaders: [{ side: 'bottom', name: 'Legate', at: ENTRY[0] }],
+    }));
+    expect([ambushEntryHexes(full, 'top'), ambushChoices(full, 'top', 'leadershipAny')]).toEqual([[], []]);
+    expect([ambushAvailable(full, 'top', 'leadershipAny'), ambushSectionAllowed(full, 'leadershipAny', 'center')]).toEqual([true, true]);
+    // a baseline ambush (206): every section the card allows, its baseline hexes by section or all of them
+    const plain = build(gergovia({ ambush: { ...GERGOVIA_AMBUSH, entryHexes: undefined } }));
+    expect([ambushChoices(plain, 'top', 'inspiredR'), ambushChoices(plain, 'top', 'leadershipAny')]).toEqual([['right'], SECTIONS]);
+    const bySection = SECTIONS.flatMap((sec) => ambushEntryHexes(plain, 'top', sec));
+    expect(ambushEntryHexes(plain, 'top')).toEqual([...new Set(bySection)].sort((a, b) => a - b));
   });
 
   it('the units enter only on the listed hexes, wherever the section, and they order nothing else', () => {

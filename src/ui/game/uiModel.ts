@@ -487,7 +487,7 @@ export function fixedEntryHexes(s: GameState, side: Side, card: CardKind): HexId
  * (`ambushEntryHexes`, the same whatever the section); none for an ambush without fixed entry.
  */
 function freeEntryHexes(s: GameState, side: Side): HexId[] {
-  return s.special.ambush?.entryHexes ? ambushEntryHexes(s, side, 'center') : [];
+  return s.special.ambush?.entryHexes ? ambushEntryHexes(s, side) : [];
 }
 
 /** Tooltip line of an immobile unit (306, §18.11). */

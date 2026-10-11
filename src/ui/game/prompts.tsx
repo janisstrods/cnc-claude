@@ -2,7 +2,7 @@
 // explanation and the buttons; while the computer plays, what it is doing.
 import type { Dispatch, SetStateAction } from 'react';
 import {
-  CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, battleReady, battleTargets, cardKind, effectiveCard, eligiblePieces,
+  CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushChoices, battleReady, battleTargets, cardKind, effectiveCard, eligiblePieces,
   isLeaderId, leaderById, movablePieces, orderLimit, orderMode, pieceHex, pieceMoves, possessive, rollingFirePaths, selectionMode,
   unitById, validateDiceOrders, validateOrders,
   type Answer, type Decision, type DieFace, type GameState, type RetreatOption, type SectionName, type Side,
@@ -193,12 +193,11 @@ function ordersPrompt(c: PromptCtx, d: D<'orders'>): Prompt {
   const allUnits = n === 0 ? selectAllUnits(s, human, d.card) : null;
   if (allUnits) buttons.push(btn('Select all', () => setUi({ ...ui, orderSel: allUnits }), { variant: 'secondary' }));
   const amb = ambush ? ambushTexts(s, c.ambushLeader) : null;
-  // every fixed entry hex (308) is occupied: no unit could enter, so there is nothing to spend the card on
+  // every fixed entry hex (308) is occupied: no unit could enter, so there is nothing to spend the card on (no button)
   const noEntry = amb?.free === 0;
-  if (amb && !noEntry) {
+  if (amb) {
     // reinforcements with fixed entry hexes (308) enter whatever the section: one button (the engine still takes a section)
-    const secs = amb.fixed ? ambushSections(d.card).slice(0, 1) : ambushSections(d.card);
-    for (const sec of secs) {
+    for (const sec of ambushChoices(s, human, d.card)) {
       const label = amb.fixed ? amb.label : `${amb.label}: ${SECTION_LABEL[sec]}`;
       buttons.push(btn(label, () => c.answer({ kind: 'orders', pieces: [], ambushSection: sec }), { variant: 'secondary', key: `amb-${sec}`, title: amb.button }));
     }

@@ -908,7 +908,8 @@ The ambush reserve of §18.5 with three options (X3 Q6; the card-trigger and rel
   exists off the board (it is not one of the `reserves`).
 * Engine: `ambush.entryHexes` (`[r, c]` in the data, hex ids in `AmbushDef`; on the board, passable, each once, and not
   a city wall, which a unit from off the board could never climb): the empty ones (no unit, no leader) are the entry
-  hexes whatever the section, and `ambushSectionAllowed` accepts any section.
+  hexes whatever the section (`ambushEntryHexes`), and `ambushSectionAllowed` accepts any section. `ambushChoices` gives
+  the player one section to name, none while every entry hex is occupied (the AI keeps its single candidate then).
   `ambush.noMove`: an entry target has `dist` 0, so the unit's `moved` stays 0 (2 dice); it gets no further move that turn.
   `ambush.attachLeader` (needs a reserve leader): the leader is placed with an entered unit by a move during the movement
   (as Mago); if he is still off the board at its end and a unit of his force entered, `placeLeader` asks for one of their

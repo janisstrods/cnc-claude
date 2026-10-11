@@ -969,6 +969,26 @@ export function ambushSections(kind: CardKind): SectionName[] {
 }
 
 /**
+ * The sections worth naming when springing the ambush with a card of `kind`: the card's (`ambushSections`), or the first of
+ * them alone when the force has fixed entry hexes (308, §18.9), where the section changes nothing.
+ */
+export function ambushSectionChoices(s: GameState, kind: CardKind): SectionName[] {
+  const secs = ambushSections(kind);
+  return s.special.ambush?.entryHexes ? secs.slice(0, 1) : secs;
+}
+
+/**
+ * The ambush answers worth offering `side` for a card of `kind` (the sections to name, `ambushSectionChoices`): none when
+ * the ambush is not available, or when the force has fixed entry hexes (308) and every one is occupied, so no unit could
+ * enter. Answers outside them may still be accepted (`ambushSectionAllowed`).
+ */
+export function ambushChoices(s: GameState, side: Side, kind: CardKind): SectionName[] {
+  if (!ambushAvailable(s, side, kind)) return [];
+  if (s.special.ambush?.entryHexes && !ambushEntryHexes(s, side).length) return [];
+  return ambushSectionChoices(s, kind);
+}
+
+/**
  * Is `section` an accepted answer for springing the ambush with a card of `kind`? One of the card's sections
  * (`ambushSections`), or any section when the force has fixed entry hexes (308, §18.9: the section is still asked, but
  * it is irrelevant).
