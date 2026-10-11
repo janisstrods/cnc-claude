@@ -1,8 +1,7 @@
 // Retreat / evade / leader-evade path enumeration (rules-reference §9, §10, §11). Pure functions.
-import { rearHexes } from './hex';
+import { onBaseline, rearHexes } from './hex';
 import { attachedLeader, leaderAt, unitAt } from './query';
-import { isImpassable, steepSlopeUp, terrainAt } from './terrain';
-import { forbidsTerrain } from './units';
+import { closedTo, entryRollCount } from './terrain';
 import { OFF_BOARD, type GameState, type HexId, type Leader, type RetreatOption, type Unit } from './types';
 
 export interface ElephantRetreatOption extends RetreatOption {
@@ -10,13 +9,7 @@ export interface ElephantRetreatOption extends RetreatOption {
   blockers: { id: string; n: number }[];
 }
 
-function marshCount(s: GameState, path: HexId[]): number {
-  let n = 0;
-  for (const h of path) if (h >= 0 && terrainAt(s, h) === 'marsh') n++;
-  return n;
-}
-
-/** Keep minimal-loss options, one per end hex (fewest marsh hexes on the way). */
+/** Keep minimal-loss options, one per end hex (fewest marsh hexes on the way: `entryRollCount`). */
 function prune(s: GameState, opts: RetreatOption[]): RetreatOption[] {
   if (!opts.length) return opts;
   const minLoss = Math.min(...opts.map((o) => o.losses));
@@ -25,17 +18,9 @@ function prune(s: GameState, opts: RetreatOption[]): RetreatOption[] {
     if (o.losses !== minLoss) continue;
     const key = `${o.end}|${o.offBoard ? 1 : 0}`;
     const prev = byEnd.get(key);
-    if (!prev || marshCount(s, o.path) < marshCount(s, prev.path)) byEnd.set(key, o);
+    if (!prev || entryRollCount(s, o.path) < entryRollCount(s, prev.path)) byEnd.set(key, o);
   }
   return [...byEnd.values()];
-}
-
-/**
- * Impassable for this unit's retreat or evade step from `from` into `h`: impassable terrain, terrain its type may not enter
- * (§15 HWM; a city wall for mounted units and war machines, §18.7), or a steep slope up from a forest (308, §18.7).
- */
-function closedTo(s: GameState, u: Unit, from: HexId, h: HexId): boolean {
-  return isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || steepSlopeUp(s, from, h);
 }
 
 /** Retreat options for a (non-elephant) unit that must retreat `hexes` hexes toward its own side. */
@@ -49,7 +34,7 @@ export function retreatOptions(s: GameState, u: Unit, hexes: number): RetreatOpt
     }
     let moved = false;
     for (const h of rearHexes(cur, u.side)) {
-      if (closedTo(s, u, cur, h) || unitAt(s, h)) continue;
+      if (closedTo(s, u.type, cur, h) || unitAt(s, h)) continue;
       const l = leaderAt(s, h);
       if (l) {
         if (l.side !== u.side || hasLeader) continue;
@@ -80,7 +65,7 @@ export function elephantRetreatOptions(s: GameState, u: Unit, hexes: number): El
     let edgeBlocked = 0;
     const rears = rearHexes(cur, u.side);
     for (const h of rears) {
-      if (closedTo(s, u, cur, h)) { edgeBlocked++; continue; }
+      if (closedTo(s, u.type, cur, h)) { edgeBlocked++; continue; }
       const v = unitAt(s, h);
       if (v) { blockers.push(v.id); continue; }
       const l = leaderAt(s, h);
@@ -117,7 +102,7 @@ export function evadeOptions(s: GameState, u: Unit): RetreatOption[] {
   const hasLeader = !!attachedLeader(s, u);
   const two: RetreatOption[] = [];
   const one: RetreatOption[] = [];
-  const free = (from: HexId, h: HexId) => !closedTo(s, u, from, h) && !unitAt(s, h);
+  const free = (from: HexId, h: HexId) => !closedTo(s, u.type, from, h) && !unitAt(s, h);
   for (const h1 of rearHexes(u.hex, u.side)) {
     if (!free(u.hex, h1)) continue;
     const l1 = leaderAt(s, h1);
@@ -153,11 +138,11 @@ export function leaderEvadeOptions(s: GameState, l: Leader): RetreatOption[] {
   const out: RetreatOption[] = [];
   const walk = (cur: HexId, path: HexId[], escapes: string[], steps: number) => {
     if (steps === 3) return;
-    if (atBaseline(cur, l)) {
+    if (onBaseline(cur, l.side)) {
       out.push({ path: [...path, OFF_BOARD], end: OFF_BOARD, losses: 0, attachLeader: null, offBoard: true, escapes });
     }
     for (const h of rearHexes(cur, l.side)) {
-      if (isImpassable(s, h) || steepSlopeUp(s, cur, h)) continue;
+      if (closedTo(s, null, cur, h)) continue;
       const v = unitAt(s, h);
       const ldr = leaderAt(s, h);
       const np = [...path, h];
@@ -186,9 +171,4 @@ export function leaderEvadeOptions(s: GameState, l: Leader): RetreatOption[] {
     if (!prev || e < pe || (e === pe && o.path.length < prev.path.length)) best.set(key, o);
   }
   return [...best.values()];
-}
-
-function atBaseline(h: HexId, l: Leader): boolean {
-  const r = Math.floor(h / 13);
-  return l.side === 'top' ? r === 0 : r === 8;
 }

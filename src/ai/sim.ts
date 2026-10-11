@@ -4,7 +4,7 @@ import { continueTurn, turnFlow, type Gen } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
 import { orderDice } from '../engine/orders';
 import { other } from '../engine/query';
-import type { Answer, Decision, FlowCtx, GameState, HexId, Side } from '../engine/types';
+import { SIDES, type Answer, type Decision, type FlowCtx, type GameState, type HexId, type Side } from '../engine/types';
 import type { Rng } from './rand';
 
 export type Policy = (s: GameState, d: Decision) => Answer;
@@ -145,8 +145,8 @@ export function resumeTurn(s: GameState, policy: Policy, rng: Rng, from: 'move' 
   if (exactResume(s)) return continueRun(s, policy, rng, from);
   const side = s.active;
   const t = s.turn;
-  const saved = { mods: { ...t.mods }, card: t.card, effective: t.effective, mirrored: t.mirrored };
-  for (const sd of ['top', 'bottom'] as Side[]) {
+  const saved = { mods: { ...t.mods }, card: t.card, effective: t.effective };
+  for (const sd of SIDES) {
     const h = s.players[sd].hand;
     const i = h.indexOf(FIRST_STRIKE_ID);
     if (i >= 0) h.splice(i, 1);
@@ -168,7 +168,6 @@ export function resumeTurn(s: GameState, policy: Policy, rng: Rng, from: 'move' 
       st.turn.mods = { ...saved.mods };
       st.turn.card = saved.card;
       st.turn.effective = saved.effective;
-      st.turn.mirrored = saved.mirrored;
     }
     if (from === 'battle' && d.kind === 'move' && d.stage === 1) return { kind: 'endMove' };
     return policy(st, d);

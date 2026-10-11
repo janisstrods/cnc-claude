@@ -3,6 +3,7 @@
 import { bannerTotal } from '../engine/banners';
 import { cardKind, sectionOrders } from '../engine/cards';
 import { closeCombatDice, retreatPerFlag } from '../engine/combat';
+import { mayAttackInto, wallStrikesFirst } from '../engine/flow';
 import { nextCaptureBanners, stopCaptureAt } from '../engine/objectives';
 import { baselineRow, neighbours, rowOf, sectionsOf } from '../engine/hex';
 import {
@@ -12,16 +13,16 @@ import {
 import { attachedLeader, leaderById, other, unitById } from '../engine/query';
 import { elephantRetreatOptions, retreatOptions, type ElephantRetreatOption } from '../engine/retreat';
 import { rangeOf } from '../engine/elites';
-import { terrainAt } from '../engine/terrain';
-import { UNIT_STATS, bonusCombatEligible, escapeDice, forestFighter } from '../engine/units';
+import { entryRollCount, hasEntryRoll, mayBattleAfterEntering, terrainAt } from '../engine/terrain';
+import { UNIT_STATS, bonusCombatEligible, escapeDice } from '../engine/units';
 import {
   OFF_BOARD, type Answer, type Decision, type DieFace, type GameState, type HexId, type RetreatOption, type Side, type Unit,
 } from '../engine/types';
-import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist, isWarMachine, mayCloseCombat } from './board';
+import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist, isWarMachine } from './board';
 import { pAnyHelmet } from './dice';
 import {
   attackAnswer, attackNowValue, attackOptions, closeAttackEV, closeProfile, dmgValue, evadeEV, leaderAttackEV, momentumValue, standEV,
-  strikeValue, wallStandEV, wallStrikesFirst, type AttackOpt,
+  strikeValue, wallStandEV, type AttackOpt,
 } from './estimate';
 import { battered, evaluate } from './evaluate';
 import { pieceBenefits } from './ordering';
@@ -303,7 +304,7 @@ function retreatValue(s: GameState, u: Unit, o: RetreatOption, W: Weights, next:
       }
     }
   }
-  for (const h of o.path) if (h >= 0 && terrainAt(s, h) === 'marsh') v -= blockVal(u) / 6;
+  for (const h of o.path) if (h >= 0 && hasEntryRoll(s, h)) v -= blockVal(u) / 6;
   return v;
 }
 
@@ -365,7 +366,7 @@ export function chooseLeaderEvade(s: GameState, d: D<'leaderEvade'>, W: Weights)
       const e = unitById(s, id);
       if (e) surv *= 1 - pAnyHelmet(escapeDice(e));
     }
-    for (const h of o.path) if (h >= 0 && terrainAt(s, h) === 'marsh') surv *= 5 / 6;
+    for (const h of o.path) if (h >= 0 && hasEntryRoll(s, h)) surv *= 5 / 6;
     if (!o.offBoard && !o.attachLeader) surv *= survivesActiveTurn(s, l, o.end, from);
     l.hex = o.offBoard ? OFF_BOARD : o.end;
     let v = evaluate(s, l.side, next, W);
@@ -425,12 +426,7 @@ export function chooseIgnoreFlags(s: GameState, d: D<'ignoreFlags'>, W: Weights)
 
 function bonusEligibleAt(s: GameState, u: Unit, hex: HexId, hasLeader: boolean): boolean {
   if (s.turn.mods.noClose) return false;
-  const st = UNIT_STATS[u.type];
-  let ok = bonusCombatEligible(st, hasLeader);
-  const t = terrainAt(s, hex);
-  if (t === 'forest' && !forestFighter(u.type)) ok = false;
-  if (t === 'broken' && st.mounted) ok = false;
-  return ok;
+  return bonusCombatEligible(UNIT_STATS[u.type], hasLeader) && mayBattleAfterEntering(u.type, terrainAt(s, hex));
 }
 
 /** Best bonus-combat value available to unit u at its current hex. */
@@ -440,7 +436,7 @@ function bestBonusHere(s: GameState, u: Unit, W: Weights): number {
   let best = 0;
   const start = s.turn.ordered[u.id]?.startHex ?? OFF_BOARD;
   for (const h of neighbours(u.hex)) {
-    if (!mayCloseCombat(s, u, h, start)) continue; // not across a steep slope; a wall only from where it began (§18.7)
+    if (!mayAttackInto(s, u, h, start)) continue; // not across a steep slope; a wall only from where it began (§18.7)
     const v = occ.unit[h];
     if (v) {
       if (v.side !== u.side) best = Math.max(best, closeAttackEV(s, occ, u, v, 'bonus', true, W).ev);
@@ -491,7 +487,7 @@ export function chooseMomentum(s: GameState, d: D<'momentum'>, W: Weights, bonus
   if (!u) return false;
   const stay = valueAt(s, u, u.hex, W, false, false) + campBanner(s, u, u.hex);
   let adv = valueAt(s, u, d.hex, W, bonusPossible, bonusPossible) + campBanner(s, u, d.hex);
-  if (terrainAt(s, d.hex) === 'marsh') adv -= blockVal(u) / 6;
+  if (hasEntryRoll(s, d.hex)) adv -= blockVal(u) / 6;
   if (adv >= WIN_SCORE / 2 && adv > stay) return true;
   if (stay >= WIN_SCORE / 2) return false;
   return adv + W.momentumBias > stay;
@@ -504,7 +500,7 @@ export function chooseCavalryExtra(s: GameState, d: D<'cavalryExtra'>, W: Weight
   let bestV = valueAt(s, u, u.hex, W, true, false) + campBanner(s, u, u.hex);
   for (const h of d.options) {
     let v = valueAt(s, u, h, W, true, false) + campBanner(s, u, h);
-    if (terrainAt(s, h) === 'marsh') v -= blockVal(u) / 6;
+    if (hasEntryRoll(s, h)) v -= blockVal(u) / 6;
     if (v > bestV + 0.005) {
       bestV = v;
       best = h;
@@ -839,12 +835,6 @@ export function chooseCommandIndex(s: GameState, d: D<'chooseCommand'>, W: Weigh
 // quick versions for simulations (no full evaluations)
 // ---------------------------------------------------------------------------
 
-function marshCount(s: GameState, path: HexId[]): number {
-  let n = 0;
-  for (const h of path) if (h >= 0 && terrainAt(s, h) === 'marsh') n++;
-  return n;
-}
-
 export function quickRetreat(s: GameState, d: D<'retreat'>): number {
   if (d.options.length <= 1) return 0;
   const u = unitById(s, d.unit);
@@ -855,7 +845,7 @@ export function quickRetreat(s: GameState, d: D<'retreat'>): number {
   let bestV = -Infinity;
   d.options.forEach((o, i) => {
     let v = -0.12 * enemyUnitsAdjacent(occ, o.end, u.side) + 0.03 * Math.min(2, friendlyUnitsAdjacentExcept(occ, o.end, u)) -
-      0.05 * marshCount(s, o.path) - retreatLoss(s, u, o, d.reason === 'evade') * 0.3;
+      0.05 * entryRollCount(s, o.path) - retreatLoss(s, u, o, d.reason === 'evade') * 0.3;
     if (o.attachLeader) v += 0.05;
     const eo = o as ElephantRetreatOption;
     if (eo.blockers) for (const bl of eo.blockers) {
@@ -893,7 +883,7 @@ export function quickLeaderEvade(s: GameState, d: D<'leaderEvade'>): number {
       const e = unitById(s, id);
       if (e) surv *= 1 - pAnyHelmet(escapeDice(e));
     }
-    surv *= Math.pow(5 / 6, marshCount(s, o.path));
+    surv *= Math.pow(5 / 6, entryRollCount(s, o.path));
     let v = surv - (1 - surv) * 5;
     if (o.offBoard) v -= 0.35;
     else {
@@ -931,7 +921,7 @@ export function quickMomentum(s: GameState, d: D<'momentum'>, W: Weights): boole
   if (campBanner(s, u, d.hex) > 0) return true;
   const r = d.bonus ? { bonus: 0, enemies: enemyUnitsAdjacent(new Occ(s), d.hex, u.side) } : bonusAt(s, u, d.hex, W);
   if (r.bonus > W.bonusThreshold + 0.02) return true;
-  if (battered(u) || terrainAt(s, d.hex) === 'marsh') return false;
+  if (battered(u) || hasEntryRoll(s, d.hex)) return false;
   return r.enemies <= 1 && W.momentumBias >= 0;
 }
 
@@ -944,7 +934,7 @@ export function quickCavalryExtra(s: GameState, d: D<'cavalryExtra'>, W: Weights
   let best: HexId | null = null;
   let bestV = bestBonusHere(s, u, W) + 0.03;
   for (const h of d.options) {
-    if (terrainAt(s, h) === 'marsh') continue;
+    if (hasEntryRoll(s, h)) continue;
     const r = bonusAt(s, u, h, W);
     const v = r.bonus - (battered(u) ? 0.1 * r.enemies : 0);
     if (v > bestV) {

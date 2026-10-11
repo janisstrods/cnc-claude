@@ -14,9 +14,11 @@ export * from './objectives';
 export * from './orders';
 export * from './combat';
 export * from './retreat';
+export * from './text';
 export {
   gameFlow, turnFlow, nextTurn, battleTargets, closeTargets, pieceMoves, movablePieces, battleReady, ambushAvailable, ambushSections,
-  ambushSectionAllowed, placementOptions, rollingFirePaths, rollingFireRoutes, isRollingFirePath, continueTurn,
+  ambushSectionAllowed, placementOptions, rollingFirePaths, rollingFireRoutes, isRollingFirePath, continueTurn, answerError, pendingCharge,
+  mayAttackInto, wallStrikesFirst, newOrderedPiece,
 } from './flow';
 export type { BattleTarget, Gen } from './flow';
 export * from './driver';

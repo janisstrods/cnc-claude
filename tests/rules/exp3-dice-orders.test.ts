@@ -305,7 +305,7 @@ describe('cards: the dice side never draws or plays one (§18.10)', () => {
     const card = giveCard(d.state, 'bottom', 'counterAttack');
     forceDice(['heavy', 'heavy']); // the next Numidian roll
     must(d, { kind: 'playCard', card });
-    expect(d.state.turn.side).toBe('top'); // the Caesarian turn went by with no orders
+    expect(d.state.active).toBe('top'); // the Caesarian turn went by with no orders
     expect(d.pending).toEqual({ kind: 'diceOrders', side: 'top', faces: ['heavy', 'heavy'] });
   });
 

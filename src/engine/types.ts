@@ -2,7 +2,9 @@
 // Everything here is plain serialisable data (no functions, no classes). The id lists (BLOCKS, ARMY_LOOKS,
 // SPECIAL_RULE_IDS) are the source of their types and let setup validate scenario data.
 
-export type Side = 'top' | 'bottom';
+/** Both sides, top first. */
+export const SIDES = ['top', 'bottom'] as const;
+export type Side = (typeof SIDES)[number];
 
 export type UnitType = 'LI' | 'LB' | 'LS' | 'AX' | 'WA' | 'MI' | 'HI' | 'LC' | 'MC' | 'HC' | 'EL' | 'HCH' | 'LBC' | 'CAM' | 'HWM' | 'BCH';
 export type UnitClass = 'light' | 'medium' | 'heavy';
@@ -49,7 +51,9 @@ export const ARMY_LOOKS = [
 /** Army look: the figure kit and palette an army is drawn with (see src/art/palettes.ts). */
 export type ArmyLook = (typeof ARMY_LOOKS)[number];
 
-export type SectionName = 'left' | 'center' | 'right';
+/** The three sections, left to right from a side's own point of view. */
+export const SECTIONS = ['left', 'center', 'right'] as const;
+export type SectionName = (typeof SECTIONS)[number];
 
 export type DieFace = 'light' | 'medium' | 'heavy' | 'leader' | 'flag' | 'swords';
 
@@ -170,10 +174,8 @@ export type TurnPhase = 'card' | 'orders' | 'move' | 'battle' | 'move2' | 'draw'
 
 export interface TurnState {
   number: number; // 1-based global turn counter
-  side: Side;
   card: number | null; // card instance played
   effective: CardKind | null; // card kind actually executed (Counter Attack resolves to a copy)
-  mirrored: boolean; // Counter Attack of a section/inspired card swaps left/right
   phase: TurnPhase;
   ordered: Record<string, OrderedPiece>;
   mods: OrderMods;
@@ -418,7 +420,6 @@ export interface GameState {
   winner: Side | 'draw' | null;
   winReason: string;
   special: ScenarioSpecial;
-  nextId: number;
 }
 
 // ---------------------------------------------------------------------------

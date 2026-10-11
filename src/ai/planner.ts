@@ -2,14 +2,12 @@
 // with the engine's own turn generator, evaluated statically, and compared (minus the value of keeping the card).
 import { bannerTotal } from '../engine/banners';
 import { cardKind } from '../engine/cards';
-import { continueTurn, nextTurn, pieceMoves, turnFlow, type Gen } from '../engine/flow';
+import { continueTurn, newOrderedPiece, nextTurn, pieceMoves, turnFlow, type Gen } from '../engine/flow';
 import { diceOrdered } from '../engine/orders';
-import { isLeaderId, leaderById, other, unitById } from '../engine/query';
+import { other } from '../engine/query';
 import { forcedDiceLeft } from '../engine/rng';
 import { cloneState } from '../engine/setup';
-import {
-  OFF_BOARD, type Answer, type CardKind, type Decision, type FlowCtx, type GameState, type HexId, type SectionName, type Side,
-} from '../engine/types';
+import type { Answer, CardKind, Decision, FlowCtx, GameState, HexId, SectionName, Side } from '../engine/types';
 import { cardRetention, quickCardScore } from './cardsense';
 import { attackAnswer, attackOptions, sameAttack } from './estimate';
 import { evaluate } from './evaluate';
@@ -137,7 +135,7 @@ export function candMean(c: Cand): number {
   return c.n ? c.sum / c.n : -Infinity;
 }
 
-export function candScore(c: Cand, ctx: PlanCtx): number {
+export function candScore(c: Cand): number {
   let m = candMean(c);
   if (c.laN > 0) m = 0.5 * m + 0.5 * (c.laSum / c.laN);
   return m - c.retention;
@@ -149,14 +147,7 @@ export function candScore(c: Cand, ctx: PlanCtx): number {
  * movement (`continueTurn`).
  */
 export function applyDiceOrders(s: GameState, ids: (string | null)[]): void {
-  for (const id of diceOrdered(s, ids)) {
-    const isLeader = isLeaderId(id);
-    const hex = isLeader ? leaderById(s, id)?.hex ?? OFF_BOARD : unitById(s, id)?.hex ?? OFF_BOARD;
-    s.turn.ordered[id] = {
-      id, isLeader, startHex: hex, moved: 0, moveDone: false, move2Done: false, battlesLeft: isLeader ? 0 : s.turn.mods.shots,
-      canBattle: true, mustBattle: false, enteredHexThisTurn: false, attachedThisTurn: false,
-    };
-  }
+  for (const id of diceOrdered(s, ids)) s.turn.ordered[id] = newOrderedPiece(s, id);
 }
 
 /** Steps the engine generator on a private clone (the turn from its card, or `start`'s generator on the clone). */
@@ -442,7 +433,7 @@ function sampleTo(root: GameState, ctx: PlanCtx, cands: Cand[], n: number): void
 }
 
 /** Paired comparison over common seeds: is the gap between a and b smaller than 2.5 standard errors? */
-function closeCall(a: Cand, b: Cand, ctx: PlanCtx): boolean {
+function closeCall(a: Cand, b: Cand): boolean {
   const m = Math.min(a.vals.length, b.vals.length);
   if (m < 4) return true;
   let sum = 0;
@@ -469,8 +460,8 @@ function settled(c: Cand): boolean {
  * budget while rivals cut by the halving after a few unlucky rolls are never sampled again.
  */
 export function closeRivals(lead: Cand, cands: Cand[], ctx: PlanCtx): Cand[] {
-  const byScore = (a: Cand, b: Cand) => candScore(b, ctx) - candScore(a, ctx);
-  return [...cands].sort(byScore).filter((c) => c !== lead && c.n > 0 && !settled(c) && closeCall(lead, c, ctx)).slice(0, 2);
+  const byScore = (a: Cand, b: Cand) => candScore(b) - candScore(a);
+  return [...cands].sort(byScore).filter((c) => c !== lead && c.n > 0 && !settled(c) && closeCall(lead, c)).slice(0, 2);
 }
 
 /**
@@ -479,12 +470,12 @@ export function closeRivals(lead: Cand, cands: Cand[], ctx: PlanCtx): Cand[] {
  * deterministic mode holds).
  */
 function topUp(root: GameState, ctx: PlanCtx, cands: Cand[], pool: Cand[]): Cand[] {
-  const byScore = (a: Cand, b: Cand) => candScore(b, ctx) - candScore(a, ctx);
+  const byScore = (a: Cand, b: Cand) => candScore(b) - candScore(a);
   pool.sort(byScore);
   const lead0 = pool[0];
   for (const c of cands) {
     if (pool.includes(c) || timeUp(ctx)) continue;
-    if (c.n > 0 && candScore(c, ctx) > candScore(lead0, ctx)) {
+    if (c.n > 0 && candScore(c) > candScore(lead0)) {
       sampleTo(root, ctx, [c], lead0.n);
       pool.push(c);
     }
@@ -558,7 +549,7 @@ export function planTurn(root: GameState, ctx: PlanCtx): PlanResult {
   sampleTo(root, ctx, cands, cfg.k0);
   // Stage B: widen the most promising cards with more order sets and movement styles.
   const ranked = [...byKind.keys()]
-    .map((k) => ({ k, sc: Math.max(...cands.filter((c) => c.kind === k).map((c) => candScore(c, ctx))) }))
+    .map((k) => ({ k, sc: Math.max(...cands.filter((c) => c.kind === k).map((c) => candScore(c))) }))
     .sort((a, b) => b.sc - a.sc)
     .slice(0, cfg.topCards);
   const fresh: Cand[] = [];
@@ -581,7 +572,7 @@ export function planTurn(root: GameState, ctx: PlanCtx): PlanResult {
   }
   sampleTo(root, ctx, fresh, cfg.k0);
   // Stage B2: perturbed movement plans for the two leading (card, orders) pairs.
-  let pool = [...cands].sort((a, b) => candScore(b, ctx) - candScore(a, ctx));
+  let pool = [...cands].sort((a, b) => candScore(b) - candScore(a));
   const extra: Cand[] = [];
   for (let i = 0; i < cfg.extraVariants && pool.length && !timeUp(ctx); i++) {
     const lead = pool[i % Math.min(2, pool.length)];
@@ -599,18 +590,18 @@ export function planTurn(root: GameState, ctx: PlanCtx): PlanResult {
   }
   sampleTo(root, ctx, extra, cfg.k0);
   // Stage C: successive halving.
-  pool = [...cands].sort((a, b) => candScore(b, ctx) - candScore(a, ctx));
+  pool = [...cands].sort((a, b) => candScore(b) - candScore(a));
   let k = cfg.k0;
   while (!timeUp(ctx) && pool.length > 2 && k < cfg.kMax) {
     pool = pool.slice(0, Math.max(2, Math.ceil(pool.length / 2)));
     k = Math.min(k * 2, cfg.kMax);
     sampleTo(root, ctx, pool, k);
-    pool.sort((a, b) => candScore(b, ctx) - candScore(a, ctx));
+    pool.sort((a, b) => candScore(b) - candScore(a));
   }
   if (pool.length >= 2 && !timeUp(ctx)) {
     pool = pool.slice(0, Math.min(3, pool.length));
     sampleTo(root, ctx, pool.slice(0, 2), cfg.kMax);
-    pool.sort((a, b) => candScore(b, ctx) - candScore(a, ctx));
+    pool.sort((a, b) => candScore(b) - candScore(a));
   }
   if (cfg.topUp > 0 && pool.length) pool = topUp(root, ctx, cands, pool);
   // Local refinement of the leading plan (consul).
@@ -623,9 +614,9 @@ export function planTurn(root: GameState, ctx: PlanCtx): PlanResult {
       if (cands.length > before) refs.push(cands[cands.length - 1]);
     }
     sampleTo(root, ctx, refs, cfg.k0);
-    const top = refs.sort((a, b) => candScore(b, ctx) - candScore(a, ctx)).slice(0, 3);
+    const top = refs.sort((a, b) => candScore(b) - candScore(a)).slice(0, 3);
     sampleTo(root, ctx, top, Math.max(cfg.k0, lead.n));
-    pool = [...pool, ...top].sort((a, b) => candScore(b, ctx) - candScore(a, ctx));
+    pool = [...pool, ...top].sort((a, b) => candScore(b) - candScore(a));
   }
   // 2-ply check of the finalists (consul).
   if (cfg.lookahead > 0 && now() < ctx.deadline) {
@@ -638,14 +629,14 @@ export function planTurn(root: GameState, ctx: PlanCtx): PlanResult {
     const done = fin.filter((c) => c.laN >= 3);
     if (done.length >= 2) {
       for (const c of fin) if (c.laN < 3) { c.laN = 0; c.laSum = 0; }
-      pool = [...done].sort((a, b) => candScore(b, ctx) - candScore(a, ctx));
+      pool = [...done].sort((a, b) => candScore(b) - candScore(a));
     } else for (const c of fin) { c.laN = 0; c.laSum = 0; }
   }
-  const all = [...cands].sort((a, b) => candScore(b, ctx) - candScore(a, ctx));
+  const all = [...cands].sort((a, b) => candScore(b) - candScore(a));
   let best = pool[0] ?? all[0];
   if (cfg.evalNoise > 0 || cfg.pickTemp > 0) {
     // Recruit: noisy judgement and a softmax pick among the top plans.
-    const top = all.slice(0, 4).map((c) => ({ c, v: candScore(c, ctx) + cfg.evalNoise * ctx.rng.normal() }));
+    const top = all.slice(0, 4).map((c) => ({ c, v: candScore(c) + cfg.evalNoise * ctx.rng.normal() }));
     const mx = Math.max(...top.map((t) => t.v));
     const ws = top.map((t) => Math.exp((t.v - mx) / Math.max(0.01, cfg.pickTemp)));
     let r = ctx.rng.next() * ws.reduce((a, x) => a + x, 0);
@@ -720,7 +711,7 @@ export function planDiceTurn(root: GameState, assignments: DiceAssignment[], ctx
   for (const a of top) add(buildDiceCand(root, ctx, a, variants(ctx.W, 1)[0]));
   sampleTo(root, ctx, cands, cfg.k0);
   // Stage B: the other movement styles (and strike first) for the two leading assignments
-  const byScore = (x: Cand, y: Cand) => candScore(y, ctx) - candScore(x, ctx);
+  const byScore = (x: Cand, y: Cand) => candScore(y) - candScore(x);
   const lead = [...cands].sort(byScore).slice(0, 2);
   const fresh: Cand[] = [];
   for (const c of lead) {

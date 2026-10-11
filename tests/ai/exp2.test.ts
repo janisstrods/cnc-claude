@@ -34,7 +34,6 @@ const position = positionBuilder({ top: GAUL, bottom: ROMAN, banners: 6, seed: 7
 /** Order unit `id` for the battle phase (not moved, one battle left) under card `kind`. */
 function battleReady(s: GameState, side: Side, ids: string[], kind: Parameters<typeof cardRetention>[2] = 'order2C') {
   s.active = side;
-  s.turn.side = side;
   s.turn.effective = kind;
   s.turn.phase = 'battle';
   for (const id of ids) {

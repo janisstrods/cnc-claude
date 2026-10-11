@@ -1,10 +1,11 @@
 // Card knowledge: how valuable it is to keep a card in hand for later, and a quick estimate of what a card can do now.
+import { CARD_DEFS, sectionOrders } from '../engine/cards';
 import { ambushAvailable } from '../engine/flow';
 import { inSection } from '../engine/hex';
 import { leaderHas, leadersOf, unitsOf } from '../engine/query';
 import { canShoot, hasPilum } from '../engine/elites';
 import { UNIT_STATS } from '../engine/units';
-import type { CardKind, GameState, SectionName, Side, Unit } from '../engine/types';
+import { SECTIONS, type CardKind, type GameState, type SectionName, type Side, type Unit } from '../engine/types';
 import { areAdjacent } from '../engine/hex';
 import { rallyCandidates, spartacusDiceCount } from '../engine/orders';
 import { hexDist } from './board';
@@ -32,11 +33,13 @@ function pilumThrowers(units: Unit[]): number {
   return n;
 }
 
-const SECTION_OF: Partial<Record<CardKind, [SectionName, number]>> = {
-  order2L: ['left', 2], order2C: ['center', 2], order2R: ['right', 2],
-  order3L: ['left', 3], order3C: ['center', 3], order3R: ['right', 3],
-  order4L: ['left', 4], order4C: ['center', 4], order4R: ['right', 4],
-};
+/** The section cards that order in one section (order2L … order4R): that section and the orders, from `sectionOrders`. */
+const SECTION_OF: Partial<Record<CardKind, [SectionName, number]>> = {};
+for (const kind of Object.keys(CARD_DEFS) as CardKind[]) {
+  const counts = sectionOrders(kind);
+  const secs = counts ? (Object.keys(counts) as SectionName[]) : [];
+  if (secs.length === 1) SECTION_OF[kind] = [secs[0], counts![secs[0]]!];
+}
 
 /** Value (in banners) of keeping this card for a later turn. */
 export function cardRetention(s: GameState, side: Side, kind: CardKind, W: Weights): number {
@@ -111,7 +114,7 @@ export function quickCardScore(s: GameState, side: Side, kind: CardKind, ben: Ma
     case 'outFlanked':
       return topN(units.filter((u) => inSection(u.hex, side, 'left')), 2) + topN(units.filter((u) => inSection(u.hex, side, 'right')), 2);
     case 'coordinated':
-      return (['left', 'center', 'right'] as SectionName[]).reduce((a, x) => a + topN(units.filter((u) => inSection(u.hex, side, x)), 1), 0);
+      return SECTIONS.reduce((a, x) => a + topN(units.filter((u) => inSection(u.hex, side, x)), 1), 0);
     case 'orderLight': return topN(units.filter((u) => UNIT_STATS[u.type].cls === 'light'), command) || topN(units, 1);
     case 'orderMedium': return topN(units.filter((u) => UNIT_STATS[u.type].cls === 'medium'), command) || topN(units, 1);
     case 'orderHeavy': return topN(units.filter((u) => UNIT_STATS[u.type].cls === 'heavy'), command) || topN(units, 1);

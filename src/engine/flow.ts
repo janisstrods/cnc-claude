@@ -1,5 +1,5 @@
 // Turn flow as a generator: yields Decisions, receives Answers (rules-reference §5-§13).
-import { CARD_DEFS, cardKind, defaultMods, drawCard, mirrorKind, modsFor } from './cards';
+import { CARD_DEFS, cardKind, defaultMods, drawCard, effectiveCard, modsFor } from './cards';
 import {
   canFireAt, closeCombatDice, helmetsCount, ignorableFlags, rangedDice, retreatPerFlag, scoreClassOnly, scoreClose,
   swordIgnores, vsMountedIgnores, type StrikeRole,
@@ -13,18 +13,20 @@ import {
   validateDiceOrders, validateOrders, validateRally, validateSpartacus,
 } from './orders';
 import {
-  attachedLeader, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, unitAt, unitById, unitsOf,
+  attachedLeader, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, pieceHex, unitAt, unitById, unitsOf,
 } from './query';
 import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption } from './retreat';
 import { randInt, rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
 import {
-  breakRamparts, isFord, isHill, isImpassable, isWall, steepClimb, steepSlope, steepSlopeUp, stopsAll, stopsMounted, terrainAt,
+  breakRamparts, closedTo, hasEntryRoll, isHill, isImpassable, isWall, mayAdvanceOut, mayBattleAfterEntering, oneHexOut, steepClimb,
+  steepSlope, stopsOnEntry, terrainAt,
 } from './terrain';
 import { canShoot, fireMoveLimit } from './elites';
-import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forbidsTerrain, forestFighter } from './units';
+import { possessive } from './text';
+import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice } from './units';
 import {
-  OFF_BOARD,
+  OFF_BOARD, SECTIONS,
   type Answer, type CardKind, type Decision, type DieFace, type FlowCtx, type GameState, type HexId, type Leader,
   type OrderedPiece, type RetreatOption, type RollPurpose, type SectionName, type Side, type Unit,
 } from './types';
@@ -35,19 +37,79 @@ export type Gen<T = void> = Generator<Decision, T, Answer>;
 // helpers
 // ---------------------------------------------------------------------------
 
-function* ask(ctx: FlowCtx, d: Decision, validate: (a: Answer) => string | null): Gen<Answer> {
+/** Yield decision `d` until a legal answer comes back (`answerError`); each refusal is reported to `ctx.invalid`. */
+function* ask(s: GameState, ctx: FlowCtx, d: Decision): Gen<Answer> {
   for (;;) {
     const a = yield d;
-    const err = a ? validate(a) : 'No answer.';
+    const err = answerError(s, d, a);
     if (!err) return a;
     ctx.invalid?.(err);
+  }
+}
+
+/** Is `a` a choice of one of `n` options (`choose` with a whole index in range)? */
+const choosesOneOf = (a: Answer, n: number): boolean => a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < n;
+
+/**
+ * Why answer `a` to decision `d` is refused in state `s` (the message the UI shows), or null when it is legal: the one
+ * validator of every decision. `ask` re-asks with it, and the AI's `isLegal` is `answerError(...) === null`, so an answer
+ * the AI gives is never refused. It reads only the decision and the state, so an answer can be checked before it is given.
+ */
+export function answerError(s: GameState, d: Decision, a: Answer | null | undefined): string | null {
+  if (!a) return 'No answer.';
+  switch (d.kind) {
+    case 'playCard':
+      return a.kind === 'playCard' && s.players[d.side].hand.includes(a.card) ? null : 'Play a card from your hand.';
+    case 'orders':
+      if (a.kind !== 'orders') return 'Choose the units to order.';
+      if (a.ambushSection) {
+        return ambushAvailable(s, d.side, d.card) && ambushSectionAllowed(s, d.card, a.ambushSection) ? null : 'The ambush is not available.';
+      }
+      return validateOrders(s, d.side, d.card, a.pieces);
+    case 'move':
+      return validateMove(s, a, d.stage);
+    case 'battle':
+      return validateBattle(s, a);
+    case 'defend':
+      if (a.kind !== 'defend') return 'Choose how to defend.';
+      if (a.choice === 'evade') return d.canEvade ? null : 'This unit cannot evade.';
+      if (a.choice === 'firstStrike') return d.canFirstStrike ? null : 'You do not hold First Strike.';
+      return a.choice === 'stand' ? null : 'Choose how to defend.';
+    case 'ignoreFlags':
+      return a.kind === 'ignoreFlags' && Number.isInteger(a.count) && a.count >= 0 && a.count <= d.max ? null : `Ignore between 0 and ${d.max} flags.`;
+    case 'retreat':
+      return choosesOneOf(a, d.options.length) ? null : 'Choose a destination.';
+    case 'leaderEvade':
+      return choosesOneOf(a, d.options.length) ? null : 'Choose an evade destination.';
+    case 'momentum':
+      return a.kind === 'yesno' ? null : 'Advance or not?';
+    case 'cavalryExtra':
+      return a.kind === 'hex' && (a.hex === null || d.options.includes(a.hex)) ? null : 'Choose a hex or decline.';
+    case 'bonusCombat':
+      return a.kind === 'hex' && (a.hex === null || d.targets.includes(a.hex)) ? null : 'Choose a target or decline.';
+    case 'chooseCommand':
+      return choosesOneOf(a, d.options.length) ? null : 'Choose a command.';
+    case 'rally':
+      return a.kind === 'assign' ? validateRally(s, d.side, d.faces, a.ids, d.command) : 'Assign the rally dice.';
+    case 'spartacus':
+      return a.kind === 'assign' ? validateSpartacus(s, d.side, d.faces, a.ids, d.command) : 'Choose the pieces to order.';
+    case 'placeLeader':
+      if (a.kind === 'hex' && a.hex !== null && d.options.includes(a.hex)) return null;
+      // before the battle (117 Asculum) any highlighted hex; a reserve leader at the end of the movement (308) joins a unit
+      return s.special.unplaced.includes(d.leader) ? 'Place the leader on a highlighted hex.' : 'Place the leader with one of the units that entered.';
+    case 'placeUnit':
+      return a.kind === 'hex' && a.hex !== null && d.options.includes(a.hex) ? null : 'Place the unit on a highlighted hex.';
+    case 'diceVictim':
+      return choosesOneOf(a, d.options.length) ? null : 'Choose one of your units.';
+    case 'diceOrders':
+      return a.kind === 'assign' ? validateDiceOrders(s, d.side, d.faces, a.ids) : 'Assign the order dice.';
   }
 }
 
 const unitName = (u: Unit) => UNIT_STATS[u.type].name;
 const sideName = (s: GameState, side: Side) => s.players[side].army;
 
-function log(s: GameState, ctx: FlowCtx, text: string, side?: Side) {
+function log(ctx: FlowCtx, text: string, side?: Side) {
   ctx.emit({ t: 'log', text, side });
 }
 
@@ -79,7 +141,7 @@ function leaderLost(s: GameState, ctx: FlowCtx, l: Leader, reason: string, text:
   s.leaders = s.leaders.filter((x) => x.id !== l.id);
   s.special.leadersEliminated[l.side]++;
   ctx.emit({ t: 'leaderKilled', id: l.id });
-  log(s, ctx, text, l.side);
+  log(ctx, text, l.side);
   if (s.special.sacredLeaderId === l.id && !s.winner) {
     s.winner = other(l.side);
     s.winReason = `${l.name} has fallen`;
@@ -122,8 +184,6 @@ function settleBanners(s: GameState, ctx: FlowCtx, b: BannerBatch, reason: strin
   for (const side of b.leaderLosses) afterLeaderLoss(s, ctx, side);
 }
 
-const possessive = (name: string) => (name.endsWith('s') ? `${name}'` : `${name}'s`);
-
 /**
  * Hellespont rules (§17.4) after a leader of `side` was eliminated and its banner awarded (only via `leaderLost` and
  * `settleBanners`):
@@ -160,8 +220,12 @@ function killLeader(s: GameState, ctx: FlowCtx, l: Leader, reason: string) {
   leaderLost(s, ctx, l, reason, `${l.name || 'A leader'} (${sideName(s, l.side)}) has fallen!`);
 }
 
-/** Remove blocks; returns true if the unit was eliminated. */
-function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: string): boolean {
+/**
+ * Remove up to `n` blocks; returns true if the unit was eliminated. The enemy then scores its banner, or with `batch` the
+ * banner waits there for `settleBanners` (the elephant's blocked retreat, §10). The attached leader is the caller's
+ * business (`hurt`).
+ */
+function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: string, batch?: BannerBatch): boolean {
   const k = Math.min(n, u.blocks);
   if (k <= 0) return false;
   u.blocks -= k;
@@ -169,8 +233,9 @@ function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: stri
   if (u.blocks <= 0) {
     s.units = s.units.filter((x) => x.id !== u.id);
     ctx.emit({ t: 'eliminated', id: u.id });
-    log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} eliminated.`, u.side);
-    gainBanner(s, ctx, other(u.side), 'unit eliminated'); // held banners first: the unit no longer holds anything
+    log(ctx, `${sideName(s, u.side)} ${unitName(u)} eliminated.`, u.side);
+    if (batch) batch.gains.push(other(u.side));
+    else gainBanner(s, ctx, other(u.side), 'unit eliminated'); // held banners first: the unit no longer holds anything
     return true;
   }
   return false;
@@ -199,14 +264,13 @@ function leaderCheck(s: GameState, ctx: FlowCtx, l: Leader, dice: 1 | 2): boolea
 function* leaderEvade(s: GameState, ctx: FlowCtx, l: Leader): Gen {
   const opts = leaderEvadeOptions(s, l);
   if (!opts.length) {
-    log(s, ctx, `${l.name || 'The leader'} is trapped and cannot evade.`, l.side);
+    log(ctx, `${l.name || 'The leader'} is trapped and cannot evade.`, l.side);
     killLeader(s, ctx, l, 'leader trapped');
     return;
   }
   let opt = opts[0];
   if (opts.length > 1) {
-    const a = yield* ask(ctx, { kind: 'leaderEvade', side: l.side, leader: l.id, options: opts }, (a) =>
-      a.kind === 'choose' && a.index >= 0 && a.index < opts.length ? null : 'Choose an evade destination.');
+    const a = yield* ask(s, ctx, { kind: 'leaderEvade', side: l.side, leader: l.id, options: opts });
     opt = opts[(a as { index: number }).index];
   }
   const walked: HexId[] = [l.hex];
@@ -224,7 +288,7 @@ function* leaderEvade(s: GameState, ctx: FlowCtx, l: Leader): Gen {
         return;
       }
     }
-    if (terrainAt(s, h) === 'marsh') {
+    if (hasEntryRoll(s, h)) {
       const f = rollDie(s);
       emitRoll(ctx, 'marsh', [f], [f === 'leader'], null, l.id);
       if (f === 'leader') {
@@ -238,7 +302,7 @@ function* leaderEvade(s: GameState, ctx: FlowCtx, l: Leader): Gen {
   if (opt.offBoard) {
     ctx.emit({ t: 'leaderEvade', id: l.id, path: [...walked, OFF_BOARD], offBoard: true });
     s.leaders = s.leaders.filter((x) => x.id !== l.id);
-    log(s, ctx, `${l.name || 'A leader'} leaves the battlefield.`, l.side);
+    log(ctx, `${l.name || 'A leader'} leaves the battlefield.`, l.side);
     return;
   }
   l.hex = opt.end;
@@ -261,22 +325,34 @@ function* leaderOrphaned(s: GameState, ctx: FlowCtx, l: Leader, checked?: { done
   if (leaderCheck(s, ctx, l, 1)) yield* leaderEvade(s, ctx, l);
 }
 
+/**
+ * `u` loses `n` blocks (`n` ≥ 1; `loseBlocks`), then its attached leader's casualty check (§11): if the unit was eliminated,
+ * 1 die and then he evades (`leaderOrphaned`); if it survived, 2 dice, unless the one check of the combat sequence was
+ * already made (`checked`, §10) or `survivorCheck` is false (an elephant's losses for a retreat it could not take).
+ * Returns true if the unit was eliminated.
+ */
+function* hurt(
+  s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: string, checked: { done: boolean } = { done: false }, survivorCheck = true,
+): Gen<boolean> {
+  const l = attachedLeader(s, u);
+  if (loseBlocks(s, ctx, u, n, reason)) {
+    if (l) yield* leaderOrphaned(s, ctx, l, checked);
+    return true;
+  }
+  if (l && survivorCheck && !checked.done) {
+    checked.done = true;
+    leaderCheck(s, ctx, l, 2);
+  }
+  return false;
+}
+
 /** Marsh check for a unit entering a marsh hex. Returns true if the unit was eliminated. */
 function* marshCheckUnit(s: GameState, ctx: FlowCtx, u: Unit, leaderChecked: { done: boolean }): Gen<boolean> {
   const f = rollDie(s);
   const cls = UNIT_STATS[u.type].cls;
   emitRoll(ctx, 'marsh', [f], [f === cls], null, u.id);
   if (f !== cls) return false;
-  const l = attachedLeader(s, u);
-  if (loseBlocks(s, ctx, u, 1, 'sunk in the marsh')) {
-    if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
-    return true;
-  }
-  if (l && !leaderChecked.done) {
-    leaderChecked.done = true;
-    leaderCheck(s, ctx, l, 2);
-  }
-  return false;
+  return yield* hurt(s, ctx, u, 1, 'sunk in the marsh', leaderChecked);
 }
 
 /** Move a unit (and attached leader) to hex h without checks. */
@@ -297,7 +373,7 @@ export interface HitOutcome {
 
 function* rampage(s: GameState, ctx: FlowCtx, el: Unit): Gen {
   ctx.emit({ t: 'rampage', id: el.id });
-  log(s, ctx, `The ${sideName(s, el.side)} elephants rampage!`, el.side);
+  log(ctx, `The ${sideName(s, el.side)} elephants rampage!`, el.side);
   for (const h of neighbours(el.hex)) {
     if (s.winner) return;
     const v = unitAt(s, h);
@@ -306,12 +382,7 @@ function* rampage(s: GameState, ctx: FlowCtx, el: Unit): Gen {
       const cls = UNIT_STATS[v.type].cls;
       emitRoll(ctx, 'rampage', faces, faces.map((f) => f === cls), el.id, v.id);
       const hits = faces.filter((f) => f === cls).length;
-      if (hits) {
-        const l = attachedLeader(s, v);
-        if (loseBlocks(s, ctx, v, hits, 'trampled by elephants')) {
-          if (l) yield* leaderOrphaned(s, ctx, l);
-        } else if (l) leaderCheck(s, ctx, l, 2);
-      }
+      if (hits) yield* hurt(s, ctx, v, hits, 'trampled by elephants');
       continue;
     }
     const l = leaderAt(s, h);
@@ -324,10 +395,11 @@ function* rampage(s: GameState, ctx: FlowCtx, el: Unit): Gen {
   }
 }
 
-function* chooseOption<T extends RetreatOption>(ctx: FlowCtx, side: Side, unit: string, opts: T[], reason: 'retreat' | 'evade'): Gen<T> {
+function* chooseOption<T extends RetreatOption>(
+  s: GameState, ctx: FlowCtx, side: Side, unit: string, opts: T[], reason: 'retreat' | 'evade',
+): Gen<T> {
   if (opts.length === 1) return opts[0];
-  const a = yield* ask(ctx, { kind: 'retreat', side, unit, options: opts, reason }, (a) =>
-    a.kind === 'choose' && a.index >= 0 && a.index < opts.length ? null : 'Choose a destination.');
+  const a = yield* ask(s, ctx, { kind: 'retreat', side, unit, options: opts, reason });
   return opts[(a as { index: number }).index];
 }
 
@@ -337,7 +409,7 @@ function* walkPath(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, kind
   for (const h of opt.path) {
     relocate(s, u, h);
     walked.push(h);
-    if (terrainAt(s, h) === 'marsh') {
+    if (hasEntryRoll(s, h)) {
       if (yield* marshCheckUnit(s, ctx, u, leaderChecked)) {
         ctx.emit({ t: kind, id: u.id, path: walked });
         breakRamparts(s, ctx, u.side, walked.slice(1)); // the hexes it entered before it sank
@@ -375,14 +447,7 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
     const v = unitById(s, b.id);
     if (!v) continue;
     const l = attachedLeader(s, v);
-    const k = Math.min(b.n, v.blocks);
-    v.blocks -= k;
-    ctx.emit({ t: 'damage', id: v.id, amount: k, left: v.blocks, reason: 'crushed by retreating elephants' });
-    if (v.blocks <= 0) {
-      s.units = s.units.filter((x) => x.id !== v.id);
-      ctx.emit({ t: 'eliminated', id: v.id });
-      log(s, ctx, `${sideName(s, v.side)} ${unitName(v)} eliminated.`, v.side);
-      batch.gains.push(other(v.side));
+    if (loseBlocks(s, ctx, v, b.n, 'crushed by retreating elephants', batch)) {
       if (l) orphans.push(l);
     } else if (l) survivorsWithLeader.push(l);
   }
@@ -394,15 +459,14 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
 }
 
 /**
- * The unit has walked its retreat and could not take `opt.losses` hexes: it loses a block for each (`reason` names the loss),
- * or, under last-row retreat (214, §18.5, X2 Q10), every block when it stands on its own baseline row of the battle's
- * `lastRowRetreat` side and joined no leader (a log line says so). Returns true if the unit was eliminated (the enemy
- * scores; the caller deals with the leader). An evade never gets here.
+ * The unit has walked its retreat and could not take `opt.losses` hexes: the blocks it loses for them, one for each, or,
+ * under last-row retreat (214, §18.5, X2 Q10), every block when it stands on its own baseline row of the battle's
+ * `lastRowRetreat` side and joined no leader (a log line says so). An evade never gets here.
  */
-function loseBlocksShortOfRetreat(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, reason: string): boolean {
-  if (s.special.lastRowRetreat !== u.side || opt.attachLeader || !atOwnBaseline(u)) return loseBlocks(s, ctx, u, opt.losses, reason);
-  log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} has no ground left to retreat and is cut down!`, u.side);
-  return loseBlocks(s, ctx, u, u.blocks, reason);
+function retreatShortfall(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption): number {
+  if (s.special.lastRowRetreat !== u.side || opt.attachLeader || !atOwnBaseline(u)) return opt.losses;
+  log(ctx, `${sideName(s, u.side)} ${unitName(u)} has no ground left to retreat and is cut down!`, u.side);
+  return u.blocks;
 }
 
 function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leaderChecked: { done: boolean }): Gen<HitOutcome> {
@@ -411,32 +475,23 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
     yield* rampage(s, ctx, u);
     if (s.winner || !unitById(s, u.id)) return { eliminated: !unitById(s, u.id), vacated: true };
     const opts = elephantRetreatOptions(s, u, hexes);
-    const opt = yield* chooseOption<ElephantRetreatOption>(ctx, u.side, u.id, opts, 'retreat');
+    const opt = yield* chooseOption<ElephantRetreatOption>(s, ctx, u.side, u.id, opts, 'retreat');
     if (yield* walkPath(s, ctx, u, opt, 'retreat', leaderChecked)) return { eliminated: true, vacated: true };
     if (opt.blockers.length) yield* elephantBlockerLosses(s, ctx, opt.blockers);
     if (opt.losses > 0 && unitById(s, u.id)) {
-      const l = attachedLeader(s, u);
-      if (loseBlocksShortOfRetreat(s, ctx, u, opt, 'could not retreat')) {
-        if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
-        return { eliminated: true, vacated: true };
-      }
+      // a surviving elephant's leader makes no casualty check for these losses (the ordinary retreat's leader does, below)
+      const lost = retreatShortfall(s, ctx, u, opt);
+      if (yield* hurt(s, ctx, u, lost, 'could not retreat', leaderChecked, false)) return { eliminated: true, vacated: true };
     }
     updateHeld(s, ctx); // where the retreat ends, after its losses
     return { eliminated: false, vacated: u.hex !== start };
   }
   const opts = retreatOptions(s, u, hexes);
-  const opt = yield* chooseOption(ctx, u.side, u.id, opts, 'retreat');
+  const opt = yield* chooseOption(s, ctx, u.side, u.id, opts, 'retreat');
   if (yield* walkPath(s, ctx, u, opt, 'retreat', leaderChecked)) return { eliminated: true, vacated: true };
   if (opt.losses > 0) {
-    const l = attachedLeader(s, u);
-    if (loseBlocksShortOfRetreat(s, ctx, u, opt, 'retreat blocked')) {
-      if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
-      return { eliminated: true, vacated: true };
-    }
-    if (l && !leaderChecked.done) {
-      leaderChecked.done = true;
-      leaderCheck(s, ctx, l, 2);
-    }
+    const lost = retreatShortfall(s, ctx, u, opt);
+    if (yield* hurt(s, ctx, u, lost, 'retreat blocked', leaderChecked)) return { eliminated: true, vacated: true };
   }
   updateHeld(s, ctx); // where the retreat ends, after its losses (an eliminated unit's banner already brought them up to date)
   return { eliminated: false, vacated: u.hex !== start };
@@ -451,27 +506,21 @@ function* applyHits(
   info: { kind: 'close' | 'ranged'; striker: Unit | null; fullAtStart: boolean; role?: StrikeRole; noFlagIgnore?: boolean; reason?: string },
 ): Gen<HitOutcome> {
   const l = attachedLeader(s, target);
-  let leaderAlive = !!l;
   const checked = { done: false };
   if (hits > 0) {
-    if (loseBlocks(s, ctx, target, hits, info.reason ?? (info.kind === 'ranged' ? 'missile fire' : 'close combat'))) {
-      if (l) yield* leaderOrphaned(s, ctx, l);
+    if (yield* hurt(s, ctx, target, hits, info.reason ?? (info.kind === 'ranged' ? 'missile fire' : 'close combat'), checked)) {
       return { eliminated: true, vacated: true };
-    }
-    if (l) {
-      checked.done = true;
-      leaderAlive = leaderCheck(s, ctx, l, 2);
     }
     if (s.winner) return { eliminated: false, vacated: false };
   }
   if (flags <= 0) return { eliminated: false, vacated: false };
+  const leaderAlive = !!l && !!leaderById(s, l.id); // he counts for the flags only if he survived the casualty check (§10)
   const max = info.noFlagIgnore
     ? 0
     : Math.min(flags, ignorableFlags(s, target, { kind: info.kind, striker: info.striker, leaderAlive, fullAtStart: info.fullAtStart, role: info.role }));
   let ignored = 0;
   if (max > 0) {
-    const a = yield* ask(ctx, { kind: 'ignoreFlags', side: target.side, unit: target.id, flags, max }, (a) =>
-      a.kind === 'ignoreFlags' && a.count >= 0 && a.count <= max ? null : `Ignore between 0 and ${max} flags.`);
+    const a = yield* ask(s, ctx, { kind: 'ignoreFlags', side: target.side, unit: target.id, flags, max });
     ignored = (a as { count: number }).count;
   }
   ctx.emit({ t: 'flags', id: target.id, flags, ignored });
@@ -611,7 +660,7 @@ export function isRollingFirePath(s: GameState, unitId: string, path: unknown): 
  */
 function* rollingFire(s: GameState, ctx: FlowCtx, u: Unit, path: HexId[]): Gen {
   s.turn.ordered[u.id].battlesLeft = 0;
-  log(s, ctx, `${sideName(s, u.side)} ${unitName(u)} rolls burning logs down the hill!`, u.side);
+  log(ctx, `${sideName(s, u.side)} ${unitName(u)} rolls burning logs down the hill!`, u.side);
   const targets = path.map((hex) => ({ hex, id: (unitAt(s, hex) ?? leaderAt(s, hex))?.id }));
   for (const t of targets) {
     if (s.winner) return;
@@ -627,10 +676,7 @@ function* rollingFire(s: GameState, ctx: FlowCtx, u: Unit, path: HexId[]): Gen {
     }
   }
   if (s.winner || !unitById(s, u.id)) return;
-  const l = attachedLeader(s, u);
-  if (loseBlocks(s, ctx, u, 1, 'rolling fire')) {
-    if (l) yield* leaderOrphaned(s, ctx, l);
-  } else if (l) leaderCheck(s, ctx, l, 2);
+  yield* hurt(s, ctx, u, 1, 'rolling fire');
 }
 
 function holdsFirstStrike(s: GameState, side: Side): number | null {
@@ -643,7 +689,7 @@ function holdsFirstStrike(s: GameState, side: Side): number | null {
  * First Strike, without a card? Always, unless the attacker stands on a wall hex itself. (Only units get here: a lone
  * leader on a wall has no first strike, §18.7 [Interp].)
  */
-function wallStrikesFirst(s: GameState, defender: Unit, attacker: Unit): boolean {
+export function wallStrikesFirst(s: GameState, defender: Unit, attacker: Unit): boolean {
   return isWall(s, defender.hex) && !isWall(s, attacker.hex);
 }
 
@@ -679,11 +725,8 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
   type DefendChoice = 'stand' | 'evade' | 'firstStrike';
   let choice = 'stand' as DefendChoice;
   if (canEvade || fsCard !== null) {
-    const a = yield* ask(ctx, { kind: 'defend', side: tu.side, attacker: attacker.id, target: tu.id, canEvade, canFirstStrike: fsCard !== null, bonus: role === 'bonus' }, (a) => {
-      if (a.kind !== 'defend') return 'Choose how to defend.';
-      if (a.choice === 'evade' && !canEvade) return 'This unit cannot evade.';
-      if (a.choice === 'firstStrike' && fsCard === null) return 'You do not hold First Strike.';
-      return null;
+    const a = yield* ask(s, ctx, {
+      kind: 'defend', side: tu.side, attacker: attacker.id, target: tu.id, canEvade, canFirstStrike: fsCard !== null, bonus: role === 'bonus',
     });
     choice = (a as { choice: DefendChoice }).choice;
   }
@@ -691,23 +734,18 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
   if (choice === 'evade') {
     const dice = closeCombatDice(s, attacker, tu, { role, fullAtStart: atkFull, ordered: true });
     ctx.emit({ t: 'combat', purpose: 'evade', attacker: attacker.id, target: tu.id, dice });
-    log(s, ctx, `${sideName(s, tu.side)} ${unitName(tu)} evades.`, tu.side);
+    log(ctx, `${sideName(s, tu.side)} ${unitName(tu)} evades.`, tu.side);
     const faces = rollDice(s, dice);
     const sc = scoreClassOnly(tu, faces, false, vsMountedIgnores(attacker, tu)); // camels vs horses [Interp] §15
     emitRoll(ctx, 'evade', faces, sc.scoring, attacker.id, tu.id);
-    const l = attachedLeader(s, tu);
     const checked = { done: false };
     if (sc.hits > 0) {
-      if (loseBlocks(s, ctx, tu, sc.hits, 'caught evading')) {
-        if (l) yield* leaderOrphaned(s, ctx, l);
-        return false;
-      }
-      if (l) { checked.done = true; leaderCheck(s, ctx, l, 2); }
+      if (yield* hurt(s, ctx, tu, sc.hits, 'caught evading', checked)) return false;
       if (s.winner) return false;
     }
     const opts = evadeOptions(s, tu);
     if (opts.length) {
-      const opt = yield* chooseOption(ctx, tu.side, tu.id, opts, 'evade');
+      const opt = yield* chooseOption(s, ctx, tu.side, tu.id, opts, 'evade');
       yield* walkPath(s, ctx, tu, opt, 'evade', checked);
     }
     // §15: a war machine that survived the roll is abandoned after its evade move (no banner, no leader casualty check);
@@ -720,13 +758,13 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
 
   let firstStruck = false;
   if (wallFirst || (choice === 'firstStrike' && fsCard !== null)) {
-    if (wallFirst) log(s, ctx, `${sideName(s, tu.side)} ${unitName(tu)} strikes first from the wall!`, tu.side);
+    if (wallFirst) log(ctx, `${sideName(s, tu.side)} ${unitName(tu)} strikes first from the wall!`, tu.side);
     else {
       const hand = s.players[tu.side].hand;
       hand.splice(hand.indexOf(fsCard!), 1);
       s.discard.push(fsCard!);
       s.turn.firstStrikeBy = tu.side;
-      log(s, ctx, `${sideName(s, tu.side)} plays First Strike!`, tu.side);
+      log(ctx, `${sideName(s, tu.side)} plays First Strike!`, tu.side);
     }
     firstStruck = true;
     yield* strike(s, ctx, tu, attacker, 'firstStrike', defFull, atkFull);
@@ -748,15 +786,14 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
 }
 
 function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attack' | 'bonus', adv: AdvanceTrack): Gen {
-  if (s.winner || !isEmptyHex(s, hex) || isImpassable(s, hex)) return;
-  // war machines and immobile units (306, §18.11) never advance (§15), and no unit advances into terrain it may not enter (a
-  // mounted unit onto a city wall, §18.7; a foot unit's advance onto a wall is allowed and ends there) or up a steep slope
-  // (308; unreachable, since no close combat crosses one)
-  if (UNIT_STATS[u.type].noMomentum || u.immobile || forbidsTerrain(u.type, terrainAt(s, hex)) || steepSlopeUp(s, u.hex, hex)) return;
+  if (s.winner || !isEmptyHex(s, hex)) return;
+  // war machines and immobile units (306, §18.11) never advance (§15), and no unit advances where the terrain closes the step
+  // (`closedTo`: a mounted unit onto a city wall, §18.7, while a foot unit's advance onto a wall is allowed and ends there;
+  // up a steep slope, 308, unreachable since no close combat crosses one)
+  if (UNIT_STATS[u.type].noMomentum || u.immobile || closedTo(s, u.type, u.hex, hex)) return;
   const op = s.turn.ordered[u.id];
-  const fromT = terrainAt(s, u.hex);
-  if ((fromT === 'marsh' || isFord(s, u.hex)) && op?.enteredHexThisTurn) return;
-  const a = yield* ask(ctx, { kind: 'momentum', side: u.side, unit: u.id, hex, bonus: role === 'bonus' }, (a) => (a.kind === 'yesno' ? null : 'Advance or not?'));
+  if (!mayAdvanceOut(s, u.hex, !!op?.enteredHexThisTurn)) return;
+  const a = yield* ask(s, ctx, { kind: 'momentum', side: u.side, unit: u.id, hex, bonus: role === 'bonus' });
   if (!(a as { yes: boolean }).yes) return;
   const from = u.hex;
   relocate(s, u, hex);
@@ -765,24 +802,23 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   ctx.emit({ t: 'advance', id: u.id, path: [from, hex] });
   breakRamparts(s, ctx, u.side, [hex]);
   const checked = { done: false };
-  if (terrainAt(s, hex) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
+  if (hasEntryRoll(s, hex) && (yield* marshCheckUnit(s, ctx, u, checked))) return;
   updateHeld(s, ctx); // where the advance ends, after the marsh check (a unit sunk there holds nothing)
   // a very steep hill (§18.6) climbed from lower ground ends the advance: no extra hex and no bonus combat
   if (s.winner || role === 'bonus' || steepClimb(s, from, hex)) return;
   const st = UNIT_STATS[u.type];
-  const stopped = stopsAll(s, hex) || (st.mounted && stopsMounted(s, hex));
+  const stopped = stopsOnEntry(s, u.type, from, hex);
   let climbedExtra = false; // the extra hex climbed a very steep hill: it ends the advance, no bonus combat (§18.6)
-  if (st.momentumExtraHex && !stopped && fromT !== 'marsh') {
+  if (st.momentumExtraHex && !stopped && !oneHexOut(s, from)) {
     const hasLeader = !!attachedLeader(s, u);
     const opts = neighbours(u.hex).filter((h) => {
-      if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || steepSlopeUp(s, u.hex, h) || unitAt(s, h)) return false;
+      if (closedTo(s, u.type, u.hex, h) || unitAt(s, h)) return false;
       const l = leaderAt(s, h);
       if (l) return l.side === u.side && !hasLeader;
       return true;
     });
     if (opts.length) {
-      const b = yield* ask(ctx, { kind: 'cavalryExtra', side: u.side, unit: u.id, options: opts }, (b) =>
-        b.kind === 'hex' && (b.hex === null || opts.includes(b.hex)) ? null : 'Choose a hex or decline.');
+      const b = yield* ask(s, ctx, { kind: 'cavalryExtra', side: u.side, unit: u.id, options: opts });
       const to = (b as { hex: HexId | null }).hex;
       if (to !== null) {
         const f2 = u.hex;
@@ -794,7 +830,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
         ctx.emit({ t: 'advance', id: u.id, path: [f2, to] });
         if (joining && joining.side === u.side) ctx.emit({ t: 'attach', leader: joining.id, unit: u.id });
         breakRamparts(s, ctx, u.side, [to]);
-        if (terrainAt(s, to) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
+        if (hasEntryRoll(s, to) && (yield* marshCheckUnit(s, ctx, u, checked))) return;
         updateHeld(s, ctx); // after the marsh check, as above
         if (s.winner) return;
       }
@@ -802,16 +838,11 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   }
   // bonus close combat
   if (climbedExtra) return;
-  const terr = terrainAt(s, u.hex);
-  let eligible = bonusCombatEligible(st, !!attachedLeader(s, u));
-  if (terr === 'forest' && !forestFighter(u.type)) eligible = false;
-  if (terr === 'broken' && st.mounted) eligible = false;
-  if (s.turn.mods.noClose) eligible = false;
-  if (!eligible) return;
+  const eligible = bonusCombatEligible(st, !!attachedLeader(s, u)) && mayBattleAfterEntering(u.type, terrainAt(s, u.hex));
+  if (!eligible || s.turn.mods.noClose) return;
   const targets = closeTargets(s, u);
   if (!targets.length) return;
-  const c = yield* ask(ctx, { kind: 'bonusCombat', side: u.side, unit: u.id, targets }, (c) =>
-    c.kind === 'hex' && (c.hex === null || targets.includes(c.hex)) ? null : 'Choose a target or decline.');
+  const c = yield* ask(s, ctx, { kind: 'bonusCombat', side: u.side, unit: u.id, targets });
   const t = (c as { hex: HexId | null }).hex;
   if (t === null) return;
   yield* closeCombat(s, ctx, u, t, 'bonus', adv);
@@ -820,12 +851,13 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
 /**
  * May `u` close combat the piece on its neighbour `h` as far as the terrain goes (§18.7)? Not across a steep slope (308),
  * either way; and a mounted unit or war machine attacks a piece on a city wall only if it began the turn next to that wall
- * hex (`ordered.startHex`; a lone leader on the wall too [Interp]). A battle back is no attack: these never stop it.
+ * hex (`startHex`, by default its `ordered.startHex`; a lone leader on the wall too [Interp]). A battle back is no attack:
+ * these never stop it. The AI passes the start hex of a planned move.
  */
-function mayAttackInto(s: GameState, u: Unit, h: HexId): boolean {
+export function mayAttackInto(s: GameState, u: Unit, h: HexId, startHex?: HexId): boolean {
   if (steepSlope(s, u.hex, h)) return false;
   if (!isWall(s, h) || UNIT_STATS[u.type].infantry) return true;
-  const start = s.turn.ordered[u.id]?.startHex ?? OFF_BOARD;
+  const start = startHex ?? s.turn.ordered[u.id]?.startHex ?? OFF_BOARD;
   return start >= 0 && areAdjacent(start, h);
 }
 
@@ -882,14 +914,21 @@ export function battleTargets(s: GameState, unitId: string): BattleTarget[] {
 // orders
 // ---------------------------------------------------------------------------
 
-function addOrdered(s: GameState, id: string, extra: Partial<OrderedPiece> = {}) {
+/**
+ * The order state of piece `id` just ordered (§6): it starts where it stands (`OFF_BOARD` for a reserve), has not moved and
+ * has the turn's shots as battles (none for a leader). The AI orders its planned dice orders with it too.
+ */
+export function newOrderedPiece(s: GameState, id: string): OrderedPiece {
   const isLeader = isLeaderId(id);
-  const hex = isLeader ? leaderById(s, id)?.hex ?? OFF_BOARD : unitById(s, id)?.hex ?? OFF_BOARD;
-  s.turn.ordered[id] = {
-    id, isLeader, startHex: hex, moved: 0, moveDone: false, move2Done: false,
+  return {
+    id, isLeader, startHex: pieceHex(s, id) ?? OFF_BOARD, moved: 0, moveDone: false, move2Done: false,
     battlesLeft: isLeader ? 0 : s.turn.mods.shots, canBattle: true, mustBattle: false,
-    enteredHexThisTurn: false, attachedThisTurn: false, ...extra,
+    enteredHexThisTurn: false, attachedThisTurn: false,
   };
+}
+
+function addOrdered(s: GameState, id: string, extra: Partial<OrderedPiece> = {}) {
+  s.turn.ordered[id] = { ...newOrderedPiece(s, id), ...extra };
 }
 
 /**
@@ -901,8 +940,6 @@ export function ambushAvailable(s: GameState, side: Side, kind: CardKind | null)
   return !!kind && !!a && a.trigger.includes(kind) && s.special.reserveSide === side &&
     !s.special.reserveReleased && s.special.turnsDone[side] >= a.afterOwnTurns && s.special.reserveUnits.length > 0;
 }
-
-const SECTIONS: readonly SectionName[] = ['left', 'center', 'right'];
 
 /** The sections an ambush card lets the force enter from (Inspired: its own; the other trigger cards: any). */
 export function ambushSections(kind: CardKind): SectionName[] {
@@ -931,7 +968,7 @@ function releaseAmbush(s: GameState, ctx: FlowCtx, side: Side, section: SectionN
   s.special.reserveUnits = [];
   s.special.reserveLeaders = [];
   for (const id of ids) addOrdered(s, id, { fromReserve: true });
-  log(s, ctx, s.special.ambush!.text.replace(/\{section\}/g, section), side);
+  log(ctx, s.special.ambush!.text.replace(/\{section\}/g, section), side);
   ctx.emit({ t: 'ordered', side, ids });
 }
 
@@ -955,11 +992,9 @@ function returnUnplacedReserves(s: GameState) {
 function* chooseCommandStep(s: GameState, ctx: FlowCtx, side: Side, kind: CardKind): Gen<string | undefined> {
   const options = commandChoices(s, side, kind);
   if (!options.length) return undefined;
-  const a = (yield* ask(ctx, { kind: 'chooseCommand', side, options }, (a) =>
-    a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < options.length ? null : 'Choose a command.',
-  )) as Extract<Answer, { kind: 'choose' }>;
+  const a = (yield* ask(s, ctx, { kind: 'chooseCommand', side, options })) as Extract<Answer, { kind: 'choose' }>;
   const id = options[a.index];
-  log(s, ctx, `Orders go to the ${s.special.commands.find((c) => c.id === id)!.name} command.`, side);
+  log(ctx, `Orders go to the ${s.special.commands.find((c) => c.id === id)!.name} command.`, side);
   return id;
 }
 
@@ -969,13 +1004,10 @@ function* rallyStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
   const cands = rallyCandidates(s, side, command);
   emitRoll(ctx, 'rally', faces, faces.map((f) => f !== 'flag' && f !== 'swords'), null, null);
   if (!cands.length) {
-    log(s, ctx, 'No damaged units are near a leader: nothing to rally.', side);
+    log(ctx, 'No damaged units are near a leader: nothing to rally.', side);
     return [];
   }
-  const a = yield* ask(
-    ctx, { kind: 'rally', side, faces, ...(command !== undefined ? { command } : {}) },
-    (a) => (a.kind === 'assign' ? validateRally(s, side, faces, a.ids, command) : 'Assign the rally dice.'),
-  );
+  const a = yield* ask(s, ctx, { kind: 'rally', side, faces, ...(command !== undefined ? { command } : {}) });
   const ids = (a as { ids: (string | null)[] }).ids;
   const rallied = new Map<string, number>();
   for (const id of ids) if (id) rallied.set(id, (rallied.get(id) ?? 0) + 1);
@@ -993,10 +1025,7 @@ function* spartacusStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
   const faces = rollDice(s, spartacusDiceCount(s, side));
   emitRoll(ctx, 'spartacus', faces, faces.map((f) => f !== 'flag' && f !== 'swords'), null, null);
   if (faces.every((f) => f === 'flag' || f === 'swords')) return [];
-  const a = yield* ask(
-    ctx, { kind: 'spartacus', side, faces, ...(command !== undefined ? { command } : {}) },
-    (a) => (a.kind === 'assign' ? validateSpartacus(s, side, faces, a.ids, command) : 'Choose the pieces to order.'),
-  );
+  const a = yield* ask(s, ctx, { kind: 'spartacus', side, faces, ...(command !== undefined ? { command } : {}) });
   return (a as { ids: (string | null)[] }).ids.filter((x): x is string => !!x);
 }
 
@@ -1015,12 +1044,7 @@ function* ordersStep(s: GameState, ctx: FlowCtx, kind: CardKind | null, mirrored
     else ids = autoOrders(s, side, kind, command);
   } else if (mode.mode === 'dice') ids = kind === 'rally' ? yield* rallyStep(s, ctx, side) : yield* spartacusStep(s, ctx, side);
   if (select) {
-    const ambush = ambushAvailable(s, side, kind);
-    const a = (yield* ask(ctx, { kind: 'orders', side, card: kind, mirrored }, (a) => {
-      if (a.kind !== 'orders') return 'Choose the units to order.';
-      if (a.ambushSection) return ambush && ambushSectionAllowed(s, kind, a.ambushSection) ? null : 'The ambush is not available.';
-      return validateOrders(s, side, kind, a.pieces);
-    })) as Extract<Answer, { kind: 'orders' }>;
+    const a = (yield* ask(s, ctx, { kind: 'orders', side, card: kind, mirrored })) as Extract<Answer, { kind: 'orders' }>;
     if (a.ambushSection) {
       releaseAmbush(s, ctx, side, a.ambushSection);
       return;
@@ -1094,7 +1118,7 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
       ctx.emit({ t: 'attach', leader: l.id, unit: u.id });
       const uo = t.ordered[u.id];
       if (uo && !uo.moveDone) uo.attachedThisTurn = true;
-    } else if (terrainAt(s, to) === 'marsh') {
+    } else if (hasEntryRoll(s, to)) {
       const f = rollDie(s);
       emitRoll(ctx, 'marsh', [f], [f === 'leader'], null, l.id);
       if (f === 'leader') killLeader(s, ctx, l, 'leader lost in the marsh');
@@ -1136,9 +1160,7 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
       if (lo) lo.moveDone = true;
     }
   }
-  if (terrainAt(s, to) === 'marsh') {
-    if (yield* marshCheckUnit(s, ctx, u, { done: false })) return;
-  }
+  if (hasEntryRoll(s, to) && (yield* marshCheckUnit(s, ctx, u, { done: false }))) return;
   captureOnStop(s, ctx, u);
 }
 
@@ -1159,7 +1181,7 @@ function* movePhase(s: GameState, ctx: FlowCtx, stage: 1 | 2): Gen {
   for (;;) {
     if (s.winner) return;
     if (!movablePieces(s, stage).length) break;
-    const a = yield* ask(ctx, { kind: 'move', side: s.active, stage }, (a) => validateMove(s, a, stage));
+    const a = yield* ask(s, ctx, { kind: 'move', side: s.active, stage });
     if (a.kind === 'endMove') break;
     if (a.kind === 'move') {
       yield* doMove(s, ctx, a.piece, a.to, stage);
@@ -1190,8 +1212,7 @@ function* attachReserveLeaders(s: GameState, ctx: FlowCtx): Gen {
       .map((u) => u.hex)
       .sort((a, b) => a - b);
     if (!options.length) continue;
-    const a = yield* ask(ctx, { kind: 'placeLeader', side: l.side, leader: l.id, options }, (a) =>
-      a.kind === 'hex' && a.hex !== null && options.includes(a.hex) ? null : 'Place the leader with one of the units that entered.');
+    const a = yield* ask(s, ctx, { kind: 'placeLeader', side: l.side, leader: l.id, options });
     const hex = (a as { hex: HexId }).hex;
     l.hex = hex;
     op.moveDone = true;
@@ -1209,19 +1230,20 @@ export function battleReady(s: GameState): string[] {
   return Object.keys(s.turn.ordered).filter((id) => battleTargets(s, id).length > 0 || rollingFirePaths(s, id).length > 0);
 }
 
-function pendingMustBattle(s: GameState): string | null {
+/**
+ * An ordered unit that must still close combat this battle phase, or null: warriors that charged (§7, `mustBattle`) with
+ * their battle unused and a close-combat target. The battle phase may not end while there is one.
+ */
+export function pendingCharge(s: GameState): string | null {
   for (const op of Object.values(s.turn.ordered)) {
-    if (op.mustBattle && op.battlesLeft > 0) {
-      const u = unitById(s, op.id);
-      if (u && battleTargets(s, op.id).some((t) => t.kind === 'close')) return op.id;
-    }
+    if (op.mustBattle && op.battlesLeft > 0 && unitById(s, op.id) && battleTargets(s, op.id).some((t) => t.kind === 'close')) return op.id;
   }
   return null;
 }
 
 function validateBattle(s: GameState, a: Answer): string | null {
   if (a.kind === 'endBattle') {
-    return pendingMustBattle(s) ? 'Warriors that charged must close combat.' : null;
+    return pendingCharge(s) ? 'Warriors that charged must close combat.' : null;
   }
   if (a.kind === 'rollingFire') {
     if (!rollingFirePaths(s, a.unit).length) return 'This unit cannot use Rolling Fire.';
@@ -1240,9 +1262,9 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
   for (;;) {
     if (s.winner) return;
     if (!battleReady(s).length) break;
-    const a = yield* ask(ctx, { kind: 'battle', side: s.active }, (a) => validateBattle(s, a));
+    const a = yield* ask(s, ctx, { kind: 'battle', side: s.active });
     if (a.kind === 'endBattle') break;
-    // validateBattle lets through only endBattle, rollingFire and attack, so nothing else reaches here
+    // answerError lets through only endBattle, rollingFire and attack, so nothing else reaches here
     if (a.kind === 'rollingFire') {
       yield* rollingFire(s, ctx, unitById(s, a.unit)!, a.path);
     } else if (a.kind === 'attack') {
@@ -1327,25 +1349,14 @@ export function* turnFlow(s: GameState, ctx: FlowCtx): Gen {
 /** The card of a card-playing side's turn: it is played (a Counter Attack resolved to its copy) and gives its orders. */
 function* cardStep(s: GameState, ctx: FlowCtx, side: Side): Gen {
   const t = s.turn;
-  const pa = yield* ask(ctx, { kind: 'playCard', side }, (a) =>
-    a.kind === 'playCard' && s.players[side].hand.includes(a.card) ? null : 'Play a card from your hand.');
+  const pa = yield* ask(s, ctx, { kind: 'playCard', side });
   const cardId = (pa as { card: number }).card;
   const hand = s.players[side].hand;
   hand.splice(hand.indexOf(cardId), 1);
   t.card = cardId;
   const kind = cardKind(cardId);
-  let effective: CardKind | null = kind;
-  let mirrored = false;
-  if (kind === 'counterAttack') {
-    const last = s.lastCard[other(side)];
-    if (!last) effective = null;
-    else {
-      effective = mirrorKind(last);
-      mirrored = effective !== last;
-    }
-  }
+  const { kind: effective, mirrored } = effectiveCard(s, side, cardId);
   t.effective = effective;
-  t.mirrored = mirrored;
   ctx.emit({ t: 'cardPlayed', side, card: cardId, kind, effective: effective ?? kind });
   t.phase = 'orders';
   yield* ordersStep(s, ctx, effective, mirrored);
@@ -1370,27 +1381,20 @@ function* diceOrdersStep(s: GameState, ctx: FlowCtx, side: Side): Gen {
       if (f !== face) continue;
       const options = unitsOf(s, side).map((u) => u.id);
       if (!options.length) continue;
-      const a = (yield* ask(ctx, { kind: 'diceVictim', side, face, options }, (a) =>
-        a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < options.length ? null : 'Choose one of your units.',
-      )) as Extract<Answer, { kind: 'choose' }>;
+      const a = (yield* ask(s, ctx, { kind: 'diceVictim', side, face, options })) as Extract<Answer, { kind: 'choose' }>;
       const u = unitById(s, options[a.index])!;
       if (face === 'flag') {
-        log(s, ctx, `A flag on the order dice: the ${sideName(s, side)} ${unitName(u)} falls back.`, side);
+        log(ctx, `A flag on the order dice: the ${sideName(s, side)} ${unitName(u)} falls back.`, side);
         yield* applyHits(s, ctx, u, 0, 1, { kind: 'ranged', striker: null, fullAtStart: u.blocks === u.maxBlocks, noFlagIgnore: true });
       } else {
-        log(s, ctx, `Swords on the order dice: the ${sideName(s, side)} ${unitName(u)} loses a block.`, side);
-        const l = attachedLeader(s, u);
-        if (loseBlocks(s, ctx, u, 1, 'swords on the order dice')) {
-          if (l) yield* leaderOrphaned(s, ctx, l);
-        } else if (l) leaderCheck(s, ctx, l, 2);
+        log(ctx, `Swords on the order dice: the ${sideName(s, side)} ${unitName(u)} loses a block.`, side);
+        yield* hurt(s, ctx, u, 1, 'swords on the order dice');
       }
       if (s.winner) return;
     }
   }
   if (!faces.some((f) => diceOrderPieces(s, side, f).length)) return;
-  const a = (yield* ask(ctx, { kind: 'diceOrders', side, faces }, (a) =>
-    a.kind === 'assign' ? validateDiceOrders(s, side, faces, a.ids) : 'Assign the order dice.',
-  )) as Extract<Answer, { kind: 'assign' }>;
+  const a = (yield* ask(s, ctx, { kind: 'diceOrders', side, faces })) as Extract<Answer, { kind: 'assign' }>;
   const ids = diceOrdered(s, a.ids);
   if (!ids.length) return;
   for (const id of ids) addOrdered(s, id);
@@ -1443,13 +1447,12 @@ function* forcedPlacements(s: GameState, ctx: FlowCtx, side: Side): Gen {
   for (let i = 0; i < sp.placeUnits.length;) {
     const p = sp.placeUnits[i];
     const due = p.unit.side === side && p.after === 'ambush' && sp.reserveEntered;
-    const options = due ? p.hexes.filter((h) => !unitAt(s, h) && !leaderAt(s, h)) : [];
+    const options = due ? p.hexes.filter((h) => isEmptyHex(s, h)) : [];
     if (!options.length) {
       i++;
       continue;
     }
-    const a = yield* ask(ctx, { kind: 'placeUnit', side, unit: p.unit.id, options }, (a) =>
-      a.kind === 'hex' && a.hex !== null && options.includes(a.hex) ? null : 'Place the unit on a highlighted hex.');
+    const a = yield* ask(s, ctx, { kind: 'placeUnit', side, unit: p.unit.id, options });
     const hex = (a as { hex: HexId }).hex;
     sp.placeUnits.splice(i, 1);
     const u = p.unit;
@@ -1464,7 +1467,7 @@ function* forcedPlacements(s: GameState, ctx: FlowCtx, side: Side): Gen {
 /** Advance to the next player's turn (call after turnFlow completes without a winner). */
 export function nextTurn(s: GameState) {
   s.active = other(s.active);
-  s.turn = newTurn(s.active, s.turn.number + 1);
+  s.turn = newTurn(s.turn.number + 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -1494,8 +1497,7 @@ function* placementPhase(s: GameState, ctx: FlowCtx): Gen {
     if (!l) throw new Error(`unknown leader to place: ${sp.unplaced[0]}`);
     const options = placementOptions(s, l.side);
     if (!options.length) throw new Error(`no hex to place ${l.name || l.id}`);
-    const a = yield* ask(ctx, { kind: 'placeLeader', side: l.side, leader: l.id, options }, (a) =>
-      a.kind === 'hex' && a.hex !== null && options.includes(a.hex) ? null : 'Place the leader on a highlighted hex.');
+    const a = yield* ask(s, ctx, { kind: 'placeLeader', side: l.side, leader: l.id, options });
     const hex = (a as { hex: HexId }).hex;
     l.hex = hex;
     sp.unplaced.shift();
@@ -1517,5 +1519,3 @@ export function* gameFlow(s: GameState, ctx: FlowCtx): Gen {
 export function atOwnBaseline(u: Unit): boolean {
   return onBaseline(u.hex, u.side);
 }
-
-export { areAdjacent };

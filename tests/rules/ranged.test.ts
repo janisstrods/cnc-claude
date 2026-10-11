@@ -222,7 +222,7 @@ describe('cards and ranged combat', () => {
     const s = build({ units: [{ side: 'bottom', type: 'LI', at: [4, 2] }, { side: 'top', type: 'MI', at: [4, 3] }] });
     const d = play(s, 'darken');
     // nothing can battle: the turn ends without any combat
-    expect(d.state.turn.side).toBe('top');
+    expect(d.state.active).toBe('top');
     expect(u(d, 'u2')!.blocks).toBe(4);
   });
   it('Move-Fire-Move: all first moves, then fire (1 die if moved), no close combat, then second moves', () => {

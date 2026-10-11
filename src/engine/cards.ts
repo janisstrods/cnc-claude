@@ -1,20 +1,21 @@
 // The 60-card Command deck. Texts are paraphrased summaries of each card's effect.
+import { other } from './query';
 import { shuffle } from './rng';
 import type { CardDef, CardKind, FlowCtx, GameState, OrderMods, SectionName, Side } from './types';
 
-const sec = (n: number, s: SectionName, word: string): string =>
+const sec = (n: number, word: string): string =>
   `Issue an order to ${n} units or leaders in the ${word} section.`;
 
 export const CARD_DEFS: Record<CardKind, CardDef> = {
-  order2L: { kind: 'order2L', title: 'Order Two Units Left', group: 'section', count: 3, text: sec(2, 'left', 'left'), sections: ['left'], detach: true },
-  order2C: { kind: 'order2C', title: 'Order Two Units Center', group: 'section', count: 4, text: sec(2, 'center', 'center'), sections: ['center'], detach: true },
-  order2R: { kind: 'order2R', title: 'Order Two Units Right', group: 'section', count: 3, text: sec(2, 'right', 'right'), sections: ['right'], detach: true },
-  order3L: { kind: 'order3L', title: 'Order Three Units Left', group: 'section', count: 3, text: sec(3, 'left', 'left'), sections: ['left'], detach: true },
-  order3C: { kind: 'order3C', title: 'Order Three Units Center', group: 'section', count: 4, text: sec(3, 'center', 'center'), sections: ['center'], detach: true },
-  order3R: { kind: 'order3R', title: 'Order Three Units Right', group: 'section', count: 3, text: sec(3, 'right', 'right'), sections: ['right'], detach: true },
-  order4L: { kind: 'order4L', title: 'Order Four Units Left', group: 'section', count: 1, text: sec(4, 'left', 'left'), sections: ['left'], detach: true },
-  order4C: { kind: 'order4C', title: 'Order Four Units Center', group: 'section', count: 1, text: sec(4, 'center', 'center'), sections: ['center'], detach: true },
-  order4R: { kind: 'order4R', title: 'Order Four Units Right', group: 'section', count: 1, text: sec(4, 'right', 'right'), sections: ['right'], detach: true },
+  order2L: { kind: 'order2L', title: 'Order Two Units Left', group: 'section', count: 3, text: sec(2, 'left'), sections: ['left'], detach: true },
+  order2C: { kind: 'order2C', title: 'Order Two Units Center', group: 'section', count: 4, text: sec(2, 'center'), sections: ['center'], detach: true },
+  order2R: { kind: 'order2R', title: 'Order Two Units Right', group: 'section', count: 3, text: sec(2, 'right'), sections: ['right'], detach: true },
+  order3L: { kind: 'order3L', title: 'Order Three Units Left', group: 'section', count: 3, text: sec(3, 'left'), sections: ['left'], detach: true },
+  order3C: { kind: 'order3C', title: 'Order Three Units Center', group: 'section', count: 4, text: sec(3, 'center'), sections: ['center'], detach: true },
+  order3R: { kind: 'order3R', title: 'Order Three Units Right', group: 'section', count: 3, text: sec(3, 'right'), sections: ['right'], detach: true },
+  order4L: { kind: 'order4L', title: 'Order Four Units Left', group: 'section', count: 1, text: sec(4, 'left'), sections: ['left'], detach: true },
+  order4C: { kind: 'order4C', title: 'Order Four Units Center', group: 'section', count: 1, text: sec(4, 'center'), sections: ['center'], detach: true },
+  order4R: { kind: 'order4R', title: 'Order Four Units Right', group: 'section', count: 1, text: sec(4, 'right'), sections: ['right'], detach: true },
   outFlanked: {
     kind: 'outFlanked', title: 'Out Flanked', group: 'section', count: 2,
     text: 'Issue an order to 2 units or leaders in the left section and 2 in the right section.',
@@ -166,6 +167,20 @@ export function sectionOrders(kind: CardKind): Partial<Record<SectionName, numbe
     case 'coordinated': return { left: 1, center: 1, right: 1 };
     default: return null;
   }
+}
+
+/**
+ * The card kind `side` executes by playing card `cardId` (§12): the card's own, or for Counter Attack a copy of the
+ * opponent's last card (`lastCard`), mirrored left for right (`mirrored` true when the copy differs), or null when there is
+ * nothing to copy.
+ */
+export function effectiveCard(s: GameState, side: Side, cardId: number): { kind: CardKind | null; mirrored: boolean } {
+  const kind = cardKind(cardId);
+  if (kind !== 'counterAttack') return { kind, mirrored: false };
+  const last = s.lastCard[other(side)];
+  if (!last) return { kind: null, mirrored: false };
+  const copy = mirrorKind(last);
+  return { kind: copy, mirrored: copy !== last };
 }
 
 /** Mirror a card for Counter Attack (left <-> right). */

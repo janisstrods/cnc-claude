@@ -1,13 +1,12 @@
 // Fast board helpers for the AI: distance table, occupancy, retreat room, LOS and flag rules mirrored with O(1) lookups.
 import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
 import {
-  hillGroups, isCamp, isImpassable, isWall, steepClimb, steepSlope, steepSlopeUp, stopsAll, stopsMounted, terrainAt, terrainBlocksSight,
-  wallGroups, type BoardTerrain, type SightGroups,
+  closedTo, hillGroups, isCamp, isWall, stopsOnEntry, terrainBlocksSight, wallGroups, type BoardTerrain, type SightGroups,
 } from '../engine/terrain';
 import { frightAtFirstSight, rampartShields, wallShields, type StrikeRole } from '../engine/combat';
 import { canShoot, eliteHas, rangeOf } from '../engine/elites';
 import { leaderHas } from '../engine/query';
-import { UNIT_STATS, barredTerrain } from '../engine/units';
+import { UNIT_STATS } from '../engine/units';
 import { COLS, ROWS, type GameState, type HexId, type Leader, type Side, type TerrainType, type Unit } from '../engine/types';
 
 export const NHEX = ROWS * COLS;
@@ -35,6 +34,8 @@ function rearOf(h: HexId, side: Side): readonly HexId[] {
 export class Occ {
   readonly unit: (Unit | null)[] = new Array(NHEX).fill(null);
   readonly leader: (Leader | null)[] = new Array(NHEX).fill(null);
+  /** The unit on hex h, as an engine `UnitLookup` (held.ts's `unitsOn`, `majorityHolder`). */
+  readonly unitOn = (h: HexId): Unit | null => this.unit[h];
   constructor(s: GameState) {
     for (const u of s.units) if (u.hex >= 0) this.unit[u.hex] = u;
     for (const l of s.leaders) if (l.hex >= 0) this.leader[l.hex] = l;
@@ -123,27 +124,17 @@ export function helmetsOcc(occ: Occ, u: Unit): boolean {
 }
 
 /**
- * Is hex h terrain that a unit with this `barredTerrain` list (its type's `forbiddenTerrain`, plus the city wall for mounted
- * units and war machines) may not enter? Mirror of engine forbidsTerrain; most types forbid nothing, so the list is passed
- * in once per unit instead of looked up per hex.
- */
-export function terrainForbids(s: GameState, forbidden: readonly TerrainType[], h: HexId): boolean {
-  return forbidden.length > 0 && forbidden.includes(terrainAt(s, h));
-}
-
-/**
  * How many of `need` retreat hexes the unit can actually move (toward its own side).
  * Joining a lone friendly leader completes the retreat.
  */
 export function retreatRoom(s: GameState, occ: Occ, u: Unit, need: number): number {
   if (need <= 0) return 0;
   const hasLeader = !!attachedLeaderOcc(occ, u);
-  const forbidden = barredTerrain(u.type);
   const walk = (cur: HexId, left: number): number => {
     if (left === 0) return 0;
     let best = 0;
     for (const h of rearOf(cur, u.side)) {
-      if (isImpassable(s, h) || terrainForbids(s, forbidden, h) || occ.unit[h] || steepSlopeUp(s, cur, h)) continue;
+      if (closedTo(s, u.type, cur, h) || occ.unit[h]) continue;
       const l = occ.leader[h];
       if (l) {
         if (l.side !== u.side || hasLeader) continue;
@@ -162,9 +153,8 @@ export function retreatRoom(s: GameState, occ: Occ, u: Unit, need: number): numb
 export function canEvadeOcc(s: GameState, occ: Occ, u: Unit): boolean {
   if (u.immobile) return false; // 306 (§18.11): an immobile unit never evades
   const hasLeader = !!attachedLeaderOcc(occ, u);
-  const forbidden = barredTerrain(u.type);
   for (const h of rearOf(u.hex, u.side)) {
-    if (isImpassable(s, h) || terrainForbids(s, forbidden, h) || occ.unit[h] || steepSlopeUp(s, u.hex, h)) continue;
+    if (closedTo(s, u.type, u.hex, h) || occ.unit[h]) continue;
     const l = occ.leader[h];
     if (l && (l.side !== u.side || hasLeader)) continue;
     return true;
@@ -224,7 +214,8 @@ export function rowsToEnemyEdge(h: HexId, side: Side): number {
  * Max hexes an enemy unit can move and still close combat with a normal order (warriors' charge included). With `occ`,
  * Caesar's forced march counts (§18.3: infantry he is attached to moves 2 and battles). The march of the Tenth Legion
  * and the Julian legions (`canMarch`, §18.2) is 2 hexes without a battle, so it adds nothing to an attack's reach. An
- * immobile unit (306, §18.11) reaches nothing; with `s`, a unit on a city wall moves 1 hex at most (§18.7).
+ * immobile unit (306, §18.11) reaches nothing; with `s`, a unit on a city wall moves 1 hex at most (§18.7). A unit in a marsh
+ * keeps its full reach: leaving out the marsh's 1-hex limit (§7, `oneHexOut`) is a deliberate approximation.
  */
 export function reachOf(u: Unit, occ?: Occ, s?: GameState): number {
   if (u.immobile) return 0;
@@ -236,18 +227,6 @@ export function reachOf(u: Unit, occ?: Occ, s?: GameState): number {
   }
   if (s && u.hex >= 0 && isWall(s, u.hex)) r = Math.min(r, 1);
   return r;
-}
-
-/**
- * May `u`, standing on its hex, close combat the piece on its neighbour `h` as far as the terrain goes (mirror of the
- * engine's `mayAttackInto`, §18.7)? Never across a steep slope (308); a mounted unit or war machine attacks a piece on a
- * city wall only if it began the turn next to that wall hex (`startHex`, the hex it began the turn on). Always true in a
- * battle with neither walls nor steep slopes. A battle back is no attack: callers use this for attacks only.
- */
-export function mayCloseCombat(s: GameState, u: Unit, h: HexId, startHex: HexId): boolean {
-  if (steepSlope(s, u.hex, h)) return false;
-  if (!isWall(s, h) || UNIT_STATS[u.type].infantry) return true;
-  return startHex >= 0 && hexDist(startHex, h) === 1;
 }
 
 /** Rows from hex h to `side`'s own baseline (0 on it). */
@@ -284,8 +263,6 @@ export function hasTerrain(s: GameState, t: TerrainType): boolean {
  * (212's ditch) instead of the straight-line distance.
  */
 export function stopAwareReach(s: GameState, occ: Occ, e: Unit, reach: number): Set<HexId> {
-  const st = UNIT_STATS[e.type];
-  const barred = barredTerrain(e.type);
   const out = new Set<HexId>();
   let frontier: HexId[] = [e.hex];
   const seen = new Set<HexId>([e.hex]);
@@ -293,12 +270,12 @@ export function stopAwareReach(s: GameState, occ: Occ, e: Unit, reach: number): 
     const next: HexId[] = [];
     for (const h of frontier) {
       for (const n of neighbours(h)) {
-        if (seen.has(n) || isImpassable(s, n) || terrainForbids(s, barred, n) || occ.unit[n] || steepSlopeUp(s, h, n)) continue;
+        if (seen.has(n) || closedTo(s, e.type, h, n) || occ.unit[n]) continue;
         const l = occ.leader[n];
         if (l && l.side !== e.side) continue;
         seen.add(n);
         out.add(n);
-        if (!(stopsAll(s, n) || (st.mounted && stopsMounted(s, n)) || steepClimb(s, h, n))) next.push(n);
+        if (!stopsOnEntry(s, e.type, h, n)) next.push(n);
       }
     }
     frontier = next;

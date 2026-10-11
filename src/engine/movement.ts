@@ -1,11 +1,14 @@
 // Movement: reachable hexes for ordered units and leaders (rules-reference §7).
 import { canMarch } from './elites';
-import { inSection, neighbours } from './hex';
+import { baselineRow, hexId, inSection, neighbours } from './hex';
 import { exitHexes, leaderExitHexes } from './objectives';
-import { attachedLeader, enemyPieceAdjacent, leaderAt, leaderById, leaderHas, unitAt, unitById } from './query';
-import { isImpassable, isWall, steepClimb, steepSlope, steepSlopeUp, steepSlopes, stopsAll, stopsMounted, terrainAt } from './terrain';
-import { UNIT_STATS, forbidsTerrain, forestFighter, isLightFoot } from './units';
-import { OFF_BOARD, type GameState, type HexId, type Leader, type OrderMods, type SectionName, type Side, type Unit } from './types';
+import { attachedLeader, enemyPieceAdjacent, isEmptyHex, leaderAt, leaderById, leaderHas, other, unitAt, unitById } from './query';
+import {
+  closedTo, isImpassable, isWall, mayBattleAfterEntering, oneHexOut, steepClimb, steepSlope, steepSlopes, stopsAll, stopsMounted,
+  stopsOnEntry, terrainAt,
+} from './terrain';
+import { UNIT_STATS, isLightFoot } from './units';
+import { COLS, OFF_BOARD, type GameState, type HexId, type Leader, type OrderMods, type SectionName, type Side, type Unit } from './types';
 
 export interface MoveTarget {
   hex: HexId; // destination (OFF_BOARD = exits the battlefield: exit objectives, 010 Castulo)
@@ -51,7 +54,7 @@ export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: Gam
     max = Math.min(max, mods.maxMove);
     battleMax = Math.min(battleMax, max);
   }
-  if (startHex >= 0 && (terrainAt(s, startHex) === 'marsh' || isWall(s, startHex))) {
+  if (startHex >= 0 && oneHexOut(s, startHex)) {
     max = Math.min(max, 1);
     battleMax = Math.min(battleMax, 1);
   }
@@ -83,7 +86,6 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   // the leader attached at the start of the move (a unit that joins one during its move gets nothing from him)
   const leader = fromReserve ? undefined : attachedLeader(s, u);
   const lim = unitMoveLimits(u, mods, fromReserve ? OFF_BOARD : startHex, s, leader);
-  const st = UNIT_STATS[u.type];
   const hasLeader = !!leader;
   const passThrough = mods.passThrough && isLightFoot(u);
   const results = new Map<HexId, MoveTarget>();
@@ -92,21 +94,14 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   const queue: Node[] = [];
   const best = new Map<HexId, number>();
 
-  /** Is entering `h` from `from` (OFF_BOARD for a reserve) the end of the move? Stopping terrain, or a climb onto a very steep hill. */
-  const stopsThere = (from: HexId, h: HexId) =>
-    stopsAll(s, h) || (st.mounted && stopsMounted(s, h)) || steepClimb(s, from, h);
-
   const canEnter = (h: HexId, from: HexId): 'no' | 'pass' | 'stop' | 'yes' | 'attach' => {
-    if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h))) return 'no';
-    // a city wall (§18.7) is climbed only by a move that begins next to it (never by a reserve entering), and a steep slope
-    // (308) never from the forest below
-    if (isWall(s, h) && (fromReserve || from !== startHex)) return 'no';
-    if (steepSlopeUp(s, from, h)) return 'no';
+    // a city wall (§18.7) is climbed only by a move that begins next to it (never by a reserve entering)
+    if (closedTo(s, u.type, from, h) || (isWall(s, h) && (fromReserve || from !== startHex))) return 'no';
     const v = unitAt(s, h);
     if (v) {
       // passing through means not stopping: impossible through a friend standing where the unit would have to stop (stopping
       // terrain, or a very steep hill climbed from lower ground)
-      if (passThrough && v.side === u.side && !stopsThere(from, h)) return 'pass';
+      if (passThrough && v.side === u.side && !stopsOnEntry(s, u.type, from, h)) return 'pass';
       return 'no';
     }
     const l = leaderAt(s, h);
@@ -114,7 +109,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
       if (l.side !== u.side) return 'no';
       return hasLeader ? 'no' : 'attach';
     }
-    if (stopsThere(from, h)) return 'stop';
+    if (stopsOnEntry(s, u.type, from, h)) return 'stop';
     return 'yes';
   };
 
@@ -175,7 +170,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
     if (exits.includes(startHex)) candidates.push({ hex: startHex, dist: opts.alreadyMoved ?? 0, path: [startHex] });
     for (const t of results.values()) if (exits.includes(t.hex) && !t.attachesTo) candidates.push(t);
     for (const t of candidates) {
-      if (t.hex !== startHex && stopsThere(t.path[t.path.length - 2] ?? OFF_BOARD, t.hex)) continue;
+      if (t.hex !== startHex && stopsOnEntry(s, u.type, t.path[t.path.length - 2] ?? OFF_BOARD, t.hex)) continue;
       if (t.dist + 1 > lim.max) continue;
       // warriors move 2 or more hexes only to charge into close combat, which leaving the battlefield is not
       if (lim.chargeFrom !== null && t.dist + 1 >= lim.chargeFrom) continue;
@@ -210,9 +205,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
         continue;
       }
     }
-    const terr = terrainAt(s, t.hex);
-    if (terr === 'forest' && !forestFighter(u.type)) can = false;
-    if (terr === 'broken' && st.mounted) can = false;
+    if (!mayBattleAfterEntering(u.type, terrainAt(s, t.hex))) can = false;
     t.canBattle = can;
     if (!can) t.mustBattle = false;
   }
@@ -238,7 +231,7 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
     return [...results.values()];
   }
   const start = l.hex;
-  const max = terrainAt(s, start) === 'marsh' || isWall(s, start) ? 1 : 3;
+  const max = oneHexOut(s, start) ? 1 : 3;
   type Node = { hex: HexId; dist: number; path: HexId[] };
   const queue: Node[] = [{ hex: start, dist: 0, path: [start] }];
   const best = new Map<HexId, number>([[start, 0]]);
@@ -247,7 +240,7 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
     const n = queue.shift()!;
     if (n.dist >= max) continue;
     for (const h of neighbours(n.hex)) {
-      if (isImpassable(s, h) || (isWall(s, h) && n.hex !== start) || steepSlopeUp(s, n.hex, h)) continue;
+      if (closedTo(s, null, n.hex, h) || (isWall(s, h) && n.hex !== start)) continue;
       const v = unitAt(s, h);
       if (v && v.side !== l.side) continue;
       const other = leaderAt(s, h);
@@ -282,15 +275,12 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
  */
 export function ambushEntryHexes(s: GameState, side: Side, section: SectionName): HexId[] {
   const fixed = s.special.ambush?.entryHexes;
-  if (fixed) return fixed.filter((h) => !isImpassable(s, h) && !unitAt(s, h) && !leaderAt(s, h));
-  const row = side === 'top' ? 8 : 0;
+  if (fixed) return fixed.filter((h) => !isImpassable(s, h) && isEmptyHex(s, h));
+  const row = baselineRow(other(side));
   const out: HexId[] = [];
-  for (let c = 0; c < 13; c++) {
-    const h = row * 13 + c;
-    if (s.terrain[h] === 'void') continue;
-    if (!inSection(h, side, section)) continue;
-    if (isImpassable(s, h)) continue;
-    if (unitAt(s, h) || leaderAt(s, h)) continue;
+  for (let c = 0; c < COLS; c++) {
+    const h = hexId(row, c);
+    if (isImpassable(s, h) || !inSection(h, side, section) || !isEmptyHex(s, h)) continue;
     out.push(h);
   }
   return out;

@@ -217,7 +217,7 @@ describe('memory and card keeping', () => {
     const held = s.players[side].hand.filter((c) => mem.cardSeen?.[c] === 10);
     expect(held.length).toBe(s.players[side].hand.length);
     s.special.turnsDone[side] = 4; // went back in time
-    s.turn = newTurn(side, 2);
+    s.turn = newTurn(2);
     chooseAnswer(s, { kind: 'playCard', side }, detOpts(side, 1, { difficulty: 'recruit' }), mem);
     expect(Object.values(mem.cardSeen ?? {}).every((v) => v === 4)).toBe(true);
   });

@@ -1,6 +1,86 @@
 // Terrain effects (rules-reference §4, §7, §8; Expansion #1 terrain §16; Expansion #2 and #3 terrain §18.6, §18.7).
 import { sidesCrossed } from './hex';
-import type { FlowCtx, GameState, HexId, Side, TerrainType } from './types';
+import { UNIT_STATS, forbidsTerrain } from './units';
+import type { FlowCtx, GameState, HexId, Side, TerrainType, UnitType } from './types';
+
+/**
+ * What a terrain type does (rules-reference §4, §7, §8, §16, §18.6, §18.7): the terrain counterpart of `UNIT_STATS`, read
+ * by the predicates below. A fordable river has the `FORD` row instead (see `terrainStatsAt`). Rules of their own, on top
+ * of the table: hills (`isHill`: the close-combat hill caps, the same-hill line of sight, a hill under a camp or wall, very
+ * steep hills, steep slopes), the rampart's protected hexsides, the fortified camp's dice and flags (`isCamp`) and the city
+ * wall's climbing, first strike and line of sight (`isWall`).
+ */
+export interface TerrainStats {
+  /** Display name (`TERRAIN_NAMES`). */
+  name: string;
+  /** No unit or leader may enter it (§7): lake, sea (§16), impassable hills, a river that is not fordable, off the board. */
+  impassable: boolean;
+  /** Entering it ends a move (§7): of every unit and lone leader ('all'), or of mounted units and lone leaders ('mounted'). */
+  stops: 'all' | 'mounted' | null;
+  /** A move that begins on it goes 1 hex at most (§7 marsh, §18.7 city wall); a momentum advance out of it gets no extra hex. */
+  oneHexOut: boolean;
+  /**
+   * Who may not battle in the turn they entered it, by a move or a momentum advance (§7, §9): every type but the
+   * `forestFighter`s ('notForestFighters', forest), mounted units ('mounted', broken ground), or nobody (null).
+   */
+  noBattleAfterEntering: 'notForestFighters' | 'mounted' | null;
+  /** A unit in it may momentum advance out of it only if it did not move this turn (§9): marsh, ford. */
+  advanceOutUnmovedOnly: boolean;
+  /** Entering it rolls 1 die (§7, §10): a unit loses a block on its class symbol, a lone leader is lost on a helmet (marsh). */
+  entryRoll: boolean;
+  /** Close-combat dice cap of a combat in or out of it, the hill caps apart (§4; 99 = none). */
+  ccCap: number;
+  /** Ranged dice cap of a unit firing from it (§4; 99 = none). */
+  fireFromCap: number;
+  /** Ranged dice cap against a target in it (§4; 99 = none). */
+  fireIntoCap: number;
+  /** Blocks the line of sight lying between firer and target (§8): forest, camp, impassable hills (see `terrainBlocksSight`). */
+  blocksSight: boolean;
+}
+
+/** Open ground: a row of the table leaves out what its terrain does not do. */
+const OPEN: Omit<TerrainStats, 'name'> = {
+  impassable: false, stops: null, oneHexOut: false, noBattleAfterEntering: null, advanceOutUnmovedOnly: false, entryRoll: false,
+  ccCap: 99, fireFromCap: 99, fireIntoCap: 99, blocksSight: false,
+};
+const T = (name: string, st: Partial<Omit<TerrainStats, 'name'>> = {}): TerrainStats => ({ name, ...OPEN, ...st });
+
+export const TERRAIN_STATS: Record<TerrainType, TerrainStats> = {
+  plain: T('Open Ground'),
+  hill: T('Hill'),
+  forest: T('Forest', { stops: 'all', noBattleAfterEntering: 'notForestFighters', ccCap: 2, fireIntoCap: 1, blocksSight: true }),
+  marsh: T('Marsh', { stops: 'all', oneHexOut: true, advanceOutUnmovedOnly: true, entryRoll: true, ccCap: 2, fireFromCap: 1 }),
+  broken: T('Broken Ground', { stops: 'mounted', noBattleAfterEntering: 'mounted', ccCap: 2 }),
+  river: T('River', { impassable: true }),
+  lake: T('Lake', { impassable: true }),
+  camp: T('Fortified Camp', { blocksSight: true }),
+  steep: T('Steep Hills', { impassable: true, blocksSight: true }),
+  sea: T('Sea', { impassable: true }),
+  rampart: T('Rampart'),
+  ditch: T('Ditch', { stops: 'all' }),
+  wall: T('City Wall', { stops: 'all', oneHexOut: true, ccCap: 2 }),
+  void: T('', { impassable: true }),
+};
+
+/** A fordable river (§7, §16): it stops every unit and lone leader and caps dice like a marsh; advancing out needs no move. */
+const FORD = T('Ford', { stops: 'all', advanceOutUnmovedOnly: true, ccCap: 2, fireFromCap: 1 });
+/** A fordable river without the dice caps (108 Pinarus, §16). */
+const NO_CAP_FORD: TerrainStats = { ...FORD, ccCap: 99, fireFromCap: 99 };
+
+export const TERRAIN_NAMES = Object.fromEntries(
+  (Object.keys(TERRAIN_STATS) as TerrainType[]).map((t) => [t, TERRAIN_STATS[t].name]),
+) as Record<TerrainType, string>;
+
+/** The stats of terrain `t` (undefined: off the board); `ford`/`noCap`: the hex's ford flags. */
+function statsOf(t: TerrainType | undefined, ford: boolean, noCap: boolean): TerrainStats {
+  if (t === 'river' && ford) return noCap ? NO_CAP_FORD : FORD;
+  return TERRAIN_STATS[t ?? 'void'];
+}
+
+/** The terrain stats in force on hex h: its terrain's, a ford's on a fordable river (`FORD`, no caps on a no-cap ford, §16). */
+export function terrainStatsAt(s: GameState, h: HexId): TerrainStats {
+  return statsOf(s.terrain[h], !!s.fords[h], !!s.noCap[h]);
+}
 
 export function terrainAt(s: GameState, h: HexId): TerrainType {
   return s.terrain[h] ?? 'void';
@@ -34,15 +114,9 @@ export function isFord(s: GameState, h: HexId): boolean {
   return s.terrain[h] === 'river' && !!s.fords[h];
 }
 
-/** A fordable river hex with the ford dice caps (not a no-cap ford like the Pinarus, §16). */
-function cappedFord(s: GameState, h: HexId): boolean {
-  return isFord(s, h) && !s.noCap[h];
-}
-
 /** Is a hex of terrain `t` impassable (`ford`: a river hex that is fordable)? Sea follows the lake rules (§16). */
 export function impassableTerrain(t: TerrainType | undefined, ford: boolean): boolean {
-  if (t === 'river') return !ford;
-  return t === 'lake' || t === 'sea' || t === 'steep' || t === 'void' || t === undefined;
+  return statsOf(t, ford, false).impassable;
 }
 
 /** Impassable for movement, retreat, evade (leaders too). Sea follows the lake rules (§16). */
@@ -55,8 +129,7 @@ export function isImpassable(s: GameState, h: HexId): boolean {
  * foot units and leaders may enter, §18.7).
  */
 export function stopsAll(s: GameState, h: HexId): boolean {
-  const t = s.terrain[h];
-  return t === 'forest' || t === 'marsh' || t === 'ditch' || t === 'wall' || (t === 'river' && !!s.fords[h]);
+  return terrainStatsAt(s, h).stops === 'all';
 }
 
 /**
@@ -67,9 +140,9 @@ export function isWall(s: GameState, h: HexId): boolean {
   return s.terrain[h] === 'wall';
 }
 
-/** Entering this hex ends movement for mounted units and lone leaders. */
+/** Entering this hex ends movement for mounted units and lone leaders (broken ground). */
 export function stopsMounted(s: GameState, h: HexId): boolean {
-  return s.terrain[h] === 'broken';
+  return terrainStatsAt(s, h).stops === 'mounted';
 }
 
 /**
@@ -77,23 +150,53 @@ export function stopsMounted(s: GameState, h: HexId): boolean {
  * capped ford and a city wall (§18.7) 2. A no-cap ford imposes none.
  */
 export function ccCapOfHex(s: GameState, h: HexId): number {
-  const t = s.terrain[h];
-  if (t === 'forest' || t === 'marsh' || t === 'broken' || t === 'wall') return 2;
-  if (cappedFord(s, h)) return 2;
-  return 99;
+  return terrainStatsAt(s, h).ccCap;
 }
 
-/** Ranged dice cap for a firer in hex h. A no-cap ford imposes none. */
+/** Ranged dice cap for a firer in hex h (marsh, capped ford: 1). A no-cap ford imposes none. */
 export function rangedFromCap(s: GameState, h: HexId): number {
-  const t = s.terrain[h];
-  if (t === 'marsh') return 1;
-  if (cappedFord(s, h)) return 1;
-  return 99;
+  return terrainStatsAt(s, h).fireFromCap;
 }
 
-/** Ranged dice cap for a target in hex h. */
+/** Ranged dice cap for a target in hex h (forest: 1). */
 export function rangedTargetCap(s: GameState, h: HexId): number {
-  return s.terrain[h] === 'forest' ? 1 : 99;
+  return terrainStatsAt(s, h).fireIntoCap;
+}
+
+/**
+ * Does entering hex h roll the entry die (§7, §10: a marsh)? A unit makes it on every such hex it enters by moving,
+ * advancing, retreating or evading; a lone leader by moving or evading.
+ */
+export function hasEntryRoll(s: GameState, h: HexId): boolean {
+  return terrainStatsAt(s, h).entryRoll;
+}
+
+/** The entry rolls a unit makes walking `path` (§10; off-board steps make none). */
+export function entryRollCount(s: GameState, path: readonly HexId[]): number {
+  let n = 0;
+  for (const h of path) if (h >= 0 && hasEntryRoll(s, h)) n++;
+  return n;
+}
+
+/** Does a move that begins on hex h go 1 hex at most (§7 marsh, §18.7 city wall)? A momentum advance out of it gets no extra hex. */
+export function oneHexOut(s: GameState, h: HexId): boolean {
+  return terrainStatsAt(s, h).oneHexOut;
+}
+
+/** May a unit on hex h momentum advance out of it (§9)? Not out of a marsh or a ford when it moved this turn (`moved`). */
+export function mayAdvanceOut(s: GameState, h: HexId, moved: boolean): boolean {
+  return !moved || !terrainStatsAt(s, h).advanceOutUnmovedOnly;
+}
+
+/**
+ * May a unit of type `type` battle in the turn it entered terrain `t`, by a move or a momentum advance (§7, §9)? Not in a
+ * forest unless it is a forest fighter (LI, LB, LS, AX, WA), not on broken ground if it is mounted.
+ */
+export function mayBattleAfterEntering(type: UnitType, t: TerrainType): boolean {
+  const bar = TERRAIN_STATS[t].noBattleAfterEntering;
+  if (bar === 'notForestFighters') return UNIT_STATS[type].forestFighter;
+  if (bar === 'mounted') return !UNIT_STATS[type].mounted;
+  return true;
 }
 
 /** The board arrays that hills and line-of-sight groups depend on (a `GameState` is one; the AI caches by them). */
@@ -150,6 +253,25 @@ export function steepSlopeUp(s: GameState, from: HexId, to: HexId): boolean {
 }
 
 /**
+ * Is the step from `from` into its neighbour `to` closed by the terrain to a unit of type `type`, or to a lone leader (`type`
+ * null), when it moves, advances, retreats or evades? Impassable terrain, terrain the unit's type may not enter
+ * (`forbidsTerrain`: §15 war machines; a city wall for mounted units and war machines, §18.7), or a steep slope up from a
+ * forest (308, §18.7). The pieces on `to` and the city wall's climbing rule (§18.7) are the caller's business.
+ */
+export function closedTo(s: GameState, type: UnitType | null, from: HexId, to: HexId): boolean {
+  return isImpassable(s, to) || (type !== null && forbidsTerrain(type, terrainAt(s, to))) || steepSlopeUp(s, from, to);
+}
+
+/**
+ * Does a unit of type `type` that enters `to` from `from` (`OFF_BOARD` for a reserve) stop there (§7, §18.6)? Terrain that
+ * stops every unit, or mounted units, or a climb onto a very steep hill (`steepClimb`). Lone leaders stop on both kinds
+ * of stopping terrain and never climb.
+ */
+export function stopsOnEntry(s: GameState, type: UnitType, from: HexId, to: HexId): boolean {
+  return stopsAll(s, to) || (UNIT_STATS[type].mounted && stopsMounted(s, to)) || steepClimb(s, from, to);
+}
+
+/**
  * Rampart breakers (223, §18.6, X2 Q12): a unit of `side` has just entered `hexes` (its path after the start hex, the
  * destination included). If `side` is the battle's rampart breaker every rampart hex among them becomes open ground
  * (`setTerrain`: event `terrainChanged`, hexsides gone). Lone leaders never call this; off-board entries are ignored.
@@ -173,16 +295,6 @@ export function rampartProtects(s: GameState, defHex: HexId, fromHex: HexId): bo
   const mask = s.rampart[defHex];
   if (!mask) return false;
   return sidesCrossed(defHex, fromHex).some((d) => (mask & (1 << d)) !== 0);
-}
-
-/**
- * Terrain that always blocks line of sight when it lies between firer and target: forest, camps and impassable hills.
- * Internal to `terrainBlocksSight`, which settles city walls before it (they block except along a connected wall) and
- * hills after it.
- */
-function terrainBlocksLOS(s: GameState, h: HexId): boolean {
-  const t = s.terrain[h];
-  return t === 'forest' || t === 'camp' || t === 'steep';
 }
 
 /** Connected group id for every hex where `member` holds (neighbours by `neighbours`), in hex order. */
@@ -229,7 +341,7 @@ export interface SightGroups {
 /**
  * Does the terrain of hex `h`, lying between firer `from` and target `to`, block the line of sight (§8, §18.7)? Pieces on
  * `h` are the caller's business. A city wall blocks unless `from`, `to` and `h` are all hexes of one connected wall (units
- * on a wall see along it), whatever lies under it; then forest, camps and impassable hills (`terrainBlocksLOS`); a hill
+ * on a wall see along it), whatever lies under it; then forest, camps and impassable hills (`TerrainStats.blocksSight`); a hill
  * (a camp or wall with a hill under it counts) blocks unless `from`, `to` and `h` are all on one connected hill.
  */
 export function terrainBlocksSight(s: GameState, from: HexId, to: HexId, h: HexId, groups: SightGroups): boolean {
@@ -239,7 +351,7 @@ export function terrainBlocksSight(s: GameState, from: HexId, to: HexId, h: HexI
     const gh = g.get(h);
     return gh === undefined || gh !== g.get(from) || gh !== g.get(to);
   }
-  if (terrainBlocksLOS(s, h)) return true;
+  if (terrainStatsAt(s, h).blocksSight) return true;
   if (isHill(s, h)) {
     if (isHill(s, from) && isHill(s, to)) {
       const g = groups.hills();
@@ -250,20 +362,3 @@ export function terrainBlocksSight(s: GameState, from: HexId, to: HexId, h: HexI
   }
   return false;
 }
-
-export const TERRAIN_NAMES: Record<TerrainType, string> = {
-  plain: 'Open Ground',
-  hill: 'Hill',
-  forest: 'Forest',
-  marsh: 'Marsh',
-  broken: 'Broken Ground',
-  river: 'River',
-  lake: 'Lake',
-  camp: 'Fortified Camp',
-  steep: 'Steep Hills',
-  sea: 'Sea',
-  rampart: 'Rampart',
-  ditch: 'Ditch',
-  wall: 'City Wall',
-  void: '',
-};

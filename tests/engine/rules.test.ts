@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   CARD_DEFS, CARD_LIST, battleTargets, closeCombatDice, distance, evadeOptions, forceDice, forcedDiceLeft, hexId, ignorableFlags,
   lineOfSight, neighbours, pieceMoves, rangedDice, rearHexes, retreatOptions, scoreClose, sectionsOf, unitMoves, validateOrders,
-  leaderEvadeOptions, elephantRetreatOptions,
+  leaderEvadeOptions, elephantRetreatOptions, answerError, type Answer, type Decision,
 } from '../../src/engine';
 import { H, drive, giveCard, must, noFirstStrike, state } from './helpers';
 
@@ -439,5 +439,24 @@ describe('turn flow', () => {
     must(d, { kind: 'move', piece: 'u1', to: H(5, 4) });
     expect(d.pending).toMatchObject({ kind: 'playCard', side: 'top' });
     expect(d.canUndo()).toBe(false);
+  });
+});
+
+describe('answer validation (answerError)', () => {
+  it('refuses a malformed answer with the message the player sees', () => {
+    const s = state({ units: [{ side: 'bottom', type: 'MI', at: [4, 2] }, { side: 'top', type: 'MI', at: [3, 2] }] });
+    const stay = { path: [], end: H(4, 2), losses: 1, attachLeader: null };
+    const retreat: Decision = { kind: 'retreat', side: 'bottom', unit: 'u1', options: [stay, stay], reason: 'retreat' };
+    expect(answerError(s, retreat, { kind: 'choose', index: 1 })).toBeNull();
+    expect([2, -1, 0.5].map((index) => answerError(s, retreat, { kind: 'choose', index }))).toEqual(Array(3).fill('Choose a destination.'));
+    expect(answerError(s, retreat, null)).toBe('No answer.');
+    const defend: Decision = { kind: 'defend', side: 'top', attacker: 'u1', target: 'u2', canEvade: false, canFirstStrike: false };
+    expect(answerError(s, defend, { kind: 'defend', choice: 'stand' })).toBeNull();
+    expect(answerError(s, defend, { kind: 'defend', choice: 'evade' })).toBe('This unit cannot evade.');
+    expect(answerError(s, defend, { kind: 'defend', choice: 'firstStrike' })).toBe('You do not hold First Strike.');
+    expect(answerError(s, defend, { kind: 'defend', choice: 'flee' } as unknown as Answer)).toBe('Choose how to defend.');
+    const flags: Decision = { kind: 'ignoreFlags', side: 'top', unit: 'u2', flags: 2, max: 1 };
+    expect([0, 1].map((count) => answerError(s, flags, { kind: 'ignoreFlags', count }))).toEqual([null, null]);
+    expect([2, 0.5].map((count) => answerError(s, flags, { kind: 'ignoreFlags', count }))).toEqual(Array(2).fill('Ignore between 0 and 1 flags.'));
   });
 });
