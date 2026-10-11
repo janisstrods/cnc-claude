@@ -57,56 +57,48 @@ export function safeAnswer(s: GameState, d: Decision, rng: Rng, attempt: number)
   return randomAnswer(s, d, () => rng.next());
 }
 
-interface Runner {
-  rejected: boolean;
+/** How a run of the flow ended: `done`, it reached its end; else the decision it stopped at (`at`, or null). */
+interface Run {
+  done: boolean;
+  at: Decision | null;
 }
 
-function drive(s: GameState, gen: Gen, policy: Policy, rng: Rng, st: Runner, maxSteps: number): boolean {
+/**
+ * Answer the decisions of the flow `flow` starts on `s` with `policy` until it ends. An answer the engine refuses is
+ * followed by `safeAnswer`s (more than 30 refusals in a row abort the run); more than `maxSteps` decisions stop the run at
+ * the next one, and so does the first decision `stop` matches (left unanswered).
+ */
+function drive(
+  s: GameState, flow: (ctx: FlowCtx) => Gen, policy: Policy, rng: Rng, maxSteps: number, stop?: (d: Decision) => boolean,
+): Run {
+  let rejected = false;
+  const gen = flow({ emit() {}, invalid() { rejected = true; } });
   let r = gen.next();
   let steps = 0;
   let fails = 0;
   while (!r.done) {
-    if (steps++ > maxSteps) return false;
     const d = r.value;
+    if (stop?.(d) || steps++ > maxSteps) return { done: false, at: d };
     const a = fails === 0 ? policy(s, d) : safeAnswer(s, d, rng, fails);
-    st.rejected = false;
+    rejected = false;
     r = gen.next(a);
-    if (st.rejected) {
-      fails++;
-      if (fails > 30) return false;
-    } else fails = 0;
+    if (!rejected) fails = 0;
+    else if (++fails > 30) return { done: false, at: null };
   }
-  return true;
+  return { done: true, at: null };
 }
 
 /** Play the active side's turn (from its playCard decision) to the end. Returns false if it had to be aborted. */
 export function runTurn(s: GameState, policy: Policy, rng: Rng, maxSteps = 600): boolean {
-  const st: Runner = { rejected: false };
-  const ctx: FlowCtx = { emit() {}, invalid() { st.rejected = true; } };
-  return drive(s, turnFlow(s, ctx), policy, rng, st, maxSteps);
+  return drive(s, (ctx) => turnFlow(s, ctx), policy, rng, maxSteps).done;
 }
 
-/** Run the active side's turn until `stop` matches a decision (returned; the turn is left unfinished) or it ends (null). */
+/**
+ * Run the active side's turn until `stop` matches a decision (returned; the turn is left unfinished, as it is when the
+ * steps run out) or it ends (null).
+ */
 export function runTurnUntil(s: GameState, policy: Policy, rng: Rng, stop: (d: Decision) => boolean, maxSteps = 400): Decision | null {
-  const st: Runner = { rejected: false };
-  const ctx: FlowCtx = { emit() {}, invalid() { st.rejected = true; } };
-  const gen = turnFlow(s, ctx);
-  let r = gen.next();
-  let steps = 0;
-  let fails = 0;
-  while (!r.done) {
-    const d = r.value;
-    if (stop(d)) return d;
-    if (steps++ > maxSteps) return d;
-    const a = fails === 0 ? policy(s, d) : safeAnswer(s, d, rng, fails);
-    st.rejected = false;
-    r = gen.next(a);
-    if (st.rejected) {
-      fails++;
-      if (fails > 30) return null;
-    } else fails = 0;
-  }
-  return null;
+  return drive(s, (ctx) => turnFlow(s, ctx), policy, rng, maxSteps, stop).at;
 }
 
 /**
@@ -115,9 +107,7 @@ export function runTurnUntil(s: GameState, policy: Policy, rng: Rng, stop: (d: D
  * it had to be aborted.
  */
 export function continueRun(s: GameState, policy: Policy, rng: Rng, from: 'move' | 'battle'): boolean {
-  const st: Runner = { rejected: false };
-  const ctx: FlowCtx = { emit() {}, invalid() { st.rejected = true; } };
-  return drive(s, continueTurn(s, ctx, from), policy, rng, st, 600);
+  return drive(s, (ctx) => continueTurn(s, ctx, from), policy, rng, 600).done;
 }
 
 const FIRST_STRIKE_ID = CARD_LIST.indexOf('firstStrike');
