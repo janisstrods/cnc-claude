@@ -13,7 +13,7 @@ const history: BattleHistory = {
   sides: {
     top: {
       name: 'Pompeians and Numidians',
-      commanders: ['Titus Labienus', 'The two Pacidei', 'Marcus Petreius (arrived late; wounded)', 'Gnaeus Calpurnius Piso (with Petreius)'],
+      commanders: ['Titus Labienus', 'the Pacideius brothers', 'Marcus Petreius (arrived late; wounded)', 'Gnaeus Calpurnius Piso (with Petreius)'],
       strength: 'c. 9,600 horse and a far larger force of light foot (Bellum Africum); Petreius brought 1,600 more horse',
       forces: 'Numidian horsemen riding without bridles, Gallic and German horse, Numidian light infantry, archers, slingers and mounted archers.',
     },

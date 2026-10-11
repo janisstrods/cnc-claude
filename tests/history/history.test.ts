@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { SCENARIOS, scenarioById, type Expansion } from '../../src/scenarios';
 import { MAP_H, MAP_W, hasHistory, historyIds, loadHistory, unitFrames, unitsAtPhase, type BattleHistory, type BattleMap as MapData } from '../../src/history';
 import { validateHistory, words } from '../../src/history/validate';
-import { BattleMap } from '../../src/ui/history/BattleMap';
+import { BattleMap, luminance } from '../../src/ui/history/BattleMap';
 import { HistoryButton, HistorySlides, SLIDE_TITLES, nextPos, prevPos, sideColors } from '../../src/ui/history/HistoryDialog';
 
 const histories = new Map<string, BattleHistory>();
@@ -159,6 +159,13 @@ describe('rendering', () => {
     const flipped = renderToStaticMarkup(createElement(BattleMap, { map: h.map, phase: 0, colors, flipped: true }));
     expect(plain).toContain(`translate(${x}px, ${y}px)`);
     expect(flipped).toContain(`translate(${MAP_W - x}px, ${MAP_H - y}px)`);
+  });
+
+  it('keeps every army visible on the parchment map', () => {
+    for (const s of SCENARIOS) {
+      const c = sideColors(s);
+      for (const side of ['top', 'bottom'] as const) expect(luminance(c[side].fill), `${s.id} ${side}`).toBeLessThanOrEqual(0.65);
+    }
   });
 
   it('offers the History button only for a battle with a history', () => {
