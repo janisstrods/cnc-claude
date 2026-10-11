@@ -1,10 +1,8 @@
 // Unit type table (rules-reference §2; Expansion #1 types §15).
+import type { ExpansionNumber } from './expansions';
 import type { TerrainType, Unit, UnitClass, UnitType } from './types';
 
 export type EvadeRule = 'always' | 'vsFootHeavyMounted' | 'vsFootElephant' | 'never';
-
-/** The box that brings a unit type or an elite preset: 0 the base game, 1–3 Expansion #1–#3. */
-export type ExpansionNumber = 0 | 1 | 2 | 3;
 
 export interface UnitStats {
   type: UnitType;

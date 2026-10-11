@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ELITES, UNIT_STATS, UNIT_TYPES, type Leader, type LeaderTrait, type Unit, type UnitStats, type UnitType } from '../../src/engine';
 import { leaderTraitLines, unitCardLines, unitSummary } from '../../src/ui/game/unitText';
-import { Expansion, Expansion2, Units, elitesOf, unitTypesOf } from '../../src/ui/screens/RulesReference';
+import { Expansion, Expansion2, RulesReference, Units, elitesOf, unitTypesOf } from '../../src/ui/screens/RulesReference';
 
 const unit = (t: UnitType, extra: Partial<Unit> = {}): Unit =>
   ({ id: 'u1', side: 'top', type: t, hex: 0, blocks: UNIT_STATS[t].blocks, maxBlocks: UNIT_STATS[t].blocks, ...extra }) as Unit;
@@ -190,6 +190,13 @@ describe('rules reference unit cards', () => {
     const lines = [...html.matchAll(/<div class="unit-card-line(?: muted)?">([\s\S]*?)<\/div>/g)].map((m) => m[1].replace(/<[^>]*>/g, ''));
     return Array.from({ length: lines.length / 2 }, (_, i) => [lines[2 * i], lines[2 * i + 1]]);
   };
+
+  it('the tabs: the general ones, then one per expansion of the box table, under its name; the first is open', () => {
+    const html = renderToStaticMarkup(createElement(RulesReference));
+    const tabs = [...html.matchAll(/<button[^>]*>([^<]*)<\/button>/g)].map((m) => m[1]);
+    expect(tabs).toEqual(['How to play', 'Units', 'Combat', 'Terrain', 'Command cards', 'Expansion #1', 'Expansion #2', 'Expansion #3']);
+    expect(html).toContain('<button class="active">How to play</button>');
+  });
 
   it('the Units tab keeps the base-game types and their hand-written lines', () => {
     const base = unitTypesOf(0);

@@ -1,5 +1,6 @@
 // Public engine API.
 export * from './types';
+export * from './expansions';
 export * from './hex';
 export * from './units';
 export * from './elites';

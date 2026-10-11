@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import {
-  CARD_DEFS, ELITES, SIDES, UNIT_STATS, UNIT_TYPES,
-  type ArmyLook, type Blocks, type CardKind, type EliteId, type ExpansionNumber, type UnitType,
+  CARD_DEFS, ELITES, EXPANSIONS, SIDES, UNIT_STATS, UNIT_TYPES,
+  type ArmyLook, type Blocks, type CardKind, type EliteId, type Expansion as Box, type ExpansionNumber, type UnitType,
 } from '../../engine';
 import { SCENARIOS, type ScenarioInfo } from '../../scenarios';
 import { UnitIcon } from '../../art';
@@ -9,7 +9,8 @@ import { CardView, DieView } from '../kit';
 import { unitCardLines } from '../game/unitText';
 import './screens.css';
 
-type Tab = 'basics' | 'units' | 'combat' | 'terrain' | 'cards' | 'exp1' | 'exp2' | 'exp3';
+/** The general tabs (the base game's rules), then one per expansion. */
+type Tab = 'basics' | 'units' | 'combat' | 'terrain' | 'cards' | Exclude<Box, 'base'>;
 
 /**
  * The unit types a box brings (`UnitStats.expansion`), in table order: the base game's in the Units tab, an expansion's in
@@ -44,19 +45,25 @@ function cardLook(t: UnitType): [ArmyLook, Blocks] {
   return look;
 }
 
+/** The tabs in order, with their labels: the general tabs, then each expansion under its name (`EXPANSIONS`). */
+const TABS: readonly [Tab, string][] = [
+  ['basics', 'How to play'],
+  ['units', 'Units'],
+  ['combat', 'Combat'],
+  ['terrain', 'Terrain'],
+  ['cards', 'Command cards'],
+  ...EXPANSIONS.flatMap((e): [Tab, string][] => (e.id === 'base' ? [] : [[e.id, e.name]])),
+];
+
+/** The body of each tab. */
+const TAB_BODY: Record<Tab, () => JSX.Element> = {
+  basics: Basics, units: Units, combat: Combat, terrain: Terrain, cards: Cards, exp1: Expansion, exp2: Expansion2, exp3: Expansion3,
+};
+
 /** In a battle, pass its scenario to show that battle's special rules above the tabs. */
 export function RulesReference({ scenario }: { scenario?: ScenarioInfo } = {}) {
   const [tab, setTab] = useState<Tab>('basics');
-  const tabs: [Tab, string][] = [
-    ['basics', 'How to play'],
-    ['units', 'Units'],
-    ['combat', 'Combat'],
-    ['terrain', 'Terrain'],
-    ['cards', 'Command cards'],
-    ['exp1', 'Expansion #1'],
-    ['exp2', 'Expansion #2'],
-    ['exp3', 'Expansion #3'],
-  ];
+  const Body = TAB_BODY[tab];
   return (
     <div className="rules">
       {scenario && scenario.specialText.length > 0 && (
@@ -68,19 +75,12 @@ export function RulesReference({ scenario }: { scenario?: ScenarioInfo } = {}) {
         </section>
       )}
       <nav className="rules-tabs">
-        {tabs.map(([t, label]) => (
+        {TABS.map(([t, label]) => (
           <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{label}</button>
         ))}
       </nav>
       <div className="rules-body">
-        {tab === 'basics' && <Basics />}
-        {tab === 'units' && <Units />}
-        {tab === 'combat' && <Combat />}
-        {tab === 'terrain' && <Terrain />}
-        {tab === 'cards' && <Cards />}
-        {tab === 'exp1' && <Expansion />}
-        {tab === 'exp2' && <Expansion2 />}
-        {tab === 'exp3' && <Expansion3 />}
+        <Body />
       </div>
     </div>
   );

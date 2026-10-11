@@ -1,7 +1,7 @@
 // Battle picker logic: the boxes as tabs, and the optional rules a battle offers (with the player's remembered
 // choices). Pure apart from the tab and the choices remembered in storage.
-import type { GameOptions, Side } from '../../engine';
-import type { Expansion, ScenarioInfo } from '../../scenarios';
+import { EXPANSIONS, type Expansion, type GameOptions, type Side } from '../../engine';
+import type { ScenarioInfo } from '../../scenarios';
 import { storage } from '../storage';
 
 export interface PickerTab {
@@ -10,15 +10,10 @@ export interface PickerTab {
 }
 
 /**
- * Picker tabs in display order: the base game (001–015), Expansion #1 (101–124), Expansion #2 (201–223), then Expansion #3
- * (301–319).
+ * Picker tabs in display order, one per box (`EXPANSIONS`): the base game (001–015), Expansion #1 (101–124), Expansion #2
+ * (201–223), then Expansion #3 (301–319).
  */
-export const PICKER_TABS: readonly PickerTab[] = [
-  { id: 'base', label: 'Punic Wars' },
-  { id: 'exp1', label: 'Greece & the East' },
-  { id: 'exp2', label: 'Rome & the Barbarians' },
-  { id: 'exp3', label: 'Roman Civil Wars' },
-];
+export const PICKER_TABS: readonly PickerTab[] = EXPANSIONS.map((e) => ({ id: e.id, label: e.pickerLabel }));
 
 /** The battles of one tab, in the order given (the scenario list is sorted by id). */
 export function battlesOf(all: readonly ScenarioInfo[], tab: Expansion): ScenarioInfo[] {

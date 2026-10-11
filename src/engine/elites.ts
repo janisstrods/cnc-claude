@@ -1,6 +1,7 @@
 // Elite unit presets: named abilities layered on top of a unit type's table row (see units.ts).
+import type { ExpansionNumber } from './expansions';
 import type { EliteId, Unit, UnitType } from './types';
-import { UNIT_STATS, type ExpansionNumber } from './units';
+import { UNIT_STATS } from './units';
 
 export type EliteAbility = 'helmetHits' | 'ignoreFlag' | 'ignoreSword' | 'ranged' | 'pilum' | 'march';
 

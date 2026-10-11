@@ -2,6 +2,7 @@
 // battles of Expansion #2, Rome & the Barbarians (201-223), and the 19 battles of Expansion #3, The Roman Civil Wars
 // (301-319). Setups, rules included, are transcribed data (src/scenarios/data); texts are original summaries, one module
 // per box (base-texts.ts, exp1-texts.ts, exp2-texts.ts, exp3-texts.ts).
+import { EXPANSIONS, type Expansion } from '../engine/expansions';
 import type { GameOptions, ObjectiveSetup, ScenarioSetup, SideSetup, TerrainSetup } from '../engine/setup';
 import type { LeaderTrait, Side, SpecialRuleId } from '../engine/types';
 import { BASE_TEXTS, type ScenarioTexts } from './base-texts';
@@ -9,8 +10,7 @@ import { EXP1_TEXTS } from './exp1-texts';
 import { EXP2_TEXTS } from './exp2-texts';
 import { EXP3_TEXTS } from './exp3-texts';
 
-/** Which box a battle comes from. */
-export type Expansion = 'base' | 'exp1' | 'exp2' | 'exp3';
+export type { Expansion };
 
 /**
  * A scenario file in src/scenarios/data: the whole setup, rules included (rules, options, objectives, legions, commands,
@@ -93,7 +93,7 @@ export interface ScenarioInfo {
 
 const files = import.meta.glob<ScenarioJson>('./data/*.json', { eager: true, import: 'default' });
 
-/** The briefing texts of each box, by battle id. */
+/** The briefing texts of each box (`EXPANSIONS`), by battle id. */
 const TEXTS: Record<Expansion, Record<string, ScenarioTexts>> = { base: BASE_TEXTS, exp1: EXP1_TEXTS, exp2: EXP2_TEXTS, exp3: EXP3_TEXTS };
 
 const copyLeader = <T extends { traits?: LeaderTrait[] }>(l: T): T => (l.traits ? { ...l, traits: [...l.traits] } : { ...l });
@@ -136,7 +136,7 @@ const copyHexes = <T>(v: T): T => (Array.isArray(v) ? (v.map((x: unknown) => (Ar
 /** Build a scenario from its JSON data and texts. The setup is a copy: nothing in it shares the JSON's objects. */
 export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   const expansion = j.expansion ?? 'base';
-  if (!Object.prototype.hasOwnProperty.call(TEXTS, expansion)) throw new Error(`unknown expansion ${String(j.expansion)} (${j.id})`);
+  if (!EXPANSIONS.some((e) => e.id === expansion)) throw new Error(`unknown expansion ${String(j.expansion)} (${j.id})`);
   const texts: ScenarioTexts | undefined = TEXTS[expansion][j.id];
   const setup: ScenarioSetup = {
     id: j.id,
