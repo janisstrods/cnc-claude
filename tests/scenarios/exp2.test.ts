@@ -317,7 +317,7 @@ describe('separate commands, Rolling Fire and the other battle rules', () => {
 
   it('206 Aquae Sextiae: the Roman ambush force waits off the board for a Leadership card or Order Light Troops', () => {
     const st = scenarioById('206').setup;
-    expect(st.rules).toEqual(['magoAmbush']);
+    expect(st.rules).toEqual([]);
     expect(st.ambush).toEqual({
       trigger: ['inspiredL', 'inspiredC', 'inspiredR', 'leadershipAny', 'orderLight'],
       afterOwnTurns: 0,

@@ -109,7 +109,7 @@ describe('scenario loader', () => {
     const raw: ScenarioJson = JSON.parse(JSON.stringify({
       ...RAW,
       expansion: 'exp2',
-      rules: ['magoAmbush', 'veryHills'],
+      rules: ['veryHills'],
       options: undefined,
       objectives: [
         { kind: 'capture', side: 'bottom', hexes: [[8, 12]], when: 'turnStart', banners: [0, 0, 1], remove: true, text: 'Camp.' },
@@ -166,7 +166,7 @@ describe('scenario loader', () => {
     expect(s.special.rollingFire).toBe('top');
     expect(s.special.rampartBreakers).toBe('bottom');
     expect(s.special.lastRowRetreat).toBe('top');
-    expect(s.special.rules).toEqual(['magoAmbush', 'veryHills']);
+    expect(s.special.rules).toEqual(['veryHills']);
     expect(s.special.ambush?.trigger).toEqual(['orderLight', 'leadershipAny']);
     expect(s.units.map((u) => [u.type, u.legion, u.command])).toEqual([['MI', 'marius', 'a'], ['MC', undefined, 'b'], ['WA', undefined, undefined]]);
     expect([s.terrain[H(8, 1)], s.fords[H(8, 1)]]).toEqual(['river', true]);
@@ -195,7 +195,7 @@ describe('scenario loader', () => {
     const sc = scenarioById('002');
     expect(sc.expansion).toBe('base');
     expect(sc.setup.units.filter((u) => u.elite).map((u) => u.elite)).toEqual(['carthSacredBand']);
-    expect(scenarioById('005').setup.rules).toEqual(['magoAmbush']);
+    expect(scenarioById('005').setup.ambush).toEqual({}); // Mago's ambush: the Trebbia defaults
     expect(scenarioById('011').setup.objectives).toEqual([{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }]);
     // 006 Trasimenus: 4 cards, 2 to start, hand growth to 4, and the Legate the forum post adds (listed last, §18.8)
     const tr = scenarioById('006').setup;

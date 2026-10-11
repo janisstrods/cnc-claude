@@ -563,7 +563,7 @@ describe('the battle rules (§18.5, §18.8-§18.11)', () => {
     expect(EXP3.filter((id) => scenarioById(id).setup.ambush)).toEqual(['308']);
     expect(EXP3.filter((id) => scenarioById(id).setup.placeUnits)).toEqual(['308']);
     const st = scenarioById('308').setup;
-    expect(st.rules).toEqual(['magoAmbush', 'steepSlopes']);
+    expect(st.rules).toEqual(['steepSlopes']);
     const entry: [number, number][] = [[3, 0], [4, 0], [5, 0], [6, 0], [7, 0]];
     expect(st.ambush).toEqual({
       trigger: ['inspiredL', 'inspiredC', 'inspiredR', 'leadershipAny'], afterOwnTurns: 0, entryHexes: entry, noMove: true, attachLeader: true,

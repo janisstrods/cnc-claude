@@ -213,7 +213,7 @@ describe('immobile units (306 Bibracte, §18.11, X3 Q15)', () => {
       expect(bad(recruits({ units: [bottom('AX', [5, 6], { immobile: 'yes' as unknown as boolean })] })))
         .toThrow(/^unit immobile at 5,6 must be true or false \(qa\)$/);
       const reserves = [{ side: 'bottom', type: 'AX', immobile: true }] as unknown as Pos['reserves'];
-      expect(bad(recruits({ rules: ['magoAmbush'], reserves })))
+      expect(bad(recruits({ ambush: {}, reserves })))
         .toThrow(/^reserve unit AX: immobile is only for units on the board \(qa\)$/);
     });
   });

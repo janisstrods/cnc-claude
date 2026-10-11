@@ -331,7 +331,7 @@ describe('308 reinforcements and the forced placement', () => {
   it('the Roman MI is placed where it helps, not on the first free hex', () => {
     // Gallic HI next to (8,0) and (8,1); a Gallic warband on its last block next to (8,4): the first hex is the worst
     const s = build({
-      rules: ['magoAmbush'], first: 'bottom', legions: { bottom: 'julian' },
+      first: 'bottom', legions: { bottom: 'julian' },
       ambush: { trigger: ['leadershipAny'], afterOwnTurns: 0, entryHexes: [[3, 0], [4, 0]], noMove: true, text: 'They come!' },
       units: [top('HI', [7, 0]), top('HI', [7, 1]), top('WA', [7, 4], { blocks: 1 }), bottom('MI', [6, 8]), bottom('LI', [7, 10])],
       reserves: [{ side: 'top', type: 'AX' }],

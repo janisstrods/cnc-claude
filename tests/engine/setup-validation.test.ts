@@ -51,7 +51,7 @@ describe('scenario data validation', () => {
   });
 
   it('an unknown special rule', () => {
-    expect(build(changed((st) => { st.rules = ['magoAmbush', 'dragons' as SpecialRuleId]; }))).toThrow(/^unknown special rule dragons \(test\)$/);
+    expect(build(changed((st) => { st.rules = ['veryHills', 'dragons' as SpecialRuleId]; }))).toThrow(/^unknown special rule dragons \(test\)$/);
   });
 
   it('a starting Command (`initialCommand`) names sides, each a whole number from 1', () => {

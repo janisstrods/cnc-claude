@@ -34,7 +34,6 @@ const PLACE_MI: NonNullable<Pos['placeUnits']> = [{ side: 'bottom', type: 'MI', 
  */
 function gergovia(extra: Partial<Pos> = {}): Pos {
   return {
-    rules: ['magoAmbush'],
     first: 'top',
     legions: { bottom: 'julian' },
     ambush: GERGOVIA_AMBUSH,
@@ -156,7 +155,7 @@ describe('reinforcements: scenario data (§18.9)', () => {
       .toThrow(/^placeUnits MC: hex 8,0 is wall, which it may not enter \(qa\)$/);
     expect(bad([{ ...ok, command: 'x' }])).toThrow(/^unit to place MI: command x is only for pieces on the board \(qa\)$/);
     expect(bad(PLACE_MI, { rules: [], ambush: undefined, reserves: [], reserveLeaders: [] }))
-      .toThrow(/^placeUnits after the ambush need the magoAmbush rule \(qa\)$/);
+      .toThrow(/^placeUnits after the ambush need ambush data \(qa\)$/);
   });
 });
 

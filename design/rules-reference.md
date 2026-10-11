@@ -690,6 +690,8 @@ merely passing through a hex never counts (X2 Q9e). A side wins as soon as its *
   the player choose the section. The card is used for the entry only; placement counts as the first hex of movement and
   the units then move and battle normally; units that cannot be placed wait for a later trigger. They retreat toward
   their own side.
+  * Engine: scenario data `ambush` (`{}` = the Trebbia defaults; 206 gives its trigger cards, turns and text) with the
+    force in `reserves` and `reserveLeaders`.
 * **Separate commands** (210): each unit belongs to a command; one card orders units of one command only — every card
   type, including Clash of Shields, Darken the Sky, Rally and I Am Spartacus (the player names the command when the card
   could order units of both). Leaders belong to no command and support everyone (X2 Q7).
@@ -908,7 +910,7 @@ The ambush reserve of §18.5 with three options (X3 Q6; the card-trigger and rel
   `ambush.noMove`: an entry target has `dist` 0, so the unit's `moved` stays 0 (2 dice); it gets no further move that turn.
   `ambush.attachLeader` (needs a reserve leader): the leader is placed with an entered unit by a move during the movement
   (as Mago); if he is still off the board at its end and a unit of his force entered, `placeLeader` asks for one of their
-  hexes (event `leaderPlaced`, then `attach`). `placeUnits` (needs the ambush rule; ids after the reserve leaders', legion
+  hexes (event `leaderPlaced`, then `attach`). `placeUnits` (needs `ambush`; ids after the reserve leaders', legion
   stamped) are kept in `special.placeUnits`; `special.reserveEntered` is set by the first reserve unit that enters; at the
   start of the side's turn, after the turn-start objectives and before the card, `placeUnit` offers the listed hexes with
   no unit and no leader (event `unitPlaced`). Battles without these fields are unchanged.

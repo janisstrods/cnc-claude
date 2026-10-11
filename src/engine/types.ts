@@ -189,9 +189,9 @@ export interface TurnState {
  * Sacred Band is an elite unit, 010's Scipio `ScenarioSetup.sacredLeader` and its exit a battle objective, 117's leader
  * placement `ScenarioSetup.placeLeaders`. Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112
  * Hellespont), `frightAtFirstSight` (116 Heraclea) and `tacticalFlexibility` (the optional Roman rule of 120, 121, 124,
- * §17.3). Camp capture (011 Baecula, 114 Gabiene) is a battle objective (`ObjectiveDef`), not a rule. Expansion #2:
- * `magoAmbush` also serves 206 (§18.5) and `veryHills` (223, §18.6) makes every hill very steep: a unit climbing onto one
- * stops and may not battle, and the close-combat caps change. The Trasimenus hand (006) is no rule of its own any more: it
+ * §17.3). Camp capture (011 Baecula, 114 Gabiene) is a battle objective (`ObjectiveDef`), not a rule, and an ambush
+ * reserve (005 Trebbia, 206, 308) is `ScenarioSetup.ambush`. Expansion #2: `veryHills` (223, §18.6) makes every hill very
+ * steep: a unit climbing onto one stops and may not battle, and the close-combat caps change. The Trasimenus hand (006) is no rule of its own any more: it
  * is hand growth (`ScenarioSpecial.handGrowth`, §18.8). Expansion #3: `steepSlopes` (308, §18.7) makes every hexside
  * between a hill (a hill under a camp or wall included) and a forest too steep to climb from the forest and closed to close
  * combat; `commandFallback` (304, §18.5) judges the type a card names within the command the card is played for, so a
@@ -199,7 +199,6 @@ export interface TurnState {
  * this list.
  */
 export const SPECIAL_RULE_IDS = [
-  'magoAmbush',
   'beneventumHand',
   'leaderLossCostsCard',
   'allLeadersSuddenDeath',
@@ -261,7 +260,7 @@ export interface ObjectiveState {
 }
 
 /**
- * The ambush reserve (rule `magoAmbush`, §14 and §18.5) with every default filled in: the Trebbia defaults are the four
+ * The ambush reserve (scenario data `ambush`, §14 and §18.5) with every default filled in: the Trebbia defaults are the four
  * Leadership cards, one finished own turn and the Mago text; 206 Aquae Sextiae adds Order Light Troops, from the first turn.
  * The reinforcement options of 308 Gergovia (§18.9) are present only when the scenario gives them (never in 005, 206).
  */
@@ -341,7 +340,7 @@ export interface ScenarioSpecial {
    * baseline row with retreat hexes it could not take; null in most battles. Never changed during play.
    */
   lastRowRetreat: Side | null;
-  /** Ambush trigger data: set exactly when the rule `magoAmbush` is on, else null. Never changed during play. */
+  /** Ambush trigger data: set exactly when the scenario gives ambush data, else null. Never changed during play. */
   ambush: AmbushDef | null;
   /** Off-board reserve force of an ambush (Trebbia's Mago, 206, ...; §18.5). */
   reserveUnits: Unit[];

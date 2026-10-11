@@ -19,9 +19,7 @@
   },
   "first": "top",
   "banners": 6,
-  "rules": [
-    "magoAmbush"
-  ],
+  "rules": [],
   "legions": {
     "bottom": "marius"
   },

@@ -30,8 +30,8 @@ export interface ScenarioJson {
   banners: number;
   rules?: SpecialRuleId[];
   /**
-   * Ambush reserve triggers and text (rule `magoAmbush`; 206 Aquae Sextiae); 308's fixed `entryHexes`, `noMove` and
-   * `attachLeader` (§18.9). Left out: the Trebbia defaults.
+   * Ambush reserve (§18.5): `{}` = the Trebbia defaults (005); 206 Aquae Sextiae's triggers and text; 308's fixed
+   * `entryHexes`, `noMove` and `attachLeader` (§18.9). Left out: no ambush.
    */
   ambush?: ScenarioSetup['ambush'];
   /** Forced placements after the ambush (308 Gergovia's Roman MI, §18.9). */

@@ -521,7 +521,7 @@ describe('steep slopes between hills and forests (308, rule steepSlopes, §18.7)
   it('308 has 12 such hexsides', () => {
     const data = gergovia as unknown as { terrain: TerrainSetup[]; rules: ScenarioSetup['rules'] };
     expect(data.rules).toContain('steepSlopes');
-    const s = createGame({ ...setupOf({ rules: data.rules.filter((r) => r !== 'magoAmbush') }), terrain: data.terrain }, 1);
+    const s = createGame({ ...setupOf({ rules: data.rules }), terrain: data.terrain }, 1);
     const sides = ALL_HEXES.flatMap((a) => neighbours(a).filter((b) => a < b && steepSlope(s, a, b)).map((b) => [a, b]));
     expect(sides).toHaveLength(12);
   });

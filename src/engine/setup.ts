@@ -53,15 +53,16 @@ export interface ScenarioSetup {
   placeLeaders?: { side: Side; name: string; traits?: LeaderTrait[] }[];
   rules: SpecialRuleId[];
   /**
-   * Ambush trigger data (needs the rule `magoAmbush`; fields left out take the Trebbia defaults, see `AmbushDef`). 206
-   * Aquae Sextiae: the Leadership cards and Order Light Troops, `afterOwnTurns: 0`, its own text. 308 Gergovia (§18.9):
-   * fixed `entryHexes`, `noMove`, `attachLeader`.
+   * The ambush reserve (§14, §18.5): given, the reserves wait off the board for it; fields left out take the Trebbia
+   * defaults (`{}` in 005, see `AmbushDef`). 206 Aquae Sextiae: the Leadership cards and Order Light Troops,
+   * `afterOwnTurns: 0`, its own text. 308 Gergovia (§18.9): fixed `entryHexes`, `noMove`, `attachLeader`. Left out: no
+   * ambush.
    */
   ambush?: AmbushSetup;
   /**
    * Forced placements (308, §18.9): each unit waits off the board (it is not one of `reserves`) and is placed on an empty
    * hex of `hexes` at the start of its side's first turn after a unit of the ambush force entered (`after: 'ambush'`;
-   * needs the rule `magoAmbush`). Its id follows the reserve leaders'.
+   * needs `ambush`). Its id follows the reserve leaders'.
    */
   placeUnits?: PlaceUnitSetup[];
   /**
@@ -462,19 +463,16 @@ function hexList(list: unknown, listErr: string, emptyErr: string, what: string)
 }
 
 /**
- * The ambush data of a battle: null without the rule `magoAmbush`, else the scenario's data over the Trebbia defaults.
+ * The ambush data of a battle: null when the scenario gives none, else its data over the Trebbia defaults.
  * The rule needs a reserve force (at least one reserve unit). The reinforcement options (308, §18.9) are copied only when
  * given: `entryHexes` (on the board, each once; passable and no wall, checked on the built board by
  * `checkReinforcementHexes`), `noMove` and `attachLeader` (which needs a reserve leader).
  */
-function resolveAmbush(setup: ScenarioSetup, rules: SpecialRuleId[]): AmbushDef | null {
+function resolveAmbush(setup: ScenarioSetup): AmbushDef | null {
   const a: unknown = setup.ambush;
-  if (!rules.includes('magoAmbush')) {
-    if (a !== undefined) throw new Error('ambush data needs the magoAmbush rule');
-    return null;
-  }
-  if (a !== undefined && (typeof a !== 'object' || a === null || Array.isArray(a))) throw new Error('ambush must be an object');
-  const d: AmbushSetup = (a ?? {}) as AmbushSetup;
+  if (a === undefined) return null;
+  if (typeof a !== 'object' || a === null || Array.isArray(a)) throw new Error('ambush must be an object');
+  const d = a as AmbushSetup;
   if (d.trigger !== undefined) {
     if (!Array.isArray(d.trigger)) throw new Error('ambush trigger must be a list of cards');
     if (!d.trigger.length) throw new Error('ambush trigger: needs at least one card');
@@ -490,7 +488,7 @@ function resolveAmbush(setup: ScenarioSetup, rules: SpecialRuleId[]): AmbushDef 
     if (d[k] !== undefined && typeof d[k] !== 'boolean') throw new Error(`ambush ${k} must be true or false`);
   }
   if (d.attachLeader && !setup.reserveLeaders.length) throw new Error('ambush attachLeader needs a reserve leader');
-  if (!setup.reserves.length) throw new Error('the ambush (rule magoAmbush) needs reserve units');
+  if (!setup.reserves.length) throw new Error('the ambush needs reserve units');
   return {
     trigger: [...(d.trigger ?? DEFAULT_AMBUSH.trigger)],
     afterOwnTurns: d.afterOwnTurns ?? DEFAULT_AMBUSH.afterOwnTurns,
@@ -519,7 +517,7 @@ function resolvePlaceUnits(setup: ScenarioSetup, ambush: AmbushDef | null, nextI
     if (p.command !== undefined) throw new Error(`unit to place ${type}: command ${String(p.command)} is only for pieces on the board`);
     const msg = `placeUnits ${type}: hexes must be a list of [r, c] hexes, at least one`;
     const hexes = hexList(p.hexes, msg, msg, `placeUnits ${type}: hex`);
-    if (!ambush) throw new Error('placeUnits after the ambush need the magoAmbush rule');
+    if (!ambush) throw new Error('placeUnits after the ambush need ambush data');
     const st = UNIT_STATS[type];
     const unit = withLegion({ id: nextId(), side: p.side, type, hex: OFF_BOARD, blocks: st.blocks, maxBlocks: st.blocks }, setup.legions);
     out.push({ unit, hexes, after: 'ambush' });
@@ -631,7 +629,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   // Asculum: leaders still to be placed wait off the board (placement order = id order)
   const rules = effectiveRules(setup, options);
   checkPlacement(setup);
-  const ambush = resolveAmbush(setup, rules);
+  const ambush = resolveAmbush(setup);
   const handGrowth = resolveHandGrowth(setup);
   const unplaced: string[] = [];
   for (const l of setup.placeLeaders ?? []) {

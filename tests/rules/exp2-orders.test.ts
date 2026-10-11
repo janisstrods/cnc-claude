@@ -30,7 +30,7 @@ const AQUAE = {
 function posFor(side: Side, extra: Partial<Pos> = {}): Pos {
   const foe: Side = side === 'top' ? 'bottom' : 'top';
   return {
-    rules: ['magoAmbush'],
+    ambush: {},
     first: side,
     units: [
       { side, type: 'MI', at: [side === 'top' ? 1 : 7, 6] },
@@ -69,7 +69,7 @@ const accepts = (d: GameDriver, section: SectionName) => d.answer({ kind: 'order
 
 describe('ambush reserve', () => {
   describe('resolved configuration', () => {
-    it('is null in a battle without the magoAmbush rule', () => {
+    it('is null in a battle without ambush data', () => {
       expect(build({ units: [{ side: 'top', type: 'MI', at: [1, 6] }] }).special.ambush).toBeNull();
     });
     it('defaults to Trebbia: the four Leadership cards, after the first own turn, the Mago text', () => {
@@ -77,7 +77,7 @@ describe('ambush reserve', () => {
       expect(s.special.ambush).toEqual({
         trigger: LEADERSHIP, afterOwnTurns: 1, text: "Ambush! Mago's hidden force strikes from the {section}.",
       });
-      expect(scenarioById('005').setup.ambush).toBeUndefined();
+      expect(scenarioById('005').setup.ambush).toEqual({});
       expect(createGame(scenarioById('005').setup, 11).special.ambush).toEqual(s.special.ambush);
     });
     it('fills the fields the scenario leaves out from the Trebbia defaults', () => {
@@ -101,10 +101,9 @@ describe('ambush reserve', () => {
       const c = cloneState(s);
       expect(c.special.ambush).toEqual(AQUAE);
     });
-    it('rejects ambush data without the rule, unknown cards and bad turn counts', () => {
-      const bad = (ambush: unknown, rules: Pos['rules'] = ['magoAmbush']) =>
-        () => createGame(setupOf({ rules, ambush: ambush as Pos['ambush'], units: [{ side: 'top', type: 'MI', at: [1, 6] }] }), 1);
-      expect(bad({ afterOwnTurns: 0 }, [])).toThrow(/ambush.*magoAmbush.*\(qa\)$/);
+    it('rejects ambush data that is no object, unknown cards and bad turn counts', () => {
+      const bad = (ambush: unknown) => () => createGame(setupOf({ ambush: ambush as Pos['ambush'], units: [{ side: 'top', type: 'MI', at: [1, 6] }] }), 1);
+      expect(bad(['inspiredL'])).toThrow(/^ambush must be an object \(qa\)$/);
       expect(bad({ trigger: ['order2L', 'bogus'] })).toThrow(/^ambush trigger: unknown card bogus \(qa\)$/);
       expect(bad({ trigger: [] })).toThrow(/^ambush trigger: needs at least one card \(qa\)$/);
       expect(bad({ trigger: 'inspiredL' })).toThrow(/^ambush trigger must be a list of cards \(qa\)$/);
@@ -112,14 +111,14 @@ describe('ambush reserve', () => {
       expect(bad({ afterOwnTurns: 1.5 })).toThrow(/afterOwnTurns/);
       expect(bad({ text: 7 })).toThrow(/^ambush text must be a string \(qa\)$/);
     });
-    it('rejects an ambush without reserve units (with or without ambush data)', () => {
+    it('rejects an ambush without reserve units (with the Trebbia defaults or data of its own)', () => {
       const p = posFor('top');
-      expect(() => build({ ...p, reserves: [], reserveLeaders: [] })).toThrow(/^the ambush \(rule magoAmbush\) needs reserve units \(qa\)$/);
-      expect(() => build({ ...p, ambush: AQUAE, reserves: [] })).toThrow(/^the ambush \(rule magoAmbush\) needs reserve units \(qa\)$/);
+      expect(() => build({ ...p, reserves: [], reserveLeaders: [] })).toThrow(/^the ambush needs reserve units \(qa\)$/);
+      expect(() => build({ ...p, ambush: AQUAE, reserves: [] })).toThrow(/^the ambush needs reserve units \(qa\)$/);
     });
   });
 
-  describe('Trebbia defaults (rule magoAmbush alone)', () => {
+  describe('Trebbia defaults (empty ambush data)', () => {
     it('refuses the side first turn, even with Leadership Any Section', () => {
       const d = startGame(posFor('top'));
       playCard(d, 'leadershipAny');
@@ -300,7 +299,7 @@ describe('ambush reserve', () => {
     function ambushedAndHit(side: Side, row: number) {
       const foe: Side = side === 'top' ? 'bottom' : 'top';
       const d = startGame({
-        rules: ['magoAmbush'], first: side, ambush: AQUAE,
+        first: side, ambush: AQUAE,
         units: [{ side, type: 'MI', at: [side === 'top' ? 1 : 7, 6] }, { side: foe, type: 'HI', at: [row, 5] }],
         reserves: [{ side, type: 'AX' }],
       });
@@ -348,15 +347,16 @@ describe('ambush reserve', () => {
       terrain: [], units: [], leaders: [], reserves: [{ side: 'top', type: 'LI' }], reserveLeaders: [],
     };
     it('a scenario file carries its ambush configuration into the setup (copied)', () => {
-      const json: ScenarioJson = { ...base, rules: ['magoAmbush'], ambush: { ...AQUAE, trigger: [...AQUAE.trigger] } };
+      const json: ScenarioJson = { ...base, ambush: { ...AQUAE, trigger: [...AQUAE.trigger] } };
       const { setup } = scenarioFromJson(json);
       expect(setup.ambush).toEqual(AQUAE);
       expect(setup.ambush).not.toBe(json.ambush);
       expect(setup.ambush!.trigger).not.toBe(json.ambush!.trigger);
       expect(createGame(setup, 1).special.ambush).toEqual(AQUAE);
     });
-    it('a file without ambush data leaves the setup without it', () => {
-      expect(scenarioFromJson({ ...base, rules: ['magoAmbush'] }).setup.ambush).toBeUndefined();
+    it('a file without ambush data leaves the setup without it; empty data (the Trebbia defaults) is kept', () => {
+      expect(scenarioFromJson(base).setup.ambush).toBeUndefined();
+      expect(scenarioFromJson({ ...base, ambush: {} }).setup.ambush).toEqual({});
     });
   });
 });
@@ -427,9 +427,9 @@ describe('separate commands', () => {
     it('rejects a command on a piece off the board (reserves, reserve leaders, leaders to place) instead of dropping it', () => {
       const bad = (p: Partial<Pos>) => () => createGame(setupOf({ units: [{ side: 'bottom', type: 'MI', at: [6, 4] }], commands: CMDS, ...p }), 1);
       const withCommand = <T extends object>(x: T) => ({ ...x, command: 'len' }) as T;
-      expect(bad({ rules: ['magoAmbush'], reserves: [withCommand({ side: 'bottom' as const, type: 'MC' as const })] }))
+      expect(bad({ ambush: {}, reserves: [withCommand({ side: 'bottom' as const, type: 'MC' as const })] }))
         .toThrow(/^reserve unit MC: command len is only for pieces on the board \(qa\)$/);
-      expect(bad({ rules: ['magoAmbush'], reserves: [{ side: 'bottom', type: 'MC' }], reserveLeaders: [withCommand({ side: 'bottom' as const, name: 'Marius' })] }))
+      expect(bad({ ambush: {}, reserves: [{ side: 'bottom', type: 'MC' }], reserveLeaders: [withCommand({ side: 'bottom' as const, name: 'Marius' })] }))
         .toThrow(/^reserve leader Marius: command len is only for pieces on the board \(qa\)$/);
       expect(bad({ placeLeaders: [withCommand({ side: 'bottom' as const, name: 'Gaius' })] }))
         .toThrow(/^leader to place Gaius: command len is only for pieces on the board \(qa\)$/);

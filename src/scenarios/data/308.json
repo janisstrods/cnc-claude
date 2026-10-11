@@ -20,7 +20,6 @@
   "first": "bottom",
   "banners": 8,
   "rules": [
-    "magoAmbush",
     "steepSlopes"
   ],
   "legions": {

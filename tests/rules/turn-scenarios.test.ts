@@ -84,7 +84,7 @@ describe('scenario data', () => {
   });
   it('special rules are attached to the right scenarios', () => {
     expect(scenarioById('002').setup.units.filter((u) => u.elite).map((u) => [u.side, u.type, u.r, u.c, u.elite])).toEqual([['top', 'HI', 3, 2, 'carthSacredBand']]);
-    expect(scenarioById('005').setup.rules).toContain('magoAmbush');
+    expect(scenarioById('005').setup.ambush).toEqual({}); // the Trebbia defaults
     expect(scenarioById('006').setup.handGrowth).toEqual({ side: 'bottom', to: 4 });
     expect(scenarioById('009').setup.rules).toContain('beneventumHand');
     expect(scenarioById('010').setup.sacredLeader).toEqual({ side: 'bottom', name: 'Scipio' });

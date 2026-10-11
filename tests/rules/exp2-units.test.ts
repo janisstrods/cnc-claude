@@ -286,7 +286,7 @@ describe('pilum and march', () => {
   describe('Marius legions (scenario data)', () => {
     it('stamp the legion on every MI and HI of the named side, on the board and in reserve; no other unit or side', () => {
       const s = build({
-        legions: MARIUS, rules: ['magoAmbush'],
+        legions: MARIUS, ambush: {},
         units: [bottom('MI', [6, 2]), bottom('HI', [6, 4]), bottom('LI', [6, 6]), bottom('WA', [6, 8]), top('MI', [2, 2]), top('HI', [2, 4])],
         reserves: [{ side: 'bottom', type: 'MI' }, { side: 'bottom', type: 'LI' }, { side: 'top', type: 'HI' }],
       });
