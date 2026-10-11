@@ -14,12 +14,14 @@ import { AssignDialog, DiceTurnPanel, HoverTip, LogPanel } from './panels';
 import { gamePrompt, mustCharge } from './prompts';
 import { diceAssignClick, firstOrderDie } from './diceOrders';
 import { bannerCounts, objectiveTipLines } from './objectiveText';
-import { IMMOBILE_TIP, boardUi, commandTipLine, deploymentSide, enteredTipLine, forcedMarchLine, rollingFireStep, type UiSel } from './uiModel';
+import {
+  IMMOBILE_TIP, boardMarks, commandTipLine, deploymentSide, enteredTipLine, forcedMarchLine, rollingFireStep, selectionDeps, type UiSel,
+} from './uiModel';
 import { leaderTraitLines, unitSummary } from './unitText';
 import { TerrainTipBlock } from './TerrainTipBlock';
 import { terrainTip } from './terrainTips';
-import { RulesReference } from '../screens/RulesReference';
-import { HistoryButton } from '../history/HistoryDialog';
+import { RulesDialog } from '../screens/RulesDialog';
+import { HistoryButton } from '../history/HistoryButton';
 import { isMuted, setMuted } from '../sound';
 import { opponentPersonality } from './makeOpponent';
 import './game.css';
@@ -106,8 +108,9 @@ export function GameScreen({ controller, onExit, onRematch }: {
   const hexArt = scenarioArt(controller.scenario.id);
   const ambushLeader = controller.scenario.setup.reserveLeaders[0]?.name;
 
+  // the board's marks follow the selection, not the hovered hex: a hover redraws only the path preview (and the tooltip)
   const bui = useMemo(() => {
-    const b = boardUi(s, d, ui, human);
+    const b = boardMarks(s, d, ui, human);
     if (d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus')) {
       for (const id of assignFocus) {
         const h = pieceHex(s, id) ?? -1;
@@ -118,7 +121,9 @@ export function GameScreen({ controller, onExit, onRematch }: {
       for (const u of unitsOf(s, human)) if (u.command === cmdFocus) b.highlights.set(u.hex, 'eligible');
     }
     return b;
-  }, [s, d, ui, human, assignFocus, cmdFocus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s, d, human, assignFocus, cmdFocus, ...selectionDeps(ui)]);
+  const pathPreview = useMemo(() => bui.pathAt(ui.hoverHex), [bui, ui.hoverHex]);
 
   const orderedIds = useMemo(() => new Set(Object.keys(s.turn.ordered)), [s]);
   const doneIds = useMemo(() => {
@@ -345,7 +350,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
             leaderHighlights={bui.leaderHighlights}
             badges={bui.badges}
             sectionShade={bui.sectionShade}
-            pathPreview={bui.pathPreview}
+            pathPreview={pathPreview}
             combat={view.combat}
             flashes={view.flashes}
             orderedIds={orderedIds}
@@ -503,9 +508,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
         <AssignDialog state={s} side={human} kind={d.kind} faces={d.faces} command={d.command} onChange={setAssignFocus} onDone={(ids) => answer({ kind: 'assign', ids })} error={view.error} />
       )}
 
-      <Modal open={showRules} title="Rules Reference" onClose={() => setShowRules(false)} width={880}>
-        <RulesReference scenario={controller.scenario} />
-      </Modal>
+      <RulesDialog open={showRules} title="Rules Reference" scenario={controller.scenario} onClose={() => setShowRules(false)} />
 
       <Modal open={confirmExit} title="Leave the battle?" onClose={() => setConfirmExit(false)}>
         <p className="modal-p">Your battle is saved automatically — you can continue it from the main menu.</p>

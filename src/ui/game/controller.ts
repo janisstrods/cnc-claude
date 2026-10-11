@@ -366,6 +366,7 @@ export class GameController {
     this.busy = true;
     try {
       for (;;) {
+        const asked = this.askAhead();
         await this.playEvents();
         if (this.disposed) return;
         const st = this.driver.state;
@@ -388,14 +389,14 @@ export class GameController {
           this.set({ pending: d, display: cloneState(st), canUndo: this.undoable(d), aiThinking: false, combat });
           return;
         }
-        // AI decision
+        // AI decision (asked before the animations when it could be: see askAhead); its pacing runs from here
         this.set({ aiThinking: true });
         const t0 = performance.now();
         let res: { answer: Answer; say?: string };
         let timer: ReturnType<typeof setTimeout> | undefined;
         try {
           res = await Promise.race([
-            this.opponent.decide(cloneState(st), d),
+            asked?.decision === d ? asked.answer : this.opponent.decide(cloneState(st), d),
             new Promise<never>((_, rej) => {
               // Last-resort guard (the AI client has its own in-thread fallback). If the page was frozen
               // (e.g. a backgrounded tab) the timer fires late: give the AI a little more time instead.
@@ -444,6 +445,22 @@ export class GameController {
       this.busy = false;
       this.skipAnim = false;
     }
+  }
+
+  /**
+   * The computer's pending decision, asked before the events that lead to it are played: the engine is already past them,
+   * so the opponent thinks while the board animates, and its answer is often ready when they end. Nothing can answer or
+   * take back a decision meanwhile (`busy`), so this is the decision and the state the loop then waits on: the opponent
+   * is asked the same things in the same order as when asked after the animations. Only an opponent that thinks off the
+   * main thread is asked early (an in-thread fallback would stall the animations); null when there is nothing to ask.
+   */
+  private askAhead(): { decision: Decision; answer: Promise<{ answer: Answer; say?: string }> } | null {
+    const d = this.driver.pending;
+    if (!d || d.side === this.config.humanSide || this.driver.state.winner || !this.opponent.usingWorker) return null;
+    const answer = this.opponent.decide(cloneState(this.driver.state), d);
+    // awaited after the animations; a dispose during them rejects it unawaited
+    answer.catch(() => {});
+    return { decision: d, answer };
   }
 
   // ---------------------------------------------------------------- animation

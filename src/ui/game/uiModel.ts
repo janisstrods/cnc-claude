@@ -26,11 +26,30 @@ export interface UiSel {
   diceActive?: number | null;
 }
 
-export interface BoardUi {
+/** Every field of a selection but the hovered hex (the compiler checks that none is missing). */
+const SEL_FIELDS: Record<Exclude<keyof UiSel, 'hoverHex'>, true> = {
+  selCard: true, hoverCard: true, orderSel: true, selPiece: true, rollPath: true, diceIds: true, diceActive: true,
+};
+const SEL_KEYS = Object.keys(SEL_FIELDS) as (keyof typeof SEL_FIELDS)[];
+
+/**
+ * The fields of `ui` other than the hovered hex, in a fixed order: the dependencies of a memo of what follows from the
+ * selection alone (`boardMarks`), which a hover then leaves alone.
+ */
+export function selectionDeps(ui: UiSel): unknown[] {
+  return SEL_KEYS.map((k) => ui[k]);
+}
+
+/** The board's marks for the selection, whatever hex is hovered; `pathAt` gives the path to preview with a hex hovered. */
+export interface BoardMarks {
   highlights: Map<HexId, Highlight>;
   leaderHighlights: Map<string, Highlight>;
   badges: Map<HexId, string>;
   sectionShade: Set<HexId>;
+  pathAt: (hover: HexId | null) => HexId[] | null;
+}
+
+export interface BoardUi extends Omit<BoardMarks, 'pathAt'> {
   pathPreview: HexId[] | null;
 }
 
@@ -67,12 +86,22 @@ export function expectedHits(s: GameState, attacker: Unit, hex: HexId, kind: 'cl
   return dice * p;
 }
 
+/** The board's marks, with the path preview for the hovered hex `ui.hoverHex`. */
 export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side): BoardUi {
+  const { pathAt, ...marks } = boardMarks(s, d, ui, human);
+  return { ...marks, pathPreview: pathAt(ui.hoverHex) };
+}
+
+/**
+ * The board's marks for the human's pending decision and the selection. The hovered hex is not read: the game screen
+ * keeps these while the pointer moves and asks only `pathAt` for the path to preview.
+ */
+export function boardMarks(s: GameState, d: Decision | null, ui: Omit<UiSel, 'hoverHex'>, human: Side): BoardMarks {
   const highlights = new Map<HexId, Highlight>();
   const leaderHighlights = new Map<string, Highlight>();
   const badges = new Map<HexId, string>();
   let sectionShade = new Set<HexId>();
-  let pathPreview: HexId[] | null = null;
+  let pathAt: BoardMarks['pathAt'] = () => null;
   const markPiece = (id: string, h: Highlight) => {
     if (isLeaderId(id)) {
       const l = leaderById(s, id);
@@ -86,7 +115,7 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
   };
 
   if (!d || d.side !== human) {
-    return { highlights, leaderHighlights, badges, sectionShade, pathPreview };
+    return { highlights, leaderHighlights, badges, sectionShade, pathAt };
   }
 
   switch (d.kind) {
@@ -127,6 +156,8 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       if (ui.selPiece) {
         markPiece(ui.selPiece, 'selected');
         const moves = pieceMoves(s, ui.selPiece, d.stage);
+        // the path of the move to each hex (the last one listed, should two end there)
+        const paths = new Map<HexId, HexId[]>();
         for (const m of moves) {
           if (m.hex < 0) {
             const last = m.path[m.path.length - 2];
@@ -135,8 +166,9 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
           }
           const isLeader = isLeaderId(ui.selPiece);
           highlights.set(m.hex, isLeader || d.stage === 2 ? 'move' : m.mustBattle ? 'moveMustBattle' : m.canBattle ? 'move' : 'moveNoBattle');
-          if (ui.hoverHex === m.hex) pathPreview = m.path;
+          paths.set(m.hex, m.path);
         }
+        pathAt = (hover) => (hover === null ? null : paths.get(hover) ?? null);
       }
       break;
     }
@@ -149,7 +181,11 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
         for (const h of ui.rollPath) highlights.set(h, 'rollPath');
         for (const h of next) highlights.set(h, 'rollNext');
         for (const h of [...ui.rollPath, ...next]) if (unitAt(s, h)) badges.set(h, '2 dice');
-        if (u) pathPreview = [u.hex, ...ui.rollPath, ...(ui.hoverHex !== null && next.includes(ui.hoverHex) ? [ui.hoverHex] : [])];
+        if (u) {
+          // the path so far, on to the hovered hex when the logs may roll there next
+          const path = [u.hex, ...ui.rollPath];
+          pathAt = (hover) => (hover !== null && next.includes(hover) ? [...path, hover] : path);
+        }
         break;
       }
       for (const id of battleReady(s)) {
@@ -179,10 +215,11 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       for (const o of d.options) if (!o.offBoard && o.end >= 0) highlights.set(o.end, 'option');
       // last-row retreat (214): an option that eliminates the unit says so
       if (d.kind === 'retreat') for (const o of d.options) if (retreatEliminates(s, d, o)) badges.set(o.end, 'Lost');
-      if (ui.hoverHex !== null) {
-        const o = d.options.find((x) => x.end === ui.hoverHex);
-        if (o && h >= 0) pathPreview = [h, ...o.path];
-      }
+      const options = d.options;
+      pathAt = (hover) => {
+        const o = hover === null ? undefined : options.find((x) => x.end === hover);
+        return o && h >= 0 ? [h, ...o.path] : null;
+      };
       break;
     }
     case 'momentum':
@@ -248,7 +285,7 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
     default:
       break;
   }
-  return { highlights, leaderHighlights, badges, sectionShade, pathPreview };
+  return { highlights, leaderHighlights, badges, sectionShade, pathAt };
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,8 @@
 // Main-thread wrapper: runs the AI in a module Web Worker, falling back to in-thread computation if the worker
-// cannot start, errors, or does not answer in time. The game never stalls on the AI.
+// cannot start, errors, or does not answer in time. The game never stalls on the AI. The AI itself is imported only for
+// that fallback, when it is first needed: the main bundle leaves it to the worker's chunk.
 import type { Answer, Decision, GameState } from '../engine/types';
-import { chooseAnswer, newMemory, type AiMemory, type AiOptions } from './index';
+import type { AiMemory, AiOptions } from './index';
 import type { WorkerResponse } from './worker';
 
 export interface AiResult {
@@ -33,8 +34,8 @@ export class AiClient {
   private readonly pending = new Map<number, Pending>();
   private nextId = 1;
   private readonly gameId: string;
-  /** Memory for in-thread fallback decisions. */
-  private readonly mem: AiMemory = newMemory();
+  /** Memory for in-thread fallback decisions (made with the first of them). */
+  private mem: AiMemory | null = null;
   private disposed = false;
   private timeouts = 0;
   private workersFailed = false;
@@ -165,19 +166,11 @@ export class AiClient {
     for (const id of [...this.pending.keys()]) this.settleInline(id);
   }
 
-  private inline(state: GameState, decision: Decision): Promise<AiResult> {
-    return new Promise<AiResult>((resolve, reject) => {
-      setTimeout(() => {
-        if (this.disposed) {
-          reject(new Error('AiClient disposed'));
-          return;
-        }
-        try {
-          resolve(chooseAnswer(state, decision, this.opts, this.mem));
-        } catch (e) {
-          reject(e);
-        }
-      }, 0);
-    });
+  private async inline(state: GameState, decision: Decision): Promise<AiResult> {
+    const { chooseAnswer, newMemory } = await import('./index');
+    await new Promise((r) => setTimeout(r, 0));
+    if (this.disposed) throw new Error('AiClient disposed');
+    this.mem ??= newMemory();
+    return chooseAnswer(state, decision, this.opts, this.mem);
   }
 }

@@ -4,6 +4,11 @@ import { randomAnswer, type Answer, type Decision, type GameState } from '../../
 export interface Opponent {
   decide(state: GameState, decision: Decision): Promise<{ answer: Answer; say?: string }>;
   dispose(): void;
+  /**
+   * True while decisions are computed off the main thread (the AI's Web Worker): only then is the opponent asked while the
+   * board still animates the events before its decision, which an in-thread computation would stall.
+   */
+  readonly usingWorker?: boolean;
 }
 
 /** Fallback opponent that plays random legal moves. */
