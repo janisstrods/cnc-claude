@@ -2,16 +2,13 @@
 // Usage: npx vite-node scripts/ai-stats.ts -- [--diff tribune] [--games 15] [--scale 0.3] [--shard 0/1]
 import { CARD_LIST, GameDriver, UNIT_STATS, areAdjacent, createGame, type CardKind, type GameState, type Side } from '../src/engine';
 import { SCENARIOS } from '../src/scenarios';
-import { chooseAnswer, newMemory, personalityFor, type AiOptions, type Difficulty } from '../src/ai';
+import { personalityFor, type AiOptions, type Difficulty } from '../src/ai';
+import { arg, playAiGame, shardArg } from './lib';
 
-function arg(name: string, def: string): string {
-  const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : def;
-}
 const diff = arg('diff', 'tribune') as Difficulty;
 const games = Number(arg('games', '15'));
 const scale = Number(arg('scale', '0.3'));
-const [shard, shards] = arg('shard', '0/1').split('/').map(Number);
+const [shard, shards] = shardArg();
 
 const stat = {
   turns: 0, clash: 0, clashUnits: 0, firstStrike: 0, cards: {} as Record<string, number>,
@@ -40,7 +37,6 @@ for (let g = shard; g < games; g += shards) {
     top: { side: 'top', difficulty: diff, personality: personalityFor(sc.setup.top.commander, sc.setup.top.army), seed: g * 2 + 1, budgetScale: scale },
     bottom: { side: 'bottom', difficulty: diff, personality: personalityFor(sc.setup.bottom.commander, sc.setup.bottom.army), seed: g * 2 + 2, budgetScale: scale },
   };
-  const mems = { top: newMemory(), bottom: newMemory() };
   // last move of each unit: [from, to, turn]
   const lastMove = new Map<string, { from: number; to: number; turn: number }>();
   let turnSide: Side | null = null;
@@ -48,57 +44,61 @@ for (let g = shard; g < games; g += shards) {
   let mountedOrdered = false;
   let mountedAttacked = false;
   const battledThisTurn = new Set<string>();
-  let steps = 0;
-  while (!d.over && steps++ < 20000) {
-    const dec = d.pending!;
-    if (dec.kind === 'playCard') {
-      if (turnSide) {
-        endOfTurnChecks(d.state, turnSide);
-        stat.turns++;
-        if (!attacked) stat.turnsWithoutAttack++;
-        if (mountedOrdered) stat.mountedTurns++;
-        if (mountedAttacked) stat.mountedAttackTurns++;
-      }
-      turnSide = dec.side;
-      attacked = false;
-      mountedOrdered = false;
-      mountedAttacked = false;
-      battledThisTurn.clear();
-    }
-    const before = d.state;
-    d.answer(chooseAnswer(d.state, dec, opts[dec.side], mems[dec.side]).answer);
-    for (const { e } of d.drainEvents()) {
-      if (e.t === 'cardPlayed') {
-        const k = e.kind as CardKind;
-        stat.cards[k] = (stat.cards[k] ?? 0) + 1;
-        if (e.effective === 'clash') stat.clash++;
-      } else if (e.t === 'ordered') {
-        if (d.state.turn.effective === 'clash') stat.clashUnits += e.ids.length;
-        if (e.ids.some((id) => { const u = before.units.find((x) => x.id === id) ?? d.state.units.find((x) => x.id === id); return u && UNIT_STATS[u.type].mounted; })) mountedOrdered = true;
-      } else if (e.t === 'combat' && (e.purpose === 'close' || e.purpose === 'ranged' || e.purpose === 'evade')) {
-        const a = before.units.find((x) => x.id === e.attacker) ?? d.state.units.find((x) => x.id === e.attacker);
-        if (a && a.side === turnSide) {
-          attacked = true;
-          stat.attacks++;
-          battledThisTurn.add(a.id);
-          if (UNIT_STATS[a.type].mounted) {
-            stat.mountedAttacks++;
-            mountedAttacked = true;
-          }
+  let before = d.state;
+  playAiGame(d, opts, {
+    before: (dec) => {
+      if (dec.kind === 'playCard') {
+        if (turnSide) {
+          endOfTurnChecks(d.state, turnSide);
+          stat.turns++;
+          if (!attacked) stat.turnsWithoutAttack++;
+          if (mountedOrdered) stat.mountedTurns++;
+          if (mountedAttacked) stat.mountedAttackTurns++;
         }
-      } else if (e.t === 'move' && e.path.length >= 2) {
-        const from = e.path[0];
-        const to = e.path[e.path.length - 1];
-        stat.moves++;
-        const prev = lastMove.get(e.id);
-        const turn = d.state.turn.number;
-        if (prev && prev.turn === turn - 2 && prev.from === to && prev.to === from && !battledThisTurn.has(e.id)) stat.backAndForth++;
-        lastMove.set(e.id, { from, to, turn });
-      } else if (e.t === 'leaderKilled') stat.leadersKilled++;
-      else if (e.t === 'firstStrike' as string) stat.firstStrike++;
-      else if (e.t === 'log' && /First Strike/.test(e.text)) stat.firstStrike++;
-    }
-  }
+        turnSide = dec.side;
+        attacked = false;
+        mountedOrdered = false;
+        mountedAttacked = false;
+        battledThisTurn.clear();
+      }
+    },
+    chosen: () => {
+      before = d.state;
+    },
+    after: (_, events) => {
+      for (const e of events) {
+        if (e.t === 'cardPlayed') {
+          const k = e.kind as CardKind;
+          stat.cards[k] = (stat.cards[k] ?? 0) + 1;
+          if (e.effective === 'clash') stat.clash++;
+        } else if (e.t === 'ordered') {
+          if (d.state.turn.effective === 'clash') stat.clashUnits += e.ids.length;
+          if (e.ids.some((id) => { const u = before.units.find((x) => x.id === id) ?? d.state.units.find((x) => x.id === id); return u && UNIT_STATS[u.type].mounted; })) mountedOrdered = true;
+        } else if (e.t === 'combat' && (e.purpose === 'close' || e.purpose === 'ranged' || e.purpose === 'evade')) {
+          const a = before.units.find((x) => x.id === e.attacker) ?? d.state.units.find((x) => x.id === e.attacker);
+          if (a && a.side === turnSide) {
+            attacked = true;
+            stat.attacks++;
+            battledThisTurn.add(a.id);
+            if (UNIT_STATS[a.type].mounted) {
+              stat.mountedAttacks++;
+              mountedAttacked = true;
+            }
+          }
+        } else if (e.t === 'move' && e.path.length >= 2) {
+          const from = e.path[0];
+          const to = e.path[e.path.length - 1];
+          stat.moves++;
+          const prev = lastMove.get(e.id);
+          const turn = d.state.turn.number;
+          if (prev && prev.turn === turn - 2 && prev.from === to && prev.to === from && !battledThisTurn.has(e.id)) stat.backAndForth++;
+          lastMove.set(e.id, { from, to, turn });
+        } else if (e.t === 'leaderKilled') stat.leadersKilled++;
+        else if (e.t === 'firstStrike' as string) stat.firstStrike++;
+        else if (e.t === 'log' && /First Strike/.test(e.text)) stat.firstStrike++;
+      }
+    },
+  });
   stat.games++;
 }
 const pct = (a: number, b: number) => `${((100 * a) / Math.max(1, b)).toFixed(1)}%`;

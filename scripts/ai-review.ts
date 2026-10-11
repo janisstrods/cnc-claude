@@ -3,22 +3,18 @@
 import {
   CARD_DEFS, CARD_LIST, GameDriver, createGame, hexLabel, randomAnswer, type GameEvent, type GameState, type Side,
 } from '../src/engine';
-import { SCENARIOS } from '../src/scenarios';
+import { scenarioById } from '../src/scenarios';
 import { evaluate } from '../src/ai/evaluate';
 import { weightsFor } from '../src/ai/values';
-import { chooseAnswer, newMemory, personalityFor, type AiOptions, type Difficulty } from '../src/ai';
-
-function arg(name: string, def: string): string {
-  const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : def;
-}
+import { personalityFor, type AiOptions, type Difficulty } from '../src/ai';
+import { arg, lcg, playAiGame } from './lib';
 
 const scId = arg('scenario', '007');
 const diff = arg('diff', 'tribune') as Difficulty;
 const opp = arg('opp', 'tribune');
 const maxTurns = Number(arg('turns', '12'));
 const seed = Number(arg('seed', '1'));
-const info = SCENARIOS.find((x) => x.id === scId)!;
+const info = scenarioById(scId);
 const d = new GameDriver(createGame(info.setup, seed));
 
 const TER: Record<string, string> = { plain: '.', hill: 'h', forest: 'f', marsh: 'm', broken: 'b', river: '~', lake: 'L', camp: 'c', steep: 'S', void: ' ' };
@@ -79,42 +75,47 @@ const opts: Record<Side, AiOptions> = {
   bottom: { side: 'bottom', difficulty: diff, personality: personalityFor(info.setup.bottom.commander, info.setup.bottom.army), seed: seed * 11 + 2 },
 };
 const aiSide = arg('side', 'both');
-const mems = { top: newMemory(), bottom: newMemory() };
-let r = seed;
-const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
+const rnd = lcg(seed);
 console.log(`${info.id} ${info.name}: top=${info.setup.top.army} (${opts.top.personality.name}) bottom=${info.setup.bottom.army} (${opts.bottom.personality.name})`);
 console.log(board(d.state));
 let lastTurn = 0;
-while (!d.over && d.state.turn.number <= maxTurns) {
-  const dec = d.pending!;
-  const isAi = (aiSide === 'both' || aiSide === dec.side) && !(opp === 'random' && aiSide !== 'both' && dec.side !== aiSide);
-  const s = d.state;
-  if (dec.kind === 'playCard' && s.turn.number !== lastTurn) {
-    lastTurn = s.turn.number;
-    console.log(board(s));
-    const ev = evaluate(s, dec.side, dec.side === 'top' ? 'bottom' : 'top', weightsFor(opts[dec.side].personality));
-    console.log(`\n=== Turn ${s.turn.number}: ${s.players[dec.side].army} (${dec.side}) banners ${s.players.bottom.banners}b-${s.players.top.banners}t; eval(now)=${ev.toFixed(3)}; hand: ${s.players[dec.side].hand.map((c) => CARD_LIST[c]).join(', ')}`);
-  }
-  let ans;
-  if (isAi) {
-    const res = chooseAnswer(s, dec, opts[dec.side], mems[dec.side]);
-    ans = res.answer;
-    if (dec.kind === 'playCard') {
-      const m = mems[dec.side].last;
-      console.log(`  think ${m?.ms.toFixed(0)}ms sims=${m?.sims} chosen: ${m?.plan}`);
-      for (const alt of m?.alternatives ?? []) console.log(`    alt ${alt}`);
+let before = d.state;
+playAiGame(d, opts, {
+  maxTurn: maxTurns,
+  before: (dec) => {
+    const s = d.state;
+    if (dec.kind === 'playCard' && s.turn.number !== lastTurn) {
+      lastTurn = s.turn.number;
+      console.log(board(s));
+      const ev = evaluate(s, dec.side, dec.side === 'top' ? 'bottom' : 'top', weightsFor(opts[dec.side].personality));
+      console.log(`\n=== Turn ${s.turn.number}: ${s.players[dec.side].army} (${dec.side}) banners ${s.players.bottom.banners}b-${s.players.top.banners}t; eval(now)=${ev.toFixed(3)}; hand: ${s.players[dec.side].hand.map((c) => CARD_LIST[c]).join(', ')}`);
     }
-    if (dec.kind === 'defend' || dec.kind === 'ignoreFlags' || dec.kind === 'momentum' || dec.kind === 'bonusCombat' || dec.kind === 'cavalryExtra' || dec.kind === 'leaderEvade') {
-      console.log(`  [${dec.side} ${dec.kind}] -> ${JSON.stringify(ans)}`);
+  },
+  answer: (dec) => {
+    const isAi = (aiSide === 'both' || aiSide === dec.side) && !(opp === 'random' && aiSide !== 'both' && dec.side !== aiSide);
+    return isAi ? undefined : randomAnswer(d.state, dec, rnd);
+  },
+  chosen: (dec, ans, ai) => {
+    if (ai) {
+      if (dec.kind === 'playCard') {
+        const m = ai.mem.last;
+        console.log(`  think ${m?.ms.toFixed(0)}ms sims=${m?.sims} chosen: ${m?.plan}`);
+        for (const alt of m?.alternatives ?? []) console.log(`    alt ${alt}`);
+      }
+      if (dec.kind === 'defend' || dec.kind === 'ignoreFlags' || dec.kind === 'momentum' || dec.kind === 'bonusCombat' || dec.kind === 'cavalryExtra' || dec.kind === 'leaderEvade') {
+        console.log(`  [${dec.side} ${dec.kind}] -> ${JSON.stringify(ans)}`);
+      }
+      if (ai.say) console.log(`  SAY ${ai.say}`);
     }
-    if (res.say) console.log(`  SAY ${res.say}`);
-  } else ans = randomAnswer(s, dec, rnd);
-  const before = d.state;
-  if (!d.answer(ans)) console.log(`REJECTED ${dec.kind}: ${d.lastError}`);
-  for (const q of d.drainEvents()) {
-    const t = describe(q.e, before);
-    if (t) console.log(t);
-  }
-}
+    before = d.state;
+  },
+  rejected: (dec) => console.log(`REJECTED ${dec.kind}: ${d.lastError}`),
+  after: (_, events) => {
+    for (const e of events) {
+      const t = describe(e, before);
+      if (t) console.log(t);
+    }
+  },
+});
 console.log(board(d.state));
 console.log(`\nResult: winner=${d.state.winner} ${d.state.winReason} banners b${d.state.players.bottom.banners}-t${d.state.players.top.banners}`);
