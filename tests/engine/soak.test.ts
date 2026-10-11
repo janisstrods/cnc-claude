@@ -1,17 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { GameDriver, createGame, randomAnswer } from '../../src/engine';
 import { SCENARIOS } from '../../src/scenarios';
-
-function mulberry(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { mulberry32 } from '../support/rng';
 
 describe('random-play soak', () => {
   for (const sc of SCENARIOS) {
@@ -19,7 +9,7 @@ describe('random-play soak', () => {
       for (let g = 0; g < 4; g++) {
         const seed = 1000 * Number(sc.id) + g;
         const d = new GameDriver(createGame(sc.setup, seed));
-        const rnd = mulberry(seed);
+        const rnd = mulberry32(seed);
         let steps = 0;
         let rejects = 0;
         while (!d.over && steps < 20000) {

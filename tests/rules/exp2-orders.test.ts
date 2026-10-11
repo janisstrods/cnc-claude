@@ -10,6 +10,7 @@ import {
 } from '../../src/engine';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory } from '../../src/ai';
 import { scenarioById, scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
+import { lcg } from '../support/rng';
 import { H, build, endMoves, endTurn, ev, giveCard, must, n, noFirstStrike, passTurn, play, setupOf, u, type Pos } from './helpers';
 
 beforeEach(() => forceDice([]));
@@ -823,7 +824,7 @@ describe('separate commands', () => {
       let asked = 0;
       let finished = 0;
       for (let seed = 1; seed <= 30; seed++) {
-        const rnd = (() => { let x = seed * 7919; return () => (x = (x * 1103515245 + 12345) % 2147483648) / 2147483648; })();
+        const rnd = lcg(seed * 7919);
         const r = playOut(seed, (d, dec) => randomAnswer(d.state, dec, rnd));
         asked += r.asked;
         if (r.d.over) finished++;

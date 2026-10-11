@@ -11,6 +11,7 @@ import { Occ, ignorableOcc } from '../../src/ai/board';
 import { campBanner } from '../../src/ai/policies';
 import { chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
+import { mulberry32 } from '../support/rng';
 import {
   H, build, combatDice, ev, forceDice, giveCard, must, n, noFirstStrike, passTurn, play, setupOf, toBattle, u, type Pos,
 } from './helpers';
@@ -21,17 +22,6 @@ const ofKind = <K extends GameEvent['t']>(e: GameEvent[], t: K) => e.filter((x):
 const miss = (k: number) => n('light', k); // misses heavy and medium targets (no swords, no helmets)
 /** Attack faces that score exactly 1 hit on a heavy target, then the 2-die leader casualty check that kills. */
 const hitAndKill = ['heavy', ...miss(4), 'leader', 'leader'] as const;
-
-function mulberry(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 describe('infantry (unit table, used by Fright at First Sight)', () => {
   it('every foot type is infantry except the war machine; no mounted type is', () => {
@@ -369,7 +359,7 @@ describe('leaderLossCostsCard (112 Hellespont)', () => {
     let losses = 0;
     for (const seed of [1, 2, 3]) {
       const d = new GameDriver(createGame(setup, seed));
-      const rnd = mulberry(seed);
+      const rnd = mulberry32(seed);
       let steps = 0;
       while (!d.over && steps++ < 6000) {
         const p = d.pending!;
