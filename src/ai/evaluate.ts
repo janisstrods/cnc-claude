@@ -13,7 +13,7 @@ import { eliteHas, hasPilum, rangeOf } from '../engine/elites';
 import { UNIT_STATS, canEvadeType, elephantDiceVs, forbidsTerrain, type UnitStats } from '../engine/units';
 import type { DieFace, GameState, HexId, Leader, ObjectiveOf, Side, Unit } from '../engine/types';
 import {
-  Occ, advanceGap, attachedLeaderOcc, canEvadeOcc, canFireOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, hasTerrain, helmetsOcc,
+  NHEX, Occ, advanceGap, attachedLeaderOcc, canEvadeOcc, canFireOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, hasTerrain, helmetsOcc,
   hexDist, ignorableOcc, isRangedLight, isWarMachine, reachOf, retreatRoom, rowsToOwnEdge, stopAwareReach, supportOcc,
 } from './board';
 import { closeProfile, strikeValue } from './estimate';
@@ -604,12 +604,25 @@ function advancePenalty(s: GameState, units: Unit[], enemies: Unit[], W: Weights
   return pen * W.adv;
 }
 
+/** `exitDistance` of every hex, per exit objective (objectives never change in play: `cloneState` shares them). */
+const exitDistances = new WeakMap<ObjectiveOf<'exit'>, Float64Array>();
+
 /**
  * Distance from hex h to the hexes of exit objective `o`: along one board row (010 Castulo: row 0 from half-column 8 on;
  * 210, 212, 221, 317: a whole baseline) rows to go plus half the columns outside the exit hexes (for a whole row, the hex
- * distance); other shapes the hex distance to the nearest exit hex.
+ * distance); other shapes the hex distance to the nearest exit hex. Tabled per objective on first use.
  */
 function exitDistance(o: ObjectiveOf<'exit'>, h: HexId): number {
+  let t = exitDistances.get(o);
+  if (!t) {
+    t = new Float64Array(NHEX);
+    for (let x = 0; x < NHEX; x++) t[x] = exitDistanceOf(o, x);
+    exitDistances.set(o, t);
+  }
+  return t[h];
+}
+
+function exitDistanceOf(o: ObjectiveOf<'exit'>, h: HexId): number {
   const row = rowOf(o.hexes[0]);
   if (o.hexes.every((x) => rowOf(x) === row)) {
     let lo = Infinity;
