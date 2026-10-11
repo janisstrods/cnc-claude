@@ -15,7 +15,7 @@ beforeAll(async () => {
 });
 
 /** Expansions whose battles must all have a history; a newly added expansion joins the list once its histories are written. */
-const COVERED: Expansion[] = ['base', 'exp1', 'exp2'];
+const COVERED: Expansion[] = ['base', 'exp1', 'exp2', 'exp3'];
 
 describe('coverage', () => {
   it('every battle of the covered expansions has a history', () => {
