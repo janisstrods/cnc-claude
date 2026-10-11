@@ -4,14 +4,11 @@
 // URL options (hash query): ?s=006 (large board), ?units=1 (mock blocks), ?only=large|grid|legend|samples|exp2|exp3.
 import { useEffect, useMemo, useState } from 'react';
 import { UnitToken } from '../art';
-import { rampartMask, type TerrainSetup } from '../engine/setup';
-import { hexId, NUM_HEXES, onBoard } from '../engine/hex';
-import { COLS, ROWS, type ArmyLook, type Blocks, type ObjectiveDef, type ObjectiveState, type Side, type TerrainType, type UnitType } from '../engine/types';
+import { boardFromTerrain, type BoardArrays, type TerrainSetup } from '../engine/setup';
+import { hexId } from '../engine/hex';
+import type { ArmyLook, Blocks, ObjectiveDef, ObjectiveState, Side, TerrainType, UnitType } from '../engine/types';
 import { BOARD_H, BOARD_W, hexCenter } from '../ui/geometry';
 import { BoardArt, ObjectiveMarkers, TerrainIcon, terrainArtOf, terrainName } from '../ui/terrain';
-
-/** A terrain entry: the scenario file format, plus `art` and the Expansion #3 hill under a camp or wall (`hill`). */
-type TerrainEntry = Omit<TerrainSetup, 't'> & { t: TerrainType; art?: string; hill?: boolean };
 
 interface ScenarioJson {
   id: string;
@@ -20,7 +17,7 @@ interface ScenarioJson {
   top: { army: string };
   bottom: { army: string };
   rules?: string[];
-  terrain: TerrainEntry[];
+  terrain: TerrainSetup[];
   units?: { side: 'top' | 'bottom'; type: string; r: number; c: number }[];
 }
 
@@ -135,13 +132,11 @@ const RAMPARTS: ScenarioJson = {
     { r: 6, c: 11, t: 'sea' },
     { r: 7, c: 11, t: 'sea' },
     { r: 8, c: 12, t: 'sea' },
-    { r: 5, c: 12, t: 'sea' },
     { r: 6, c: 12, t: 'sea' },
-    { r: 7, c: 12, t: 'sea' },
   ],
 };
 
-const range = (r: number, c0: number, c1: number, e: Omit<TerrainEntry, 'r' | 'c'>): TerrainEntry[] =>
+const range = (r: number, c0: number, c1: number, e: Omit<TerrainSetup, 'r' | 'c'>): TerrainSetup[] =>
   Array.from({ length: c1 - c0 + 1 }, (_, k) => ({ r, c: c0 + k, ...e }));
 
 /** Ditches: 212's ditch row in front of a rampart line, a zigzag running down from the top edge, a junction, a lone hex. */
@@ -205,7 +200,7 @@ const STEEP_HILLS: ScenarioJson = {
   rules: ['veryHills'],
   terrain: [
     ...[[0, 9], [1, 1], [1, 4], [1, 7], [1, 10], [1, 11], [2, 3], [2, 6], [2, 8], [3, 0], [3, 2], [3, 3], [3, 6], [3, 9], [7, 7], [8, 8]].map(
-      ([r, c]): TerrainEntry => ({ r, c, t: 'hill' }),
+      ([r, c]): TerrainSetup => ({ r, c, t: 'hill' }),
     ),
     { r: 2, c: 4, t: 'rampart', faces: 'bottom' },
     { r: 2, c: 5, t: 'rampart', faces: 'bottom' },
@@ -380,28 +375,9 @@ function cropBox(hexes: [number, number][], flipped: boolean): string {
   return `${x0.toFixed(1)} ${y0.toFixed(1)} ${(x1 - x0).toFixed(1)} ${(y1 - y0).toFixed(1)}`;
 }
 
-function boardArrays(s: ScenarioJson): { terrain: TerrainType[]; fords: boolean[]; rampart: number[]; art: (string | undefined)[]; hillUnder: boolean[] } {
-  const terrain: TerrainType[] = [];
-  const fords: boolean[] = [];
-  const rampart: number[] = [];
-  const hillUnder: boolean[] = new Array(NUM_HEXES).fill(false);
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      terrain.push(onBoard(r, c) ? 'plain' : 'void');
-      fords.push(false);
-      rampart.push(0);
-    }
-  }
-  for (const t of s.terrain) {
-    const id = hexId(t.r, t.c);
-    // a sea played as a ford (217) is a fordable river to the engine
-    const seaFord = t.t === 'sea' && !!t.ford;
-    terrain[id] = seaFord ? 'river' : t.t;
-    fords[id] = (t.t === 'river' || seaFord) && !!t.ford;
-    rampart[id] = rampartMask(t as TerrainSetup);
-    if (t.hill && (t.t === 'camp' || t.t === 'wall')) hillUnder[id] = true;
-  }
-  return { terrain, fords, rampart, art: terrainArtOf(s), hillUnder };
+/** The board arrays of a gallery board, as a game builds them (`boardFromTerrain`), and its hex art. */
+function boardArrays(s: ScenarioJson): BoardArrays & { art: (string | undefined)[] } {
+  return { ...boardFromTerrain(s.terrain), art: terrainArtOf(s) };
 }
 
 function useHashParams(): URLSearchParams {
