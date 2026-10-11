@@ -7,7 +7,7 @@ import { ALL_DIE_FACES, Button, DieSymbol, Icon, Modal, Panel } from '../kit';
 import { BOARD_H, BOARD_W, hexCenterId } from '../geometry';
 import type { Difficulty, SavedGame } from '../game/controller';
 import { boardArtProps, leaderTokenProps, unitTokenProps } from '../game/boardProps';
-import { PERSONALITIES, personalityFor } from '../../ai';
+import { PERSONALITIES, personalityFor } from '../../ai/personality';
 import { RulesReference } from './RulesReference';
 import { HistoryButton } from '../history/HistoryDialog';
 import {

@@ -1,5 +1,5 @@
 import { AiClient } from '../../ai/client';
-import { personalityById, personalityFor, type Personality } from '../../ai';
+import { personalityById, personalityFor, type Personality } from '../../ai/personality';
 import { other } from '../../engine';
 import { scenarioById } from '../../scenarios';
 import type { SessionConfig } from './controller';
