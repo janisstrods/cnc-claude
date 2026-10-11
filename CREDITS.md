@@ -61,10 +61,11 @@ No third-party assets are used for them.
 The 15 base-game battles follow the scenario setups documented by the community at
 [commandsandcolors.net](https://www.commandsandcolors.net). The 24 battles of Expansion #1, *Greece & Eastern Kingdoms*
 (101–124), were transcribed hex by hex from the official scenario maps published at commandsandcolors.net, and for
-122–124 from GMT's Bonus Pack #2; the 23 battles of Expansion #2, *Rome & the Barbarians* (201–223), were transcribed
-the same way and checked by independent overlay verification. The setups are data; the rules are paraphrased (`design/rules-reference.md`), the
+122–124 from GMT's Bonus Pack #2; the 23 battles of Expansion #2, *Rome & the Barbarians* (201–223), and the 19 of
+Expansion #3, *The Roman Civil Wars* (301–319), were transcribed the same way and checked by independent overlay
+verification. The setups are data; the rules are paraphrased (`design/rules-reference.md`), the
 battle summaries are original, and all army and terrain art is original.
 
 *Commands & Colors: Ancients* is a board game by Richard Borg, published by GMT Games; Expansions #1, *Greece & Eastern
-Kingdoms*, and #2, *Rome & the Barbarians*, are also GMT Games products. This is an unofficial fan implementation. The card texts are paraphrased
+Kingdoms*, #2, *Rome & the Barbarians*, and #3, *The Roman Civil Wars*, are also GMT Games products. This is an unofficial fan implementation. The card texts are paraphrased
 summaries.

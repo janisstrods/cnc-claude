@@ -3,6 +3,7 @@
  * suits what it brought (no fixed order, never reused). Bump for every publish, together with package.json's version.
  */
 export const RELEASES = [
+  { number: '1.5.0', name: 'Pharsalus', notes: 'Expansion #3, The Roman Civil Wars (battles 301–319): Sulla, Sertorius, Caesar and Pompey, with city walls, dice orders and the history of every battle' },
   { number: '1.4.4', name: 'Cynoscephalae', notes: 'Random battle in the battle picker: a battle from any box, and a side, picked at random' },
   { number: '1.4.3', name: 'Gabiene', notes: 'Play again after a battle; switch sides and the second battle sums up both, the banner totals deciding the match' },
   { number: '1.4.2', name: 'Lake Trasimenus', notes: 'Hover any hex to see what its terrain does to movement, combat and line of sight' },
