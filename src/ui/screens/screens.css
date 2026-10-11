@@ -93,26 +93,26 @@
 @media (prefers-reduced-motion: reduce) {
   .random-die, .random-die.is-rolled { transition: none; animation: none; }
 }
-.select-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.select-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .select-tabs button {
-  flex: 1 1 0;
-  padding: 6px 6px;
+  /* four boxes share the 330px list column: two to a row, each label on one line with its battle count beside it */
+  flex: 1 1 auto;
+  padding: 5px 6px;
   font-family: var(--kit-font-title);
-  font-size: 13px;
-  letter-spacing: .04em;
+  font-size: 11.5px;
+  letter-spacing: .02em;
+  white-space: nowrap;
   color: rgba(240, 227, 194, .8);
   background: rgba(20, 12, 6, .55);
   border: 1px solid rgba(226, 189, 114, .25);
   border-radius: 8px;
   cursor: pointer;
-  /* three boxes share the 330px list column: a long label wraps onto a second line */
   line-height: 1.2;
-  text-wrap: balance;
 }
 .select-tabs button:hover { border-color: rgba(226, 189, 114, .55); }
 .select-tabs button:focus-visible { outline: 2px solid var(--kit-gold); outline-offset: 2px; }
 .select-tabs button.active { color: #fbe7a6; border-color: var(--kit-gold); background: linear-gradient(180deg, rgba(142, 27, 27, .6), rgba(60, 30, 14, .7)); }
-.select-tabs small { display: block; font-family: var(--kit-font-body); font-size: 12px; opacity: .65; }
+.select-tabs small { margin-left: 4px; font-family: var(--kit-font-body); font-size: 12px; letter-spacing: 0; opacity: .65; }
 .select-scroll {
   overflow-y: auto;
   display: flex;
@@ -144,8 +144,32 @@
 .scen-year { font-size: 13px; color: rgba(240, 227, 194, .6); font-style: italic; }
 .scen-hint { grid-column: 2 / span 2; font-size: 13px; color: rgba(240, 227, 194, .65); }
 
-.select-detail { display: grid; grid-template-rows: auto 1fr auto; gap: 10px; min-height: 0; }
-.brief { color: var(--kit-ink); }
+/*
+ * The briefing takes the height it needs, but never more than leaves the map preview its minimum and the choose row (with
+ * To Battle!) its own: a long briefing scrolls inside the parchment instead of pushing them off the screen.
+ */
+.select-detail {
+  display: grid;
+  grid-template-rows: minmax(0, max-content) minmax(max(160px, 27vh), 1fr) auto;
+  gap: 10px;
+  min-height: 0;
+}
+.brief { color: var(--kit-ink); min-height: 0; display: flex; flex-direction: column; }
+.brief > .kit-panel__inner { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.brief .kit-panel__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.brief-head { flex: none; }
+/* the last lines fade out (over a bottom padding, so a briefing that fits loses nothing): there is more to scroll to */
+.brief-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin-right: -10px;
+  padding: 0 10px 12px 0;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 16px), transparent);
+}
+.brief-scroll::-webkit-scrollbar { width: 6px; }
+.brief-scroll::-webkit-scrollbar-thumb { background: rgba(110, 26, 20, .35); border-radius: 3px; }
 .brief-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .brief-history.kit-btn { flex: none; padding: 4px 14px; font-size: 13px; margin-top: 2px; }
 .brief-title { font-family: var(--kit-font-title); font-size: 26px; color: #6e1a14; letter-spacing: .04em; }

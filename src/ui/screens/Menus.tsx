@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { UNIT_STATS, createGame, leaderUnit, veryHills, type GameOptions, type GameState, type Side, type UnitType } from '../../engine';
+import { UNIT_STATS, createGame, leaderUnit, orderDice, steepSlopes, veryHills, type GameOptions, type GameState, type Side, type UnitType } from '../../engine';
 import { SCENARIOS, type Expansion, type ScenarioInfo } from '../../scenarios';
 import { LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
 import { BoardArt, ObjectiveMarkers, scenarioArt } from '../terrain';
@@ -92,6 +92,7 @@ function SetupPreview({ sc, state, flipped, humanSide }: { sc: ScenarioInfo; sta
     <svg className="preview-svg" viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}>
       <BoardArt
         terrain={state.terrain} fords={state.fords} rampart={state.rampart} art={art} steepHills={veryHills(state)}
+        hillUnder={state.hillUnder} steepSlopes={steepSlopes(state)}
         flipped={flipped} topLabel={state.players[top].army} bottomLabel={state.players[bottom].army}
       />
       <ObjectiveMarkers objectives={state.special.objectives} objState={state.special.objState} flipped={flipped} blocks={blocks} units={state.units} />
@@ -197,11 +198,16 @@ export function ScenarioSelect(p: {
   const enemy = sel.setup[side === 'top' ? 'bottom' : 'top'];
   const historical = personalityFor(enemy.commander, enemy.army);
   const armies = { top: sel.setup.top, bottom: sel.setup.bottom };
-  /** Cards a side holds: its Command, and "2→4" for a side whose hand grows to 4 (hand growth, 006 and 313, §18.8). */
+  /**
+   * Cards a side holds: its Command, "2→4 cards" for a side whose hand grows to 4 (hand growth, 006 and 313, §18.8), or its
+   * order dice when it plays no cards (310, §18.10).
+   */
   const cardsText = (sd: Side) => {
+    const dice = orderDice(preview, sd);
+    if (dice) return `no cards, ${dice} order dice`;
     const growth = preview.special.handGrowth;
     const startCommand = preview.players[sd].command;
-    return growth?.side === sd && growth.to > startCommand ? `${startCommand}→${growth.to}` : armies[sd].cards;
+    return `${growth?.side === sd && growth.to > startCommand ? `${startCommand}→${growth.to}` : armies[sd].cards} cards`;
   };
   const start = () => {
     try {
@@ -261,26 +267,29 @@ export function ScenarioSelect(p: {
             <div className="brief-title">{sel.name} <span>{sel.year}</span></div>
             <HistoryButton scenario={sel} flipped={side === 'top'} variant="secondary" className="brief-history" />
           </div>
-          <p className="brief-blurb">{sel.blurb}</p>
-          <div className="brief-facts">
-            <span>{sel.setup.banners} banners to win</span>
-            <span>{armies[sel.setup.first].army} move first</span>
-            <span>{armies.top.army}: {cardsText('top')} cards · {armies.bottom.army}: {cardsText('bottom')} cards</span>
-          </div>
-          {sel.specialText.length > 0 && (
-            <ul className="brief-special">
-              {sel.specialText.map((t) => <li key={t}>{t}</li>)}
-            </ul>
-          )}
-          {offered.length > 0 && (
-            <div className="brief-options">
-              <div className="brief-options-label">Optional rules</div>
-              {offered.map((id) => {
-                const on = optionValue(sel, id, choices);
-                return <OptionToggle key={id} sc={sel} id={id} on={on} onToggle={() => setChoices(saveOptionChoice(choices, id, !on))} />;
-              })}
+          {/* a long briefing scrolls here, so the map preview and To Battle! stay in view (back at the top for each battle) */}
+          <div className="brief-scroll" key={sel.id}>
+            <p className="brief-blurb">{sel.blurb}</p>
+            <div className="brief-facts">
+              <span>{sel.setup.banners} banners to win</span>
+              <span>{armies[sel.setup.first].army} move first</span>
+              <span>{armies.top.army}: {cardsText('top')} · {armies.bottom.army}: {cardsText('bottom')}</span>
             </div>
-          )}
+            {sel.specialText.length > 0 && (
+              <ul className="brief-special">
+                {sel.specialText.map((t) => <li key={t}>{t}</li>)}
+              </ul>
+            )}
+            {offered.length > 0 && (
+              <div className="brief-options">
+                <div className="brief-options-label">Optional rules</div>
+                {offered.map((id) => {
+                  const on = optionValue(sel, id, choices);
+                  return <OptionToggle key={id} sc={sel} id={id} on={on} onToggle={() => setChoices(saveOptionChoice(choices, id, !on))} />;
+                })}
+              </div>
+            )}
+          </div>
         </Panel>
         <div className="preview-wrap">
           <SetupPreview sc={sel} state={preview} flipped={side === 'top'} humanSide={side} />
