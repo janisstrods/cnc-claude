@@ -677,7 +677,54 @@ export interface EvalBreakdown {
 }
 
 /**
- * Evaluate the position for `me`. `next` = the side that will act next (its threats are imminent).
+ * Evaluations of the current AI decision, per weights object and by `evalKey` (null = off). A search meets the same
+ * position again and again (every piece's "stay" option, the same moves in another order), so `chooseAnswer` turns the
+ * cache on for each decision and off after it; it stays off for everyone else (tests and scripts change a state in
+ * place and evaluate it again).
+ */
+let evalCache: WeakMap<Weights, Map<string, number>> | null = null;
+
+/** Start (`true`) or end (`false`) the evaluation cache of one AI decision (`chooseAnswer`). */
+export function evalCacheFor(on: boolean): void {
+  evalCache = on ? new WeakMap() : null;
+}
+
+/** Ids of the terrain and rampart arrays (a changed hex replaces both, `setTerrain`, the AI's rampart breakers). */
+const arrayIds = new WeakMap<object, number>();
+let arraySeq = 0;
+function arrayId(a: object): number {
+  let id = arrayIds.get(a);
+  if (id === undefined) arrayIds.set(a, (id = ++arraySeq));
+  return id;
+}
+
+/**
+ * Everything `evaluate` (with its threat model, goals and values) reads from a state that is not winning, apart from the
+ * game's fixed data (scenario rules and objectives, unit and leader types, sides, elites and traits, armies, fords,
+ * hills under camps, banners to win, the dice-order counts) and the AI's `viewer`, which are fixed for a decision: the
+ * active side; the terrain and rampart arrays; each side's banners, hand size and Command; the leaders each side has
+ * lost; every unit's id, hex and blocks and every leader's id and hex, in state order; the reserve's units and leaders;
+ * each objective's captured hexes, held banners and scored sections. It reads nothing of the turn (the exact threat
+ * model moves units under the default card modifiers) nor any other hand content, the deck or the dice.
+ */
+function evalKey(s: GameState, me: Side, next: Side): string {
+  const { top, bottom } = s.players;
+  const sp = s.special;
+  let k = `${me}${next}${s.active}${arrayId(s.terrain)},${arrayId(s.rampart)}|${top.banners},${top.hand.length},${top.command}|`
+    + `${bottom.banners},${bottom.hand.length},${bottom.command}|${sp.leadersEliminated.top},${sp.leadersEliminated.bottom}|`;
+  for (const u of s.units) k += `${u.id}:${u.hex}:${u.blocks},`;
+  k += '|';
+  for (const l of s.leaders) k += `${l.id}:${l.hex},`;
+  k += '|';
+  for (const u of sp.reserveUnits) k += `${u.id},`;
+  for (const l of sp.reserveLeaders) k += `${l.id},`;
+  for (const o of sp.objState) k += `|${o.taken}/${o.held.top},${o.held.bottom}/${o.sections}`;
+  return k;
+}
+
+/**
+ * Evaluate the position for `me`. `next` = the side that will act next (its threats are imminent). Inside an AI
+ * decision the value of a position seen before comes from the cache (`evalCacheFor`); never with `breakdown`.
  */
 export function evaluate(s: GameState, me: Side, next: Side, W: Weights, breakdown?: EvalBreakdown): number {
   if (s.winner) {
@@ -685,6 +732,16 @@ export function evaluate(s: GameState, me: Side, next: Side, W: Weights, breakdo
     const margin = s.players[me].banners - s.players[other(me)].banners;
     return s.winner === me ? WIN_SCORE + margin : -WIN_SCORE + margin;
   }
+  if (!evalCache || breakdown) return evaluatePosition(s, me, next, W, breakdown);
+  let byKey = evalCache.get(W);
+  if (!byKey) evalCache.set(W, (byKey = new Map()));
+  const key = evalKey(s, me, next);
+  let v = byKey.get(key);
+  if (v === undefined) byKey.set(key, (v = evaluatePosition(s, me, next, W)));
+  return v;
+}
+
+function evaluatePosition(s: GameState, me: Side, next: Side, W: Weights, breakdown?: EvalBreakdown): number {
   const opp = other(me);
   const T = s.bannersToWin;
   const occ = new Occ(s);

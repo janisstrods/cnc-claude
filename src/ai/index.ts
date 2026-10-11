@@ -20,6 +20,7 @@ import {
 } from '../engine/types';
 import { hexDist } from './board';
 import { attackAnswer, attackOptions } from './estimate';
+import { evalCacheFor } from './evaluate';
 import { greedyMoveStep, type MoveCtx } from './moves';
 import { orderCandidates } from './ordering';
 import { PERSONALITIES, personalityById, personalityFor, type Personality } from './personality';
@@ -526,6 +527,7 @@ export function chooseAnswer(state: GameState, decision: Decision, opts: AiOptio
   const rng = new Rng(mem.rngState);
   let out: { answer: Answer; say?: string };
   setViewer(decision.side);
+  evalCacheFor(true);
   try {
     // Work on a private copy: the planner moves pieces around temporarily.
     const camp = campLine(state, decision.side, opts.personality, mem, rng);
@@ -542,6 +544,7 @@ export function chooseAnswer(state: GameState, decision: Decision, opts: AiOptio
     out = { answer: fallback(state, decision, rng) };
   }
   setViewer(null);
+  evalCacheFor(false);
   mem.rngState = rng.state;
   return out;
 }
