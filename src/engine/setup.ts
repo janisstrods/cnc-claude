@@ -260,6 +260,28 @@ function checkedCommand(commands: CommandDef[], side: Side, id: string, who: str
   return id;
 }
 
+/**
+ * The limits of the rule `commandFallback` (304, §18.5), for each side that has commands: at most 2 of them (with more, the
+ * Darken the Sky orders step, which judges a selection by its own command's mode, could accept a unit of any command that
+ * falls back), and every unit and leader of the side names one (a piece with none would be judged by any command's mode).
+ * Pieces that wait off the board (reserves, leaders to place, forced placements) cannot name a command, so such a side
+ * has none.
+ */
+function checkCommandFallback(setup: ScenarioSetup, commands: CommandDef[]) {
+  const need = (side: Side, who: string) => new Error(`rule commandFallback needs every ${side} unit and leader to name a command (${who} names none)`);
+  for (const side of ['top', 'bottom'] as const) {
+    const n = commands.filter((c) => c.side === side).length;
+    if (!n) continue;
+    if (n > 2) throw new Error(`rule commandFallback allows at most 2 commands per army (${side} has ${n})`);
+    for (const u of setup.units) if (u.side === side && u.command === undefined) throw need(side, `unit ${u.type} at ${u.r},${u.c}`);
+    for (const l of setup.leaders) if (l.side === side && l.command === undefined) throw need(side, `leader ${l.name}`);
+    for (const u of setup.reserves) if (u.side === side) throw need(side, `reserve unit ${u.type}`);
+    for (const l of setup.reserveLeaders) if (l.side === side) throw need(side, `reserve leader ${l.name}`);
+    for (const l of setup.placeLeaders ?? []) if (l.side === side) throw need(side, `leader to place ${l.name}`);
+    for (const p of setup.placeUnits ?? []) if (p.side === side) throw need(side, `forced placement ${p.type}`);
+  }
+}
+
 /** The unit with its side's legion stamped, if it is a type the legion rule covers. */
 function withLegion(unit: Unit, legions: ScenarioSetup['legions']): Unit {
   const legion = legions?.[unit.side];
@@ -602,6 +624,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
   const reserveLeaders: Leader[] = setup.reserveLeaders.map((l) => withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: OFF_BOARD }, l.traits));
   // forced placements (308): their units take the ids after the reserve leaders', so no other id changes
   const placeUnits = resolvePlaceUnits(setup, ambush, () => `u${nextId++}`);
+  if (setup.rules.includes('commandFallback')) checkCommandFallback(setup, commands);
 
   const rngHolder = { rng: seed >>> 0, rngCalls: 0 };
   const deck = shuffle(rngHolder, CARD_LIST.map((_, i) => i));

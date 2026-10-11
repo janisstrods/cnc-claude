@@ -7,7 +7,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  GameDriver, UNIT_STATS, cloneState, createGame, hexId, setTerrain,
+  CARD_LIST, GameDriver, UNIT_STATS, cloneState, createGame, eligiblePieces, hexId, orderLimit, setTerrain,
   type Decision, type DieFace, type GameEvent, type GameState, type HexId, type QueuedEvent, type Side, type Unit, type UnitType,
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
@@ -561,6 +561,27 @@ describe('304: a card falls back to 1 unit within the command named (rule comman
     );
     expect(commandFallbackNote(pos(true), 'top', 'darken', [])).toBeNull();
     expect(commandFallbackNote(game('304'), 'top', 'darken', [])).toBeNull();
+  });
+
+  it('a command with no unit left on the board gives no note, no per-command counter and no changed hover: as without the rule', () => {
+    const CARDS = ['orderLight', 'orderMedium', 'orderHeavy', 'orderMounted', 'mountedCharge', 'moveFireMove', 'lineCommand', 'doubleTime', 'darken'] as const;
+    for (const gone of ['perpenna', 'herennius']) {
+      const s = game('304');
+      s.units = s.units.filter((u) => u.command !== gone); // his leader stands on, with nothing to order
+      const plain = cloneState(s);
+      plain.special.rules = [];
+      for (const card of CARDS) {
+        expect(commandFallbackNote(s, 'top', card, []), `${gone} ${card}`).toBeNull();
+        expect(selectAllUnits(s, 'top', card), `${gone} ${card}`).toEqual(selectAllUnits(plain, 'top', card));
+        expect(orderLimit(s, 'top', card, []), `${gone} ${card}`).toBe(orderLimit(plain, 'top', card, [])); // "0/4", not a bare "0"
+        expect(eligiblePieces(s, 'top', card).sort(), `${gone} ${card}`).toEqual(eligiblePieces(plain, 'top', card).sort());
+        // hovering the card in hand marks the same pieces (Darken the Sky: none, as always, not the fallback command's units)
+        const hover: UiSel = { ...SEL, hoverCard: CARD_LIST.indexOf(card) };
+        const marks = (st: GameState) => [...boardUi(st, { kind: 'playCard', side: 'top' }, hover, 'top').highlights.entries()].sort((a, b) => a[0] - b[0]);
+        expect(marks(s), `${gone} ${card}`).toEqual(marks(plain));
+      }
+      expect(orderLimit(s, 'top', 'orderMedium', [])).toBe(s.players.top.command);
+    }
   });
 });
 

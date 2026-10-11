@@ -712,6 +712,10 @@ merely passing through a hex never counts (X2 Q9e). A side wins as soon as its *
         bonus. Rally keeps its army-wide test **[Interp]**: it names no troop type, and a leader of either command lets it
         rally the command named, since leader effects are not restricted. 210 has no such rule: its cards judge the
         whole army.
+      * A command with no unit left on the board does not count: it has nothing to order, so the cards act for the
+        command that remains as they would in a battle without the rule (no fallback note, the usual Command limit)
+        **[Interp]**. The rule's data limits are checked on load: a side with commands has at most 2, and every unit and
+        leader of it names one (so none waits off the board, where a piece cannot name a command).
     * A Leadership card must name a leader of the chosen command, and its chain includes only that command's units; a
       leader may be ordered alone only for his own command. A Counter Attack is played for one chosen command too.
     * Not restricted: First Strike (it is not an order) and leader effects (helmets, flag ignoring, support, Rally

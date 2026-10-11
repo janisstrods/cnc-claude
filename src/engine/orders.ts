@@ -90,11 +90,13 @@ const NOT_THE_COMMAND = 'That piece is not in the command you named.';
 
 /**
  * The commands of `side` whose cards look for the type they name within themselves (rule `commandFallback`, 304, §18.5),
- * in data order; none without the rule.
+ * in data order; none without the rule. A command with no unit left on the board is not one: it has nothing to order, so
+ * the cards act for the commands that remain as they would in a battle without the rule.
  */
 export function fallbackCommands(s: GameState, side: Side): string[] {
   if (!s.special.rules.includes('commandFallback')) return [];
-  return s.special.commands.filter((c) => c.side === side).map((c) => c.id);
+  const present = new Set(unitsOf(s, side).map((u) => u.command));
+  return s.special.commands.filter((c) => c.side === side && present.has(c.id)).map((c) => c.id);
 }
 
 /** A command and the order mode a card has for it (`commandModes`). */

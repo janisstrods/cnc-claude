@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   GameDriver, OFF_BOARD, battleTargets, canFireAt, canMarch, cloneState, createGame, evadeOptions, hasPilum, movablePieces, pieceMoves, unitMoves,
-  eligiblePieces, orderLimit, orderMode, validateOrders, type LeaderTrait, type UnitType,
+  commandModes, eligiblePieces, fallbackCommands, orderLimit, orderMode, validateOrders, type LeaderTrait, type UnitType,
 } from '../../src/engine';
 import { scenarioById } from '../../src/scenarios';
 import { H, build, combatDice, ev, forceDice, giveCard, must, n, noFirstStrike, passTurn, play, setupOf, toBattle, u, type Pos } from './helpers';
@@ -541,7 +541,108 @@ describe("304 Valentia: a card's \"1 unit of your choice\" within the command na
     expect(eligiblePieces(s, 'top', 'orderLight')).toEqual(expect.arrayContaining(perpenna.filter((x) => x.type === 'MI').map((x) => x.id)));
   });
 
+  describe('a command with no unit left on the board is no fallback command', () => {
+    // Perpenna's units are all gone (his leader may stand on, L9): Herennius' command alone is left, with 4 MI (u1-u4), an
+    // AX (u5, which fires) and an MC (u6) against a Roman MI two hexes from the AX; the Command is 3
+    const alone = (ruled: boolean, perpennaLeader = true) => build({
+      commands: COMMANDS, first: 'top', cards: 3, leaders: LEADERS(perpennaLeader), ...(ruled ? { rules: ['commandFallback'] } : {}),
+      units: [her('MI', [2, 3]), her('MI', [2, 4]), her('MI', [2, 5]), her('MI', [2, 7]), her('AX', [2, 6]), her('MC', [1, 4]), bottom('MI', [4, 6])],
+    });
+    const CARDS = ['orderLight', 'orderMedium', 'orderHeavy', 'orderMounted', 'mountedCharge', 'moveFireMove', 'lineCommand', 'doubleTime', 'darken'] as const;
+
+    it('only the command with units on the board falls back; every card is judged as in a battle without the rule', () => {
+      for (const perpennaLeader of [true, false]) {
+        const s = alone(true, perpennaLeader);
+        const plain = alone(false, perpennaLeader);
+        expect(fallbackCommands(s, 'top')).toEqual(['herennius']);
+        expect(fallbackCommands(plain, 'top')).toEqual([]);
+        const picks = [[], ['u1'], ['u1', 'u2', 'u3'], ['u1', 'u2', 'u3', 'u4'], ['u5'], ['u6'], ['u5', 'u6'], ...s.leaders.map((l) => [l.id])];
+        for (const kind of CARDS) {
+          const why = `${kind}${perpennaLeader ? '' : ' without Perpenna'}`;
+          expect(commandModes(s, 'top', kind), why).toBeNull();
+          expect(orderMode(s, 'top', kind, 'perpenna').mode, why).toBe(orderMode(plain, 'top', kind).mode);
+          expect(eligiblePieces(s, 'top', kind), why).toEqual(eligiblePieces(plain, 'top', kind));
+          for (const pieces of picks) {
+            expect(orderLimit(s, 'top', kind, pieces), `${why} ${pieces.join()}`).toBe(orderLimit(plain, 'top', kind, pieces));
+            expect(validateOrders(s, 'top', kind, pieces), `${why} ${pieces.join()}`).toBe(validateOrders(plain, 'top', kind, pieces));
+          }
+        }
+      }
+    });
+
+    it('Order Medium Troops orders up to Command-many Herennius MI as usual; Darken the Sky acts for the one command', () => {
+      const s = alone(true);
+      expect(orderLimit(s, 'top', 'orderMedium', [])).toBe(3);
+      expect(validateOrders(s, 'top', 'orderMedium', ['u1', 'u2', 'u3'])).toBeNull();
+      expect(validateOrders(s, 'top', 'orderMedium', ['u1', 'u2', 'u3', 'u4'])).toBe('You may order at most 3 (your Command).');
+      expect(validateOrders(s, 'top', 'orderMedium', ['u5'])).toBe(NOT_TYPE);
+      expect(validateOrders(s, 'top', 'orderMedium', ['u1', 'u6'])).toBeNull();
+      const d = play(s, 'orderMedium', ['u1', 'u2', 'u3']);
+      expect(Object.keys(d.state.turn.ordered)).toEqual(['u1', 'u2', 'u3']);
+      expect(d.state.turn.mods.passThrough).toBe(false); // a plain troop order, not the 1-unit fallback
+      // nothing to ask: no command is named, and the AX fires twice as always
+      const dark = play(s, 'darken');
+      expect(dark.pending?.kind).not.toBe('chooseCommand');
+      expect(Object.keys(dark.state.turn.ordered)).toEqual(['u5']);
+      expect(dark.state.turn.mods.shots).toBe(2);
+    });
+
+    it('in 304 itself, once Perpenna\'s command is wiped out the army fights on as Herennius\' command alone', () => {
+      const s = createGame(scenarioById('304').setup, 1);
+      const medium = s.units.filter((x) => x.command === 'herennius' && (x.type === 'MI' || x.type === 'MC')).map((x) => x.id);
+      const ax = s.units.find((x) => x.command === 'herennius' && x.type === 'AX')!.id;
+      expect(medium).toHaveLength(s.players.top.command); // 3 MI and the MC: exactly the Command of 4
+      s.units = s.units.filter((x) => x.command !== 'perpenna');
+      expect(s.leaders.some((l) => l.command === 'perpenna')).toBe(true); // his leader stands on
+      expect(fallbackCommands(s, 'top')).toEqual(['herennius']);
+      expect(commandModes(s, 'top', 'orderMedium')).toBeNull();
+      expect(orderLimit(s, 'top', 'orderMedium', [])).toBe(s.players.top.command);
+      expect(validateOrders(s, 'top', 'orderMedium', medium)).toBeNull();
+      expect(validateOrders(s, 'top', 'orderMedium', [...medium.slice(0, 3), ax])).toBe(NOT_TYPE);
+      expect(validateOrders(s, 'top', 'orderMedium', [...medium, ax])).toBe('You may order at most 4 (your Command).');
+      expect(eligiblePieces(s, 'top', 'orderMedium').filter((id) => !id.startsWith('L')).sort()).toEqual([...medium].sort());
+    });
+  });
+
   it('the rule needs separate commands', () => {
     expect(() => createGame(setupOf({ rules: ['commandFallback'] }), 1)).toThrow(/^rule commandFallback needs separate commands \(qa\)$/);
+  });
+
+  describe('the rule\'s limits: a side with commands has at most 2, and every unit and leader of it names one', () => {
+    const THREE: Pos['commands'] = [...COMMANDS, { id: 'sertorius', name: 'Sertorius', side: 'top' }];
+    const named = [her('MI', [2, 5]), per('MI', [2, 8]), bottom('MI', [6, 6])];
+    const make = (extra: Partial<Pos>) => () => createGame(setupOf({ commands: COMMANDS, first: 'top', rules: ['commandFallback'], units: named, ...extra }), 1);
+
+    it('304 satisfies them', () => {
+      const setup = scenarioById('304').setup;
+      expect(setup.commands?.filter((c) => c.side === 'top')).toHaveLength(2);
+      for (const x of [...setup.units, ...setup.leaders].filter((p) => p.side === 'top')) expect(x.command).toBeDefined();
+      expect(() => createGame(setup, 1)).not.toThrow();
+      expect(make({})).not.toThrow();
+    });
+
+    it('three commands on a side are refused', () => {
+      const msg = 'rule commandFallback allows at most 2 commands per army (top has 3) (qa)';
+      expect(make({ commands: THREE })).toThrow(msg);
+      expect(make({ commands: THREE, units: [...named, top('LC', [1, 4], { command: 'sertorius' })] })).toThrow(msg);
+      // the same three commands without the rule are fine (210 Picenum style)
+      expect(make({ commands: THREE, rules: [], units: [...named, top('LC', [1, 4], { command: 'sertorius' })] })).not.toThrow();
+    });
+
+    it('a unit or leader of the side that names no command is refused', () => {
+      const need = (who: string) => `rule commandFallback needs every top unit and leader to name a command (${who} names none) (qa)`;
+      expect(make({ units: [...named, top('AX', [2, 6])] })).toThrow(need('unit AX at 2,6'));
+      expect(make({ leaders: [{ side: 'top', name: 'Herennius', at: [2, 5] }] })).toThrow(need('leader Herennius'));
+      expect(make({ leaders: LEADERS() })).not.toThrow();
+      // the other side has no commands: its pieces need none
+      expect(make({ leaders: [{ side: 'bottom', name: 'Pompey', at: [6, 5] }] })).not.toThrow();
+    });
+
+    it('so is a piece of the side that waits off the board, which cannot name a command', () => {
+      const need = (who: string) => `rule commandFallback needs every top unit and leader to name a command (${who} names none) (qa)`;
+      expect(make({ reserves: [{ side: 'top', type: 'LC' }] })).toThrow(need('reserve unit LC'));
+      expect(make({ reserveLeaders: [{ side: 'top', name: 'Sertorius' }] })).toThrow(need('reserve leader Sertorius'));
+      expect(make({ reserves: [{ side: 'bottom', type: 'LC' }] })).not.toThrow();
+    });
   });
 });
