@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  CARD_DEFS, CARD_LIST, battleTargets, closeCombatDice, distance, evadeOptions, forceDice, forcedDiceLeft, hexId, ignorableFlags,
+  CARD_DEFS, CARD_LIST, battleTargets, closeCombatDice, distance, evadeOptions, forceDice, forcedDiceLeft, ignorableFlags,
   lineOfSight, neighbours, pieceMoves, rangedDice, rearHexes, retreatOptions, scoreClose, sectionsOf, unitMoves, validateOrders,
   leaderEvadeOptions, elephantRetreatOptions, answerError, type Answer, type Decision,
 } from '../../src/engine';
-import { H, drive, giveCard, must, noFirstStrike, state } from './helpers';
+import { H, drive, dropFirstStrike, must, replaceFirstCard, state } from './helpers';
 
 beforeEach(() => forceDice([]));
 
@@ -281,8 +281,8 @@ describe('orders', () => {
 describe('turn flow', () => {
   it('heavy infantry attacks, defender retreats, attacker advances', () => {
     const s = state({ units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'MI', at: [4, 6] }] });
-    noFirstStrike(s);
-    const card = giveCard(s, 'bottom', 'order2C');
+    dropFirstStrike(s);
+    const card = replaceFirstCard(s, 'bottom', 'order2C');
     const d = drive(s);
     must(d, { kind: 'playCard', card });
     must(d, { kind: 'orders', pieces: ['u1'] });
@@ -306,8 +306,8 @@ describe('turn flow', () => {
   });
   it('battle back when the defender holds', () => {
     const s = state({ units: [{ side: 'bottom', type: 'MI', at: [5, 6] }, { side: 'top', type: 'HI', at: [4, 6] }] });
-    noFirstStrike(s);
-    const card = giveCard(s, 'bottom', 'order2C');
+    dropFirstStrike(s);
+    const card = replaceFirstCard(s, 'bottom', 'order2C');
     const d = drive(s);
     must(d, { kind: 'playCard', card });
     must(d, { kind: 'orders', pieces: ['u1'] });
@@ -323,8 +323,8 @@ describe('turn flow', () => {
   });
   it('light infantry may evade: only light symbols hit', () => {
     const s = state({ units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'LI', at: [4, 6] }] });
-    noFirstStrike(s);
-    const card = giveCard(s, 'bottom', 'order2C');
+    dropFirstStrike(s);
+    const card = replaceFirstCard(s, 'bottom', 'order2C');
     const d = drive(s);
     must(d, { kind: 'playCard', card });
     must(d, { kind: 'orders', pieces: ['u1'] });
@@ -341,8 +341,8 @@ describe('turn flow', () => {
   });
   it('elephant sword hits are re-rolled', () => {
     const s = state({ units: [{ side: 'bottom', type: 'EL', at: [5, 6] }, { side: 'top', type: 'MI', at: [4, 6] }] });
-    noFirstStrike(s);
-    const card = giveCard(s, 'bottom', 'order2C');
+    dropFirstStrike(s);
+    const card = replaceFirstCard(s, 'bottom', 'order2C');
     const d = drive(s);
     must(d, { kind: 'playCard', card });
     must(d, { kind: 'orders', pieces: ['u1'] });
@@ -355,8 +355,8 @@ describe('turn flow', () => {
   });
   it('lone leader attacked must evade or die', () => {
     const s = state({ units: [{ side: 'bottom', type: 'HI', at: [5, 6] }], leaders: [{ side: 'top', at: [4, 6] }] });
-    noFirstStrike(s);
-    const card = giveCard(s, 'bottom', 'order2C');
+    dropFirstStrike(s);
+    const card = replaceFirstCard(s, 'bottom', 'order2C');
     const d = drive(s);
     must(d, { kind: 'playCard', card });
     must(d, { kind: 'orders', pieces: ['u1'] });
@@ -368,9 +368,9 @@ describe('turn flow', () => {
   });
   it('first strike: defender hits first', () => {
     const s = state({ units: [{ side: 'bottom', type: 'MI', at: [5, 6] }, { side: 'top', type: 'HI', at: [4, 6] }] });
-    noFirstStrike(s);
-    const card = giveCard(s, 'bottom', 'order2C');
-    giveCard(s, 'top', 'firstStrike');
+    dropFirstStrike(s);
+    const card = replaceFirstCard(s, 'bottom', 'order2C');
+    replaceFirstCard(s, 'top', 'firstStrike');
     const d = drive(s);
     must(d, { kind: 'playCard', card });
     must(d, { kind: 'orders', pieces: ['u1'] });
@@ -384,8 +384,8 @@ describe('turn flow', () => {
   });
   it('clash of shields orders all engaged units with +2 dice', () => {
     const s = state({ units: [{ side: 'bottom', type: 'MI', at: [5, 6] }, { side: 'bottom', type: 'MI', at: [7, 2] }, { side: 'top', type: 'HI', at: [4, 6] }] });
-    noFirstStrike(s);
-    const card = giveCard(s, 'bottom', 'clash');
+    dropFirstStrike(s);
+    const card = replaceFirstCard(s, 'bottom', 'clash');
     const d = drive(s);
     must(d, { kind: 'playCard', card });
     expect(Object.keys(d.state.turn.ordered)).toEqual(['u1']);
@@ -395,8 +395,8 @@ describe('turn flow', () => {
   });
   it('ranged fire cannot target adjacent units or fire while engaged', () => {
     const s = state({ units: [{ side: 'bottom', type: 'LB', at: [6, 6] }, { side: 'top', type: 'MI', at: [4, 6] }, { side: 'top', type: 'MI', at: [5, 2] }] });
-    noFirstStrike(s);
-    const card = giveCard(s, 'bottom', 'orderLight');
+    dropFirstStrike(s);
+    const card = replaceFirstCard(s, 'bottom', 'orderLight');
     const d = drive(s);
     must(d, { kind: 'playCard', card });
     must(d, { kind: 'orders', pieces: ['u1'] });
@@ -405,9 +405,9 @@ describe('turn flow', () => {
   });
   it('counter attack mirrors the last card', () => {
     const s = state({ units: [{ side: 'bottom', type: 'MI', at: [6, 1] }, { side: 'top', type: 'MI', at: [2, 11] }, { side: 'top', type: 'MI', at: [2, 1] }] });
-    noFirstStrike(s);
-    const c1 = giveCard(s, 'bottom', 'order2L');
-    const c2 = giveCard(s, 'top', 'counterAttack');
+    dropFirstStrike(s);
+    const c1 = replaceFirstCard(s, 'bottom', 'order2L');
+    const c2 = replaceFirstCard(s, 'top', 'counterAttack');
     const d = drive(s);
     must(d, { kind: 'playCard', card: c1 });
     must(d, { kind: 'orders', pieces: ['u1'] });
@@ -420,7 +420,7 @@ describe('turn flow', () => {
   });
   it('replay reproduces the same state; undo removes a move', () => {
     const s = state({ units: [{ side: 'bottom', type: 'MI', at: [6, 4] }, { side: 'bottom', type: 'MI', at: [6, 6] }, { side: 'top', type: 'MI', at: [2, 4] }] });
-    const card = giveCard(s, 'bottom', 'order2C');
+    const card = replaceFirstCard(s, 'bottom', 'order2C');
     const d = drive(s);
     must(d, { kind: 'playCard', card });
     must(d, { kind: 'orders', pieces: ['u1', 'u2'] });
@@ -432,7 +432,7 @@ describe('turn flow', () => {
   });
   it('cannot undo once the turn has passed to the other side', () => {
     const s = state({ units: [{ side: 'bottom', type: 'MI', at: [6, 4] }, { side: 'top', type: 'MI', at: [2, 4] }] });
-    const card = giveCard(s, 'bottom', 'order2C');
+    const card = replaceFirstCard(s, 'bottom', 'order2C');
     const d = drive(s);
     must(d, { kind: 'playCard', card });
     must(d, { kind: 'orders', pieces: ['u1'] });

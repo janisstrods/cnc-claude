@@ -2,17 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { GameDriver, createGame, forceDice, isImpassable, randomAnswer, type GameState } from '../../src/engine';
 import { SCENARIOS } from '../../src/scenarios';
-
-function mulberry(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { mulberry32 } from '../support/rng';
 
 /** Returns a list of violated invariants (empty = fine). */
 export function violations(s: GameState, atPlayCard: boolean): string[] {
@@ -48,7 +38,7 @@ describe('rule invariants hold after every decision in random play', () => {
       for (let g = 0; g < 3; g++) {
         const seed = 7919 * Number(sc.id) + g;
         const d = new GameDriver(createGame(sc.setup, seed));
-        const rnd = mulberry(seed);
+        const rnd = mulberry32(seed);
         let steps = 0;
         while (!d.over && steps < 20000) {
           const a = randomAnswer(d.state, d.pending!, rnd);

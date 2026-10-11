@@ -8,42 +8,11 @@ import {
   type CardKind, type DieFace, type LeaderTrait, type Side, type Unit, type UnitType,
 } from '../../src/engine';
 import {
-  H, build, combatDice, ev, forceDice, forcedDiceLeft, giveCard, leaderId, must, n, noFirstStrike, play, rolls, setupOf, toBattle, u, type Pos,
+  H, attackOn, build, combatDice, duel, ev, forceDice, giveCard, leaderId, miss, must, n, noFirstStrike, play, rolls, setupOf, toBattle, u,
+  type Pos,
 } from './helpers';
 
 beforeEach(() => forceDice([]));
-
-const CLASSES: DieFace[] = ['light', 'medium', 'heavy'];
-/** A class face that scores against neither unit type. */
-function miss(a: UnitType, b: UnitType): DieFace {
-  return CLASSES.find((c) => c !== UNIT_STATS[a].cls && c !== UNIT_STATS[b].cls)!;
-}
-
-/**
- * Bottom attacker at (5,6) attacks the top defender at (4,6), which stands; every die misses. Returns the attack and
- * battle-back dice. `atkBlocks` / `defBlocks` set the strengths at the start of the combat.
- */
-function duel(atk: UnitType, def: UnitType, opts: { card?: CardKind; atkBlocks?: number; defBlocks?: number } = {}): { attack?: number; back?: number } {
-  const s = build({ units: [
-    { side: 'bottom', type: atk, at: [5, 6], blocks: opts.atkBlocks }, { side: 'top', type: def, at: [4, 6], blocks: opts.defBlocks },
-  ] });
-  const d = toBattle(s, opts.card ?? 'order4C', ['u1']);
-  ev(d);
-  forceDice(n(miss(atk, def), 30));
-  must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
-  if (d.pending?.kind === 'defend') must(d, { kind: 'defend', choice: 'stand' });
-  const e = ev(d);
-  return { attack: combatDice(e, 'close'), back: combatDice(e, 'battleBack') };
-}
-
-/** Bottom attacker at (5,6) declares an attack on the top defender at (4,6); returns the driver at the defend decision. */
-function attackOn(atk: UnitType, def: UnitType) {
-  const s = build({ units: [{ side: 'bottom', type: atk, at: [5, 6] }, { side: 'top', type: def, at: [4, 6] }] });
-  const d = toBattle(s, 'order4C', ['u1']);
-  forceDice(n(miss(atk, def), 40)); // if the attack resolves at once (no defend decision), every die misses
-  must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
-  return d;
-}
 
 /** The two units of a scoring state (bottom `atk` is u1, top `def` is u2). */
 function pair(atk: UnitType, def: UnitType, defBlocks?: number) {

@@ -1,23 +1,11 @@
 // Evade (§9.3), leaders: casualty checks, lone leaders, leader evade & escape (§11).
 import { beforeEach, describe, expect, it } from 'vitest';
-import { UNIT_STATS, evadeOptions, leaderEvadeOptions, rowOf, type DieFace, type UnitType } from '../../src/engine';
-import { H, build, combatDice, ev, forceDice, forcedDiceLeft, leaderId, must, n, rolls, toBattle, u, type Pos } from './helpers';
+import { evadeOptions, leaderEvadeOptions, rowOf, type DieFace, type UnitType } from '../../src/engine';
+import {
+  H, attackOn, build, canEvade, combatDice, ev, forceDice, forcedDiceLeft, leaderId, must, n, rolls, toBattle, u, type Pos,
+} from './helpers';
 
 beforeEach(() => forceDice([]));
-
-function attackOn(atk: UnitType, def: UnitType, extra: Partial<Pos> = {}) {
-  const s = build({ ...extra, units: [{ side: 'bottom', type: atk, at: [5, 6] }, { side: 'top', type: def, at: [4, 6] }, ...(extra.units ?? [])] });
-  const d = toBattle(s, 'order4C', ['u1']);
-  // if the attack resolves immediately (no defend decision), make every die a miss
-  const cls = [UNIT_STATS[atk].cls, UNIT_STATS[def].cls];
-  forceDice(n((['light', 'medium', 'heavy'] as DieFace[]).find((f) => !cls.includes(f as never))!, 40));
-  must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
-  return d;
-}
-const canEvade = (atk: UnitType, def: UnitType) => {
-  const d = attackOn(atk, def);
-  return d.pending?.kind === 'defend' && d.pending.canEvade;
-};
 
 describe('evade eligibility', () => {
   it('light units without white border (LI, LB, LS, LC) may always evade', () => {

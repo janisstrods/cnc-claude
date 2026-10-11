@@ -4,7 +4,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import gergovia from '../../src/scenarios/data/308.json';
 import {
-  ALL_HEXES, CARD_LIST, SPECIAL_RULE_IDS, TERRAIN_NAMES, battleTargets, canFireAt, ccCapOfHex, cloneState, closeCombatDice, createGame,
+  ALL_HEXES, CARD_LIST, SPECIAL_RULE_IDS, battleTargets, canFireAt, ccCapOfHex, cloneState, closeCombatDice, createGame,
   elephantRetreatOptions, evadeOptions, ignorableFlags, isHill, isImpassable, leaderEvadeOptions, lineOfSight, neighbours, pieceMoves,
   rangedDice, rangedFromCap, rangedTargetCap, retreatOptions, steepClimb, steepSlope, swordIgnores,
   type CardKind, type GameEvent, type HexId, type MoveTarget, type ScenarioSetup, type TerrainSetup, type UnitType,

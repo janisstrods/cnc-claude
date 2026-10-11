@@ -9,6 +9,7 @@ import {
 } from '../../src/engine';
 import { chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
 import { scenarioById } from '../../src/scenarios';
+import { mulberry32 } from '../support/rng';
 import { H, build, ev, forceDice, must, setupOf, type Pos } from './helpers';
 
 beforeEach(() => forceDice([]));
@@ -17,17 +18,6 @@ type Place = Extract<Decision, { kind: 'placeLeader' }>;
 
 const ofKind = <K extends GameEvent['t']>(e: GameEvent[], t: K) => e.filter((x): x is Extract<GameEvent, { t: K }> => x.t === t);
 const sorted = (hs: HexId[]) => [...hs].sort((a, b) => a - b);
-
-function mulberry(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /**
  * The Romans (bottom) move first. Units: u1 Roman HI (6,6), u2 Roman MI (6,4), u3 Roman LC (7,2) with Fabricius, u4 Roman
@@ -289,7 +279,7 @@ describe('leader placement (117 Asculum)', () => {
   it('randomAnswer always gives a legal placement', () => {
     for (let seed = 1; seed <= 25; seed++) {
       const d = new GameDriver(build(ASC, seed));
-      const rnd = mulberry(seed);
+      const rnd = mulberry32(seed);
       let n = 0;
       while (d.pending?.kind === 'placeLeader') {
         const p = d.pending;
@@ -382,7 +372,7 @@ describe('leader placement (117 Asculum)', () => {
       const initial = createGame(setup, seed);
       expect(initial.special.leadersAtStart.top + initial.special.leadersAtStart.bottom).toBe(base.leaders.length);
       const d = new GameDriver(initial);
-      const rnd = mulberry(seed);
+      const rnd = mulberry32(seed);
       const sides: Side[] = [];
       let steps = 0;
       while (!d.over && steps++ < 6000) {

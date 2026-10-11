@@ -1,65 +1,34 @@
 // Independent QA helpers for the rules suite (tests/rules). Uses only the public engine API.
+import { expect } from 'vitest';
 import {
-  CARD_LIST, GameDriver, createGame, forceDice, forcedDiceLeft, hexId,
-  type Answer, type CardKind, type Decision, type DieFace, type EliteId, type GameEvent, type GameState, type HexDir, type LeaderTrait,
-  type ScenarioSetup, type Side, type TerrainType, type Unit, type UnitType,
+  CARD_LIST, GameDriver, UNIT_STATS, createGame, forceDice, forcedDiceLeft, hexId,
+  type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameState, type ScenarioSetup, type Side, type TerrainSetup,
+  type TerrainType, type Unit, type UnitType,
 } from '../../src/engine';
 
-export interface Pos {
-  /** `command`: the command id the unit belongs to (needs `commands`, §18.5); `immobile`: never moves or advances (306, §18.11). */
-  units?: { side: Side; type: UnitType; at: [number, number]; blocks?: number; elite?: EliteId; command?: string; immobile?: boolean }[];
-  leaders?: { side: Side; name?: string; at: [number, number]; traits?: LeaderTrait[]; command?: string }[];
-  /**
-   * `ford: 'nocap'` = fordable without dice caps; `faces` / `edges` = a rampart's protected hexsides (§16); `hill` = a hill
-   * under a camp or wall (§18.7); `art` = a drawing hint the engine ignores.
-   */
-  terrain?: { at: [number, number]; t: TerrainType; ford?: boolean | 'nocap'; faces?: Side; edges?: HexDir[]; hill?: boolean; art?: string }[];
-  first?: Side;
-  rules?: ScenarioSetup['rules'];
+/** A scenario entry placed `at: [r, c]` instead of by `r` and `c`. */
+type At<T> = Omit<T, 'r' | 'c'> & { at: [number, number] };
+
+/**
+ * A QA battle: any `ScenarioSetup` fields (the rest take defaults: no pieces or terrain, `first: 'bottom'`, `banners: 99`,
+ * no rules) plus shorthands. Pieces and terrain stand `at: [r, c]`; a unit's `blocks` sets its strength after the build; a
+ * leader's name defaults to Ldr<i>; the armies are `topArmy` (Carthaginian) and `bottomArmy` (Roman), each holding `cards`
+ * cards (5) unless `orderDice` gives the side dice orders (310 Utica P1, §18.10: `orders: 'dice'`, `cards: 0`). Every other
+ * field passes through unchanged, so a new scenario field needs no change here.
+ *
+ * Ids: units and leaders share one id counter, in the order board units, board leaders, `placeLeaders`, `reserves`,
+ * `reserveLeaders`, `placeUnits` (§18.5, §18.9). With n board units and no leaders the reserve units are u<n+1>..., each
+ * leader before them takes a number first.
+ */
+export type Pos = Partial<Omit<ScenarioSetup, 'top' | 'bottom' | 'units' | 'leaders' | 'terrain'>> & {
+  units?: (At<ScenarioSetup['units'][number]> & { blocks?: number })[];
+  leaders?: (Omit<At<ScenarioSetup['leaders'][number]>, 'name'> & { name?: string })[];
+  terrain?: At<TerrainSetup>[];
   cards?: number;
-  banners?: number;
   topArmy?: string;
   bottomArmy?: string;
-  sacredLeader?: ScenarioSetup['sacredLeader'];
-  initialCommand?: ScenarioSetup['initialCommand'];
-  /** Battle objectives (camp capture, exits, §18.4). */
-  objectives?: ScenarioSetup['objectives'];
-  /** Scenario options (Tactical Flexibility, §17.3). */
-  options?: ScenarioSetup['options'];
-  /** Leaders placed before the first turn, in placement order (rule `leaderPlacement`, 117 Asculum, §17.4). */
-  placeLeaders?: ScenarioSetup['placeLeaders'];
-  /**
- * Off-board reserve force (rule `magoAmbush`, §18.5). Units and leaders share one id counter, in the order board units,
- * board leaders, `placeLeaders`, reserve units, reserve leaders: with n board units and no leaders the reserve units are
- * u<n+1>..., each leader before them takes a number first.
- */
-  reserves?: ScenarioSetup['reserves'];
-  reserveLeaders?: ScenarioSetup['reserveLeaders'];
-  /** Ambush trigger configuration (defaults: Trebbia, §14). */
-  ambush?: ScenarioSetup['ambush'];
-  /** Legion rule per side: every MI and HI of the side has the pilum (Marius; Julian adds the march), §18.2. */
-  legions?: ScenarioSetup['legions'];
-  /** Separate commands of a side's army (210 Picenum, §18.5): one card orders units of one command. */
-  commands?: ScenarioSetup['commands'];
-  /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs. */
-  rollingFire?: ScenarioSetup['rollingFire'];
-  /** The side whose units remove the ramparts they enter or pass through (223 Medway, §18.6). */
-  rampartBreakers?: ScenarioSetup['rampartBreakers'];
-  /** The side whose units are eliminated by a retreat that ends on their baseline row (214 Silarus, §18.5). */
-  lastRowRetreat?: ScenarioSetup['lastRowRetreat'];
-  /** Hand growth (006 Trasimenus, 313 Brindisi Raid, §18.8). */
-  handGrowth?: ScenarioSetup['handGrowth'];
-  /**
-   * Forced placements (308, §18.9): off-board units placed at a turn start after the ambush. Their ids follow the reserve
-   * leaders' (the last ids of the setup).
-   */
-  placeUnits?: ScenarioSetup['placeUnits'];
-  /**
-   * Dice orders (310 Utica P1, §18.10): the sides that order by rolling this many dice instead of playing cards (`orders:
-   * 'dice'`, `cards: 0`).
-   */
   orderDice?: Partial<Record<Side, number>>;
-}
+};
 
 /** A side of the QA battle: its cards, or its dice orders (`Pos.orderDice`). */
 function sideOf(p: Pos, side: Side, army: string, blocks: 'car' | 'rom', look: 'carthaginian' | 'roman', commander: string): ScenarioSetup['top'] {
@@ -70,41 +39,23 @@ function sideOf(p: Pos, side: Side, army: string, blocks: 'car' | 'rom', look: '
 
 export const H = (r: number, c: number) => hexId(r, c);
 
+/** The scenario data of a QA battle (`Pos`). */
 export function setupOf(p: Pos): ScenarioSetup {
+  const { units, leaders, terrain, cards: _cards, topArmy, bottomArmy, orderDice: _orderDice, ...rest } = p;
   return {
     id: 'qa',
     name: 'QA',
-    top: sideOf(p, 'top', p.topArmy ?? 'Carthaginian', 'car', 'carthaginian', 'T'),
-    bottom: sideOf(p, 'bottom', p.bottomArmy ?? 'Roman', 'rom', 'roman', 'B'),
+    ...rest,
+    top: sideOf(p, 'top', topArmy ?? 'Carthaginian', 'car', 'carthaginian', 'T'),
+    bottom: sideOf(p, 'bottom', bottomArmy ?? 'Roman', 'rom', 'roman', 'B'),
     first: p.first ?? 'bottom',
     banners: p.banners ?? 99,
-    terrain: (p.terrain ?? []).map((t) => ({
-      r: t.at[0], c: t.at[1], t: t.t, ford: t.ford, faces: t.faces, edges: t.edges,
-      ...(t.hill !== undefined ? { hill: t.hill } : {}), ...(t.art !== undefined ? { art: t.art } : {}),
-    })),
-    units: (p.units ?? []).map((u) => ({
-      side: u.side, type: u.type, r: u.at[0], c: u.at[1], elite: u.elite, ...(u.command !== undefined ? { command: u.command } : {}),
-      ...(u.immobile !== undefined ? { immobile: u.immobile } : {}),
-    })),
-    leaders: (p.leaders ?? []).map((l, i) => ({
-      side: l.side, name: l.name ?? `Ldr${i}`, r: l.at[0], c: l.at[1], traits: l.traits, ...(l.command !== undefined ? { command: l.command } : {}),
-    })),
+    terrain: (terrain ?? []).map(({ at: [r, c], ...t }) => ({ ...t, r, c })),
+    units: (units ?? []).map(({ at: [r, c], blocks: _blocks, ...u }) => ({ ...u, r, c })),
+    leaders: (leaders ?? []).map(({ at: [r, c], name, ...l }, i) => ({ ...l, name: name ?? `Ldr${i}`, r, c })),
     reserves: p.reserves ?? [],
     reserveLeaders: p.reserveLeaders ?? [],
     rules: p.rules ?? [],
-    sacredLeader: p.sacredLeader,
-    initialCommand: p.initialCommand,
-    objectives: p.objectives,
-    options: p.options,
-    placeLeaders: p.placeLeaders,
-    ambush: p.ambush,
-    legions: p.legions,
-    commands: p.commands,
-    ...(p.rollingFire !== undefined ? { rollingFire: p.rollingFire } : {}),
-    ...(p.rampartBreakers !== undefined ? { rampartBreakers: p.rampartBreakers } : {}),
-    ...(p.lastRowRetreat !== undefined ? { lastRowRetreat: p.lastRowRetreat } : {}),
-    ...(p.handGrowth !== undefined ? { handGrowth: p.handGrowth } : {}),
-    ...(p.placeUnits !== undefined ? { placeUnits: p.placeUnits } : {}),
   };
 }
 
@@ -223,12 +174,91 @@ export function n(face: DieFace, k: number): DieFace[] {
 
 export { forceDice, forcedDiceLeft };
 
+/** Play a card of `kind` for the active side of a running game and order `pieces` (hands are manipulated in place). */
+export function turn(d: GameDriver, kind: CardKind, pieces: string[]) {
+  const card = giveCard(d.state, d.state.active, kind);
+  must(d, { kind: 'playCard', card });
+  if (d.pending?.kind === 'orders') must(d, { kind: 'orders', pieces });
+}
+
+/** End the movement of the ordered pieces still to move. */
+export function endMoves(d: GameDriver) {
+  while (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
+}
+
+/** Finish the active player's turn: end the movement, then the battles not fought. */
+export function endTurn(d: GameDriver) {
+  endMoves(d);
+  while (d.pending?.kind === 'battle') must(d, { kind: 'endBattle' });
+}
+
 /** Finish the active player's turn doing nothing with a plain section card (hands are manipulated in place). */
 export function passTurn(d: GameDriver, kind: CardKind = 'order2L') {
-  const side = d.state.active;
-  const card = giveCard(d.state, side, kind);
-  must(d, { kind: 'playCard', card });
-  if (d.pending?.kind === 'orders') must(d, { kind: 'orders', pieces: [] });
-  while (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
-  while (d.pending?.kind === 'battle') must(d, { kind: 'endBattle' });
+  turn(d, kind, []);
+  endTurn(d);
+}
+
+/** Events from the latest turnStart of `side` on. */
+export function fromTurnStart(es: GameEvent[], side: Side): GameEvent[] {
+  const i = es.map((e) => e.t === 'turnStart' && e.side === side).lastIndexOf(true);
+  expect(i).toBeGreaterThanOrEqual(0);
+  return es.slice(i);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// One close combat: a bottom attacker (u1) at (5,6) against a top defender (u2) at (4,6)
+
+/** A class face that scores against neither unit type (nor is a flag, sword or helmet): a sure miss between them. */
+export function miss(a: UnitType, b: UnitType): DieFace {
+  return (['light', 'medium', 'heavy'] as const).find((c) => c !== UNIT_STATS[a].cls && c !== UNIT_STATS[b].cls)!;
+}
+
+/** A `duel`: the card played (default `order4C`), the strengths at the start, the terrain under each unit. */
+export interface DuelOpts {
+  card?: CardKind;
+  atkBlocks?: number;
+  defBlocks?: number;
+  atkT?: TerrainType;
+  defT?: TerrainType;
+  atkFord?: boolean;
+  defFord?: boolean;
+}
+
+/** The attacker attacks the defender, which stands; every die misses. Returns the attack and battle-back dice. */
+export function duel(atk: UnitType, def: UnitType, o: DuelOpts = {}): { attack?: number; back?: number } {
+  const terrain: Pos['terrain'] = [];
+  if (o.atkT) terrain.push({ at: [5, 6], t: o.atkT, ford: o.atkFord });
+  if (o.defT) terrain.push({ at: [4, 6], t: o.defT, ford: o.defFord });
+  const s = build({
+    units: [
+      { side: 'bottom', type: atk, at: [5, 6], blocks: o.atkBlocks },
+      { side: 'top', type: def, at: [4, 6], blocks: o.defBlocks },
+    ],
+    terrain,
+  });
+  const card = o.card ?? 'order4C';
+  const d = play(s, card, card === 'clash' ? undefined : ['u1']);
+  if (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
+  expect(d.pending?.kind).toBe('battle');
+  ev(d);
+  forceDice(n(miss(atk, def), 30));
+  must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+  if (d.pending?.kind === 'defend') must(d, { kind: 'defend', choice: 'stand' });
+  const e = ev(d);
+  return { attack: combatDice(e, 'close'), back: combatDice(e, 'battleBack') };
+}
+
+/** The attacker declares the attack (`extra` adds to the position); returns the driver at the defend decision. */
+export function attackOn(atk: UnitType, def: UnitType, extra: Pos = {}): GameDriver {
+  const s = build({ ...extra, units: [{ side: 'bottom', type: atk, at: [5, 6] }, { side: 'top', type: def, at: [4, 6] }, ...(extra.units ?? [])] });
+  const d = toBattle(s, 'order4C', ['u1']);
+  forceDice(n(miss(atk, def), 40)); // if the attack resolves at once (no defend decision), every die misses
+  must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+  return d;
+}
+
+/** Whether the defender may evade the attack. */
+export function canEvade(atk: UnitType, def: UnitType): boolean {
+  const d = attackOn(atk, def);
+  return d.pending?.kind === 'defend' && d.pending.canEvade;
 }

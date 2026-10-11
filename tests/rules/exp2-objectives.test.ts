@@ -7,7 +7,9 @@ import {
   setTerrain, type GameEvent,
 } from '../../src/engine';
 import { scenarioById } from '../../src/scenarios';
-import { H, build, ev, giveCard, must, noFirstStrike, passTurn, play, setupOf, u, type Pos } from './helpers';
+import {
+  H, build, endTurn, ev, fromTurnStart, giveCard, must, noFirstStrike, passTurn, play, setupOf, turn, u, type Pos,
+} from './helpers';
 
 beforeEach(() => forceDice([]));
 
@@ -147,26 +149,6 @@ describe('objectives core', () => {
     expect(game({ terrain: [], objectives: [{ kind: 'capture', side: 'bottom' }] })).toThrow(/at least one hex/);
   });
 });
-
-/** End the active side's movement and battle phases without doing anything more. */
-function endTurn(d: GameDriver) {
-  while (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
-  while (d.pending?.kind === 'battle') must(d, { kind: 'endBattle' });
-}
-
-/** Play a card of `kind` for the active side of a running game and order `pieces`. */
-function turn(d: GameDriver, kind: Parameters<typeof giveCard>[2], pieces: string[]) {
-  const card = giveCard(d.state, d.state.active, kind);
-  must(d, { kind: 'playCard', card });
-  if (d.pending?.kind === 'orders') must(d, { kind: 'orders', pieces });
-}
-
-/** Events from the latest turnStart of `side` on. */
-function fromTurnStart(es: GameEvent[], side: 'top' | 'bottom'): GameEvent[] {
-  const i = es.map((e) => e.t === 'turnStart' && e.side === side).lastIndexOf(true);
-  expect(i).toBeGreaterThanOrEqual(0);
-  return es.slice(i);
-}
 
 const THREE_CAMPS: Pos['terrain'] = [{ at: [2, 2], t: 'camp' }, { at: [2, 6], t: 'camp' }, { at: [2, 10], t: 'camp' }];
 

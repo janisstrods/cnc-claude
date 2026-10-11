@@ -7,27 +7,9 @@ import {
   type CardKind, type DieFace, type GameEvent, type HexId, type UnitType,
 } from '../../src/engine';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory, type AiOptions } from '../../src/ai';
-import { H, build, combatDice, ev, forceDice, leaderId, must, n, play, rolls, toBattle, u, type Pos } from './helpers';
+import { H, build, combatDice, duel, ev, forceDice, leaderId, miss, must, n, play, rolls, toBattle, u, type Pos } from './helpers';
 
 beforeEach(() => forceDice([]));
-
-const CLASSES: DieFace[] = ['light', 'medium', 'heavy'];
-/** A class face that scores against neither unit type. */
-function miss(a: UnitType, b: UnitType): DieFace {
-  return CLASSES.find((c) => c !== UNIT_STATS[a].cls && c !== UNIT_STATS[b].cls)!;
-}
-
-/** Bottom attacker at (5,6) attacks the top defender at (4,6), which stands; every die misses. Attack / battle-back dice. */
-function duel(atk: UnitType, def: UnitType, card: CardKind = 'order4C'): { attack?: number; back?: number } {
-  const s = build({ units: [{ side: 'bottom', type: atk, at: [5, 6] }, { side: 'top', type: def, at: [4, 6] }] });
-  const d = toBattle(s, card, ['u1']);
-  ev(d);
-  forceDice(n(miss(atk, def), 30));
-  must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
-  if (d.pending?.kind === 'defend') must(d, { kind: 'defend', choice: 'stand' });
-  const e = ev(d);
-  return { attack: combatDice(e, 'close'), back: combatDice(e, 'battleBack') };
-}
 
 // The war machine under attack: top HWM (u2) at (4,6), bottom attacker (u1) at (5,6). Its rear hexes are (3,5) and (3,6),
 // then (2,5), (2,6) and (2,7).

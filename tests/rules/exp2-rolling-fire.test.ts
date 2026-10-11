@@ -9,6 +9,7 @@ import {
 } from '../../src/engine';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory } from '../../src/ai';
 import { scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
+import { lcg } from '../support/rng';
 import {
   H, build, ev, forceDice, forcedDiceLeft, giveCard, must, noFirstStrike, play, passTurn, setupOf, toBattle, u, type Pos,
 } from './helpers';
@@ -327,8 +328,7 @@ describe('Rolling Fire', () => {
       const d = toBattle(s, 'order4C', ['u2', 'u3', 'u4', 'u5']);
       expect(d.pending).toMatchObject({ kind: 'battle', side: 'top' });
       let seen = 0;
-      let x = 99;
-      const rnd = () => (x = (x * 1103515245 + 12345) % 2147483648) / 2147483648;
+      const rnd = lcg(99);
       for (let i = 0; i < 200; i++) {
         const a = randomAnswer(d.state, d.pending!, rnd);
         if (a.kind !== 'rollingFire') continue;
@@ -345,8 +345,7 @@ describe('Rolling Fire', () => {
       let used = 0;
       let finished = 0;
       for (let seed = 1; seed <= 20; seed++) {
-        let x = seed * 7919;
-        const rnd = () => (x = (x * 1103515245 + 12345) % 2147483648) / 2147483648;
+        const rnd = lcg(seed * 7919);
         const d = new GameDriver(build(FIELD, seed), { snapshots: false });
         for (let steps = 0; !d.over && steps < 3000; steps++) {
           const a = randomAnswer(d.state, d.pending!, rnd);

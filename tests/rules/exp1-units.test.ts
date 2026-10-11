@@ -1,45 +1,15 @@
 // Expansion #1 units: light bow cavalry (LBC) and camels (CAM) (rules-reference §15).
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  GameDriver, UNIT_STATS, autoOrders, battleTargets, ignorableFlags, pieceMoves, retreatPerFlag, rowOf, scoreClose, validateOrders,
+  GameDriver, autoOrders, battleTargets, ignorableFlags, pieceMoves, retreatPerFlag, rowOf, scoreClose, validateOrders,
   type CardKind, type DieFace, type Side, type UnitType,
 } from '../../src/engine';
 import {
-  H, build, combatDice, ev, forceDice, forcedDiceLeft, giveCard, must, n, noFirstStrike, play, rolls, toBattle, u, type Pos,
+  H, attackOn, build, canEvade, combatDice, duel, ev, forceDice, forcedDiceLeft, giveCard, must, n, noFirstStrike, play, rolls, toBattle, u,
+  type Pos,
 } from './helpers';
 
 beforeEach(() => forceDice([]));
-
-const CLASSES: DieFace[] = ['light', 'medium', 'heavy'];
-/** A class face that scores against neither unit type. */
-function miss(a: UnitType, b: UnitType): DieFace {
-  return CLASSES.find((c) => c !== UNIT_STATS[a].cls && c !== UNIT_STATS[b].cls)!;
-}
-
-/** Bottom attacker at (5,6) attacks the top defender at (4,6), which stands; every die misses. Attack / battle-back dice. */
-function duel(atk: UnitType, def: UnitType, card: CardKind = 'order4C'): { attack?: number; back?: number } {
-  const s = build({ units: [{ side: 'bottom', type: atk, at: [5, 6] }, { side: 'top', type: def, at: [4, 6] }] });
-  const d = toBattle(s, card, ['u1']);
-  ev(d);
-  forceDice(n(miss(atk, def), 30));
-  must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
-  if (d.pending?.kind === 'defend') must(d, { kind: 'defend', choice: 'stand' });
-  const e = ev(d);
-  return { attack: combatDice(e, 'close'), back: combatDice(e, 'battleBack') };
-}
-
-/** Bottom attacker at (5,6) declares an attack on the top defender at (4,6); returns the driver at the defend decision. */
-function attackOn(atk: UnitType, def: UnitType) {
-  const s = build({ units: [{ side: 'bottom', type: atk, at: [5, 6] }, { side: 'top', type: def, at: [4, 6] }] });
-  const d = toBattle(s, 'order4C', ['u1']);
-  forceDice(n(miss(atk, def), 40)); // if the attack resolves at once (no defend decision), every die misses
-  must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
-  return d;
-}
-const canEvade = (atk: UnitType, def: UnitType) => {
-  const d = attackOn(atk, def);
-  return d.pending?.kind === 'defend' && d.pending.canEvade;
-};
 
 /** Bottom striker at `atkAt` attacks the adjacent top defender at `defAt` with scripted dice; the defender stands. */
 function strikeWith(atk: UnitType, def: UnitType, dice: DieFace[], atkAt: [number, number] = [5, 6], defAt: [number, number] = [4, 6]) {
@@ -203,7 +173,7 @@ describe('light bow cavalry: ranged combat', () => {
     expect(shots.map((x) => (x as { dice: number }).dice)).toEqual([2, 2]);
   });
   it('Mounted Charge: +1 close-combat die (3) and no ranged fire', () => {
-    expect(duel('LBC', 'MI', 'mountedCharge').attack).toBe(3);
+    expect(duel('LBC', 'MI', { card: 'mountedCharge' }).attack).toBe(3);
     const s = build({ units: [{ side: 'bottom', type: 'LBC', at: [4, 2] }, { side: 'top', type: 'MI', at: [4, 4] }] });
     expect(battleTargets(toBattle(s, 'mountedCharge', ['u1']).state, 'u1')).toEqual([]);
   });
@@ -313,7 +283,7 @@ describe('camel: dice', () => {
     expect(combatDice(e, 'close')).toBe(4);
   });
   it('Mounted Charge adds 1 to its attack (4)', () => {
-    expect(duel('CAM', 'MI', 'mountedCharge').attack).toBe(4);
+    expect(duel('CAM', 'MI', { card: 'mountedCharge' }).attack).toBe(4);
   });
   it('elephants roll 3 against camels (attacking and battling back)', () => {
     expect(duel('EL', 'CAM').attack).toBe(3);

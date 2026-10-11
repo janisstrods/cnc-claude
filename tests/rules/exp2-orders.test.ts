@@ -10,7 +10,8 @@ import {
 } from '../../src/engine';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory } from '../../src/ai';
 import { scenarioById, scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
-import { H, build, ev, giveCard, must, n, noFirstStrike, passTurn, play, setupOf, u, type Pos } from './helpers';
+import { lcg } from '../support/rng';
+import { H, build, endMoves, endTurn, ev, giveCard, must, n, noFirstStrike, passTurn, play, setupOf, u, type Pos } from './helpers';
 
 beforeEach(() => forceDice([]));
 
@@ -59,15 +60,6 @@ function playCard(d: GameDriver, kind: CardKind) {
 function springAmbush(d: GameDriver, kind: CardKind, section: SectionName) {
   playCard(d, kind);
   must(d, { kind: 'orders', pieces: [], ambushSection: section });
-}
-
-/** End the movement stage (then the battle stage) of the active turn. */
-function endMoves(d: GameDriver) {
-  while (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
-}
-function endTurn(d: GameDriver) {
-  endMoves(d);
-  while (d.pending?.kind === 'battle') must(d, { kind: 'endBattle' });
 }
 
 const logs = (d: GameDriver) => ev(d).flatMap((e) => (e.t === 'log' ? [e.text] : []));
@@ -832,7 +824,7 @@ describe('separate commands', () => {
       let asked = 0;
       let finished = 0;
       for (let seed = 1; seed <= 30; seed++) {
-        const rnd = (() => { let x = seed * 7919; return () => (x = (x * 1103515245 + 12345) % 2147483648) / 2147483648; })();
+        const rnd = lcg(seed * 7919);
         const r = playOut(seed, (d, dec) => randomAnswer(d.state, dec, rnd));
         asked += r.asked;
         if (r.d.over) finished++;
