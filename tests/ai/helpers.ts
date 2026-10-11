@@ -76,7 +76,7 @@ export function setHand(s: GameState, side: Side, kinds: string[]) {
   while (s.players[opp].hand.length < 5 && s.players[opp].command > 0) s.players[opp].hand.push(s.deck.shift()!);
 }
 
-/** Tribune in deterministic mode (simulation counts bound the search), Fox's temperament. */
+/** Tribune in deterministic mode (simulation counts bound the search) with the Veteran's temperament. */
 export const detOpts = (side: Side, seed: number, extra: Partial<AiOptions> = {}): AiOptions => ({
   side, difficulty: 'tribune', personality: PERSONALITIES[5], seed, deterministic: true, budgetScale: 0.3, ...extra,
 });
