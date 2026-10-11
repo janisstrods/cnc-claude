@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { ALL_HEXES, leaderUnit, rowOf, colOf, veryHills, type GameState, type HexId, type Leader, type Side, type Unit } from '../../engine';
+import { ALL_HEXES, leaderUnit, rowOf, colOf, steepSlopes, veryHills, type GameState, type HexId, type Leader, type Side, type Unit } from '../../engine';
 import { BLOCK_COLORS, LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
 import { BoardArt, ObjectiveMarkers, scenarioArt } from '../terrain';
 import { BOARD_H, BOARD_W, HEX_R, hexCenterId, hexPoints } from '../geometry';
@@ -55,18 +55,41 @@ const HL_STYLE: Record<Highlight, { fill: string; stroke: string; dash?: string;
  * Badge of a unit's separate command (210, §18.5): the command's initial on a disc of its colour, at the token's upper
  * left (the upper right is kept for an attached leader).
  */
-function CommandBadge({ state, command }: { state: GameState; command: string }) {
+function CommandBadge({ state, command, at = { x: -HEX_R * 0.5, y: -HEX_R * 0.6 }, scale = 1 }: {
+  state: GameState;
+  command: string;
+  /** Where the badge sits, from the token's centre (a lone leader's token is drawn smaller than a unit's). */
+  at?: { x: number; y: number };
+  scale?: number;
+}) {
   const c = commandById(state, command);
   if (!c) return null;
   const col = BLOCK_COLORS[commandBlocks(state, c)];
   // a pale command colour (Lentulus' grey) takes a dark letter
   const light = parseInt(col.edge.slice(1, 3), 16) + parseInt(col.edge.slice(3, 5), 16) + parseInt(col.edge.slice(5, 7), 16) > 450;
   return (
-    <g className="command-badge" transform={`translate(${-HEX_R * 0.5}, ${-HEX_R * 0.6})`}>
+    <g className="command-badge" transform={`translate(${at.x}, ${at.y})${scale !== 1 ? ` scale(${scale})` : ''}`}>
       <circle r={7.4} fill={col.edge} stroke={col.edgeShade} strokeWidth={1.4} />
       <text y={3.4} textAnchor="middle" fontFamily="Cinzel, Georgia, serif" fontWeight={700} fontSize={9.6} fill={light ? '#1d1a22' : '#fbf1d6'}>
         {c.name.charAt(0)}
       </text>
+    </g>
+  );
+}
+
+/**
+ * Badge of an immobile unit (306, §18.11): a small anchor on a dark disc at the token's left, below the ordered flag and
+ * clear of a camp's pennant and a command badge (upper left) and an attached leader (upper right).
+ */
+function ImmobileBadge() {
+  return (
+    <g className="immobile-badge" transform={`translate(${-HEX_R * 0.64}, ${HEX_R * 0.28})`}>
+      <title>Immobile</title>
+      <circle r={7.4} fill="#2a1d12" stroke="#e9c25a" strokeWidth={1.3} />
+      <g fill="none" stroke="#fbf1d6" strokeWidth={1.35} strokeLinecap="round" strokeLinejoin="round">
+        <circle cy={-3.6} r={1.5} />
+        <path d="M0,-2.1V4.6M-2.6,-0.4H2.6M-4.2,1.5Q-3.8,4.7 0,4.7Q3.8,4.7 4.2,1.5" />
+      </g>
     </g>
   );
 }
@@ -102,6 +125,7 @@ const UnitLayer = memo(function UnitLayer(p: {
             {ordered && <circle r={HEX_R * 0.86} className="ordered-ring" />}
             <UnitToken type={u.type} look={owner.look} blockColor={owner.blocks} edgeBlocks={edgeBlocksOf(state, u)} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={facingFor(u.side, humanSide)} elite={u.elite} dimmed={p.doneIds.has(u.id)} />
             {u.command && <CommandBadge state={state} command={u.command} />}
+            {u.immobile && <ImmobileBadge />}
             {ordered && (
               <g transform={`translate(${-HEX_R * 0.72}, ${-HEX_R * 0.08})`} className="ordered-flag">
                 <path d="M0 0 L0 -14 L11 -10 L0 -6" fill="#f1c84b" stroke="#3b2a0a" strokeWidth={1} />
@@ -132,6 +156,10 @@ const UnitLayer = memo(function UnitLayer(p: {
             {hl && <circle r={attached ? 15 : 30} fill={HL_STYLE[hl].fill} stroke={HL_STYLE[hl].stroke} strokeWidth={2.5} strokeDasharray={HL_STYLE[hl].dash} />}
             {p.orderedIds.has(l.id) && <circle r={attached ? 16 : 31} className="ordered-ring" />}
             <LeaderToken look={owner.look} blockColor={owner.blocks} edgeBlocks={edgeBlocksOf(state, l)} facing={facingFor(l.side, humanSide)} attached={attached} name={l.name || 'Leader'} showName={!attached} />
+            {/* a leader who belongs to a command (304) shows it like a unit; attached, only when it is not his unit's */}
+            {l.command && (!u || u.command !== l.command) && (
+              <CommandBadge state={state} command={l.command} at={attached ? { x: -11, y: -11 } : { x: -HEX_R * 0.42, y: -HEX_R * 0.5 }} scale={attached ? 0.75 : 1} />
+            )}
           </g>
         );
       })}
@@ -145,6 +173,7 @@ export function Board(p: BoardProps) {
   const bottom = flipped ? 'top' : 'bottom';
   const hexArt = scenarioArt(state.scenarioId);
   const steepHills = veryHills(state);
+  const slopes = steepSlopes(state);
   const art = useMemo(
     () => (
       <BoardArt
@@ -153,15 +182,18 @@ export function Board(p: BoardProps) {
         rampart={state.rampart}
         art={hexArt}
         steepHills={steepHills}
+        hillUnder={state.hillUnder}
+        steepSlopes={slopes}
         flipped={flipped}
         topLabel={state.players[top].army}
         bottomLabel={state.players[bottom].army}
       />
     ),
     // terrain changes during play only by `setTerrain` (a camp captured, a rampart torn down), which replaces the
-    // `terrain` and `rampart` arrays: their identity is enough
+    // `terrain` and `rampart` arrays: their identity is enough. A removed camp on a hill (308) becomes 'hill' in `terrain`;
+    // `hillUnder` (never changed during play) is in the key all the same, so the board always draws the hills under it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.scenarioId, state.terrain, state.rampart, hexArt, steepHills, flipped],
+    [state.scenarioId, state.terrain, state.rampart, state.hillUnder, hexArt, steepHills, slopes, flipped],
   );
   const { objectives, objState } = state.special;
   const units = state.units;

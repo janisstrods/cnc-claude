@@ -1,6 +1,6 @@
 // Terrain effects for the hex hover tooltip: what each terrain does to movement, combat and line of sight, worded for
 // the player (rules-reference §4, §7–§10, §16, §18.6, §18.7), with the variants of single battles.
-import { isFord, terrainAt, veryHills, type GameState, type HexId, type TerrainType } from '../../engine';
+import { directionTo, isFord, isHill, neighbours, steepSlope, terrainAt, veryHills, type GameState, type HexId, type TerrainType } from '../../engine';
 import { terrainName } from '../terrain';
 import { rampartSidesText } from './uiModel';
 
@@ -24,6 +24,8 @@ export interface TerrainTip {
   t: TerrainType;
   ford: boolean;
   art?: string;
+  /** A hill under the hex's camp or wall (308, §18.7): the swatch draws it too. */
+  hill?: boolean;
   lines: TipLine[];
 }
 
@@ -42,6 +44,8 @@ const HILL_SIGHT = sight('Blocks line of sight, unless firer and target stand on
 const ADVANCE_OUT = combat('A unit here may advance out after combat only if it did not move this turn');
 /** Heavy war machines (§15): only in the battles that field one. */
 const NO_HWM = move('Heavy war machines may not enter');
+/** A fortified camp's protection of foot (§4), also on a camp on a hill (§18.7). */
+const CAMP_FOOT = combat('Foot here ignore 1 sword and may ignore 1 flag');
 
 const FORD: readonly TipLine[] = [move(STOPS_ALL), combat('Close combat in or out: max 2 dice. Firing out: max 1 die'), ADVANCE_OUT, CLEAR];
 /** The Pinarus at Issus (108, §16): a ford without the dice caps. */
@@ -96,19 +100,69 @@ const EFFECTS: Record<TerrainType, readonly TipLine[]> = {
   camp: [
     move(NO_EFFECT),
     combat('A unit here rolls 1 die fewer when it battles'),
-    combat('Foot here ignore 1 sword and may ignore 1 flag'),
+    CAMP_FOOT,
     BLOCKS,
   ],
   rampart: [move(NO_EFFECT), CLEAR], // `rampartLines` adds the protected sides
   ditch: [move(STOPS_ALL), combat(NO_EFFECT), CLEAR],
+  // the scalable city wall (308, 309, §18.7)
   wall: [
-    move('Foot and lone leaders only, climbing from a hex next to it; the move ends there'),
-    move('A unit that starts its move here moves at most 1 hex'),
-    combat('Close combat to or from it: max 2 dice'),
-    combat('Foot defending here strike first, ignore 1 sword and may ignore 1 flag'),
-    sight('Blocks line of sight, except along the same wall'),
+    move('Foot (not war machines) and lone leaders only, by a move from a hex next to it; the move ends there'),
+    move('Moving off it: at most 1 hex'),
+    move('Mounted units and war machines never enter it, not even by retreat or advance'),
+    combat('Close combat with a unit here: max 2 dice, card and leader bonuses on top'),
+    combat('Foot defending here strike first, ignore 1 sword and may ignore 1 flag (1 flag against missiles)'),
+    combat('Mounted units and war machines attack a unit here only if they began the turn next to it'),
+    sight('Blocks line of sight, except between units on the same wall'),
   ],
 };
+
+/** The hill lines that also hold under a camp or wall (§18.7): the hill caps on close combat. */
+const HILL_COMBAT = EFFECTS.hill.filter((x) => x.kind === 'combat');
+
+/**
+ * A camp or city wall standing on a hill (308, §18.7): both sets of lines. The camp's −1 die comes after the hill limit;
+ * the wall's 2 dice are never above a hill's limit. Both block line of sight even between units on the same hill (a wall
+ * still lets units on it see along it).
+ */
+function hillUnderLines(t: 'camp' | 'wall'): TipLine[] {
+  if (t === 'camp') {
+    return [
+      move(NO_EFFECT),
+      ...HILL_COMBAT,
+      combat('A unit here rolls 1 die fewer when it battles, after the hill limit'),
+      CAMP_FOOT,
+      sight('Blocks line of sight, also between units on the same hill'),
+    ];
+  }
+  return [
+    ...EFFECTS.wall.filter((x) => x.kind !== 'sight'),
+    combat('A hill too: its limits are never below the wall\'s 2 dice'),
+    sight('Blocks line of sight, also on the same hill, except between units on the same wall'),
+  ];
+}
+
+/**
+ * Steep slopes (308, rule `steepSlopes`, §18.7): the hexsides of `h` between a hill (or a camp or wall on a hill) and a
+ * forest, as a mask in HEX_DIRS order, or 0.
+ */
+function slopeMask(s: GameState, h: HexId): number {
+  let mask = 0;
+  for (const n of neighbours(h)) if (steepSlope(s, h, n)) mask |= 1 << directionTo(h, n);
+  return mask;
+}
+
+/** The battle line of a hex on a steep slope (308): which of its hexsides, and what they forbid, from the hill or the forest. */
+function slopeLines(s: GameState, h: HexId, flipped: boolean): TipLine[] {
+  const mask = slopeMask(s, h);
+  if (!mask) return [];
+  const sides = rampartSidesText(mask, flipped);
+  return [
+    battle(isHill(s, h)
+      ? `Steep slope down to the forest across ${sides}: no climbing up from there, and no close combat across it either way`
+      : `Steep slope up to the hill across ${sides}: no move, advance, retreat or evade up it, and no close combat across it either way`),
+  ];
+}
 
 /** A rampart's lines (§16): its protected sides as the viewer sees them, and who tears it down (223, §18.6). */
 function rampartLines(s: GameState, h: HexId, flipped: boolean): TipLine[] {
@@ -134,10 +188,22 @@ export function terrainTip(s: GameState, h: HexId, flipped: boolean, art?: strin
   if (!EFFECTS[t].length) return null;
   const ford = isFord(s, h);
   const noCap = !!s.noCap[h];
-  const tip = (lines: readonly TipLine[], name = terrainName(t, ford, noCap, art)): TerrainTip => ({ name, t, ford, art, lines: [...lines] });
+  // a camp or wall on a hill (308): named, drawn and explained as both
+  const hill = (t === 'camp' || t === 'wall') && !!s.hillUnder[h];
+  const tip = (lines: readonly TipLine[], name = terrainName(t, ford, noCap, art, hill)): TerrainTip => ({
+    name, t, ford, art, ...(hill ? { hill } : {}), lines: [...lines, ...slopeLines(s, h, flipped)],
+  });
   if (t === 'hill' && veryHills(s)) return tip(VERY_STEEP, 'Very Steep Hill');
   if (t === 'river' && ford) return tip(art === 'coast' ? [...FORD, COAST] : noCap ? NOCAP_FORD : FORD);
   if (t === 'rampart') return tip(rampartLines(s, h, flipped));
   const hwm = s.units.some((u) => u.type === 'HWM');
-  return tip(hwm ? EFFECTS[t] : EFFECTS[t].filter((x) => x !== NO_HWM));
+  const lines = hill ? hillUnderLines(t) : hwm ? EFFECTS[t] : EFFECTS[t].filter((x) => x !== NO_HWM);
+  // a city wall bars war machines in its own lines: they are left out where no war machine takes the field (309)
+  return tip(t === 'wall' && !hwm ? lines.map(noMachines) : lines);
+}
+
+/** A wall line without its war machines, in a battle that fields none (309). */
+function noMachines(x: TipLine): TipLine {
+  const text = x.text.replace('Foot (not war machines)', 'Foot').replace('Mounted units and war machines', 'Mounted units');
+  return text === x.text ? x : { ...x, text };
 }

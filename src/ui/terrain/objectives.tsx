@@ -5,7 +5,8 @@
 // clear a tint over every section the side scores right now. Everything is placed in screen space from the hexes, so the
 // markers turn with a flipped board; the pennants and arrows themselves stay upright. Expansion #3: a capture objective with
 // `marker: 'ship'` (313) shows a ship on each hex instead of a pennant: the enemy's vessel, its sail in the colours of the
-// side it belongs to, with a pennant of the capturing side at the masthead; once taken its sail is struck.
+// side it belongs to, with a pennant of the capturing side at the masthead; once taken its sail is struck. An exit that
+// leaders score too (`leadersScore`, 317) has a gold medallion on each arrow.
 import { useId } from 'react';
 import { BLOCK_COLORS, type SideColors } from '../../art';
 import { colOf, hexId, rowOf } from '../../engine/hex';
@@ -200,8 +201,11 @@ function outward(h: HexId, flipped: boolean): Pt {
   return { x: x / l, y: y / l };
 }
 
-/** Exit marker of edge hex `h`: its outer hexsides drawn in the side's colour and an arrow pointing off the board. */
-function ExitArrow({ h, flipped, c }: { h: HexId; flipped: boolean; c: SideColors }) {
+/**
+ * Exit marker of edge hex `h`: its outer hexsides drawn in the side's colour and an arrow pointing off the board. `leaders`:
+ * leaders score too (317, `leadersScore`): a gold medallion on the arrow's shaft.
+ */
+function ExitArrow({ h, flipped, c, leaders = false }: { h: HexId; flipped: boolean; c: SideColors; leaders?: boolean }) {
   const r = rowOf(h);
   const col = colOf(h);
   const p = vCenter(r, col, flipped);
@@ -231,6 +235,12 @@ function ExitArrow({ h, flipped, c }: { h: HexId; flipped: boolean; c: SideColor
       <path d={d} fill="rgba(20,14,6,0.4)" transform="translate(1.2 1.8)" />
       <path d={d} fill={c.edge} stroke={INK} strokeWidth={1.4} strokeLinejoin="round" />
       <path d={`M${fmt(at(44.5, 0).x)},${fmt(at(44.5, 0).y)}L${fmt(at(36.5, 9).x)},${fmt(at(36.5, 9).y)}`} stroke={c.edgeLight} strokeWidth={1.4} strokeLinecap="round" opacity={0.9} />
+      {leaders && (
+        <g className="exit-leaders">
+          <circle cx={fmt(at(33, 0).x)} cy={fmt(at(33, 0).y)} r={5.6} fill={GOLD} stroke={INK} strokeWidth={1.2} />
+          <circle cx={fmt(at(33, 0).x)} cy={fmt(at(33, 0).y)} r={2.6} fill="none" stroke={INK} strokeWidth={1} opacity={0.7} />
+        </g>
+      )}
     </g>
   );
 }
@@ -333,8 +343,7 @@ export function ObjectiveMarkers({ objectives, objState, flipped, blocks, units 
       case 'capture': {
         const c = colors(blocks, o.side);
         const taken = new Set(st?.taken ?? []);
-        // (`marker` is the Expansion #3 field of a capture objective; read loosely until ObjectiveDef has it)
-        const ship = (o as { marker?: string }).marker === 'ship';
+        const ship = o.marker === 'ship';
         const owner = colors(blocks, o.side === 'top' ? 'bottom' : 'top');
         for (const h of o.hexes) {
           const p = centre(h, flipped);
@@ -349,7 +358,7 @@ export function ObjectiveMarkers({ objectives, objState, flipped, blocks, units 
       }
       case 'exit': {
         const c = colors(blocks, o.side);
-        for (const h of o.hexes) arrows.push(<ExitArrow key={`e${i}-${h}`} h={h} flipped={flipped} c={c} />);
+        for (const h of o.hexes) arrows.push(<ExitArrow key={`e${i}-${h}`} h={h} flipped={flipped} c={c} leaders={o.leadersScore} />);
         break;
       }
     }

@@ -11,7 +11,7 @@ export function TerrainTipBlock({ tip, alone }: { tip: TerrainTip; alone: boolea
   return (
     <div className={alone ? 'tip-terrain-block' : 'tip-terrain-block tip-divided'}>
       <div className="tip-head">
-        <TerrainIcon t={tip.t} ford={tip.ford} art={tip.art} size={alone ? 40 : 26} />
+        <TerrainIcon t={tip.t} ford={tip.ford} art={tip.art} hill={tip.hill} size={alone ? 40 : 26} />
         <div className={alone ? 'tip-title' : 'tip-terrain-name'}>{tip.name}</div>
       </div>
       <div className="tip-effects">
