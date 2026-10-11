@@ -3,7 +3,7 @@ import { distance, hasLineOfSight, neighbours } from './hex';
 import { attachedLeader, enemyUnitAdjacent, isRomanArmy, leaderAt, leaderHas, leaderNear, supportCount, unitAt } from './query';
 import {
   ccCapOfHex, hillGroups, isCamp, isHill, isWall, rampartProtects, rangedFromCap, rangedTargetCap, terrainAt, terrainBlocksSight,
-  veryHills, wallGroups,
+  veryHills, wallGroups, type BoardTerrain, type SightGroups,
 } from './terrain';
 import { eliteHas, rangeOf, rangedBaseDice } from './elites';
 import { UNIT_STATS, elephantDiceVs, frightens } from './units';
@@ -98,18 +98,31 @@ export function rangedDice(s: GameState, firer: Unit, targetHex: HexId, moved: n
   return Math.max(0, dice);
 }
 
+/** Sight groups per terrain array, with the `hillUnder` array they were made for (see `sightGroupsOf`). */
+const sightCache = new WeakMap<readonly TerrainType[], { hillUnder: readonly boolean[]; groups: SightGroups }>();
+
+/**
+ * The hill and wall groups of a board for `terrainBlocksSight`, each worked out on first use and kept per terrain array: a
+ * changed hex replaces the array (`setTerrain`), and `hillUnder`, the other input, never changes in play.
+ */
+export function sightGroupsOf(s: BoardTerrain): SightGroups {
+  const c = sightCache.get(s.terrain);
+  if (c && c.hillUnder === s.hillUnder) return c.groups;
+  const board: BoardTerrain = { terrain: s.terrain, hillUnder: s.hillUnder };
+  let hills: Map<HexId, number> | undefined;
+  let walls: Map<HexId, number> | undefined;
+  const groups: SightGroups = { hills: () => (hills ??= hillGroups(board, neighbours)), walls: () => (walls ??= wallGroups(board, neighbours)) };
+  sightCache.set(s.terrain, { hillUnder: s.hillUnder, groups });
+  return groups;
+}
+
 /**
  * Is the line of sight from `from` to `to` clear (§8)? Pieces between block it; the terrain between is decided by
  * `terrainBlocksSight` (forest, camps, impassable hills, hills off the firer's and target's hill, city walls except along a
  * connected wall, §18.7).
  */
 export function lineOfSight(s: GameState, from: HexId, to: HexId): boolean {
-  let hills: Map<HexId, number> | null = null;
-  let walls: Map<HexId, number> | null = null;
-  const groups = {
-    hills: () => (hills ??= hillGroups(s, neighbours)),
-    walls: () => (walls ??= wallGroups(s, neighbours)),
-  };
+  const groups = sightGroupsOf(s);
   return hasLineOfSight(from, to, (h) => !!unitAt(s, h) || !!leaderAt(s, h) || terrainBlocksSight(s, from, to, h, groups));
 }
 

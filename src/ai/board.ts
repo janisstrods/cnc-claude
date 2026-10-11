@@ -1,9 +1,7 @@
 // Fast board helpers for the AI: distance table, occupancy, retreat room, LOS and flag rules mirrored with O(1) lookups.
 import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
-import {
-  closedTo, hillGroups, isCamp, isWall, stopsOnEntry, terrainBlocksSight, wallGroups, type BoardTerrain, type SightGroups,
-} from '../engine/terrain';
-import { frightAtFirstSight, rampartShields, wallShields, type StrikeRole } from '../engine/combat';
+import { closedTo, isCamp, isWall, stopsOnEntry, terrainBlocksSight } from '../engine/terrain';
+import { frightAtFirstSight, rampartShields, sightGroupsOf, wallShields, type StrikeRole } from '../engine/combat';
 import { canShoot, eliteHas, rangeOf } from '../engine/elites';
 import { leaderHas } from '../engine/query';
 import { UNIT_STATS } from '../engine/units';
@@ -160,23 +158,6 @@ export function canEvadeOcc(s: GameState, occ: Occ, u: Unit): boolean {
     return true;
   }
   return false;
-}
-
-/**
- * Hill and wall groups per terrain array, each worked out on first use (a changed hex replaces the array; `hillUnder`, the
- * other input, never changes in play and is shared by the states of one game). The cache holds only those two arrays.
- */
-const sightCache = new WeakMap<object, SightGroups>();
-function sightGroupsOf(s: GameState): SightGroups {
-  let g = sightCache.get(s.terrain);
-  if (!g) {
-    const board: BoardTerrain = { terrain: s.terrain, hillUnder: s.hillUnder };
-    let hills: Map<HexId, number> | undefined;
-    let walls: Map<HexId, number> | undefined;
-    g = { hills: () => (hills ??= hillGroups(board, neighbours)), walls: () => (walls ??= wallGroups(board, neighbours)) };
-    sightCache.set(s.terrain, g);
-  }
-  return g;
 }
 
 /** Mirror of engine lineOfSight using occupancy (the terrain decided by the engine's `terrainBlocksSight`). */
