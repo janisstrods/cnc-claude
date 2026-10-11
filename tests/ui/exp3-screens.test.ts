@@ -302,12 +302,43 @@ describe('forced placement (308)', () => {
   });
 });
 
+describe('forced placement (308): undo with a full log', () => {
+  it('takes back the placement\'s lines by their ids, though the capped log has dropped its oldest lines since', async () => {
+    const c = new GameController({ ...newSessionConfig('308', 'bottom', 'recruit'), seed: 3 }, new RandomOpponent());
+    try {
+      await settled(c);
+      const s = game('308', 3);
+      s.special.reserveEntered = true;
+      c.driver = new GameDriver(s, { snapshots: true });
+      c.driver.drainEvents();
+      // a long game: the log is at its cap of 400 lines, so every new line pushes the oldest one out
+      const old = Array.from({ length: 400 }, (_, i) => ({ id: -1000 + i, text: `old line ${i}`, kind: 'info' as const }));
+      (c as unknown as { set(p: object): void }).set({ pending: c.driver.pending, log: old });
+      c.answer({ kind: 'hex', hex: hexId(8, 2) });
+      await settled(c);
+      const placed = c.view.log.map((l) => l.text);
+      expect(placed).toContain('The Roman Medium Infantry arrives as a reinforcement.');
+      expect(c.view.log).toHaveLength(400);
+      expect(placed).not.toContain('old line 0'); // pushed out by the placement's lines
+      c.undo();
+      expect(c.view.pending).toMatchObject({ kind: 'placeUnit', side: 'bottom' });
+      // only the lines logged before the placement are left (the ones the cap had dropped stay dropped)
+      expect(c.view.log.length).toBeGreaterThan(300);
+      expect(c.view.log.length).toBeLessThan(400);
+      expect(c.view.log.every((l) => l.id < 0 && l.text.startsWith('old line'))).toBe(true);
+      expect(c.view.log[c.view.log.length - 1].text).toBe('old line 399');
+    } finally {
+      c.dispose();
+    }
+  });
+});
+
 describe('reinforcements with fixed entry (308)', () => {
   it('one button, whatever the section; the entry hexes are marked while a Leadership card can bring them in', () => {
     const s = game('308');
     const t = ambushTexts(s, 'Vercingetorix');
-    expect(t).toMatchObject({ fixed: true, label: 'Reinforcements enter' });
-    expect(t.button).toBe("Vercingetorix's reinforcements enter on the 5 marked entry hexes, one unit per empty hex, whatever the section. The card orders nothing else.");
+    expect(t).toMatchObject({ fixed: true, free: 5, label: 'Reinforcements enter' });
+    expect(t.button).toBe("Vercingetorix's reinforcements enter on the 5 free marked entry hexes, one unit per empty hex, whatever the section. The card orders nothing else.");
     expect(t.move).toBe("Vercingetorix's reinforcements enter on the marked entry hexes: pick a piece, then a highlighted hex. They cannot move on this turn, but may battle. Vercingetorix joins one of them.");
     const entry = [hexId(3, 0), hexId(4, 0), hexId(5, 0), hexId(6, 0), hexId(7, 0)];
     expect(fixedEntryHexes(s, 'top', 'leadershipAny')).toEqual(entry);
@@ -318,11 +349,27 @@ describe('reinforcements with fixed entry (308)', () => {
       expect(ui.highlights.get(h)).toBe('placeEmpty');
       expect(ui.badges.get(h)).toBe('Entry');
     }
-    // an occupied entry hex is not offered
+    // an occupied entry hex is not offered, and the tooltip counts the free ones
     s.units[0].hex = entry[0];
     expect(fixedEntryHexes(s, 'top', 'leadershipAny')).toEqual(entry.slice(1));
+    expect(ambushTexts(s, 'Vercingetorix')).toMatchObject({ free: 4 });
+    expect(ambushTexts(s, 'Vercingetorix').button).toBe(
+      "Vercingetorix's reinforcements enter on the 4 free marked entry hexes, one unit per empty hex, whatever the section. The card orders nothing else.");
+    // a leader on a hex fills it as well; one hex left is said in the singular
+    s.leaders[0].hex = entry[1];
+    s.units[1].hex = entry[2];
+    s.units[2].hex = entry[3];
+    expect(fixedEntryHexes(s, 'top', 'leadershipAny')).toEqual([entry[4]]);
+    expect(ambushTexts(s, 'Vercingetorix')).toMatchObject({ free: 1 });
+    expect(ambushTexts(s, 'Vercingetorix').button).toBe(
+      "Vercingetorix's reinforcements enter on the one free marked entry hex, one unit per empty hex, whatever the section. The card orders nothing else.");
+    // every entry hex taken: nobody could enter, which the tooltip says plainly and the screen does not offer the button for
+    s.units[3].hex = entry[4];
+    expect(fixedEntryHexes(s, 'top', 'leadershipAny')).toEqual([]);
+    expect(ambushTexts(s, 'Vercingetorix')).toMatchObject({ fixed: true, free: 0 });
+    expect(ambushTexts(s, 'Vercingetorix').button).toBe("Vercingetorix's reinforcements cannot enter now: every entry hex is occupied.");
     // an ambush on the baseline (206) keeps a button per section
-    expect(ambushTexts(game('206'), 'Marcellus')).toMatchObject({ fixed: false, label: 'Ambush' });
+    expect(ambushTexts(game('206'), 'Marcellus')).toMatchObject({ fixed: false, free: null, label: 'Ambush' });
   });
 
   it('an entered unit says it cannot move again this turn', () => {
@@ -335,6 +382,47 @@ describe('reinforcements with fixed entry (308)', () => {
     };
     expect(enteredTipLine(s, { ...wa, hex: hexId(4, 0) })).toBe('Entered this turn: cannot move again until next turn, but may battle');
     expect(enteredTipLine(s, { ...wa, hex: -1 })).toBeNull();
+  });
+});
+
+describe('a reserve leader entering the board (the controller)', () => {
+  /** The leader's own `move` event from off the board onto a unit of his side, as the engine emits it. */
+  async function enters(id: string, name: string) {
+    const lead = scenarioById(id).setup.reserveLeaders.find((l) => l.name === name)!;
+    const c = new GameController({ ...newSessionConfig(id, lead.side, 'recruit'), seed: 3 }, new RandomOpponent());
+    try {
+      const animate = await settled(c);
+      // the ambush springs: the reserve leader leaves the reserve and waits off the board among the leaders (flow.ts)
+      const off = cloneState(c.driver.state);
+      off.leaders.push(...off.special.reserveLeaders);
+      off.special.reserveLeaders = [];
+      (c as unknown as { set(p: object): void }).set({ display: off });
+      const after = cloneState(off);
+      const leader = after.leaders.find((l) => l.name === name)!;
+      expect(leader.hex, name).toBe(-1);
+      const unit = after.units.find((u) => u.side === leader.side && u.hex >= 0)!;
+      leader.hex = unit.hex;
+      const before = c.view.log.length;
+      await animate({ t: 'move', id: leader.id, path: [unit.hex] }, after);
+      return { log: c.view.log.slice(before).map((l) => l.text), flashes: c.view.flashes.map((f) => f.text) };
+    } finally {
+      c.dispose();
+    }
+  }
+
+  it('308: Vercingetorix is told to arrive with the unit he joins, and flashed on the board', async () => {
+    const r = await enters('308', 'Vercingetorix');
+    expect(r.log).toHaveLength(1);
+    expect(r.log[0]).toMatch(/^Vercingetorix arrives with the /);
+    expect(r.flashes).toEqual(['Vercingetorix']);
+  });
+
+  it('005 and 206: Mago and Marcellus enter with the ambush force alone, so no "arrives" line and no flash', async () => {
+    for (const [id, name] of [['005', 'Mago'], ['206', 'Marcellus']]) {
+      const r = await enters(id, name);
+      expect(r.log, id).toEqual([]);
+      expect(r.flashes, id).toEqual([]);
+    }
   });
 });
 

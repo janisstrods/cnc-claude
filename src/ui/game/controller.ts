@@ -185,9 +185,10 @@ export class GameController {
   private toldTurn = -1;
   /**
    * The human's forced placement (308) while it might be taken back: the answers recorded with it, the dice rolled before
-   * it, and the log's length before its lines.
+   * it, and the id the next log line will get (the log is capped, so a line's place in it is no stable index: the lines
+   * of the placement are those with an id from `logId` on).
    */
-  private placement: { n: number; rng: number; log: number } | null = null;
+  private placement: { n: number; rng: number; logId: number } | null = null;
 
   constructor(config: SessionConfig, opponent: Opponent, answers: Answer[] = [], check?: SavedGame['check']) {
     this.config = config;
@@ -337,7 +338,7 @@ export class GameController {
       this.set({ error: this.driver.lastError });
       return;
     }
-    this.placement = placing === null ? null : { n: this.driver.answers.length, rng: placing, log: this.view.log.length };
+    this.placement = placing === null ? null : { n: this.driver.answers.length, rng: placing, logId: seq };
     this.diceTold(d, a, dice);
     this.set({ pending: null, error: null });
     this.save();
@@ -368,7 +369,7 @@ export class GameController {
     if (!(this.driver.canUndo() || placed) || this.busy) return;
     this.placement = null;
     // the lines the placement logged go with it
-    if (placed) this.set({ log: this.view.log.slice(0, placed.log) });
+    if (placed) this.set({ log: this.view.log.filter((l) => l.id < placed.logId) });
     this.driver = this.driver.undo();
     this.driver.drainEvents();
     this.syncHeld(this.driver.state);
@@ -629,8 +630,8 @@ export class GameController {
         const walking = { ...this.view.walking };
         delete walking[e.id];
         this.set({ display: after, walking });
-        // a reserve leader (308) placed straight onto a unit of his force that entered
-        if (e.t === 'move' && isLeaderId(e.id) && (leaderById(before, e.id)?.hex ?? OFF_BOARD) < 0 && path.length === 1) this.arrives(e.id, path[0], after);
+        // a reserve leader (308) placed straight onto a unit of his force that entered (not Mago in 005 or Marcellus in 206: they enter alone)
+        if (e.t === 'move' && after.special.ambush?.attachLeader && isLeaderId(e.id) && (leaderById(before, e.id)?.hex ?? OFF_BOARD) < 0 && path.length === 1) this.arrives(e.id, path[0], after);
         if (e.t === 'retreat' && path.length > 1) this.addLog({ text: `${this.name(e.id, after)} retreats ${Math.max(0, path.length - 1)} hex${path.length === 2 ? '' : 'es'}.`, side: this.sideOf(e.id, after), kind: 'result' });
         if (e.t === 'evade') this.flash(path[path.length - 1], 'Evaded', 'info');
         if (e.t === 'leaderEvade' && e.offBoard) this.addLog({ text: `${this.name(e.id, before)} escapes the battlefield.`, kind: 'result' });

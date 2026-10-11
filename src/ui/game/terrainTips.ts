@@ -111,7 +111,7 @@ const EFFECTS: Record<TerrainType, readonly TipLine[]> = {
     move('Moving off it: at most 1 hex'),
     move('Mounted units and war machines never enter it, not even by retreat or advance'),
     combat('Close combat with a unit here: max 2 dice, card and leader bonuses on top'),
-    combat('Foot defending here strike first, ignore 1 sword and may ignore 1 flag (1 flag against missiles)'),
+    combat('Foot defending here strike first (not against an attacker also on a wall), ignore 1 sword and may ignore 1 flag (1 flag against missiles)'),
     combat('Mounted units and war machines attack a unit here only if they began the turn next to it'),
     sight('Blocks line of sight, except between units on the same wall'),
   ],

@@ -703,9 +703,10 @@ export function possessive(name: string): string {
  * Wording of an ambush reserve (Trebbia 005, Aquae Sextiae 206) or of reinforcements with fixed entry hexes (308 Gergovia,
  * §18.9): the button's label (`fixed`: one button, whatever the section; otherwise one per section, "Ambush: Left"), its
  * tooltip and the move prompt while the pieces enter. `leader` = the reserve's leader (the scenario setup's first reserve
- * leader), if any.
+ * leader), if any. For fixed entry, `free` is the number of entry hexes still empty (0: no unit can enter, so the button is
+ * not offered); it is null for an ambush on the baseline.
  */
-export function ambushTexts(s: GameState, leader?: string): { button: string; move: string; label: string; fixed: boolean } {
+export function ambushTexts(s: GameState, leader?: string): { button: string; move: string; label: string; fixed: boolean; free: number | null } {
   const side = s.special.reserveSide ?? s.active;
   const enemy = s.players[other(side)].army;
   const a = s.special.ambush;
@@ -715,16 +716,21 @@ export function ambushTexts(s: GameState, leader?: string): { button: string; mo
       a.noMove ? 'They cannot move on this turn, but may battle.' : '',
       a.attachLeader && leader ? `${leader} joins one of them.` : '',
     ].filter(Boolean).join(' ');
+    const free = freeEntryHexes(s).length;
     return {
       fixed: true,
+      free,
       label: 'Reinforcements enter',
-      button: `${force} enter on the ${a.entryHexes.length} marked entry hexes, one unit per empty hex, whatever the section. The card orders nothing else.`,
+      button: free === 0
+        ? `${force} cannot enter now: every entry hex is occupied.`
+        : `${force} enter on the ${free === 1 ? 'one free marked entry hex' : `${free} free marked entry hexes`}, one unit per empty hex, whatever the section. The card orders nothing else.`,
       move: `${force} enter on the marked entry hexes: pick a piece, then a highlighted hex.${after ? ` ${after}` : ''}`,
     };
   }
   const force = leader ? `${possessive(leader)} force` : 'The hidden force';
   return {
     fixed: false,
+    free: null,
     label: 'Ambush',
     button: leader
       ? `Spring ${possessive(leader)} ambush: his force enters on the ${enemy} baseline in this section`
@@ -912,9 +918,12 @@ export function placeUnitPrompt(s: GameState, d: Extract<Decision, { kind: 'plac
  * ones (no unit, no leader). Empty in every other case.
  */
 export function fixedEntryHexes(s: GameState, side: Side, card: CardKind): HexId[] {
-  const entry = s.special.ambush?.entryHexes;
-  if (!entry || !ambushAvailable(s, side, card)) return [];
-  return entry.filter((h) => !unitAt(s, h) && !leaderAt(s, h));
+  return ambushAvailable(s, side, card) ? freeEntryHexes(s) : [];
+}
+
+/** The fixed entry hexes (308) with no unit and no leader on them, whoever may bring the reinforcements in. */
+function freeEntryHexes(s: GameState): HexId[] {
+  return (s.special.ambush?.entryHexes ?? []).filter((h) => !unitAt(s, h) && !leaderAt(s, h));
 }
 
 /** Tooltip line of an immobile unit (306, §18.11). */

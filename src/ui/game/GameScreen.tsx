@@ -348,7 +348,9 @@ export function GameScreen({ controller, onExit, onRematch }: {
         const allUnits = n === 0 ? selectAllUnits(s, human, d.card) : null;
         if (allUnits) buttons.push(btn('Select all', () => setUi({ ...ui, orderSel: allUnits }), { variant: 'secondary' }));
         const amb = ambush ? ambushTexts(s, ambushLeader) : null;
-        if (amb) {
+        // every fixed entry hex (308) is occupied: no unit could enter, so there is nothing to spend the card on
+        const noEntry = amb?.free === 0;
+        if (amb && !noEntry) {
           // reinforcements with fixed entry hexes (308) enter whatever the section: one button (the engine still takes a section)
           const secs = amb.fixed ? ambushSections(d.card).slice(0, 1) : ambushSections(d.card);
           for (const sec of secs) {
@@ -359,7 +361,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
         let text = `${def.text} Click your units to order them.`;
         if (mode === 'one') text = `None of your troops fit ${def.title}: order 1 unit of your choice (a normal order, no card bonus).`;
         else if (def.group === 'leadership') text = leadershipHint(s, human, d.card, ui.orderSel);
-        if (amb?.fixed && !n) text = `${text} Or bring in the reinforcements (Entry).`;
+        if (amb?.fixed && !n) text = noEntry ? `${text} The reinforcements cannot enter now: every entry hex is occupied.` : `${text} Or bring in the reinforcements (Entry).`;
         // separate commands (210, §18.5)
         const myCommands = s.special.commands.filter((c) => c.side === human);
         if (myCommands.length > 1) text = `${text} One card orders one army only: ${myCommands.map((c) => c.name).join(' or ')}.`;
