@@ -10,6 +10,7 @@ import type { Opponent } from './opponent';
 import { FACE_WORDS, currentDiceTurn, diceRollSummary, diceTurnOrders, diceTurnVictim, pieceName, type DiceTurn } from './diceOrders';
 import { sfx } from '../sound';
 import { storage } from '../storage';
+import { outcomeFor, recordFinished, type Medal } from '../record';
 
 export type Difficulty = 'recruit' | 'tribune' | 'consul';
 
@@ -100,7 +101,8 @@ export interface ViewState {
   combat: { from: HexId; to: HexId } | null;
   aiThinking: boolean;
   error: string | null;
-  over: { winner: Side | 'draw'; reason: string } | null;
+  /** The battle is over: who won, why, and the medal the human's side earned by it, when better than before. */
+  over: { winner: Side | 'draw'; reason: string; newMedal?: Medal } | null;
   canUndo: boolean;
   speed: number; // 1 = normal, 2 = fast, 0.6 = slow
   /** Centre-board announcement: 'turn' = "Your turn"; 'notice' = a longer message (a lost command card). */
@@ -184,6 +186,8 @@ export class GameController {
    * of the placement are those with an id from `logId` on).
    */
   private placement: { n: number; rng: number; logId: number } | null = null;
+  /** The finished battle is in the player's record (once, however often the loop sees the end). */
+  private recorded = false;
 
   constructor(config: SessionConfig, opponent: Opponent, answers: Answer[] = [], check?: SavedGame['check']) {
     this.config = config;
@@ -373,7 +377,10 @@ export class GameController {
         if (st.winner || !this.driver.pending) {
           if (!st.winner) throw new Error('the battle ended without a winner');
           const winner = st.winner;
-          this.set({ over: { winner, reason: st.winReason }, pending: null, display: cloneState(st), aiThinking: false });
+          const { scenarioId, humanSide, difficulty } = this.config;
+          const newMedal = this.recorded ? this.view.over?.newMedal : recordFinished(scenarioId, humanSide, difficulty, outcomeFor(humanSide, winner)) ?? undefined;
+          this.recorded = true;
+          this.set({ over: { winner, reason: st.winReason, newMedal }, pending: null, display: cloneState(st), aiThinking: false });
           if (winner === this.config.humanSide) sfx.victory();
           else sfx.defeat();
           this.save();
