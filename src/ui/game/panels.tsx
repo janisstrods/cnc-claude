@@ -2,7 +2,7 @@
 // that orders by dice (310) and the dialog that assigns Rally and I Am Spartacus dice.
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
-  ROWS, UNIT_STATS, inCommand, leadersOf, rallyCandidates, rowOf, sectionsOf, unitsOf, validateRally, validateSpartacus,
+  ROWS, UNIT_STATS, greedyAssign, inCommand, leadersOf, rallyCandidates, rowOf, sectionsOf, unitsOf, validateRally, validateSpartacus,
   type Decision, type DieFace, type GameState, type HexId, type Side,
 } from '../../engine';
 import { unitTypeName } from '../../art';
@@ -160,18 +160,9 @@ export function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 
     const leaders = face === 'leader' ? leadersOf(s, side).filter(free).map((l) => ({ id: l.id, label: `Leader ${l.name || ''} — ${where(l.hex)}` })) : [];
     return [...units, ...leaders];
   }
+  /** The first choice: each die on the first piece in its list that keeps the assignment valid (the engine's greedy). */
   function suggest(): (string | null)[] {
-    const out: (string | null)[] = [];
-    for (let i = 0; i < faces.length; i++) {
-      const opts = options(faces[i]);
-      let chosen: string | null = null;
-      for (const o of opts) {
-        const trial = [...out, o.id, ...Array(faces.length - i - 1).fill(null)];
-        if (!validate(trial)) { chosen = o.id; break; }
-      }
-      out.push(chosen);
-    }
-    return out;
+    return greedyAssign(faces.length, (i) => options(faces[i]).map((o) => o.id), validate);
   }
   function validate(list: (string | null)[]): string | null {
     if (p.kind === 'rally') return validateRally(s, side, faces, list, command);
