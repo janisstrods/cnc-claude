@@ -59,7 +59,7 @@ describe('Triumphs in the battle picker', () => {
     const theirs = element(html, 'button', new RegExp(`title="Your record as ${topArmy}: 0 won, 1 lost"`));
     expect(theirs).toContain('medal is-fought choice-medal');
     expect(element(html, 'button', /title="Thinks deeper[^"]*"/)).toContain('medal is-gold choice-medal');
-    expect(element(html, 'button', /title="Thinks deeper[^"]*"/)).toContain(`Beaten as ${bottomArmy}: gold won.`);
+    expect(element(html, 'button', /title="Thinks deeper[^"]*"/)).toContain(`Beaten as ${bottomArmy} (gold).`);
     expect(element(html, 'button', /title="A forgiving[^"]*"/)).toContain('medal is-bronze is-faint choice-medal');
     expect(element(html, 'button', /title="A capable[^"]*"/)).toContain('medal is-silver is-faint choice-medal');
   });

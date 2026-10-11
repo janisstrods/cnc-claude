@@ -3,6 +3,7 @@
  * suits what it brought (no fixed order, never reused). Bump for every publish, together with package.json's version.
  */
 export const RELEASES = [
+  { number: '1.6.0', name: 'Pydna', notes: 'Triumphs: bronze, silver and gold medals for each side of each battle won against the Recruit, Tribune and Consul, shown in the battle picker and in a record of every battle on the main menu, which can be saved and loaded' },
   { number: '1.5.1', name: 'Ilerda', notes: 'Under the hood: a leaner engine, rules kept in one place, and a computer opponent that thinks about twice as fast and starts planning while the board still moves' },
   { number: '1.5.0', name: 'Pharsalus', notes: 'Expansion #3, The Roman Civil Wars (battles 301–319): Sulla, Sertorius, Caesar and Pompey, with city walls, dice orders and the history of every battle' },
   { number: '1.4.4', name: 'Cynoscephalae', notes: 'Random battle in the battle picker: a battle from any box, and a side, picked at random' },

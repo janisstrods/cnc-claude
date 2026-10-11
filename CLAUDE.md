@@ -56,8 +56,11 @@ Expansion #1 AI-vs-AI balance runs with behaviour counters: `npx vite-node scrip
   `casualties.ts`, `attacks.ts`, `phases.ts`, `flow.ts`.
 - The AI calls the engine's rules, passing its `Occ` board index as a `PieceIndex` (`src/engine/query.ts`) rather than
   copying them. Deliberate approximations in `src/ai/board.ts` say so in a comment.
+- The player's record (Triumphs: medals per battle, side and opponent level) is `src/ui/record.ts`, in localStorage
+  `cca-record-v1`; the controller records a battle once when it ends. Medal art and the dialog: `src/ui/screens/Medal.tsx`,
+  `Triumphs.tsx`.
 - Test kits: `tests/rules/helpers.ts` (`build`/`setupOf` pass `ScenarioSetup` fields through), `tests/ai/helpers.ts`,
-  `tests/scenarios/helpers.ts`, `tests/support/rng.ts`. Scripts share `scripts/lib.ts`. Long AI tests go in
+  `tests/scenarios/helpers.ts`, `tests/support/rng.ts`, `tests/support/storage.ts` (a localStorage stub). Scripts share `scripts/lib.ts`. Long AI tests go in
   `*.slow.test.ts` files, which a sequencer in `vite.config.ts` starts first.
 
 ## Rules and docs

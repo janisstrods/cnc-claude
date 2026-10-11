@@ -93,7 +93,9 @@
 @media (prefers-reduced-motion: reduce) {
   .random-die, .random-die.is-rolled { transition: none; animation: none; }
 }
-.select-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.select-tabs { display: flex; flex-wrap: wrap; gap: 10px 6px; margin-bottom: 8px; }
+/* room above the first row for the medal badges */
+.select-tabs:has(.tab-medals) { padding-top: 4px; }
 .select-tabs button {
   /* four boxes share the 330px list column: two to a row, each label on one line with its battle count beside it */
   flex: 1 1 auto;
@@ -108,12 +110,19 @@
   border-radius: 8px;
   cursor: pointer;
   line-height: 1.2;
+  position: relative;
 }
 .select-tabs button:hover { border-color: rgba(226, 189, 114, .55); }
 .select-tabs button:focus-visible { outline: 2px solid var(--kit-gold); outline-offset: 2px; }
 .select-tabs button.active { color: #fbe7a6; border-color: var(--kit-gold); background: linear-gradient(180deg, rgba(142, 27, 27, .6), rgba(60, 30, 14, .7)); }
 .select-tabs small { margin-left: 4px; font-family: var(--kit-font-body); font-size: 12px; letter-spacing: 0; opacity: .65; }
-.tab-medals { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; font-family: var(--kit-font-body); font-size: 12px; letter-spacing: 0; color: var(--kit-gold); }
+/* the box's medals won, as a badge on the tab's corner: the tabs keep their width (two to a row) */
+.tab-medals {
+  position: absolute; top: -9px; right: -4px; z-index: 1;
+  display: inline-flex; align-items: center; gap: 1px; height: 14px; padding: 0 5px 0 3px;
+  font-family: var(--kit-font-body); font-size: 10.5px; line-height: 1; letter-spacing: 0; color: var(--kit-gold);
+  background: #2a1a0c; border: 1px solid rgba(232, 196, 90, .65); border-radius: 8px;
+}
 .select-scroll {
   overflow-y: auto;
   display: flex;
@@ -282,7 +291,7 @@
 .medal { display: block; flex: none; }
 .medal-ring { stroke: rgba(226, 189, 114, .6); fill: rgba(10, 6, 2, .35); }
 .medal.is-none .medal-ring { stroke: rgba(226, 189, 114, .32); fill: none; }
-.medal.is-faint { opacity: .3; filter: saturate(.35); }
+.medal.is-faint { opacity: .4; filter: saturate(.6); }
 .medal-pair { display: inline-flex; gap: 3px; }
 .kit-parchment .medal-ring { stroke: rgba(110, 70, 30, .6); fill: rgba(110, 70, 30, .1); }
 .kit-parchment .medal.is-none .medal-ring { stroke: rgba(110, 70, 30, .35); fill: none; }

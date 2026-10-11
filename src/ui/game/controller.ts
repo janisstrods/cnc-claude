@@ -186,8 +186,11 @@ export class GameController {
    * of the placement are those with an id from `logId` on).
    */
   private placement: { n: number; rng: number; logId: number } | null = null;
-  /** The finished battle is in the player's record (once, however often the loop sees the end). */
-  private recorded = false;
+  /**
+   * The finished battle as it went into the player's record, with the medal it earned: recorded once, however often the
+   * loop comes back to the end.
+   */
+  private recorded: { newMedal?: Medal } | null = null;
 
   constructor(config: SessionConfig, opponent: Opponent, answers: Answer[] = [], check?: SavedGame['check']) {
     this.config = config;
@@ -378,9 +381,9 @@ export class GameController {
           if (!st.winner) throw new Error('the battle ended without a winner');
           const winner = st.winner;
           const { scenarioId, humanSide, difficulty } = this.config;
-          const newMedal = this.recorded ? this.view.over?.newMedal : recordFinished(scenarioId, humanSide, difficulty, outcomeFor(humanSide, winner)) ?? undefined;
-          this.recorded = true;
-          this.set({ over: { winner, reason: st.winReason, newMedal }, pending: null, display: cloneState(st), aiThinking: false });
+          this.recorded ??= { newMedal: recordFinished(scenarioId, humanSide, difficulty, outcomeFor(humanSide, winner)) ?? undefined };
+          const over = { winner, reason: st.winReason, newMedal: this.recorded.newMedal };
+          this.set({ over, pending: null, display: cloneState(st), aiThinking: false });
           if (winner === this.config.humanSide) sfx.victory();
           else sfx.defeat();
           this.save();

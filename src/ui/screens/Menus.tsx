@@ -360,7 +360,7 @@ export function ScenarioSelect(p: {
             {DIFFS.map((d) => {
               const won = beaten.includes(d.id);
               const metal = MEDAL_FOR[d.id];
-              const note = won ? `Beaten as ${armies[side].army}: ${metal} won.` : `Beat it as ${armies[side].army} to win ${metal}.`;
+              const note = `${won ? 'Beaten' : 'Not beaten yet'} as ${armies[side].army} (${metal}).`;
               return (
                 <button key={d.id} className={`choice has-medal ${diff === d.id ? 'active' : ''}`} onClick={() => setDiff(d.id)} title={`${d.text} ${note}`}>
                   <b>{d.name}</b>
