@@ -306,10 +306,13 @@ describe('Pompey', () => {
     for (const n of ['Pompey', 'pompey', 'Pompey the Great', 'Gnaeus Pompeius Magnus']) expect(leaderLook(n)?.names[0], n).toBe('Pompey');
     for (const n of ['Gnaeus Pompeius', 'Gnaeus Pompey', 'Sextus Pompeius']) expect(leaderLook(n), n).toBeUndefined();
     expect(LEADER_LOOKS.map((l) => l.names[0])).toEqual(['Caesar', 'Spartacus', 'Pompey']);
-    // the battles name him so
-    const names = new Set(BATTLES.flatMap((b) => b.leaders.map((l) => l.name)));
-    expect(names.has('Pompey')).toBe(true);
-    expect(names.has('Gnaeus Pompeius')).toBe(true);
+    // the battles name him so: Pompey the Great at Lauron, Valentia, Sucro, Dyrrhachium and Pharsalus; his son at Munda
+    const naming = (pred: (name: string) => boolean) => BATTLES.filter((b) => b.leaders.some((l) => pred(l.name))).map((b) => b.id);
+    expect(naming((n) => leaderLook(n)?.names[0] === 'Pompey')).toEqual(['303', '304', '305', '314', '315']);
+    expect(naming((n) => n === 'Gnaeus Pompeius')).toEqual(['319']);
+    // the exact list: of all the leaders of the 19 battles, only Caesar and Pompey have a look of their own
+    const looked = new Set(BATTLES.flatMap((b) => b.leaders.map((l) => l.name)).filter((n) => leaderLook(n)));
+    expect([...looked].sort()).toEqual(['Julius Caesar', 'Pompey']);
   });
 
   it('rides bare-headed with his upswept forelock and a purple cloak, on a dark horse; another Pompeian general does not', () => {

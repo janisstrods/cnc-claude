@@ -1,5 +1,6 @@
-// Expansion #3 type scaffold (rules-reference §18, §20): the eight new army looks and the city wall terrain exist, with
-// temporary art. The wall's own rules (§18.7) are tested in exp3-walls.test.ts; here only its name and basic shape.
+// Expansion #3 type scaffold (rules-reference §18, §20): the eight new army looks and the city wall terrain exist. The
+// looks' art is pinned in tests/art/exp3-looks.test.ts, the wall's own rules (§18.7) in exp3-walls.test.ts and the 19
+// imported battles (301–319) in tests/scenarios; here only the looks' identity and the wall's name and basic shape.
 import { describe, expect, it } from 'vitest';
 import { ARMY_LOOKS, TERRAIN_NAMES, ccCapOfHex, isImpassable, pieceMoves, rangedFromCap } from '../../src/engine';
 import { LOOKS, lookDef, paletteFor } from '../../src/art/palettes';

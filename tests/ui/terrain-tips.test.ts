@@ -1,5 +1,6 @@
-// Terrain tooltips (rules-reference §4, §7–§10, §16, §18.6): every terrain says what it does to movement, combat and
-// line of sight; the variants of single battles (no-cap ford, coastal ford, very steep hills, ramparts) are worded for them.
+// Terrain tooltips (rules-reference §4, §7–§10, §16, §18.6, §18.7): every terrain says what it does to movement, combat and
+// line of sight; the variants of single battles (no-cap ford, coastal ford, very steep hills, ramparts, Expansion #3's
+// city walls, walled towns, camps and walls on hills and steep slopes) are worded for them.
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -33,7 +34,8 @@ const FORD = [STOPS, 'combat: Close combat in or out: max 2 dice. Firing out: ma
 const NO_HWM = 'move: Heavy war machines may not enter';
 
 describe('terrain tooltips: every battle', () => {
-  it('every terrain hex has a name, a Move and a Sight line, in kind order; open ground and off-board have no tip', () => {
+  it('every terrain hex of all 81 battles has a name, a Move and a Sight line, in kind order; open ground and off-board have no tip', () => {
+    expect(SCENARIOS).toHaveLength(81);
     const seen = new Set<TerrainType>();
     /** Terrain drawn as something else (`art`), with the name its tip gives it. */
     const variants = new Set<string>();
@@ -50,6 +52,7 @@ describe('terrain tooltips: every battle', () => {
         }
         seen.add(t);
         if (art[h]) variants.add(`${t}:${art[h]}: ${tip!.name}`);
+        if (s.hillUnder[h]) variants.add(`${t}:hill: ${tip!.name}`);
         expect(tip!.name, where).not.toBe('');
         const kinds = tip!.lines.map((x) => rank.indexOf(x.kind));
         expect(kinds, where).toContain(0);
@@ -58,8 +61,12 @@ describe('terrain tooltips: every battle', () => {
       });
     }
     expect([...seen].sort()).toEqual(['broken', 'camp', 'ditch', 'forest', 'hill', 'lake', 'marsh', 'rampart', 'river', 'sea', 'steep', 'wall']);
-    // the coast played as a ford (217, 313) and Expansion #3's impassable walls (301) and towns (303, 304)
-    expect([...variants].sort()).toEqual(['river:coast: Coastal Ford', 'steep:town: Town (impassable)', 'steep:wall: City Wall (impassable)']);
+    // the coast played as a ford (217, 313), Expansion #3's impassable walls (301) and towns (303, 304), and the camps and
+    // walls on the hills of Gergovia (308)
+    expect([...variants].sort()).toEqual([
+      'camp:hill: Fortified Camp on a Hill', 'river:coast: Coastal Ford', 'steep:town: Town (impassable)', 'steep:wall: City Wall (impassable)',
+      'wall:hill: City Wall on a Hill',
+    ]);
   });
 });
 
@@ -181,6 +188,95 @@ describe('terrain tooltips: battle variants', () => {
     const himera = game('102');
     expect(lines(terrainTip(himera, hexId(3, 1), false))[1]).toBe(protects('its lower hexsides'));
     expect(lines(terrainTip(himera, hexId(0, 8), false))).toEqual(['move: No effect', protects('its left and lower-left hexsides'), CLEAR]);
+  });
+});
+
+describe('terrain tooltips: Expansion #3 (§18.7)', () => {
+  const WALL_MOVE = [
+    'move: Foot (not war machines) and lone leaders only, by a move from a hex next to it; the move ends there',
+    'move: Moving off it: at most 1 hex',
+    'move: Mounted units and war machines never enter it, not even by retreat or advance',
+  ];
+  const WALL_COMBAT = [
+    'combat: Close combat with a unit here: max 2 dice, card and leader bonuses on top',
+    'combat: Foot defending here strike first, ignore 1 sword and may ignore 1 flag (1 flag against missiles)',
+    'combat: Mounted units and war machines attack a unit here only if they began the turn next to it',
+  ];
+  const hwm: Partial<Pos> = { units: [{ side: 'bottom', type: 'HWM', at: [7, 6] }] };
+
+  it('the scalable city wall: who may enter and how, the dice, the defender, mounted attackers, sight', () => {
+    const tip = tipOf('wall', hwm);
+    expect(tip).toMatchObject({ name: 'City Wall', t: 'wall' });
+    expect(tip!.hill).toBeUndefined();
+    expect(lines(tip)).toEqual([...WALL_MOVE, ...WALL_COMBAT, 'sight: Blocks line of sight, except between units on the same wall']);
+    // where no war machine takes the field (309), they are not mentioned
+    expect(lines(tipOf('wall'))).toEqual([
+      'move: Foot and lone leaders only, by a move from a hex next to it; the move ends there',
+      'move: Moving off it: at most 1 hex',
+      'move: Mounted units never enter it, not even by retreat or advance',
+      WALL_COMBAT[0],
+      WALL_COMBAT[1],
+      'combat: Mounted units attack a unit here only if they began the turn next to it',
+      'sight: Blocks line of sight, except between units on the same wall',
+    ]);
+    const ilerda = game('309');
+    expect(lines(terrainTip(ilerda, hexId(0, 10), false))).toEqual(lines(tipOf('wall')));
+  });
+
+  it('a camp or wall on a hill (308): named and drawn as one, both sets of lines, the camp or wall limit, sight on the hill', () => {
+    const camp = tipOf('camp', { terrain: [{ at: [4, 6], t: 'camp', hill: true }] });
+    expect(camp).toMatchObject({ name: 'Fortified Camp on a Hill', t: 'camp', hill: true });
+    expect(lines(camp)).toEqual([
+      'move: No effect',
+      'combat: Battling up onto it from lower ground: max 2 dice',
+      'combat: Battling from it: foot max 3 dice, mounted max 2',
+      'combat: A unit here rolls 1 die fewer when it battles, after the hill limit',
+      'combat: Foot here ignore 1 sword and may ignore 1 flag',
+      'sight: Blocks line of sight, also between units on the same hill',
+    ]);
+    const wall = tipOf('wall', { ...hwm, terrain: [{ at: [4, 6], t: 'wall', hill: true }] });
+    expect(wall).toMatchObject({ name: 'City Wall on a Hill', t: 'wall', hill: true });
+    expect(lines(wall)).toEqual([
+      ...WALL_MOVE, ...WALL_COMBAT,
+      "combat: A hill too: its limits are never below the wall's 2 dice",
+      'sight: Blocks line of sight, also on the same hill, except between units on the same wall',
+    ]);
+    // in Gergovia itself (a war machine on the field, a slope on the eastern wall)
+    const g = game('308');
+    expect(terrainTip(g, hexId(0, 6), false)!.name).toBe('City Wall on a Hill');
+    expect(lines(terrainTip(g, hexId(0, 6), false))).toEqual(lines(wall));
+    expect(lines(terrainTip(g, hexId(2, 7), false))).toEqual(lines(camp));
+    // the swatch draws the hill too
+    const html = renderToStaticMarkup(createElement(TerrainTipBlock, { tip: camp!, alone: true }));
+    const plain = renderToStaticMarkup(createElement(TerrainTipBlock, { tip: { ...camp!, hill: undefined }, alone: true }));
+    expect(html).not.toBe(plain);
+  });
+
+  it('the impassable Wall of Rome (301) and walled towns (303, 304): impassable, blocking sight', () => {
+    const rome = game('301');
+    const art = scenarioArt('301');
+    const w = terrainTip(rome, hexId(7, 2), false, art[hexId(7, 2)]);
+    expect(w).toMatchObject({ name: 'City Wall (impassable)', t: 'steep', art: 'wall' });
+    expect(lines(w)).toEqual(['move: Impassable', BLOCKS]);
+    for (const [id, h] of [['303', hexId(2, 3)], ['304', hexId(3, 7)]] as const) {
+      const tip = terrainTip(game(id), h, false, scenarioArt(id)[h]);
+      expect(tip, id).toMatchObject({ name: 'Town (impassable)', t: 'steep', art: 'town' });
+      expect(lines(tip), id).toEqual(['move: Impassable', BLOCKS]);
+    }
+  });
+
+  it('steep slopes (308): the hexsides, from the hill and from the forest, as the viewer sees them; nothing elsewhere', () => {
+    const g = game('308');
+    const hill = terrainTip(g, hexId(2, 4), false)!;
+    expect(lines(hill).at(-1)).toBe('battle: Steep slope down to the forest across its upper-left and left hexsides: no climbing up from there, and no close combat across it either way');
+    expect(lines(terrainTip(g, hexId(2, 4), true)).at(-1)).toBe('battle: Steep slope down to the forest across its right and lower-right hexsides: no climbing up from there, and no close combat across it either way');
+    expect(lines(terrainTip(g, hexId(1, 3), false)).at(-1)).toBe('battle: Steep slope up to the hill across its upper-right, right and lower-right hexsides: no move, advance, retreat or evade up it, and no close combat across it either way');
+    // a camp on a hill with a forest beside it
+    expect(lines(terrainTip(g, hexId(2, 9), false)).at(-1)).toMatch(/^battle: Steep slope down to the forest across its right hexside/);
+    // a hill or forest with no slope, and the same terrain in a battle without the rule
+    expect(lines(terrainTip(g, hexId(3, 5), false)).some((x) => x.startsWith('battle'))).toBe(false);
+    const flat = build({ terrain: [{ at: [4, 6], t: 'hill' }, { at: [4, 7], t: 'forest' }] });
+    expect(lines(terrainTip(flat, H(4, 6), false)).some((x) => x.startsWith('battle'))).toBe(false);
   });
 });
 
