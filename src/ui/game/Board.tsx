@@ -184,7 +184,28 @@ export function Board(p: BoardProps) {
     () => <ObjectiveMarkers objectives={objectives} objState={objState} flipped={flipped} blocks={{ top: topBlocks, bottom: bottomBlocks }} units={units} />,
     [objectives, objState, flipped, topBlocks, bottomBlocks, units],
   );
-  const hexes = ALL_HEXES;
+  // the 117 hit hexes: redrawn only when the board turns or a handler changes, not on every hover
+  const { onHexClick, onHexHover } = p;
+  const hitLayer = useMemo(
+    () => (
+      <g className="hit-layer" onMouseLeave={() => onHexHover?.(null)}>
+        {ALL_HEXES.map((h) => {
+          const { x, y } = hexCenterId(h, flipped);
+          return (
+            <polygon
+              key={h}
+              points={hexPoints(x, y, HEX_R)}
+              className="hit-hex"
+              data-hex={`${rowOf(h)},${colOf(h)}`}
+              onClick={() => onHexClick?.(h)}
+              onMouseEnter={() => onHexHover?.(h)}
+            />
+          );
+        })}
+      </g>
+    ),
+    [flipped, onHexClick, onHexHover],
+  );
   const comb = p.combat ? { a: hexCenterId(p.combat.from, flipped), b: hexCenterId(p.combat.to, flipped) } : null;
   return (
     <svg className="board-svg" viewBox={`0 0 ${BOARD_W} ${BOARD_H}`} preserveAspectRatio="xMidYMid meet">
@@ -258,21 +279,7 @@ export function Board(p: BoardProps) {
           );
         })}
       </g>
-      <g className="hit-layer" onMouseLeave={() => p.onHexHover?.(null)}>
-        {hexes.map((h) => {
-          const { x, y } = hexCenterId(h, flipped);
-          return (
-            <polygon
-              key={h}
-              points={hexPoints(x, y, HEX_R)}
-              className="hit-hex"
-              data-hex={`${rowOf(h)},${colOf(h)}`}
-              onClick={() => p.onHexClick?.(h)}
-              onMouseEnter={() => p.onHexHover?.(h)}
-            />
-          );
-        })}
-      </g>
+      {hitLayer}
       <g className="leader-click-layer">
         {state.leaders.filter((l) => l.hex >= 0 && p.leaderHighlights.has(l.id)).map((l) => {
           const attached = !!leaderUnit(state, l);
