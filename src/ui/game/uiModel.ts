@@ -3,9 +3,10 @@
 // tooltips in objectiveText.ts, the dice orders of 310 in diceOrders.ts.
 import {
   ALL_HEXES, CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushEntryHexes, attachedLeader, baselineRow, battleReady,
-  battleTargets, closeCombatDice, closeHitChance, commandClash, commandModes, commandOf, effectiveCard, eligiblePieces, inCommand,
-  inSection, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf, movablePieces, orderCommander, orderMode, other,
-  pieceById, pieceHex, pieceMoves, possessive, rangeOf, rangedDice, rollingFirePaths, rowOf, selectionCommand, unitAt, unitById,
+  battleTargets, closeCombatDice, closeHitChance, commandClash, commandModes, commandOf, defaultMods, effectiveCard, eligiblePieces,
+  inCommand, inSection, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf, movablePieces, orderCommander, orderMode,
+  other, pieceById, pieceHex, pieceMoves, possessive, rangeOf, rangedDice, rollingFirePaths, rowOf, selectionCommand, unitAt, unitById,
+  unitMoveLimits,
   type Blocks, type CardKind, type CommandDef, type Decision, type GameState, type HexId, type RetreatOption, type SectionName,
   type Side, type Unit,
 } from '../../engine';
@@ -499,13 +500,16 @@ export function enteredTipLine(s: GameState, u: Unit): string | null {
 }
 
 /**
- * Tooltip line of Caesar's forced march (§18.3) on the unit he is attached to, when it gains from it: an infantry unit (not
- * a war machine) that cannot otherwise move 2 hexes and battle. A pilum unit still never throws after 2 hexes (§18.2).
+ * Tooltip line of Caesar's forced march (§18.3) on the unit he is attached to, when it gains from it: with him it may move
+ * further and still battle under an ordinary order (`unitMoveLimits`: no card, no start hex to limit the move), as an
+ * infantry unit (not a war machine) that cannot otherwise move 2 hexes and battle. A pilum unit still never throws after
+ * 2 hexes (§18.2).
  */
 export function forcedMarchLine(s: GameState, u: Unit): string | null {
   const l = attachedLeader(s, u);
-  const st = UNIT_STATS[u.type];
-  if (!l || !leaderHas(l, 'forcedMarch') || st.mounted || st.moveBattle === 0 || st.moveBattle >= 2) return null;
+  if (!l || !leaderHas(l, 'forcedMarch')) return null;
+  const mods = defaultMods();
+  if (unitMoveLimits(u, mods, OFF_BOARD, s, l).battleMax <= unitMoveLimits(u, mods, OFF_BOARD, s).battleMax) return null;
   const pilum = !!u.legion && rangeOf(u) > 0;
   return `${possessive(l.name || 'Caesar')} forced march: with him from the start of its move, it may move 2 hexes and still ${pilum ? 'close combat (no pilum after 2 hexes)' : 'battle'}`;
 }
