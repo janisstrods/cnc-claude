@@ -25,7 +25,7 @@ function useHash(): string {
   return hash;
 }
 
-type Screen = { kind: 'menu' } | { kind: 'select' } | { kind: 'game'; controller: GameController };
+type Screen = { kind: 'menu' } | { kind: 'select'; battle?: string } | { kind: 'game'; controller: GameController };
 
 function startController(config: SessionConfig, answers: SavedGame['answers'] = [], check?: SavedGame['check']): GameController {
   const opponent = makeOpponent(config);
@@ -88,6 +88,7 @@ export function App() {
     return (
       <ErrorBoundary onReset={resetMenus}>
       <ScenarioSelect
+        initialBattle={screen.battle}
         onBack={toMenu}
         onStart={(id: string, side: Side, diff: Difficulty, personality?: string, options?: GameOptions) => {
           clearSaved();
@@ -104,7 +105,7 @@ export function App() {
     <MainMenu
       notice={notice}
       saved={saved}
-      onNew={() => setScreen({ kind: 'select' })}
+      onNew={(battle) => setScreen({ kind: 'select', battle })}
       onContinue={() => {
         if (!saved) return;
         try {

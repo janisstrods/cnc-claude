@@ -113,6 +113,7 @@
 .select-tabs button:focus-visible { outline: 2px solid var(--kit-gold); outline-offset: 2px; }
 .select-tabs button.active { color: #fbe7a6; border-color: var(--kit-gold); background: linear-gradient(180deg, rgba(142, 27, 27, .6), rgba(60, 30, 14, .7)); }
 .select-tabs small { margin-left: 4px; font-family: var(--kit-font-body); font-size: 12px; letter-spacing: 0; opacity: .65; }
+.tab-medals { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; font-family: var(--kit-font-body); font-size: 12px; letter-spacing: 0; color: var(--kit-gold); }
 .select-scroll {
   overflow-y: auto;
   display: flex;
@@ -124,7 +125,7 @@
 }
 .scen-item {
   display: grid;
-  grid-template-columns: 38px 1fr auto;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   gap: 0 8px;
   text-align: left;
@@ -142,7 +143,9 @@
 .scen-num { grid-row: span 2; font-family: var(--kit-font-title); font-size: 19px; color: var(--kit-bronze-light); align-self: center; text-align: center; }
 .scen-name { font-family: var(--kit-font-title); font-size: 15px; letter-spacing: .03em; }
 .scen-year { font-size: 13px; color: rgba(240, 227, 194, .6); font-style: italic; }
-.scen-hint { grid-column: 2 / span 2; font-size: 13px; color: rgba(240, 227, 194, .65); }
+.scen-hint { grid-column: 2; font-size: 13px; color: rgba(240, 227, 194, .65); }
+/* the battle's two medals (bottom army, top army) under the year */
+.scen-medals { grid-column: 3; grid-row: 2; align-self: center; justify-self: end; }
 
 /*
  * The briefing takes the height it needs, but never more than leaves the map preview its minimum and the choose row (with
@@ -215,6 +218,9 @@
 .choice b { font-family: var(--kit-font-title); font-weight: 400; font-size: 15px; letter-spacing: .03em; }
 .choice small { font-size: 12.5px; color: rgba(240, 227, 194, .65); }
 .choice.active { border-color: var(--kit-gold); background: linear-gradient(180deg, rgba(142, 27, 27, .6), rgba(60, 30, 14, .7)); }
+/* a side's medal, or the metal an opponent level gives, in the button's top-right corner */
+.choice.has-medal { position: relative; padding-right: 28px; }
+.choice-medal { position: absolute; top: 6px; right: 6px; }
 .start-btn { margin-left: auto; font-size: 20px !important; padding: 10px 30px !important; align-self: center; }
 
 /* ---------- rules */
@@ -271,3 +277,47 @@
 .rules-sub { font-family: var(--kit-font-body); font-size: 12.5px; letter-spacing: 0; margin-top: 2px; white-space: normal; }
 .rules-text .rules-units { margin: 4px 0 8px; }
 .rules-text table.terrain-table { margin-bottom: 4px; }
+
+/* ---------- medals (record.ts): metal discs; the rings take the colour of the background they sit on */
+.medal { display: block; flex: none; }
+.medal-ring { stroke: rgba(226, 189, 114, .6); fill: rgba(10, 6, 2, .35); }
+.medal.is-none .medal-ring { stroke: rgba(226, 189, 114, .32); fill: none; }
+.medal.is-faint { opacity: .3; filter: saturate(.35); }
+.medal-pair { display: inline-flex; gap: 3px; }
+.kit-parchment .medal-ring { stroke: rgba(110, 70, 30, .6); fill: rgba(110, 70, 30, .1); }
+.kit-parchment .medal.is-none .medal-ring { stroke: rgba(110, 70, 30, .35); fill: none; }
+
+/* ---------- Triumphs: the medal tally (menu, dialog) and the record of every battle */
+.tally { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 12px; font-size: 15px; }
+.tally-n { display: inline-flex; align-items: center; gap: 4px; font-family: var(--kit-font-title); font-weight: 700; }
+.tally-fought { font-style: italic; }
+.tally.is-small { gap: 2px 9px; font-size: 13px; font-family: var(--kit-font-body); letter-spacing: 0; color: var(--kit-ink-soft); }
+.tally.is-small .medal { width: 14px; height: 14px; }
+.menu-tally { margin-top: 14px; color: rgba(240, 227, 194, .82); }
+/* the battles scroll; the intro, tally and the save/load row stay in view */
+.triumphs { display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 175px); color: var(--kit-ink); }
+.triumphs-intro { margin: 0; font-size: 15.5px; line-height: 1.4; }
+.triumphs-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 18px; }
+.triumphs-legend { display: flex; flex-wrap: wrap; gap: 3px 12px; margin: 0; padding: 0; list-style: none; font-size: 13.5px; color: var(--kit-ink-soft); }
+.triumphs-legend li { display: inline-flex; align-items: center; gap: 4px; }
+.triumphs-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 6px; }
+.triumphs-box h3 {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px;
+  margin: 8px 0 6px; padding-bottom: 3px; border-bottom: 1px solid rgba(176, 130, 58, .4);
+  font-family: var(--kit-font-title); font-weight: 400; font-size: 17px; color: #6e1a14;
+}
+.triumphs-box:first-child h3 { margin-top: 0; }
+.triumphs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 5px; }
+.tri-cell {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 6px;
+  padding: 4px 7px; text-align: left; cursor: pointer;
+  background: rgba(255, 255, 255, .32); border: 1px solid rgba(176, 130, 58, .38); border-radius: 6px;
+  color: inherit; font: inherit;
+}
+.tri-cell:hover { background: rgba(255, 255, 255, .55); border-color: #8e1b1b; }
+.tri-cell:focus-visible { outline: 2px solid #8e1b1b; outline-offset: 1px; }
+.tri-num { font-family: var(--kit-font-title); font-size: 14px; color: #8a5a20; text-align: center; }
+.tri-name { overflow: hidden; font-size: 14.5px; line-height: 1.25; white-space: nowrap; text-overflow: ellipsis; }
+.triumphs-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding-top: 8px; border-top: 1px solid rgba(176, 130, 58, .4); }
+.triumphs-foot .kit-btn { padding: 5px 16px; font-size: 14px; }
+.triumphs-note { flex: 1 1 260px; margin: 0; font-size: 13.5px; font-style: italic; line-height: 1.35; color: var(--kit-ink-soft); }

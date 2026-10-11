@@ -16,14 +16,25 @@ import {
 } from './picker';
 import { BUILD_TIME, RELEASE, buildLabel } from '../../version';
 import { storage } from '../storage';
+import { MEDAL_FOR, beatenLevels, loadRecord, recordTotals, sideStanding, sideTally } from '../record';
+import { Medal, MedalPair } from './Medal';
+import { MenuTally, TriumphsDialog } from './Triumphs';
 import './screens.css';
 
 const MENU_ARMY_L: UnitType[] = ['HI', 'MI', 'LC'];
 const MENU_ARMY_R: UnitType[] = ['EL', 'WA', 'HC'];
 
-export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; onNew: () => void; onContinue: () => void }) {
+export function MainMenu(p: {
+  saved: SavedGame | null;
+  notice?: string | null;
+  /** Open the battle picker (on the battle clicked in the Triumphs record, if any). */
+  onNew: (battleId?: string) => void;
+  onContinue: () => void;
+}) {
   const [rules, setRules] = useState(false);
   const [credits, setCredits] = useState(false);
+  const [triumphs, setTriumphs] = useState(false);
+  const [record, setRecord] = useState(loadRecord);
   const savedName = p.saved ? SCENARIOS.find((s) => s.id === p.saved!.config.scenarioId)?.name : null;
   return (
     <div className="menu-root">
@@ -56,16 +67,28 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
           {p.saved && (
             <Button onClick={p.onContinue}>Continue: {savedName}</Button>
           )}
-          <Button variant={p.saved ? 'secondary' : 'primary'} onClick={p.onNew}>New Battle</Button>
+          <Button variant={p.saved ? 'secondary' : 'primary'} onClick={() => p.onNew()}>New Battle</Button>
           <Button variant="ghost" onClick={() => setRules(true)}>How to Play</Button>
+          <Button variant="ghost" onClick={() => setTriumphs(true)}>Triumphs</Button>
           <Button variant="ghost" onClick={() => setCredits(true)}>Credits</Button>
         </div>
+        <MenuTally record={record} />
       </div>
       <div className="menu-version">
         <div>v{RELEASE.number} “{RELEASE.name}”</div>
         <div className="menu-build">{buildLabel(BUILD_TIME)}</div>
       </div>
       <RulesDialog open={rules} title="How to Play" onClose={() => setRules(false)} />
+      <TriumphsDialog
+        open={triumphs}
+        record={record}
+        onClose={() => setTriumphs(false)}
+        onRecord={setRecord}
+        onPick={(id) => {
+          setTriumphs(false);
+          p.onNew(id);
+        }}
+      />
       <Modal open={credits} title="Credits" onClose={() => setCredits(false)} width={640}>
         <div className="credits">
           <p>An unofficial, fan-made digital edition of <i>Commands &amp; Colors: Ancients</i>, designed by Richard Borg and published by GMT Games. Commands &amp; Colors is a trademark of GMT Games LLC. This edition uses original artwork and paraphrased rules text; it is not affiliated with or endorsed by GMT Games.</p>
@@ -110,6 +133,17 @@ function SetupPreview({ state, flipped, humanSide }: { state: GameState; flipped
   );
 }
 
+/** A picker tab's medals won, when there are any: a small laurel and the count. */
+function TabMedals({ won, of }: { won: number; of: number }) {
+  if (!won) return null;
+  return (
+    <span className="tab-medals" role="img" aria-label={`${won} of ${of} medals won`} title={`${won} of ${of} medals won`}>
+      <Icon name="laurels" size={12} />
+      {won}
+    </span>
+  );
+}
+
 const DIFFS: { id: Difficulty; name: string; text: string }[] = [
   { id: 'recruit', name: 'Recruit', text: 'A forgiving opponent that makes mistakes.' },
   { id: 'tribune', name: 'Tribune', text: 'A capable general. Recommended.' },
@@ -132,13 +166,26 @@ export function OptionToggle({ sc, id, on, onToggle }: { sc: ScenarioInfo; id: O
   );
 }
 
+/** Your record from one side of a battle, for its "Command the" button. */
+function sideRecordText(won: number, lost: number, draw: number, army: string): string {
+  if (!won && !lost && !draw) return `Not fought yet as ${army}`;
+  const parts = [`${won} won`, `${lost} lost`];
+  if (draw) parts.push(`${draw} drawn`);
+  return `Your record as ${army}: ${parts.join(', ')}`;
+}
+
 export function ScenarioSelect(p: {
   onBack: () => void;
   onStart: (scenarioId: string, side: Side, difficulty: Difficulty, personality?: string, options?: GameOptions) => void;
+  /** The battle to open on (picked in the Triumphs record); else the first of the tab shown last time. */
+  initialBattle?: string;
 }) {
-  const [tab, setTab] = useState<Expansion>(() => loadPickerTab());
+  const initial = SCENARIOS.find((s) => s.id === p.initialBattle);
+  const [tab, setTab] = useState<Expansion>(() => initial?.expansion ?? loadPickerTab());
   const battles = useMemo(() => battlesOf(SCENARIOS, tab), [tab]);
-  const [sel, setSel] = useState<ScenarioInfo>(() => battles[0] ?? SCENARIOS[0]);
+  const [sel, setSel] = useState<ScenarioInfo>(() => initial ?? battles[0] ?? SCENARIOS[0]);
+  // the player's record: read once, as nothing changes it while the picker is open
+  const [record] = useState(loadRecord);
   const [choices, setChoices] = useState<GameOptions>(() => loadOptionChoices());
   const offered = offeredOptions(sel);
   const switchTab = (t: Expansion) => {
@@ -159,9 +206,10 @@ export function ScenarioSelect(p: {
   };
   const [side, setSide] = useState<Side>('bottom');
   const [diff, setDiff] = useState<Difficulty>(() => (storage.get('cca-difficulty') as Difficulty) || 'tribune');
-  // Random battle: a battle from any box and a side; the list then scrolls to it (only after a random pick)
+  // Random battle: a battle from any box and a side; the list then scrolls to it (only after a random pick, or when the
+  // picker opens on a battle from the Triumphs record)
   const listRef = useRef<HTMLDivElement>(null);
-  const reveal = useRef(false);
+  const reveal = useRef(!!initial);
   const [rolls, setRolls] = useState(0);
   const pickRandom = () => {
     const pick = randomPick(SCENARIOS, sel.id);
@@ -180,6 +228,15 @@ export function ScenarioSelect(p: {
     listRef.current?.querySelector('.scen-item.active')?.scrollIntoView({ block: 'center' });
   }, [sel]);
   const preview = useMemo(() => createGame(sel.setup, 1), [sel]);
+  const beaten = beatenLevels(record, sel.id, side);
+  const tabMedals = useMemo(() => {
+    const out = {} as Record<Expansion, number>;
+    for (const t of PICKER_TABS) {
+      const n = recordTotals(record, battlesOf(SCENARIOS, t.id).map((s) => s.id));
+      out[t.id] = n.gold + n.silver + n.bronze;
+    }
+    return out;
+  }, [record]);
   const [persona, setPersona] = useState<string>('');
   const enemy = sel.setup[side === 'top' ? 'bottom' : 'top'];
   const historical = personalityFor(enemy.commander, enemy.army);
@@ -223,6 +280,7 @@ export function ScenarioSelect(p: {
               onKeyDown={onTabKey}
             >
               {t.label} <small>{battlesOf(SCENARIOS, t.id).length}</small>
+              <TabMedals won={tabMedals[t.id]} of={2 * battlesOf(SCENARIOS, t.id).length} />
             </button>
           ))}
         </div>
@@ -233,6 +291,7 @@ export function ScenarioSelect(p: {
               <span className="scen-name">{s.name}</span>
               <span className="scen-year">{s.year}</span>
               <span className="scen-hint">{s.difficultyHint}</span>
+              <MedalPair rec={record} sc={s} size={17} className="scen-medals" />
             </button>
           ))}
         </div>
@@ -279,21 +338,37 @@ export function ScenarioSelect(p: {
         <div className="choose-row">
           <div className="choose-group">
             <div className="choose-label">Command the</div>
-            {(['bottom', 'top'] as Side[]).map((sd) => (
-              <button key={sd} className={`choice ${side === sd ? 'active' : ''}`} onClick={() => setSide(sd)}>
-                <b>{armies[sd].army}</b>
-                <small>{armies[sd].commander}</small>
-              </button>
-            ))}
+            {(['bottom', 'top'] as Side[]).map((sd) => {
+              const standing = sideStanding(record, sel.id, sd);
+              const t = sideTally(record, sel.id, sd);
+              return (
+                <button
+                  key={sd}
+                  className={`choice ${side === sd ? 'active' : ''} ${standing === 'none' ? '' : 'has-medal'}`}
+                  onClick={() => setSide(sd)}
+                  title={sideRecordText(t.won, t.lost, t.draw, armies[sd].army)}
+                >
+                  <b>{armies[sd].army}</b>
+                  <small>{armies[sd].commander}</small>
+                  {standing !== 'none' && <Medal standing={standing} size={18} className="choice-medal" />}
+                </button>
+              );
+            })}
           </div>
           <div className="choose-group">
             <div className="choose-label">Opponent</div>
-            {DIFFS.map((d) => (
-              <button key={d.id} className={`choice ${diff === d.id ? 'active' : ''}`} onClick={() => setDiff(d.id)} title={d.text}>
-                <b>{d.name}</b>
-                <small>{d.text}</small>
-              </button>
-            ))}
+            {DIFFS.map((d) => {
+              const won = beaten.includes(d.id);
+              const metal = MEDAL_FOR[d.id];
+              const note = won ? `Beaten as ${armies[side].army}: ${metal} won.` : `Beat it as ${armies[side].army} to win ${metal}.`;
+              return (
+                <button key={d.id} className={`choice has-medal ${diff === d.id ? 'active' : ''}`} onClick={() => setDiff(d.id)} title={`${d.text} ${note}`}>
+                  <b>{d.name}</b>
+                  <small>{d.text}</small>
+                  <Medal standing={metal} faint={!won} size={18} className="choice-medal" />
+                </button>
+              );
+            })}
           </div>
           <div className="choose-group persona-group">
             <div className="choose-label">General</div>

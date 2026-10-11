@@ -1,6 +1,8 @@
 import { bannerTotal, other, type GameState, type Side } from '../../engine';
 import { BannerIcon, Button } from '../kit';
 import { legResult, type LegResult } from './controller';
+import type { Medal as MedalKind } from '../record';
+import { MEDAL_LEVEL, Medal } from '../screens/Medal';
 
 /** An empty banner slot, drawn for parchment (the kit's empty slot is made for dark leather). */
 function EmptyBanner() {
@@ -61,13 +63,13 @@ function MatchSummary({ state: s, legs }: { state: GameState; legs: LegResult[] 
 
 /**
  * The end-of-battle dialog's body: why it ended, a banner scoreboard (the human's army first, the winner marked), the
- * turns played, after the second battle of a both-sides match the two summed up, and Play again / Switch sides /
+ * turns played, a medal the battle earned for the human's side (Triumphs), after the second battle of a both-sides match the two summed up, and Play again / Switch sides /
  * Return to menu.
  */
 export function BattleResult(p: {
   state: GameState;
   human: Side;
-  over: { winner: Side | 'draw'; reason: string };
+  over: { winner: Side | 'draw'; reason: string; newMedal?: MedalKind };
   onExit: () => void;
   /** After the battle: play it again, with the same or switched sides. */
   onRematch?: (switchSides: boolean) => void;
@@ -109,6 +111,12 @@ export function BattleResult(p: {
         })}
       </div>
       <p className="victory-turns">{turns} {turns === 1 ? 'turn' : 'turns'} played</p>
+      {over.newMedal && (
+        <p className="victory-medal">
+          <Medal standing={over.newMedal} size={32} />
+          <span>New medal: <b>{over.newMedal}</b>, for beating the {MEDAL_LEVEL[over.newMedal]} as {me.army}</span>
+        </p>
+      )}
       {firstLeg && firstLeg.humanSide !== human && <MatchSummary state={s} legs={[firstLeg, legResult(s, human, over.winner)]} />}
       <div className="victory-actions">
         {onRematch && (

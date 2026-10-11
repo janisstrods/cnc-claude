@@ -1,6 +1,6 @@
 // The player's battle record (Triumphs): results per battle, side and opponent level, the medals they earn, the totals,
 // storage, export and import, and the controller recording a finished battle once.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { GameDriver, other, randomAnswer, type Side } from '../../src/engine';
 import { SCENARIOS } from '../../src/scenarios';
 import { GameController, initialState, newSessionConfig } from '../../src/ui/game/controller';
@@ -9,23 +9,10 @@ import {
   recordTotals, saveRecord, sideStanding, sideTally, type BattleRecord,
 } from '../../src/ui/record';
 import { mulberry32 } from '../support/rng';
+import { stubStorage, useStubStorageCleanup } from '../support/storage';
 import { SeededOpponent, useFakeClock } from './controller-helpers';
 
-/** A Map-backed localStorage for the node test environment. */
-export function stubStorage(): Map<string, string> {
-  const m = new Map<string, string>();
-  (globalThis as { localStorage?: unknown }).localStorage = {
-    getItem: (k: string) => (m.has(k) ? m.get(k)! : null),
-    setItem: (k: string, v: string) => void m.set(k, String(v)),
-    removeItem: (k: string) => void m.delete(k),
-    clear: () => m.clear(),
-  };
-  return m;
-}
-
-afterEach(() => {
-  delete (globalThis as { localStorage?: unknown }).localStorage;
-});
+useStubStorageCleanup();
 
 describe('battle record', () => {
   it('counts results per battle, side and level, without changing the record it was given', () => {
