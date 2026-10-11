@@ -1,10 +1,11 @@
 import { memo, useMemo } from 'react';
-import { ALL_HEXES, leaderUnit, rowOf, colOf, steepSlopes, veryHills, type GameState, type HexId, type Leader, type Side, type Unit } from '../../engine';
+import { ALL_HEXES, leaderUnit, rowOf, colOf, type GameState, type HexId, type Leader, type Side, type Unit } from '../../engine';
 import { BLOCK_COLORS, LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
-import { BoardArt, ObjectiveMarkers, scenarioArt } from '../terrain';
+import { BoardArt, ObjectiveMarkers } from '../terrain';
 import { BOARD_H, BOARD_W, HEX_R, hexCenterId, hexPoints } from '../geometry';
+import { boardArtProps, leaderTokenProps, unitTokenProps } from './boardProps';
 import type { Flash } from './controller';
-import { commandBlocks, commandById, edgeBlocksOf } from './uiModel';
+import { commandBlocks, commandById } from './uiModel';
 
 export type Highlight =
   | 'eligible' | 'selected' | 'mover' | 'attacker' | 'move' | 'moveNoBattle' | 'moveMustBattle'
@@ -94,10 +95,6 @@ function ImmobileBadge() {
   );
 }
 
-function facingFor(side: Side, humanSide: Side): 'left' | 'right' {
-  return side === humanSide ? 'right' : 'left';
-}
-
 const UnitLayer = memo(function UnitLayer(p: {
   units: Unit[];
   leaders: Leader[];
@@ -118,12 +115,11 @@ const UnitLayer = memo(function UnitLayer(p: {
     <g className="units-layer">
       {units.map((u) => {
         const { x, y } = pos(u.id, u.hex);
-        const owner = state.players[u.side];
         const ordered = p.orderedIds.has(u.id);
         return (
           <g key={u.id} className={`unit-g ${walking[u.id] !== undefined ? 'walking' : ''}`} style={{ transform: `translate(${x}px, ${y}px)` }}>
             {ordered && <circle r={HEX_R * 0.86} className="ordered-ring" />}
-            <UnitToken type={u.type} look={owner.look} blockColor={owner.blocks} edgeBlocks={edgeBlocksOf(state, u)} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={facingFor(u.side, humanSide)} elite={u.elite} dimmed={p.doneIds.has(u.id)} />
+            <UnitToken {...unitTokenProps(state, u, humanSide)} dimmed={p.doneIds.has(u.id)} />
             {u.command && <CommandBadge state={state} command={u.command} />}
             {u.immobile && <ImmobileBadge />}
             {ordered && (
@@ -139,7 +135,6 @@ const UnitLayer = memo(function UnitLayer(p: {
         const u = leaderUnit(state, l);
         const hex = walking[l.id] ?? (u ? walking[u.id] ?? l.hex : l.hex);
         const { x, y } = hexCenterId(hex, flipped);
-        const owner = state.players[l.side];
         const attached = !!u;
         const hl = p.leaderHighlights.get(l.id);
         const ox = attached ? LEADER_ATTACH_OFFSET.x : 0;
@@ -155,7 +150,7 @@ const UnitLayer = memo(function UnitLayer(p: {
           >
             {hl && <circle r={attached ? 15 : 30} fill={HL_STYLE[hl].fill} stroke={HL_STYLE[hl].stroke} strokeWidth={2.5} strokeDasharray={HL_STYLE[hl].dash} />}
             {p.orderedIds.has(l.id) && <circle r={attached ? 16 : 31} className="ordered-ring" />}
-            <LeaderToken look={owner.look} blockColor={owner.blocks} edgeBlocks={edgeBlocksOf(state, l)} facing={facingFor(l.side, humanSide)} attached={attached} name={l.name || 'Leader'} showName={!attached} />
+            <LeaderToken {...leaderTokenProps(state, l, humanSide, attached)} name={l.name || 'Leader'} />
             {/* a leader who belongs to a command (304) shows it like a unit; attached, only when it is not his unit's */}
             {l.command && (!u || u.command !== l.command) && (
               <CommandBadge state={state} command={l.command} at={attached ? { x: -11, y: -11 } : { x: -HEX_R * 0.42, y: -HEX_R * 0.5 }} scale={attached ? 0.75 : 1} />
@@ -169,31 +164,14 @@ const UnitLayer = memo(function UnitLayer(p: {
 
 export function Board(p: BoardProps) {
   const { state, flipped } = p;
-  const top = flipped ? 'bottom' : 'top';
-  const bottom = flipped ? 'top' : 'bottom';
-  const hexArt = scenarioArt(state.scenarioId);
-  const steepHills = veryHills(state);
-  const slopes = steepSlopes(state);
+  const artProps = boardArtProps(state, flipped);
   const art = useMemo(
-    () => (
-      <BoardArt
-        terrain={state.terrain}
-        fords={state.fords}
-        rampart={state.rampart}
-        art={hexArt}
-        steepHills={steepHills}
-        hillUnder={state.hillUnder}
-        steepSlopes={slopes}
-        flipped={flipped}
-        topLabel={state.players[top].army}
-        bottomLabel={state.players[bottom].army}
-      />
-    ),
+    () => <BoardArt {...artProps} />,
     // terrain changes during play only by `setTerrain` (a camp captured, a rampart torn down), which replaces the
     // `terrain` and `rampart` arrays: their identity is enough. A removed camp on a hill (308) becomes 'hill' in `terrain`;
     // `hillUnder` (never changed during play) is in the key all the same, so the board always draws the hills under it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.scenarioId, state.terrain, state.rampart, state.hillUnder, hexArt, steepHills, slopes, flipped],
+    [state.scenarioId, state.terrain, state.rampart, state.hillUnder, artProps.art, artProps.steepHills, artProps.steepSlopes, flipped],
   );
   const { objectives, objState } = state.special;
   const units = state.units;

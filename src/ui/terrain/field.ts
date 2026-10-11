@@ -237,8 +237,3 @@ export function blobPath(cx: number, cy: number, rx: number, ry: number, rand: (
   }
   return smoothClosed(pts);
 }
-
-/** Polygon path (straight segments). */
-export function polyPath(pts: Pt[], close = true): string {
-  return `M${pts.map((p) => `${fmt(p.x)},${fmt(p.y)}`).join('L')}${close ? 'Z' : ''}`;
-}

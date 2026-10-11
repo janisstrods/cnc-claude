@@ -3,9 +3,9 @@
 // neighbouring rampart hexes join into one line; elsewhere a wall turns back in a short return, and at the board edge
 // it runs on under the frame. Everything sits within a few pixels of the hexside so the units on the hex stay clear.
 import { HEX_R } from '../geometry';
-import { polyPath } from './field';
-import { corner, fmt, neighborRC, screenDir, type Dir, type HexInfo, type PaintCtx, type Pt } from './hexmath';
+import { corner, fmt, neighborRC, polyPath, screenDir, type Dir, type HexInfo, type PaintCtx, type Pt } from './hexmath';
 import { P } from './palette';
+import { leftNormal, mitre, sub, unit } from './vec';
 
 /** Engine direction index (E, NE, NW, W, SW, SE: the bits of a rampart mask) -> painter direction (0 E, 1 SE, ... 5 NE). */
 const ENGINE_TO_DIR: Dir[] = [0, 5, 4, 3, 2, 1];
@@ -31,11 +31,6 @@ interface Chain {
   endKey?: string;
 }
 
-const sub = (a: Pt, b: Pt): Pt => ({ x: a.x - b.x, y: a.y - b.y });
-const unit = (a: Pt): Pt => {
-  const l = Math.hypot(a.x, a.y) || 1;
-  return { x: a.x / l, y: a.y / l };
-};
 const along = (a: Pt, b: Pt, d: number): Pt => {
   const u = unit(sub(b, a));
   return { x: a.x + u.x * d, y: a.y + u.y * d };
@@ -46,32 +41,23 @@ const along = (a: Pt, b: Pt, d: number): Pt => {
  */
 const joinKey = (a: HexInfo, b: HexInfo, x: { r: number; c: number }) => `${Math.min(a.id, b.id)}-${Math.max(a.id, b.id)}@${x.r},${x.c}`;
 
-/** Outward normal of segment a->b (walls run clockwise around their hex, so outward is to the left in screen space). */
-function normal(a: Pt, b: Pt): Pt {
-  const u = unit(sub(b, a));
-  return { x: u.y, y: -u.x };
-}
-
-/** The polyline moved `o` outwards (mitred joins). */
+/**
+ * The polyline moved `o` outwards (mitred joins). Walls run clockwise around their hex, so outward is to the left in screen
+ * space (`leftNormal`).
+ */
 function offsetLine(c: Chain, o: number): Pt[] {
   const { pts, closed } = c;
   const n = pts.length;
-  const segN = (i: number) => normal(pts[i], pts[i + 1]);
+  const segN = (i: number) => leftNormal(pts[i], pts[i + 1]);
   const out: Pt[] = [];
   for (let i = 0; i < n; i++) {
     let a: Pt | null = i > 0 ? segN(i - 1) : closed ? segN(n - 2) : null;
     let b: Pt | null = i < n - 1 ? segN(i) : closed ? segN(0) : null;
     if (!a) a = b!;
     if (!b) b = a;
-    const m = unit({ x: a.x + b.x, y: a.y + b.y });
-    const k = o / Math.max(0.5, m.x * b.x + m.y * b.y);
-    out.push({ x: pts[i].x + m.x * k, y: pts[i].y + m.y * k });
+    out.push(mitre(pts[i], a, b, o));
   }
   return out;
-}
-
-function lineD(pts: Pt[], closed = false): string {
-  return polyPath(pts, closed);
 }
 
 /** Protected screen directions of a hex (bit i of the mask = engine direction i). */
@@ -197,7 +183,7 @@ function slopeQuads(chains: Chain[], o1: number, o2: number, face: 1 | -1): [str
     const a = offsetLine(c, o1);
     const b = offsetLine(c, o2);
     for (let i = 0; i < c.pts.length - 1; i++) {
-      const n = normal(c.pts[i], c.pts[i + 1]);
+      const n = leftNormal(c.pts[i], c.pts[i + 1]); // outward
       const lit = face * (n.x * LIGHT.x + n.y * LIGHT.y);
       const k = lit > 0.3 ? 0 : lit < -0.3 ? 2 : 1;
       out[k] += polyPath([a[i], a[i + 1], b[i + 1], b[i]]);
@@ -225,9 +211,9 @@ export function paintRamparts(ctx: PaintCtx, masks: readonly number[], opts: Ram
   let stakes = '';
   let tips = '';
   for (const c of chains) {
-    body += lineD(off(c, -6.25), c.closed);
-    walk += lineD(off(c, -14.5), c.closed);
-    parapet += lineD(off(c, -4.6), c.closed);
+    body += polyPath(off(c, -6.25), c.closed);
+    walk += polyPath(off(c, -14.5), c.closed);
+    parapet += polyPath(off(c, -4.6), c.closed);
     // the ditch and the stakes only face the enemy, not the returns
     const d = off(c, 3.4);
     const l = off(c, 7);
@@ -242,8 +228,8 @@ export function paintRamparts(ctx: PaintCtx, masks: readonly number[], opts: Ram
       let j = i;
       while (j < c.prot.length && c.prot[j]) j++;
       const all = c.closed && i === 0 && j === c.prot.length;
-      ditch += lineD(d.slice(i, j + 1), all);
-      lip += lineD(l.slice(i, j + 1), all);
+      ditch += polyPath(d.slice(i, j + 1), all);
+      lip += polyPath(l.slice(i, j + 1), all);
       for (let s = i; s < j; s++) {
         const len = Math.hypot(st1[s + 1].x - st1[s].x, st1[s + 1].y - st1[s].y);
         const nst = Math.max(1, Math.round(len / 5.6));

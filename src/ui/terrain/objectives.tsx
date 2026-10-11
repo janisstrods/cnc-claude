@@ -9,22 +9,10 @@
 // leaders score too (`leadersScore`, 317) has a gold medallion on each arrow.
 import { useId } from 'react';
 import { BLOCK_COLORS, type SideColors } from '../../art';
-import { colOf, hexId, rowOf } from '../../engine/hex';
+import { colOf, hexId, onBoard, rowOf } from '../../engine/hex';
 import { ROWS, type Blocks, type HexId, type ObjectiveDef, type ObjectiveState, type SectionName, type Side } from '../../engine/types';
-import { BOARD_H, BOARD_W, HEX_R } from '../geometry';
-import {
-  boardCtx,
-  corner,
-  DIRS,
-  edgeCorners,
-  fieldOutline,
-  fmt,
-  neighborRC,
-  onBoard,
-  screenDir,
-  vCenter,
-  type Pt,
-} from './hexmath';
+import { BOARD_H, BOARD_W, HEX_R, hexCenter, hexCenterId } from '../geometry';
+import { boardCtx, corner, DIRS, edgeCorners, fieldOutline, fmt, hexOutline, neighborRC, polyPath, screenDir, type Pt } from './hexmath';
 
 export interface ObjectiveMarkersProps {
   /** `GameState.special.objectives`. */
@@ -42,50 +30,13 @@ export interface ObjectiveMarkersProps {
 const INK = '#1d140c';
 const GOLD = '#e9c25a';
 
-const centre = (h: HexId, flipped: boolean): Pt => vCenter(rowOf(h), colOf(h), flipped);
 const colors = (blocks: Record<Side, Blocks>, side: Side): SideColors => BLOCK_COLORS[blocks[side]];
 
 /** Outline (one subpath per loop) of the union of `hexes`: every hexside whose neighbour is not in the set. */
 function areaOutline(hexes: readonly HexId[], flipped: boolean): string {
   const set = new Set(hexes);
-  type E = { a: Pt; b: Pt; used: boolean };
-  const edges: E[] = [];
-  const key = (p: Pt) => `${Math.round(p.x * 2)},${Math.round(p.y * 2)}`;
-  const at = new Map<string, E[]>();
-  for (const h of set) {
-    const r = rowOf(h);
-    const c = colOf(h);
-    const p = vCenter(r, c, flipped);
-    for (const d of DIRS) {
-      const [nr, nc] = neighborRC(r, c, d);
-      if (onBoard(nr, nc) && set.has(hexId(nr, nc))) continue;
-      const [i, j] = edgeCorners(screenDir(d, flipped));
-      const e: E = { a: corner(p, i), b: corner(p, j), used: false };
-      edges.push(e);
-      for (const q of [e.a, e.b]) {
-        const k = key(q);
-        const l = at.get(k);
-        if (l) l.push(e);
-        else at.set(k, [e]);
-      }
-    }
-  }
-  let d = '';
-  for (const start of edges) {
-    if (start.used) continue;
-    start.used = true;
-    const pts: Pt[] = [start.a, start.b];
-    let cur = start.b;
-    for (;;) {
-      const next = (at.get(key(cur)) ?? []).find((e) => !e.used);
-      if (!next) break;
-      next.used = true;
-      cur = key(next.a) === key(cur) ? next.b : next.a;
-      pts.push(cur);
-    }
-    d += `M${pts.map((p) => `${fmt(p.x)},${fmt(p.y)}`).join('L')}Z`;
-  }
-  return d;
+  const cells = [...set].map((h) => ({ r: rowOf(h), c: colOf(h), ...hexCenterId(h, flipped) }));
+  return hexOutline(cells, (r, c) => onBoard(r, c) && set.has(hexId(r, c)), flipped);
 }
 
 /** A pennant on a pole planted at `base` (screen space): flying, or struck once taken (furled, with a gold check). */
@@ -185,7 +136,7 @@ function Standard({ base, c, held }: { base: Pt; c: SideColors; held: boolean })
 function outward(h: HexId, flipped: boolean): Pt {
   const r = rowOf(h);
   const c = colOf(h);
-  const p = vCenter(r, c, flipped);
+  const p = hexCenter(r, c, flipped);
   let x = 0;
   let y = 0;
   for (const d of DIRS) {
@@ -193,7 +144,7 @@ function outward(h: HexId, flipped: boolean): Pt {
     if (onBoard(nr, nc)) continue;
     // a hex of the top or bottom row (corners too) exits over that row's edge
     if ((r === 0 && nr >= 0) || (r === ROWS - 1 && nr < ROWS)) continue;
-    const q = vCenter(nr, nc, flipped);
+    const q = hexCenter(nr, nc, flipped);
     x += q.x - p.x;
     y += q.y - p.y;
   }
@@ -208,13 +159,13 @@ function outward(h: HexId, flipped: boolean): Pt {
 function ExitArrow({ h, flipped, c, leaders = false }: { h: HexId; flipped: boolean; c: SideColors; leaders?: boolean }) {
   const r = rowOf(h);
   const col = colOf(h);
-  const p = vCenter(r, col, flipped);
+  const p = hexCenter(r, col, flipped);
   const u = outward(h, flipped);
   let sides = '';
   for (const d of DIRS) {
     const [nr, nc] = neighborRC(r, col, d);
     if (onBoard(nr, nc)) continue;
-    const q = vCenter(nr, nc, flipped);
+    const q = hexCenter(nr, nc, flipped);
     // only the hexsides facing the exit direction
     if ((q.x - p.x) * u.x + (q.y - p.y) * u.y < 10) continue;
     const [i, j] = edgeCorners(screenDir(d, flipped));
@@ -226,7 +177,7 @@ function ExitArrow({ h, flipped, c, leaders = false }: { h: HexId; flipped: bool
   const n = { x: -u.y, y: u.x };
   const at = (a: number, s: number): Pt => ({ x: p.x + u.x * a + n.x * s, y: p.y + u.y * a + n.y * s });
   const arrow = [at(48, 0), at(35, 13.5), at(35, 6), at(25, 6), at(25, -6), at(35, -6), at(35, -13.5)];
-  const d = `M${arrow.map((q) => `${fmt(q.x)},${fmt(q.y)}`).join('L')}Z`;
+  const d = polyPath(arrow);
   return (
     <g className="exit">
       <path d={sides} fill="none" stroke={INK} strokeWidth={6.5} strokeLinecap="round" opacity={0.6} />
@@ -247,8 +198,8 @@ function ExitArrow({ h, flipped, c, leaders = false }: { h: HexId; flipped: bool
 
 /** Screen x-bands of the three sections (left, centre, right as seen by the bottom player), split at the dividers. */
 function sectionBands(flipped: boolean): Record<SectionName, [number, number]> {
-  const d1 = vCenter(0, 4, false).x;
-  const d2 = vCenter(0, 8, false).x;
+  const d1 = hexCenter(0, 4, false).x;
+  const d2 = hexCenter(0, 8, false).x;
   const bands: Record<SectionName, [number, number]> = { left: [0, d1], center: [d1, d2], right: [d2, BOARD_W] };
   if (!flipped) return bands;
   const mirror = ([a, b]: [number, number]): [number, number] => [BOARD_W - b, BOARD_W - a];
@@ -326,9 +277,9 @@ export function ObjectiveMarkers({ objectives, objState, flipped, blocks, units 
       case 'hold': {
         const c = colors(blocks, o.side);
         for (const h of o.hexes) {
-          const p = centre(h, flipped);
+          const p = hexCenterId(h, flipped);
           const ring = Array.from({ length: 6 }, (_, k) => corner(p, k, HEX_R - 4.5));
-          const d = `M${ring.map((q) => `${fmt(q.x)},${fmt(q.y)}`).join('L')}Z`;
+          const d = polyPath(ring);
           rings.push(
             <g key={`h${i}-${h}`} className="hold" fill="none" strokeLinejoin="round">
               <path d={d} stroke={INK} strokeWidth={5.6} opacity={0.5} />
@@ -346,7 +297,7 @@ export function ObjectiveMarkers({ objectives, objState, flipped, blocks, units 
         const ship = o.marker === 'ship';
         const owner = colors(blocks, o.side === 'top' ? 'bottom' : 'top');
         for (const h of o.hexes) {
-          const p = centre(h, flipped);
+          const p = hexCenterId(h, flipped);
           posts.push({
             y: p.y,
             el: ship

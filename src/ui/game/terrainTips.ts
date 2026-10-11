@@ -1,7 +1,7 @@
 // Terrain effects for the hex hover tooltip: what each terrain does to movement, combat and line of sight, worded for
 // the player (rules-reference §4, §7–§10, §16, §18.6, §18.7), with the variants of single battles.
 import { directionTo, isFord, isHill, neighbours, steepSlope, terrainAt, veryHills, type GameState, type HexId, type TerrainType } from '../../engine';
-import { terrainName } from '../terrain';
+import { hexVariant, terrainName } from '../terrain';
 import { rampartSidesText } from './uiModel';
 
 /** What an effect line is about: movement, combat, line of sight, or a rule of this battle only. */
@@ -194,7 +194,7 @@ export function terrainTip(s: GameState, h: HexId, flipped: boolean, art?: strin
     name, t, ford, art, ...(hill ? { hill } : {}), lines: [...lines, ...slopeLines(s, h, flipped)],
   });
   if (t === 'hill' && veryHills(s)) return tip(VERY_STEEP, 'Very Steep Hill');
-  if (t === 'river' && ford) return tip(art === 'coast' ? [...FORD, COAST] : noCap ? NOCAP_FORD : FORD);
+  if (t === 'river' && ford) return tip(hexVariant(t, art) === 'coast' ? [...FORD, COAST] : noCap ? NOCAP_FORD : FORD);
   if (t === 'rampart') return tip(rampartLines(s, h, flipped));
   const hwm = s.units.some((u) => u.type === 'HWM');
   const lines = hill ? hillUnderLines(t) : hwm ? EFFECTS[t] : EFFECTS[t].filter((x) => x !== NO_HWM);

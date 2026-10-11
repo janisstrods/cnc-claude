@@ -2,11 +2,13 @@
 // hexside the sea shares with land, and surf foam - no reeds, unlike a lake. Along a board edge the coast runs on under
 // the frame, so the sea reads as continuing off the board. It is painted before the rivers, which run across the beach
 // and fade out into it (paintRivers).
-import { COLS, ROWS } from '../../engine/types';
-import { blurGrid, contours, decimate, loopArea, makeGrid, polyPath, sampleGrid, smoothClosed, type Grid } from './field';
-import { corner, DIRS, edgeCorners, fmt, neighborRC, parity, screenDir, type PaintCtx, type Pt, type Rect } from './hexmath';
+import { ROWS } from '../../engine/types';
+import { clampCol, parity } from '../geometry';
+import { blurGrid, contours, decimate, loopArea, makeGrid, sampleGrid, smoothClosed, type Grid } from './field';
+import { corner, DIRS, edgeCorners, fmt, neighborRC, polyPath, screenDir, type PaintCtx, type Pt, type Rect } from './hexmath';
 import { clamp, fbm, rng } from './noise';
 import { P } from './palette';
+import { unit } from './vec';
 
 export interface SeaOpts {
   /** Sea membership of any (possibly virtual, off-board) hex. Default: the board terrain, continued past the edges. */
@@ -49,8 +51,7 @@ function distSeg(px: number, py: number, s: Seg): number {
  */
 function boardSea(ctx: PaintCtx, ford = false): (r: number, c: number) => boolean {
   const at = (r: number, c: number) => {
-    const maxC = parity(r) === 0 ? COLS - 1 : COLS - 2;
-    const h = ctx.get(r, clamp(c, 0, maxC));
+    const h = ctx.get(r, clampCol(r, c));
     return h?.t === 'sea' && (!ford || h.ford);
   };
   return (r, c) => {
@@ -273,10 +274,6 @@ export function paintCoastFords(ctx: PaintCtx, toLand?: Pt): JSX.Element | null 
   let stoneSh = '';
   let stoneHi = '';
   let ripples = '';
-  const unitV = (v: Pt): Pt => {
-    const l = Math.hypot(v.x, v.y) || 1;
-    return { x: v.x / l, y: v.y / l };
-  };
   for (const h of fords) {
     let u = toLand;
     if (!u) {
@@ -290,7 +287,7 @@ export function paintCoastFords(ctx: PaintCtx, toLand?: Pt): JSX.Element | null 
         }
       }
       // out at sea (no land beside it): wade towards the middle of the board
-      u = unitV(Math.hypot(v.x, v.y) > 1 ? v : { x: (ctx.bounds.x0 + ctx.bounds.x1) / 2 - h.x, y: (ctx.bounds.y0 + ctx.bounds.y1) / 2 - h.y });
+      u = unit(Math.hypot(v.x, v.y) > 1 ? v : { x: (ctx.bounds.x0 + ctx.bounds.x1) / 2 - h.x, y: (ctx.bounds.y0 + ctx.bounds.y1) / 2 - h.y });
     }
     const R = rng(2170 + h.id * 13);
     // each crossing leans a little and sits a little off the centre, so a row of them is not a pattern

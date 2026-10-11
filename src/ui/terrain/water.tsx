@@ -1,9 +1,10 @@
 // Rivers (with fords) and lakes. (The sea has its own painter, sea.tsx; rivers still run into it.)
-import { addToGrid, blurGrid, fillGrid, isoPath, makeGrid, polyPath } from './field';
+import { addToGrid, blurGrid, fillGrid, isoPath, makeGrid } from './field';
 import type { TerrainType } from '../../engine/types';
-import { DIRS, fmt, neighborRC, RI, type Dir, type HexInfo, type PaintCtx, type Pt } from './hexmath';
+import { DIRS, fmt, neighborRC, polyPath, RI, type Dir, type HexInfo, type PaintCtx, type Pt } from './hexmath';
 import { fbm, rng } from './noise';
 import { P } from './palette';
+import { add, len, mul, sub, unit } from './vec';
 
 type PortKind = 'hex' | 'lake' | 'off' | 'end';
 
@@ -20,15 +21,6 @@ interface Key {
   hex: number; // owning hex id for the segment that ENDS at this key
   end?: boolean; // dead end of a river inside the board
 }
-
-const sub = (a: Pt, b: Pt): Pt => ({ x: a.x - b.x, y: a.y - b.y });
-const add = (a: Pt, b: Pt): Pt => ({ x: a.x + b.x, y: a.y + b.y });
-const mul = (a: Pt, k: number): Pt => ({ x: a.x * k, y: a.y * k });
-const len = (a: Pt) => Math.hypot(a.x, a.y);
-const norm = (a: Pt): Pt => {
-  const l = len(a) || 1;
-  return { x: a.x / l, y: a.y / l };
-};
 
 /**
  * Where the river leaves hex h: every neighbouring river/lake hex, plus (for a river end) the
@@ -79,7 +71,7 @@ function traceRivers(ctx: PaintCtx): RiverGeom {
     const o = ctx.center(r, c);
     return { x: (h.x + o.x) / 2, y: (h.y + o.y) / 2 };
   };
-  const out = (h: HexInfo, d: Dir): Pt => norm(sub(mid(h, d), center(h)));
+  const out = (h: HexInfo, d: Dir): Pt => unit(sub(mid(h, d), center(h)));
   const visited = new Set<string>();
   const vkey = (id: number, d: Dir) => `${id}:${d}`;
   const chains: Key[][] = [];
@@ -122,7 +114,7 @@ function traceRivers(ctx: PaintCtx): RiverGeom {
         keys.push({ p: center(n), t: u, hex: n.id });
         return;
       }
-      const t = norm(sub(mid(n, next.d), mid(n, back)));
+      const t = unit(sub(mid(n, next.d), mid(n, back)));
       keys.push({ p: center(n), t, hex: n.id });
       if (visited.has(vkey(n.id, next.d))) return;
       h = n;
@@ -145,7 +137,7 @@ function traceRivers(ctx: PaintCtx): RiverGeom {
       if (tp.kind === 'off') keys.push({ p: add(m, mul(u, ctx.ext)), t: inward, hex: h.id });
       if (tp.kind === 'lake') keys.push({ p: add(m, mul(u, 22)), t: inward, hex: h.id });
       keys.push({ p: m, t: inward, hex: h.id, end: tp.kind === 'end' });
-      keys.push({ p: center(h), t: norm(sub(mid(h, other.d), m)), hex: h.id });
+      keys.push({ p: center(h), t: unit(sub(mid(h, other.d), m)), hex: h.id });
       if (visited.has(vkey(h.id, other.d))) continue;
       walk(h, other, keys);
       chains.push(keys);
@@ -166,7 +158,7 @@ function traceRivers(ctx: PaintCtx): RiverGeom {
     for (const p of ports.get(h.id)!) {
       if (visited.has(vkey(h.id, p.d))) continue;
       const other = ports.get(h.id)!.find((q) => q !== p)!;
-      const keys: Key[] = [{ p: center(h), t: norm(sub(mid(h, p.d), mid(h, other.d))), hex: h.id }];
+      const keys: Key[] = [{ p: center(h), t: unit(sub(mid(h, p.d), mid(h, other.d))), hex: h.id }];
       walk(h, p, keys);
       chains.push(keys);
     }
@@ -224,7 +216,7 @@ function sampleChain(keys: Key[], hwAt: (p: Pt) => number, meander: number, sign
   for (let i = 0; i < pts.length; i++) {
     const a = pts[Math.max(0, i - 1)].p;
     const b = pts[Math.min(pts.length - 1, i + 1)].p;
-    const t = norm(sub(b, a));
+    const t = unit(sub(b, a));
     let hw = hwAt(pts[i].p);
     if (startEnd) hw *= taper(arc[i]);
     if (endEnd) hw *= taper(total - arc[i]);
@@ -285,7 +277,7 @@ function seaMouths(ctx: PaintCtx, rivers: HexInfo[]): { m: Pt; u: Pt }[] {
       const [r, c] = neighborRC(h.r, h.c, d);
       const n = ctx.get(r, c);
       if (n?.t !== 'sea') continue;
-      out.push({ m: { x: (h.x + n.x) / 2, y: (h.y + n.y) / 2 }, u: norm(sub(n, h)) });
+      out.push({ m: { x: (h.x + n.x) / 2, y: (h.y + n.y) / 2 }, u: unit(sub(n, h)) });
     }
   }
   return out;

@@ -1,12 +1,8 @@
 // Small synthesized sound effects (Web Audio, no audio files).
+import { storage } from './storage';
+
 let ctx: AudioContext | null = null;
-let muted = (() => {
-  try {
-    return localStorage.getItem('cca-muted') === '1';
-  } catch {
-    return false;
-  }
-})();
+let muted = storage.get('cca-muted') === '1';
 
 function ac(): AudioContext | null {
   if (muted) return null;
@@ -25,11 +21,7 @@ export function isMuted() {
 
 export function setMuted(m: boolean) {
   muted = m;
-  try {
-    localStorage.setItem('cca-muted', m ? '1' : '0');
-  } catch {
-    /* ignore */
-  }
+  storage.set('cca-muted', m ? '1' : '0');
 }
 
 function noiseBuffer(a: AudioContext, seconds: number): AudioBuffer {

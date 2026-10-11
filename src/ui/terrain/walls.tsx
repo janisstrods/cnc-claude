@@ -5,132 +5,15 @@
 // a forest. Walls join across neighbouring wall hexes (as the ditch's trench does), run on under the frame at a board
 // edge and end in a tower elsewhere. Everything is seen from the board's lower edge and lit from the upper left, like the
 // hills and the steep plateaus: the walls' front faces look down the screen on either orientation.
-import { polyPath } from './field';
-import { DIRS, corner, edgeCorners, fmt, neighborRC, screenDir, type Dir, type HexInfo, type PaintCtx, type Pt } from './hexmath';
+import { hexChains, type HexChain } from './chains';
+import { DIRS, corner, edgeCorners, fmt, neighborRC, polyPath, screenDir, type HexInfo, type PaintCtx, type Pt } from './hexmath';
 import { boulder } from './hills';
 import { rng } from './noise';
 import { P } from './palette';
-
-const sub = (a: Pt, b: Pt): Pt => ({ x: a.x - b.x, y: a.y - b.y });
-const add = (a: Pt, b: Pt): Pt => ({ x: a.x + b.x, y: a.y + b.y });
-const mul = (a: Pt, k: number): Pt => ({ x: a.x * k, y: a.y * k });
-const unit = (a: Pt): Pt => {
-  const l = Math.hypot(a.x, a.y) || 1;
-  return { x: a.x / l, y: a.y / l };
-};
-const dot = (a: Pt, b: Pt) => a.x * b.x + a.y * b.y;
-const line = (pts: Pt[]) => `M${pts.map((p) => `${fmt(p.x)},${fmt(p.y)}`).join('L')}`;
+import { add, dot, leftNormal, mitre, mul, sub, unit } from './vec';
 
 /** Light from the upper left (as for the hills). */
 const LIGHT = unit({ x: -0.6, y: -0.8 });
-
-// ---------------------------------------------------------------------------------------------
-// Chains of neighbouring hexes
-
-/** A run of joined hexes: its key points, the hexes, and where it ends (a tower inside the board, or under the frame). */
-export interface HexChain {
-  pts: Pt[];
-  hexes: HexInfo[];
-  /** The wall reaches the board edge at its start / end and runs on under the frame there (no tower). */
-  openStart: boolean;
-  openEnd: boolean;
-}
-
-/**
- * Runs of neighbouring hexes matching `is`, joined along a spanning tree (rows first, so a row is one straight line and a
- * clump never closes a triangle). A free end heads on under the frame when the board ends that way, else it stops `stub`
- * past the centre of its last hex; a lone hex runs across along the board's rows.
- */
-export function hexChains(ctx: PaintCtx, is: (h: HexInfo) => boolean, stub: number, openEdges = true): HexChain[] {
-  const own = ctx.hexes.filter(is);
-  const nb = (h: HexInfo, d: Dir) => {
-    const [r, c] = neighborRC(h.r, h.c, d);
-    return ctx.get(r, c);
-  };
-  const links = new Map<number, HexInfo[]>(own.map((h) => [h.id, []]));
-  const root = new Map<number, number>(own.map((h) => [h.id, h.id]));
-  const find = (id: number): number => {
-    let r = id;
-    while (root.get(r) !== r) r = root.get(r)!;
-    return r;
-  };
-  const pairs: [HexInfo, HexInfo, number][] = [];
-  for (const h of own) {
-    for (const d of DIRS) {
-      const n = nb(h, d);
-      if (n && is(n) && h.id < n.id) pairs.push([h, n, n.r === h.r ? 0 : 100]);
-    }
-  }
-  pairs.sort((a, b) => a[2] - b[2]);
-  for (const [a, b] of pairs) {
-    const ra = find(a.id);
-    const rb = find(b.id);
-    if (ra === rb) continue;
-    root.set(ra, rb);
-    links.get(a.id)!.push(b);
-    links.get(b.id)!.push(a);
-  }
-  const deg = (h: HexInfo) => links.get(h.id)!.length;
-  const used = new Set<string>();
-  const ek = (a: HexInfo, b: HexInfo) => (a.id < b.id ? `${a.id}-${b.id}` : `${b.id}-${a.id}`);
-  /** The end of a chain at hex h heading along u: [point, runs off the board]. */
-  const endPoint = (h: HexInfo, u: Pt): [Pt, boolean] => {
-    for (const d of DIRS) {
-      const [r, c] = neighborRC(h.r, h.c, d);
-      if (!openEdges || ctx.get(r, c)) continue;
-      if (dot(u, unit(sub(ctx.center(r, c), h))) > 0.8) return [add(h, mul(u, 60 + ctx.ext)), true];
-    }
-    return [add(h, mul(u, stub)), false];
-  };
-  const walk = (start: HexInfo, first: HexInfo): HexInfo[] => {
-    const run = [start];
-    let prev = start;
-    let cur = first;
-    used.add(ek(start, first));
-    for (;;) {
-      run.push(cur);
-      if (deg(cur) !== 2) break;
-      const next = links.get(cur.id)!.find((n) => n !== prev && !used.has(ek(cur, n)));
-      if (!next) break;
-      used.add(ek(cur, next));
-      prev = cur;
-      cur = next;
-    }
-    return run;
-  };
-  const runs: HexInfo[][] = [];
-  for (const h of own) {
-    if (deg(h) === 0) runs.push([h]);
-    else if (deg(h) !== 2) for (const n of links.get(h.id)!) if (!used.has(ek(h, n))) runs.push(walk(h, n));
-  }
-  // a closed ring of hexes (every hex with two links): start anywhere
-  for (const h of own) if (deg(h) === 2 && links.get(h.id)!.some((n) => !used.has(ek(h, n)))) runs.push(walk(h, links.get(h.id)!.find((n) => !used.has(ek(h, n)))!));
-
-  return runs.map((run) => {
-    const pts: Pt[] = run.map((h) => ({ x: h.x, y: h.y }));
-    const a = run[0];
-    const b = run[run.length - 1];
-    if (run.length === 1) {
-      const e = unit(sub(ctx.center(a.r, a.c + 1), a));
-      const [p0, o0] = endPoint(a, mul(e, -1));
-      const [p1, o1] = endPoint(a, e);
-      return { pts: [p0, pts[0], p1], hexes: run, openStart: o0, openEnd: o1 };
-    }
-    let openStart = false;
-    let openEnd = false;
-    if (deg(a) === 1) {
-      const [p, o] = endPoint(a, unit(sub(a, run[1])));
-      pts.unshift(p);
-      openStart = o;
-    }
-    if (deg(b) === 1 && b !== a) {
-      const [p, o] = endPoint(b, unit(sub(b, run[run.length - 2])));
-      pts.push(p);
-      openEnd = o;
-    }
-    return { pts, hexes: run, openStart, openEnd };
-  });
-}
 
 // ---------------------------------------------------------------------------------------------
 // Wall drawing
@@ -165,18 +48,13 @@ const TOWN: WallLook = {
 /** The polyline moved `o` to its left (screen space), with mitred joins; `closed` for a ring. */
 function offsetLine(pts: Pt[], o: number, closed = false): Pt[] {
   const n = pts.length;
-  const segN = (i: number) => {
-    const u = unit(sub(pts[(i + 1) % n], pts[i]));
-    return { x: u.y, y: -u.x };
-  };
+  const segN = (i: number) => leftNormal(pts[i], pts[(i + 1) % n]);
   return pts.map((p, i) => {
     let a: Pt | null = i > 0 ? segN(i - 1) : closed ? segN(n - 1) : null;
     let b: Pt | null = i < n - 1 || closed ? segN(i) : null;
     if (!a) a = b!;
     if (!b) b = a;
-    const m = unit(add(a, b));
-    const k = o / Math.max(0.5, dot(m, b));
-    return add(p, mul(m, k));
+    return mitre(p, a, b, o);
   });
 }
 
@@ -212,7 +90,7 @@ function wallLayers(pts: Pt[], w: WallLook, closed: boolean, R: () => number): {
       const len = Math.hypot(e2.x - e1.x, e2.y - e1.y);
       for (let c = 1; c <= w.courses; c++) {
         const y = (w.h * c) / (w.courses + 1);
-        joints += line([add(e1, { x: 0, y }), add(e2, { x: 0, y })]);
+        joints += polyPath([add(e1, { x: 0, y }), add(e2, { x: 0, y })], false);
       }
       for (let c = 0; c <= w.courses; c++) {
         const y0 = (w.h * c) / (w.courses + 1);
@@ -235,7 +113,7 @@ function wallLayers(pts: Pt[], w: WallLook, closed: boolean, R: () => number): {
   const walk = closed
     ? polyPath(left) + polyPath([...right].reverse())
     : polyPath([...left, ...[...right].reverse()]);
-  const walkEdge = line(left) + line(right);
+  const walkEdge = polyPath(left, false) + polyPath(right, false);
   const shadow = closed ? '' : polyPath([...left, ...[...right].reverse()].map((p) => add(p, { x: 4, y: w.h + 4 })));
   return { shadow, faces, walk, walkEdge, merlons, joints };
 }
@@ -318,8 +196,8 @@ function paintWallChains(
     // the walk is drawn a little above the line, so the wall stands centred on its hexes
     const pts = ch.pts.map((p) => ({ x: p.x, y: p.y - w.h / 2 }));
     if (earthworks) {
-      agger += line(pts.map((p) => ({ x: p.x, y: p.y - w.w / 2 - 8 })));
-      fossa += line(pts.map((p) => ({ x: p.x, y: p.y + w.w / 2 + w.h + 11 })));
+      agger += polyPath(pts.map((p) => ({ x: p.x, y: p.y - w.w / 2 - 8 })), false);
+      fossa += polyPath(pts.map((p) => ({ x: p.x, y: p.y + w.w / 2 + w.h + 11 })), false);
     }
     const l = wallLayers(pts, w, false, R);
     shadow += l.shadow;
@@ -368,7 +246,7 @@ const freeEnds = (ch: HexChain): Pt[] => [...(ch.openStart ? [] : [ch.pts[0]]), 
  * hills, so a wall with a hill under it stands on the hill. `openEdges: false` (icons): no wall runs off under a frame.
  */
 export function paintCityWalls(ctx: PaintCtx, openEdges = true): JSX.Element | null {
-  const chains = hexChains(ctx, (h) => h.t === 'wall', 30, openEdges);
+  const chains = hexChains(ctx, (h) => h.t === 'wall', 30, { openEdges });
   if (!chains.length) return null;
   return paintWallChains(
     chains, SCALABLE, 'city-walls', 3081,
@@ -383,7 +261,7 @@ export function paintCityWalls(ctx: PaintCtx, openEdges = true): JSX.Element | n
  * earthen agger heaped behind it and the fossa dug before it, so the fortification fills its hexes.
  */
 export function paintRomeWalls(ctx: PaintCtx, openEdges = true): JSX.Element | null {
-  const chains = hexChains(ctx, (h) => h.art === 'wall', 34, openEdges);
+  const chains = hexChains(ctx, (h) => h.art === 'wall', 34, { openEdges });
   if (!chains.length) return null;
   return paintWallChains(
     chains, ROME, 'impassable-walls', 3011,
@@ -637,9 +515,9 @@ export function paintSteepSlopes(ctx: PaintCtx): JSX.Element | null {
       const lit = dot(outward, LIGHT);
       const fill = lit > 0.3 ? P.rockMid : lit < -0.3 ? P.rockDark : P.rock;
       faces.push(<path key={`${h.id}-${d}`} className="scarp" d={polyPath([...top, ...foot])} fill={fill} stroke={P.rockDark} strokeWidth={0.8} strokeLinejoin="round" />);
-      crest += line(top);
-      crestLit += line(top.map((p) => add(p, mul(inward, 1.3))));
-      drop += line([at(-1, -1.6), at(len + 1, -1.6)]);
+      crest += polyPath(top, false);
+      crestLit += polyPath(top.map((p) => add(p, mul(inward, 1.3))), false);
+      drop += polyPath([at(-1, -1.6), at(len + 1, -1.6)], false);
       for (let k = 1; k < m; k += 1 + Math.floor(R() * 2)) {
         const p = top[k];
         const q = add(add(p, mul(outward, 4 + R() * 4)), mul(t, (R() - 0.5) * 2.5));

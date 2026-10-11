@@ -1,6 +1,6 @@
 // Broken ground (stones, scrub, ruts) and fortified camps (palisade + tents).
-import { blobPath, isoPath, polyPath } from './field';
-import { corner, fmt, hexBoundaryDist, type PaintCtx, type Pt } from './hexmath';
+import { blobPath, isoPath } from './field';
+import { corner, fmt, hexBoundaryDist, polyPath, type PaintCtx, type Pt } from './hexmath';
 import { boulder, regionGrid } from './hills';
 import { rng } from './noise';
 import { P } from './palette';

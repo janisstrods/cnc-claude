@@ -14,10 +14,15 @@ import { SCENARIOS, scenarioById } from '../../src/scenarios';
 import { Board } from '../../src/ui/game/Board';
 import { GameController, newSessionConfig } from '../../src/ui/game/controller';
 import {
-  IMMOBILE_TIP, ambushTexts, boardUi, commandFallbackNote, commandTipLine, counterAttackNote, currentDiceTurn, diceAssignClick, diceOrderSlots, diceRollSummary,
-  diceSlotChoices, diceSlotText, diceTurnOrders, diceTurnText, diceTurnVictim, enteredTipLine, firstOrderDie, fixedEntryHexes,
-  forcedMarchLine, objectiveTipLines, placeUnitPrompt, selectAllUnits, unitSummary, type DiceTurn, type UiSel,
+  counterAttackNote, currentDiceTurn, diceAssignClick, diceOrderSlots, diceRollSummary, diceSlotChoices, diceSlotText, diceTurnOrders,
+  diceTurnText, diceTurnVictim, firstOrderDie, type DiceTurn,
+} from '../../src/ui/game/diceOrders';
+import { objectiveTipLines } from '../../src/ui/game/objectiveText';
+import {
+  IMMOBILE_TIP, ambushTexts, boardUi, commandFallbackNote, commandTipLine, enteredTipLine, fixedEntryHexes, forcedMarchLine,
+  placeUnitPrompt, selectAllUnits, type UiSel,
 } from '../../src/ui/game/uiModel';
+import { unitSummary } from '../../src/ui/game/unitText';
 import { PICKER_TABS, battlesOf, randomPick } from '../../src/ui/screens/picker';
 import { Expansion3 } from '../../src/ui/screens/RulesReference';
 import { H, build, forceDice, must, noFirstStrike, type Pos } from '../rules/helpers';

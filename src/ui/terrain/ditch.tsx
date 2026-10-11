@@ -4,106 +4,25 @@
 // edge runs on under the frame; elsewhere it ends short of the hexside. The bank lies on the side of the board's bottom
 // army (Crassus' Romans in 212) and turns with the board; light comes from the upper left, as for the hills.
 import { blobPath } from './field';
-import { DIRS, fmt, neighborRC, type HexInfo, type PaintCtx, type Pt } from './hexmath';
+import { hexChains } from './chains';
+import { fmt, polyPath, type PaintCtx, type Pt } from './hexmath';
 import { fbm, rng } from './noise';
 import { P } from './palette';
+import { sub, unit } from './vec';
 
 /** Distance from the centre line to the crest of the spoil bank. */
 const BANK = 17;
 /** A trench ending inside the board stops this far past the centre of its last hex. */
 const STUB = 27;
 
-const sub = (a: Pt, b: Pt): Pt => ({ x: a.x - b.x, y: a.y - b.y });
-const unit = (a: Pt): Pt => {
-  const l = Math.hypot(a.x, a.y) || 1;
-  return { x: a.x / l, y: a.y / l };
-};
-const dot = (a: Pt, b: Pt) => a.x * b.x + a.y * b.y;
-
-/** Key points of every trench: runs of ditch hexes (centres), with their free ends extended. */
+/**
+ * Key points of every trench: runs of ditch hexes (centres), with their free ends extended. The trench joins neighbouring
+ * ditch hexes along a spanning tree, so a clump of three never digs a triangle: links along a row first (a row of ditch
+ * hexes is one straight trench), then the diagonals, those into the busier hexes first (a spur joins the main trench, not
+ * its end). A lone ditch hex has a trench across it, along the board's rows.
+ */
 function trenchChains(ctx: PaintCtx): Pt[][] {
-  const ditch = ctx.hexes.filter((h) => h.t === 'ditch');
-  const nb = (h: HexInfo, d: (typeof DIRS)[number]) => {
-    const [r, c] = neighborRC(h.r, h.c, d);
-    return ctx.get(r, c);
-  };
-  // the trench joins neighbouring ditch hexes along a spanning tree, so a clump of three never digs a triangle: links
-  // along a row first (a row of ditch hexes is one straight trench), then the diagonals
-  const links = new Map<number, HexInfo[]>();
-  for (const h of ditch) links.set(h.id, []);
-  const root = new Map<number, number>(ditch.map((h) => [h.id, h.id]));
-  const find = (id: number): number => {
-    let r = id;
-    while (root.get(r) !== r) r = root.get(r)!;
-    return r;
-  };
-  const around = (h: HexInfo) => DIRS.filter((d) => nb(h, d)?.t === 'ditch').length;
-  const pairs: [HexInfo, HexInfo, number][] = [];
-  for (const h of ditch) {
-    for (const d of DIRS) {
-      const n = nb(h, d);
-      // rows first; among the diagonals, those into the busier hexes (a spur joins the main trench, not its end)
-      if (n?.t === 'ditch' && h.id < n.id) pairs.push([h, n, (n.r === h.r ? 0 : 100) - around(h) - around(n)]);
-    }
-  }
-  pairs.sort((a, b) => a[2] - b[2]);
-  for (const [a, b] of pairs) {
-    const ra = find(a.id);
-    const rb = find(b.id);
-    if (ra === rb) continue;
-    root.set(ra, rb);
-    links.get(a.id)!.push(b);
-    links.get(b.id)!.push(a);
-  }
-  const deg = (h: HexInfo) => links.get(h.id)!.length;
-  const used = new Set<string>();
-  const ek = (a: HexInfo, b: HexInfo) => (a.id < b.id ? `${a.id}-${b.id}` : `${b.id}-${a.id}`);
-
-  /** A free end of a trench at hex h, heading along u: off under the frame when the board ends that way, else a stub. */
-  const endPoint = (h: HexInfo, u: Pt): Pt => {
-    for (const d of DIRS) {
-      const [r, c] = neighborRC(h.r, h.c, d);
-      if (ctx.get(r, c)) continue;
-      if (dot(u, unit(sub(ctx.center(r, c), h))) > 0.8) return { x: h.x + u.x * (60 + ctx.ext), y: h.y + u.y * (60 + ctx.ext) };
-    }
-    return { x: h.x + u.x * STUB, y: h.y + u.y * STUB };
-  };
-
-  const walk = (start: HexInfo, first: HexInfo): HexInfo[] => {
-    const run = [start];
-    let prev = start;
-    let cur = first;
-    used.add(ek(start, first));
-    for (;;) {
-      run.push(cur);
-      if (deg(cur) !== 2) break;
-      const next = links.get(cur.id)!.find((n) => n !== prev && !used.has(ek(cur, n)));
-      if (!next) break;
-      used.add(ek(cur, next));
-      prev = cur;
-      cur = next;
-    }
-    return run;
-  };
-  const runs: HexInfo[][] = [];
-  for (const h of ditch) {
-    if (deg(h) === 0) runs.push([h]);
-    else if (deg(h) !== 2) for (const n of links.get(h.id)!) if (!used.has(ek(h, n))) runs.push(walk(h, n));
-  }
-
-  return runs.map((run) => {
-    const pts: Pt[] = run.map((h) => ({ x: h.x, y: h.y }));
-    const a = run[0];
-    const b = run[run.length - 1];
-    if (run.length === 1) {
-      // a lone ditch hex: a trench across it, along the board's rows
-      const e = unit(sub(ctx.center(a.r, a.c + 1), a));
-      return [endPoint(a, { x: -e.x, y: -e.y }), pts[0], endPoint(a, e)];
-    }
-    if (deg(a) === 1) pts.unshift(endPoint(a, unit(sub(a, run[1]))));
-    if (deg(b) === 1 && b !== a) pts.push(endPoint(b, unit(sub(b, run[run.length - 2]))));
-    return pts;
-  });
+  return hexChains(ctx, (h) => h.t === 'ditch', STUB, { busy: true }).map((ch) => ch.pts);
 }
 
 /** Catmull-Rom curve through the key points, sampled every few pixels, with a slight hand-dug wobble. */
@@ -146,8 +65,6 @@ function offset(pts: Pt[], o: (i: number) => number): Pt[] {
   });
 }
 
-const line = (pts: Pt[]) => `M${pts.map((p) => `${fmt(p.x)},${fmt(p.y)}`).join('L')}`;
-
 /** Every ditch hex of `ctx`. */
 export function paintDitches(ctx: PaintCtx): JSX.Element | null {
   const chains = trenchChains(ctx);
@@ -168,9 +85,9 @@ export function paintDitches(ctx: PaintCtx): JSX.Element | null {
     const t = unit(sub(pts[pts.length - 1], pts[0]));
     const left = { x: t.y, y: -t.x }; // offset() moves positive amounts this way
     const side = Math.abs(left.y) > 0.3 ? Math.sign(left.y) * down : Math.sign(left.x) * down;
-    trench += line(pts);
+    trench += polyPath(pts, false);
     const crest = offset(pts, (i) => side * (BANK + (fbm(i / 9, ci, 47) - 0.5) * 3));
-    bank += line(crest);
+    bank += polyPath(crest, false);
     // clods heaped along the bank, a few stones in the bottom, grass tufts on the far lip
     for (let i = 2; i < crest.length - 2; i += 3 + Math.floor(R() * 3)) {
       const p = crest[i];
