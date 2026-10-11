@@ -131,7 +131,7 @@ export function cardKind(id: number): CardKind {
 /**
  * `side` draws one card (reshuffling the discards into an empty deck). Hellespont (§17.4): while the side owes cards for
  * lost leaders (`cardDebt`), any draw pays off one owed card instead of drawing (the end-of-turn draw, the First Strike
- * draw, Trasimenus' and Beneventum's extra draws alike).
+ * draw, the extra draws of hand growth (§18.8) and Beneventum's alike).
  */
 export function drawCard(s: GameState, ctx: FlowCtx, side: Side) {
   if (s.special.cardDebt[side] > 0) {

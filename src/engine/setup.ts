@@ -5,7 +5,7 @@ import { shuffle } from './rng';
 import { ELITES, type EliteDef } from './elites';
 import { newObjectiveState, resolveObjectives } from './objectives';
 import { LEADER_TRAITS } from './query';
-import { TERRAIN_NAMES, isImpassable, terrainAt } from './terrain';
+import { TERRAIN_NAMES, isImpassable, isWall, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain } from './units';
 import {
   ARMY_LOOKS, BLOCKS, COLS, LEGIONS, OFF_BOARD, ROWS, SPECIAL_RULE_IDS,
@@ -18,7 +18,7 @@ export interface SideSetup {
   blocks: Blocks;
   look: ArmyLook;
   commander: string;
-  /** Cards in the starting hand, and so the Command; 0 for a side with dice orders. */
+  /** Cards in the starting hand, and so the Command: 1 or more, or 0 for a side with dice orders. */
   cards: number;
   /**
    * `'dice'`: the side orders by rolling `orderDice` dice at the start of each turn instead of playing a card (310 Utica P1,
@@ -353,6 +353,11 @@ function orderDiceOf(setup: ScenarioSetup): Record<Side, number> {
     const ss = setup[side] as SideSetup & { orders?: unknown; orderDice?: unknown };
     if (ss.orders === undefined) {
       if (ss.orderDice !== undefined) throw new Error(`${side} army: orderDice needs orders: 'dice'`);
+      // a side that plays cards with an empty hand would wait for ever for its first card
+      const c: unknown = ss.cards;
+      if (typeof c !== 'number' || !Number.isInteger(c) || c < 1) {
+        throw new Error(`${side} army: a side that plays cards needs cards: a whole number, 1 or more`);
+      }
       continue;
     }
     if (ss.orders !== 'dice') throw new Error(`${side} army: unknown orders ${String(ss.orders)}`);
@@ -427,8 +432,8 @@ function hexList(list: unknown, listErr: string, emptyErr: string, what: string)
 /**
  * The ambush data of a battle: null without the rule `magoAmbush`, else the scenario's data over the Trebbia defaults.
  * The rule needs a reserve force (at least one reserve unit). The reinforcement options (308, §18.9) are copied only when
- * given: `entryHexes` (on the board, each once; passable, checked on the built board by `checkReinforcementHexes`),
- * `noMove` and `attachLeader` (which needs a reserve leader).
+ * given: `entryHexes` (on the board, each once; passable and no wall, checked on the built board by
+ * `checkReinforcementHexes`), `noMove` and `attachLeader` (which needs a reserve leader).
  */
 function resolveAmbush(setup: ScenarioSetup, rules: SpecialRuleId[]): AmbushDef | null {
   const a: unknown = setup.ambush;
@@ -491,13 +496,16 @@ function resolvePlaceUnits(setup: ScenarioSetup, ambush: AmbushDef | null, nextI
 }
 
 /**
- * The reinforcement hexes on the built board (§18.9): the ambush entry hexes must be passable, and each forced
- * placement's hexes passable and open to its unit type (no mounted unit on a city wall).
+ * The reinforcement hexes on the built board (§18.9): the ambush entry hexes must be passable and no city wall (a unit
+ * entering from off the board never begins next to one, §18.7), and each forced placement's hexes passable and open to
+ * its unit type (no mounted unit on a city wall).
  */
 function checkReinforcementHexes(s: GameState) {
   const where = (h: HexId) => `${Math.floor(h / COLS)},${h % COLS}`;
   for (const h of s.special.ambush?.entryHexes ?? []) {
     if (isImpassable(s, h)) throw new Error(`ambush entry hex ${where(h)} is impassable`);
+    // a unit climbs onto a wall only by a move that begins next to it (§18.7): one entering from off the board never does
+    if (isWall(s, h)) throw new Error(`ambush entry hex ${where(h)} is a city wall, which a reserve cannot enter`);
   }
   for (const p of s.special.placeUnits) {
     for (const h of p.hexes) {

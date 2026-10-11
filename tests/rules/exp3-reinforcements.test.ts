@@ -108,6 +108,9 @@ describe('reinforcements: scenario data (§18.9)', () => {
     expect(bad({ entryHexes: [[3, 0], [9, 0]] })).toThrow(/^ambush entry hex 9,0 is off the board \(qa\)$/);
     expect(bad({ entryHexes: [[3, 0], [3, 0]] })).toThrow(/^ambush entry hex 3,0 is listed twice \(qa\)$/);
     expect(bad({ entryHexes: [[3, 0]] }, { terrain: [{ at: [3, 0], t: 'steep' }] })).toThrow(/^ambush entry hex 3,0 is impassable \(qa\)$/);
+    // a reserve never begins its move next to a wall, so it could never enter one (§18.7)
+    expect(bad({ entryHexes: [[3, 0], [4, 0]] }, { terrain: [{ at: [4, 0], t: 'wall' }] }))
+      .toThrow(/^ambush entry hex 4,0 is a city wall, which a reserve cannot enter \(qa\)$/);
     expect(bad({ noMove: 'yes' })).toThrow(/^ambush noMove must be true or false \(qa\)$/);
     expect(bad({ attachLeader: 1 })).toThrow(/^ambush attachLeader must be true or false \(qa\)$/);
     expect(bad({ attachLeader: true }, { reserveLeaders: [] })).toThrow(/^ambush attachLeader needs a reserve leader \(qa\)$/);

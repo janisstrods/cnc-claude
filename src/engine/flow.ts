@@ -72,8 +72,8 @@ interface BannerBatch {
  * counted, Castulo's Scipio ends the battle; then the opponent scores the banner and `afterLeaderLoss` applies the
  * Hellespont rules. With `batch` the banner and the Hellespont rules wait for `settleBanners` (banners first), and
  * `reason` is ignored: the batch's banners carry the reason passed to `settleBanners`. A leader who leaves the board by
- * evading off his baseline or exiting with his unit is not eliminated. Returns true when his loss ended the battle
- * (Castulo's Scipio).
+ * evading off his baseline, exiting with his unit, or exiting alone where leaders score (317, §18.4) is not eliminated.
+ * Returns true when his loss ended the battle (Castulo's Scipio).
  */
 function leaderLost(s: GameState, ctx: FlowCtx, l: Leader, reason: string, text: string, batch?: BannerBatch): boolean {
   s.leaders = s.leaders.filter((x) => x.id !== l.id);

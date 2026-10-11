@@ -581,4 +581,14 @@ describe('steep slopes between hills and forests (308, rule steepSlopes, §18.7)
     const fire = build({ rules, units: [{ side: 'bottom', type: 'LB', at: [4, 6] }, { side: 'top', type: 'MI', at: [2, 6] }], terrain: [...SLOPE, hill([2, 6])] });
     expect(battleTargets(toBattle(fire, 'order4C', ['u1']).state, 'u1')).toEqual([{ hex: H(2, 6), kind: 'ranged' }]);
   });
+
+  it('a unit next to an enemy only across a slope may neither close combat nor fire (§8: no fire next to an enemy) [Interp]', () => {
+    // the archer in the forest (4,6) has an MI just across the slope (3,6) and another in range on open ground (4,4)
+    const archer = { side: 'bottom' as const, type: 'LB' as const, at: [4, 6] as [number, number] };
+    const far = { side: 'top' as const, type: 'MI' as const, at: [4, 4] as [number, number] };
+    const s = build({ rules, units: [archer, { side: 'top', type: 'MI', at: [3, 6] }, far], terrain: SLOPE });
+    expect(battleTargets(toBattle(s, 'order4C', ['u1']).state, 'u1')).toEqual([]);
+    const alone = build({ rules, units: [archer, far], terrain: SLOPE });
+    expect(battleTargets(toBattle(alone, 'order4C', ['u1']).state, 'u1')).toEqual([{ hex: H(4, 4), kind: 'ranged' }]);
+  });
 });

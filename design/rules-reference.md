@@ -831,10 +831,12 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
     that cannot be taken (1 block lost).
   * From the hill down into the forest: allowed (move, retreat, evade).
   * **No close combat either way** (no attack, bonus combat, battle back or First Strike): a unit across such a hexside from
-    an enemy can neither attack it nor be attacked by it from there. Ranged combat and line of sight are not affected. A
-    momentum advance always goes into the hex of the unit just fought, so it can never cross a steep slope; the cavalry
-    extra hex can, and may not climb one. **[Interp]** A warrior's long move (§7: 2 hexes only to charge) must end next to
-    an enemy it could close combat, so not next to one only across a steep slope.
+    an enemy can neither attack it nor be attacked by it from there. The slope adds no restriction to ranged combat or line
+    of sight. **[Interp]** The two units are still adjacent, so the base rule (§8: no ranged combat next to an enemy unit)
+    still applies: a unit next to an enemy only across a steep slope may neither close combat nor fire. A momentum
+    advance always goes into the hex of the unit just fought, so it can never cross a steep slope; the cavalry extra hex
+    can, and may not climb one. **[Interp]** A warrior's long move (§7: 2 hexes only to charge) must end next to an enemy
+    it could close combat, so not next to one only across a steep slope.
   * Leaders are treated like units **[Interp]** (the text says "units").
   * The hexsides come from the terrain (the 308 map has 12), not from data.
 * Engine (X3 Q3–Q6): `wall` is a terrain type; `hillUnder[hex]` is a per-hex flag beside the terrain array (copy-on-write
@@ -890,8 +892,9 @@ The ambush reserve of §18.5 with three options (X3 Q6; the card-trigger and rel
   ordinary unit and that turn's card may order it. If every listed hex is occupied, the placement waits for the start of the
   first later turn at which one is free **[Interp]**. It is triggered once, by the first Gallic entry. Until placed, the unit
   exists off the board (it is not one of the `reserves`).
-* Engine: `ambush.entryHexes` (`[r, c]` in the data, hex ids in `AmbushDef`; on the board, passable, each once): the empty
-  ones (no unit, no leader) are the entry hexes whatever the section, and `ambushSectionAllowed` accepts any section.
+* Engine: `ambush.entryHexes` (`[r, c]` in the data, hex ids in `AmbushDef`; on the board, passable, each once, and not
+  a city wall, which a unit from off the board could never climb): the empty ones (no unit, no leader) are the entry
+  hexes whatever the section, and `ambushSectionAllowed` accepts any section.
   `ambush.noMove`: an entry target has `dist` 0, so the unit's `moved` stays 0 (2 dice); it gets no further move that turn.
   `ambush.attachLeader` (needs a reserve leader): the leader is placed with an entered unit by a move during the movement
   (as Mago); if he is still off the board at its end and a unit of his force entered, `placeLeader` asks for one of their
@@ -923,7 +926,8 @@ Data: side `cards: 0`, `orders: 'dice'`, `orderDice: 2`; the roll purpose is `di
 * Then the normal move and battle phases follow for the ordered units, with no card modifiers.
 * No legion rule applies (X3 Q1).
 * Engine: side data `orders: 'dice'` with `orderDice` (a whole number from 1) and `cards: 0` (validated; such a side may have
-  no `initialCommand` and no hand growth) → `special.orderDice[side]` (0 for a side that plays cards). In `turnFlow`, after
+  no `initialCommand` and no hand growth) → `special.orderDice[side]` (0 for a side that plays cards; such a side needs
+  `cards` of 1 or more, validated too). In `turnFlow`, after
   the turn-start objectives and forced placements, a dice side rolls `orderDice` dice (event `roll`, purpose `diceOrders`;
   phase `orders`, `card` and `effective` null, default modifiers). Each flag face, then each swords face, asks
   `diceVictim { face, options }` (the side's units on the board, unit order, asked even with one; answer `choose`), each

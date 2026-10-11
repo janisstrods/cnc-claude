@@ -98,6 +98,16 @@ describe('dice orders: data (§18.10)', () => {
     expect(bad({}, { initialCommand: { top: 3 } })).toThrow(/^initialCommand: the top army orders by dice and holds no cards \(qa\)$/);
     expect(() => createGame(base, 1)).not.toThrow();
   });
+
+  it('rejects a side that plays cards with no hand (it would wait for ever on an empty hand)', () => {
+    const base = setupOf({ units: [top('MI', [2, 2]), bottom('MI', [6, 2])] });
+    const cards = (side: 'top' | 'bottom', n: unknown) => () => createGame({ ...base, [side]: { ...base[side], cards: n as number } }, 1);
+    for (const n of [0, -1, 2.5, '4', undefined]) {
+      expect(cards('bottom', n)).toThrow(/^bottom army: a side that plays cards needs cards: a whole number, 1 or more \(qa\)$/);
+    }
+    expect(cards('top', 0)).toThrow(/^top army: a side that plays cards needs cards/);
+    expect(cards('top', 1)).not.toThrow();
+  });
 });
 
 describe("the dice side's turn (§18.10)", () => {

@@ -130,7 +130,8 @@ export function steepSlopes(s: GameState): boolean {
 /**
  * Is the hexside between neighbours `a` and `b` a steep slope (rule `steepSlopes`, 308, §18.7, X3 Q5): one of them counts
  * as a hill (`isHill`: a hill, or a camp or wall with a hill under it) and the other is a forest? No close combat crosses
- * it, in either direction; ranged combat and line of sight are not affected.
+ * it, in either direction. The slope adds nothing to ranged combat or line of sight, but the hexes stay adjacent: a unit
+ * next to an enemy across one still may not fire (§8), so it can neither close combat nor fire.
  */
 export function steepSlope(s: GameState, a: HexId, b: HexId): boolean {
   const ta = s.terrain[a];
@@ -175,12 +176,13 @@ export function rampartProtects(s: GameState, defHex: HexId, fromHex: HexId): bo
 }
 
 /**
- * Terrain that blocks line of sight when it lies between firer and target (hills handled separately; a city wall blocks
- * except along a connected wall, see `terrainBlocksSight`).
+ * Terrain that always blocks line of sight when it lies between firer and target: forest, camps and impassable hills.
+ * Internal to `terrainBlocksSight`, which settles city walls before it (they block except along a connected wall) and
+ * hills after it.
  */
-export function terrainBlocksLOS(s: GameState, h: HexId): boolean {
+function terrainBlocksLOS(s: GameState, h: HexId): boolean {
   const t = s.terrain[h];
-  return t === 'forest' || t === 'camp' || t === 'steep' || t === 'wall';
+  return t === 'forest' || t === 'camp' || t === 'steep';
 }
 
 /** Connected group id for every hex where `member` holds (neighbours by `neighbours`), in hex order. */
