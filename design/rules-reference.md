@@ -112,6 +112,9 @@ shuffle discards. Command = scenario hand size (may change during a scenario).
   enter enemy-occupied hexes. A lone leader entering marsh rolls 1 die: helmet = eliminated (banner), else stops.
   A unit entering marsh rolls 1 die: its class symbol = lose 1 block.
 * No exiting the board (scenario exceptions: Castulo).
+* Engine: what a terrain type does for §4, §7 and §8 (impassable, stopping, the 1-hex start, battle after entering, the
+  marsh roll, the dice caps, line-of-sight blocking) is its row of `TERRAIN_STATS` (terrain.ts; a fordable river has the
+  `FORD` row, without caps on a no-cap ford); hills, ramparts, camps and city walls keep rules of their own.
 
 ## 8. Ranged combat
 
@@ -847,7 +850,7 @@ merely passing through a hex never counts (X2 Q9e). A side wins as soon as its *
   * The hexsides come from the terrain (the 308 map has 12), not from data.
 * Engine (X3 Q3–Q6): `wall` is a terrain type; `hillUnder[hex]` is a per-hex flag beside the terrain array (copy-on-write
   like it; `setTerrain` keeps it); `hill: true` is accepted in data only on `camp` and `wall`; `steepSlopes` is a rule id.
-  * Walls: `stopsAll` includes `wall`; `forbidsTerrain` (and `barredTerrain`, the list the AI reads) bars it to every
+  * Walls: `stopsAll` includes `wall`; `forbidsTerrain` (which the AI reads too) bars it to every
     type that is not infantry, which covers moves, momentum, the cavalry extra hex, retreats, evades and setup positions.
     `unitMoves` lets a unit onto a wall only as the first step of its move (`from === startHex`, never from the reserve) and
     caps a move that begins on one at 1 hex (like a marsh); `leaderMoves` likewise. `ccCapOfHex(wall)` = 2. `wallShields`
