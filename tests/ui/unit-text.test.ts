@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ELITES, UNIT_STATS, UNIT_TYPES, type Leader, type LeaderTrait, type Unit, type UnitStats, type UnitType } from '../../src/engine';
 import { leaderTraitLines, unitCardLines, unitSummary } from '../../src/ui/game/unitText';
-import { EXP1_ELITES, EXP1_UNIT_TYPES, EXP2_ELITES, EXP2_UNIT_TYPES, Expansion, Expansion2, Units } from '../../src/ui/screens/RulesReference';
+import { Expansion, Expansion2, Units, elitesOf, unitTypesOf } from '../../src/ui/screens/RulesReference';
 
 const unit = (t: UnitType, extra: Partial<Unit> = {}): Unit =>
   ({ id: 'u1', side: 'top', type: t, hex: 0, blocks: UNIT_STATS[t].blocks, maxBlocks: UNIT_STATS[t].blocks, ...extra }) as Unit;
@@ -92,7 +92,7 @@ describe('unit tooltip (unitSummary)', () => {
 
   it('words every elite ability generically, and shows the elite range', () => {
     const saved = ELITES.bowAuxilia;
-    ELITES.bowAuxilia = { id: 'bowAuxilia', name: 'Test Elite', abilities: ['ignoreSword', 'ranged'], range: 3, types: ['AX'] };
+    ELITES.bowAuxilia = { ...saved, name: 'Test Elite', abilities: ['ignoreSword', 'ranged'] };
     try {
       expect(unitSummary(unit('AX', { elite: 'bowAuxilia' }))).toEqual([
         'Move 1, or 2 without battle · Retreat 1/flag',
@@ -192,33 +192,40 @@ describe('rules reference unit cards', () => {
   };
 
   it('the Units tab keeps the base-game types and their hand-written lines', () => {
-    const base = UNIT_TYPES.filter((t) => !EXP1_UNIT_TYPES.includes(t) && !EXP2_UNIT_TYPES.includes(t));
+    const base = unitTypesOf(0);
     expect(base).toEqual(['LI', 'LB', 'LS', 'AX', 'WA', 'MI', 'HI', 'LC', 'MC', 'HC', 'EL', 'HCH']);
     expect(cardsOf(Units)).toEqual(base.map((t) => REFERENCE[t]));
   });
 
   it('the Expansion #1 tab shows the three new types, generated the same way', () => {
-    expect([...EXP1_UNIT_TYPES].sort()).toEqual(['CAM', 'HWM', 'LBC']);
-    expect(cardsOf(Expansion)).toEqual(EXP1_UNIT_TYPES.map((t) => REFERENCE[t]));
+    expect(unitTypesOf(1)).toEqual(['LBC', 'CAM', 'HWM']);
+    expect(cardsOf(Expansion)).toEqual(unitTypesOf(1).map((t) => REFERENCE[t]));
   });
 
   it('Expansion #2 types (the Barbarian light chariot) have generated cards in the Expansion #2 tab, not in the base Units tab', () => {
-    expect([...EXP2_UNIT_TYPES]).toEqual(['BCH']);
-    for (const t of EXP2_UNIT_TYPES) expect(unitCardLines(t), t).toEqual(REFERENCE[t]);
-    expect(cardsOf(Expansion2)).toEqual(EXP2_UNIT_TYPES.map((t) => REFERENCE[t]));
+    expect(unitTypesOf(2)).toEqual(['BCH']);
+    for (const t of unitTypesOf(2)) expect(unitCardLines(t), t).toEqual(REFERENCE[t]);
+    expect(cardsOf(Expansion2)).toEqual(unitTypesOf(2).map((t) => REFERENCE[t]));
+    // Expansion #3 brings no unit type (its tab has no unit cards)
+    expect([...unitTypesOf(0), ...unitTypesOf(1), ...unitTypesOf(2)]).toEqual(UNIT_TYPES);
   });
 
   it('the Expansion #1 tab lists every Expansion #1 elite preset and both leader traits; the Tenth Legion is in the Expansion #2 tab', () => {
     const text = renderToStaticMarkup(createElement(Expansion)).replace(/<[^>]*>/g, ' ');
-    expect([...EXP2_ELITES]).toEqual(['tenthLegion']);
-    // every preset is listed in exactly one expansion tab
-    expect([...EXP1_ELITES, ...EXP2_ELITES].sort()).toEqual(Object.keys(ELITES).sort());
+    expect(elitesOf(1)).toEqual(['carthSacredBand', 'thebanSacredBand', 'silverShields', 'companions', 'immortals', 'bowAuxilia']);
+    expect(elitesOf(2)).toEqual(['tenthLegion']);
+    // every preset is listed in exactly one expansion tab (Expansion #3's has no elite table)
+    expect([...elitesOf(1), ...elitesOf(2)].sort()).toEqual(Object.keys(ELITES).sort());
     for (const e of Object.values(ELITES)) {
-      if (EXP2_ELITES.includes(e.id)) expect(text, e.id).not.toContain(e.name);
+      if (elitesOf(2).includes(e.id)) expect(text, e.id).not.toContain(e.name);
       else expect(text, e.id).toContain(e.name);
     }
+    // the battles that field each preset, from the scenario data
+    const battles = ['Heavy Infantry · 002 (base game)', 'Medium Infantry · 104', 'Heavy Infantry · 113, 114', 'Medium Cavalry · 107–111', 'Medium Infantry · 108', 'Auxilia · 123'];
+    for (const b of battles) expect(text).toContain(b);
     const exp2 = renderToStaticMarkup(createElement(Expansion2)).replace(/<[^>]*>/g, ' ');
-    for (const id of EXP2_ELITES) expect(exp2, id).toContain(ELITES[id].name);
+    for (const id of elitesOf(2)) expect(exp2, id).toContain(ELITES[id].name);
+    expect(exp2).toContain('Heavy Infantry · 215, 217');
     expect(text).toContain('Alexander');
     expect(text).toContain('satrap');
     for (const t of ['Sea', 'Rampart', 'Ford, no dice limit', 'Tactical Flexibility', 'Hellespont', 'Asculum']) expect(text).toContain(t);
