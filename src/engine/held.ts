@@ -4,7 +4,9 @@
 // This module sits below banners.ts in the import graph.
 import { sectionsOf } from './hex';
 import { unitAt } from './query';
-import { SECTIONS, SIDES, type GameState, type HexId, type ObjectiveOf, type ObjectiveState, type SectionName, type Side } from './types';
+import {
+  SECTIONS, SIDES, type GameState, type HexId, type ObjectiveOf, type ObjectiveState, type SectionName, type Side, type Unit,
+} from './types';
 
 /** Banners `side` holds right now through its objectives (hold, majority, section clear); lost again when they lapse. */
 export function heldBanners(s: GameState, side: Side): number {
@@ -18,9 +20,13 @@ export function heldSnapshot(s: GameState): Record<Side, number>[] {
   return s.special.objState.map((st) => ({ ...st.held }));
 }
 
-function unitsOn(s: GameState, hexes: HexId[], side: Side): number {
+/** Where `unitsOn` and `majorityHolder` find the unit on a hex: the AI passes its occupancy table (default: `unitAt`). */
+export type UnitLookup = (h: HexId) => Unit | null | undefined;
+
+/** Units of `side` on `hexes` (`unitOn`: see `UnitLookup`). */
+export function unitsOn(s: GameState, hexes: readonly HexId[], side: Side, unitOn?: UnitLookup): number {
   let n = 0;
-  for (const h of hexes) if (unitAt(s, h)?.side === side) n++;
+  for (const h of hexes) if ((unitOn ? unitOn(h) : unitAt(s, h))?.side === side) n++;
   return n;
 }
 
@@ -30,9 +36,9 @@ function enemyIn(s: GameState, side: Side, sec: SectionName): boolean {
 }
 
 /** The side of `o.sides` with strictly more units on the hexes, or null (a tie, or the leader is not in `sides`). */
-function majorityHolder(s: GameState, o: ObjectiveOf<'majority'>): Side | null {
-  const top = unitsOn(s, o.hexes, 'top');
-  const bottom = unitsOn(s, o.hexes, 'bottom');
+export function majorityHolder(s: GameState, o: ObjectiveOf<'majority'>, unitOn?: UnitLookup): Side | null {
+  const top = unitsOn(s, o.hexes, 'top', unitOn);
+  const bottom = unitsOn(s, o.hexes, 'bottom', unitOn);
   const lead: Side | null = top > bottom ? 'top' : bottom > top ? 'bottom' : null;
   return lead && o.sides.includes(lead) ? lead : null;
 }

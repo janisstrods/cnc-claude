@@ -1,7 +1,7 @@
 // Fast board helpers for the AI: distance table, occupancy, retreat room, LOS and flag rules mirrored with O(1) lookups.
 import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
 import {
-  closedTo, hillGroups, isCamp, isWall, steepSlope, stopsOnEntry, terrainBlocksSight, wallGroups, type BoardTerrain, type SightGroups,
+  closedTo, hillGroups, isCamp, isWall, stopsOnEntry, terrainBlocksSight, wallGroups, type BoardTerrain, type SightGroups,
 } from '../engine/terrain';
 import { frightAtFirstSight, rampartShields, wallShields, type StrikeRole } from '../engine/combat';
 import { canShoot, eliteHas, rangeOf } from '../engine/elites';
@@ -34,6 +34,8 @@ function rearOf(h: HexId, side: Side): readonly HexId[] {
 export class Occ {
   readonly unit: (Unit | null)[] = new Array(NHEX).fill(null);
   readonly leader: (Leader | null)[] = new Array(NHEX).fill(null);
+  /** The unit on hex h, as an engine `UnitLookup` (held.ts's `unitsOn`, `majorityHolder`). */
+  readonly unitOn = (h: HexId): Unit | null => this.unit[h];
   constructor(s: GameState) {
     for (const u of s.units) if (u.hex >= 0) this.unit[u.hex] = u;
     for (const l of s.leaders) if (l.hex >= 0) this.leader[l.hex] = l;
@@ -225,18 +227,6 @@ export function reachOf(u: Unit, occ?: Occ, s?: GameState): number {
   }
   if (s && u.hex >= 0 && isWall(s, u.hex)) r = Math.min(r, 1);
   return r;
-}
-
-/**
- * May `u`, standing on its hex, close combat the piece on its neighbour `h` as far as the terrain goes (mirror of the
- * engine's `mayAttackInto`, §18.7)? Never across a steep slope (308); a mounted unit or war machine attacks a piece on a
- * city wall only if it began the turn next to that wall hex (`startHex`, the hex it began the turn on). Always true in a
- * battle with neither walls nor steep slopes. A battle back is no attack: callers use this for attacks only.
- */
-export function mayCloseCombat(s: GameState, u: Unit, h: HexId, startHex: HexId): boolean {
-  if (steepSlope(s, u.hex, h)) return false;
-  if (!isWall(s, h) || UNIT_STATS[u.type].infantry) return true;
-  return startHex >= 0 && hexDist(startHex, h) === 1;
 }
 
 /** Rows from hex h to `side`'s own baseline (0 on it). */

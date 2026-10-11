@@ -1,15 +1,15 @@
 // Analytic combat estimator: expected value (in banner units) of attacks, battle backs, evades and ranged fire.
 import { CARD_DEFS } from '../engine/cards';
-import { battleTargets, rollingFirePaths, rollingFireRoutes } from '../engine/flow';
+import { battleTargets, mayAttackInto, rollingFirePaths, rollingFireRoutes, wallStrikesFirst } from '../engine/flow';
 import { closeCombatDice, rangedDice, retreatPerFlag, swordIgnores, vsMountedIgnores, type StrikeRole } from '../engine/combat';
 import { neighbours } from '../engine/hex';
 import { other, unitById } from '../engine/query';
-import { isHill, isWall } from '../engine/terrain';
+import { isHill } from '../engine/terrain';
 import { canShoot, eliteHas, fireMoveLimit, rangeOf } from '../engine/elites';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType } from '../engine/units';
 import type { Answer, GameState, HexId, Leader, Unit } from '../engine/types';
 import {
-  Occ, attachedLeaderOcc, canEvadeOcc, canFireOcc, helmetsOcc, hexDist, ignorableOcc, mayCloseCombat, retreatRoom, shortfall,
+  Occ, attachedLeaderOcc, canEvadeOcc, canFireOcc, helmetsOcc, hexDist, ignorableOcc, retreatRoom, shortfall,
 } from './board';
 import { binom, pAnyHelmet, strikeDist, type Prof } from './dice';
 import { blockVal, leaderVal, nextBanner, type Weights } from './values';
@@ -207,14 +207,6 @@ export function evadeEV(s: GameState, occ: Occ, a: Unit, t: Unit, n: number): EV
     if (h >= t.blocks) pe += pmf[k];
   }
   return { ev: ev + 0.015, pElim: pe, evade: true };
-}
-
-/**
- * City wall (§18.7): does defender `t`, standing on a wall hex, strike first against `a` without a card (mirror of the
- * engine's `wallStrikesFirst`)? Always, unless the attacker stands on a wall hex itself.
- */
-export function wallStrikesFirst(s: GameState, t: Unit, a: Unit): boolean {
-  return t.hex >= 0 && isWall(s, t.hex) && !isWall(s, a.hex);
 }
 
 /**
@@ -421,7 +413,7 @@ export function attackNowValue(
   if (!m.noClose) {
     const start = startHex ?? s.turn.ordered[u.id]?.startHex ?? u.hex;
     for (const h of neighbours(u.hex)) {
-      if (!mayCloseCombat(s, u, h, start)) continue;
+      if (!mayAttackInto(s, u, h, start)) continue;
       const v = occ.unit[h];
       let ev: number;
       if (v) {

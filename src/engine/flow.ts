@@ -690,7 +690,7 @@ function holdsFirstStrike(s: GameState, side: Side): number | null {
  * First Strike, without a card? Always, unless the attacker stands on a wall hex itself. (Only units get here: a lone
  * leader on a wall has no first strike, §18.7 [Interp].)
  */
-function wallStrikesFirst(s: GameState, defender: Unit, attacker: Unit): boolean {
+export function wallStrikesFirst(s: GameState, defender: Unit, attacker: Unit): boolean {
   return isWall(s, defender.hex) && !isWall(s, attacker.hex);
 }
 
@@ -852,12 +852,13 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
 /**
  * May `u` close combat the piece on its neighbour `h` as far as the terrain goes (§18.7)? Not across a steep slope (308),
  * either way; and a mounted unit or war machine attacks a piece on a city wall only if it began the turn next to that wall
- * hex (`ordered.startHex`; a lone leader on the wall too [Interp]). A battle back is no attack: these never stop it.
+ * hex (`startHex`, by default its `ordered.startHex`; a lone leader on the wall too [Interp]). A battle back is no attack:
+ * these never stop it. The AI passes the start hex of a planned move.
  */
-function mayAttackInto(s: GameState, u: Unit, h: HexId): boolean {
+export function mayAttackInto(s: GameState, u: Unit, h: HexId, startHex?: HexId): boolean {
   if (steepSlope(s, u.hex, h)) return false;
   if (!isWall(s, h) || UNIT_STATS[u.type].infantry) return true;
-  const start = s.turn.ordered[u.id]?.startHex ?? OFF_BOARD;
+  const start = startHex ?? s.turn.ordered[u.id]?.startHex ?? OFF_BOARD;
   return start >= 0 && areAdjacent(start, h);
 }
 
@@ -914,14 +915,22 @@ export function battleTargets(s: GameState, unitId: string): BattleTarget[] {
 // orders
 // ---------------------------------------------------------------------------
 
-function addOrdered(s: GameState, id: string, extra: Partial<OrderedPiece> = {}) {
+/**
+ * The order state of piece `id` just ordered (§6): it starts where it stands (`OFF_BOARD` for a reserve), has not moved and
+ * has the turn's shots as battles (none for a leader). The AI orders its planned dice orders with it too.
+ */
+export function newOrderedPiece(s: GameState, id: string): OrderedPiece {
   const isLeader = isLeaderId(id);
   const hex = isLeader ? leaderById(s, id)?.hex ?? OFF_BOARD : unitById(s, id)?.hex ?? OFF_BOARD;
-  s.turn.ordered[id] = {
+  return {
     id, isLeader, startHex: hex, moved: 0, moveDone: false, move2Done: false,
     battlesLeft: isLeader ? 0 : s.turn.mods.shots, canBattle: true, mustBattle: false,
-    enteredHexThisTurn: false, attachedThisTurn: false, ...extra,
+    enteredHexThisTurn: false, attachedThisTurn: false,
   };
+}
+
+function addOrdered(s: GameState, id: string, extra: Partial<OrderedPiece> = {}) {
+  s.turn.ordered[id] = { ...newOrderedPiece(s, id), ...extra };
 }
 
 /**

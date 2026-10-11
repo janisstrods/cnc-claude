@@ -1,4 +1,5 @@
 // Card knowledge: how valuable it is to keep a card in hand for later, and a quick estimate of what a card can do now.
+import { CARD_DEFS, sectionOrders } from '../engine/cards';
 import { ambushAvailable } from '../engine/flow';
 import { inSection } from '../engine/hex';
 import { leaderHas, leadersOf, unitsOf } from '../engine/query';
@@ -32,11 +33,13 @@ function pilumThrowers(units: Unit[]): number {
   return n;
 }
 
-const SECTION_OF: Partial<Record<CardKind, [SectionName, number]>> = {
-  order2L: ['left', 2], order2C: ['center', 2], order2R: ['right', 2],
-  order3L: ['left', 3], order3C: ['center', 3], order3R: ['right', 3],
-  order4L: ['left', 4], order4C: ['center', 4], order4R: ['right', 4],
-};
+/** The section cards that order in one section (order2L … order4R): that section and the orders, from `sectionOrders`. */
+const SECTION_OF: Partial<Record<CardKind, [SectionName, number]>> = {};
+for (const kind of Object.keys(CARD_DEFS) as CardKind[]) {
+  const counts = sectionOrders(kind);
+  const secs = counts ? (Object.keys(counts) as SectionName[]) : [];
+  if (secs.length === 1) SECTION_OF[kind] = [secs[0], counts![secs[0]]!];
+}
 
 /** Value (in banners) of keeping this card for a later turn. */
 export function cardRetention(s: GameState, side: Side, kind: CardKind, W: Weights): number {

@@ -4,6 +4,7 @@
 // game keep their pulls in evaluate.ts. Every term here is 0 in a battle without these objectives and rules (the base
 // game and Expansion #1), so their evaluation is unchanged.
 import { bannerTotal } from '../engine/banners';
+import { majorityHolder, unitsOn } from '../engine/held';
 import { sectionsOf } from '../engine/hex';
 import { other } from '../engine/query';
 import { canMarch } from '../engine/elites';
@@ -47,20 +48,6 @@ function hasGoals(s: GameState): boolean {
   return false;
 }
 
-function unitsOn(occ: Occ, hexes: readonly HexId[], side: Side): number {
-  let n = 0;
-  for (const h of hexes) if (occ.unit[h]?.side === side) n++;
-  return n;
-}
-
-/** The side of `o.sides` with strictly more units on the hexes, or null. */
-function majorityHolder(occ: Occ, o: ObjectiveOf<'majority'>): Side | null {
-  const top = unitsOn(occ, o.hexes, 'top');
-  const bottom = unitsOn(occ, o.hexes, 'bottom');
-  const lead: Side | null = top > bottom ? 'top' : bottom > top ? 'bottom' : null;
-  return lead && o.sides.includes(lead) ? lead : null;
-}
-
 /** Sections (from `side`'s point of view) holding a unit of the other side (a boundary hex is in both). */
 function enemySections(s: GameState, side: Side): Set<SectionName> {
   const out = new Set<SectionName>();
@@ -79,9 +66,9 @@ export function heldNow(s: GameState, occ: Occ, side: Side): number {
   for (let i = 0; i < objectives.length; i++) {
     const o = objectives[i];
     if (o.kind === 'hold') {
-      if (o.side === side) n += Math.min(o.max, unitsOn(occ, o.hexes, side));
+      if (o.side === side) n += Math.min(o.max, unitsOn(s, o.hexes, side, occ.unitOn));
     } else if (o.kind === 'majority') {
-      n += o.when === 'always' ? (majorityHolder(occ, o) === side ? o.banners : 0) : objState[i].held[side];
+      n += o.when === 'always' ? (majorityHolder(s, o, occ.unitOn) === side ? o.banners : 0) : objState[i].held[side];
     } else if (o.kind === 'sectionClear' && o.side === side) {
       const enemy = enemySections(s, side);
       n += objState[i].sections.filter((sec) => !enemy.has(sec)).length;
@@ -103,9 +90,9 @@ function projectedHeld(s: GameState, occ: Occ, side: Side): { held: number; pote
   for (let i = 0; i < objectives.length; i++) {
     const o = objectives[i];
     if (o.kind === 'hold') {
-      if (o.side === side) held += Math.min(o.max, unitsOn(occ, o.hexes, side));
+      if (o.side === side) held += Math.min(o.max, unitsOn(s, o.hexes, side, occ.unitOn));
     } else if (o.kind === 'majority') {
-      if (majorityHolder(occ, o) === side) held += o.banners;
+      if (majorityHolder(s, o, occ.unitOn) === side) held += o.banners;
     } else if (o.kind === 'sectionClear' && o.side === side) {
       const enemy = enemySections(s, side);
       const clear = SECTIONS.filter((sec) => !enemy.has(sec)).length;
@@ -223,7 +210,7 @@ function smallest(xs: number[], n: number): number[] {
 
 /** Hold objective: the holding side's pull towards the hexes it still needs (up to `max`). */
 function holdPull(s: GameState, occ: Occ, o: ObjectiveOf<'hold'>): number {
-  const missing = o.max - Math.min(o.max, unitsOn(occ, o.hexes, o.side));
+  const missing = o.max - Math.min(o.max, unitsOn(s, o.hexes, o.side, occ.unitOn));
   if (missing <= 0) return 0;
   const ds: number[] = [];
   for (const h of o.hexes) if (occ.unit[h]?.side !== o.side) ds.push(nearestFree(s, h, o.side, o.hexes));
@@ -238,7 +225,7 @@ function holdPull(s: GameState, occ: Occ, o: ObjectiveOf<'hold'>): number {
  * strictly ahead, so a wider lead is safer for it, and every unit the other side brings onto the hexes counts against it.
  */
 function majorityTerm(s: GameState, occ: Occ, o: ObjectiveOf<'majority'>, me: Side): number {
-  const lead = unitsOn(occ, o.hexes, me) - unitsOn(occ, o.hexes, other(me));
+  const lead = unitsOn(s, o.hexes, me, occ.unitOn) - unitsOn(s, o.hexes, other(me), occ.unitOn);
   let v = MAJORITY_LEAD * Math.max(-3, Math.min(3, lead));
   for (const side of o.sides) {
     const ds: number[] = [];

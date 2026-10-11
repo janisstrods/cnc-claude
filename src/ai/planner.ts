@@ -2,14 +2,12 @@
 // with the engine's own turn generator, evaluated statically, and compared (minus the value of keeping the card).
 import { bannerTotal } from '../engine/banners';
 import { cardKind } from '../engine/cards';
-import { continueTurn, nextTurn, pieceMoves, turnFlow, type Gen } from '../engine/flow';
+import { continueTurn, newOrderedPiece, nextTurn, pieceMoves, turnFlow, type Gen } from '../engine/flow';
 import { diceOrdered } from '../engine/orders';
-import { isLeaderId, leaderById, other, unitById } from '../engine/query';
+import { other } from '../engine/query';
 import { forcedDiceLeft } from '../engine/rng';
 import { cloneState } from '../engine/setup';
-import {
-  OFF_BOARD, type Answer, type CardKind, type Decision, type FlowCtx, type GameState, type HexId, type SectionName, type Side,
-} from '../engine/types';
+import type { Answer, CardKind, Decision, FlowCtx, GameState, HexId, SectionName, Side } from '../engine/types';
 import { cardRetention, quickCardScore } from './cardsense';
 import { attackAnswer, attackOptions, sameAttack } from './estimate';
 import { evaluate } from './evaluate';
@@ -149,14 +147,7 @@ export function candScore(c: Cand): number {
  * movement (`continueTurn`).
  */
 export function applyDiceOrders(s: GameState, ids: (string | null)[]): void {
-  for (const id of diceOrdered(s, ids)) {
-    const isLeader = isLeaderId(id);
-    const hex = isLeader ? leaderById(s, id)?.hex ?? OFF_BOARD : unitById(s, id)?.hex ?? OFF_BOARD;
-    s.turn.ordered[id] = {
-      id, isLeader, startHex: hex, moved: 0, moveDone: false, move2Done: false, battlesLeft: isLeader ? 0 : s.turn.mods.shots,
-      canBattle: true, mustBattle: false, enteredHexThisTurn: false, attachedThisTurn: false,
-    };
-  }
+  for (const id of diceOrdered(s, ids)) s.turn.ordered[id] = newOrderedPiece(s, id);
 }
 
 /** Steps the engine generator on a private clone (the turn from its card, or `start`'s generator on the clone). */

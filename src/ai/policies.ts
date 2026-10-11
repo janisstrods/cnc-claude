@@ -3,6 +3,7 @@
 import { bannerTotal } from '../engine/banners';
 import { cardKind, sectionOrders } from '../engine/cards';
 import { closeCombatDice, retreatPerFlag } from '../engine/combat';
+import { mayAttackInto, wallStrikesFirst } from '../engine/flow';
 import { nextCaptureBanners, stopCaptureAt } from '../engine/objectives';
 import { baselineRow, neighbours, rowOf, sectionsOf } from '../engine/hex';
 import {
@@ -17,11 +18,11 @@ import { UNIT_STATS, bonusCombatEligible, escapeDice } from '../engine/units';
 import {
   OFF_BOARD, type Answer, type Decision, type DieFace, type GameState, type HexId, type RetreatOption, type Side, type Unit,
 } from '../engine/types';
-import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist, isWarMachine, mayCloseCombat } from './board';
+import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist, isWarMachine } from './board';
 import { pAnyHelmet } from './dice';
 import {
   attackAnswer, attackNowValue, attackOptions, closeAttackEV, closeProfile, dmgValue, evadeEV, leaderAttackEV, momentumValue, standEV,
-  strikeValue, wallStandEV, wallStrikesFirst, type AttackOpt,
+  strikeValue, wallStandEV, type AttackOpt,
 } from './estimate';
 import { battered, evaluate } from './evaluate';
 import { pieceBenefits } from './ordering';
@@ -435,7 +436,7 @@ function bestBonusHere(s: GameState, u: Unit, W: Weights): number {
   let best = 0;
   const start = s.turn.ordered[u.id]?.startHex ?? OFF_BOARD;
   for (const h of neighbours(u.hex)) {
-    if (!mayCloseCombat(s, u, h, start)) continue; // not across a steep slope; a wall only from where it began (§18.7)
+    if (!mayAttackInto(s, u, h, start)) continue; // not across a steep slope; a wall only from where it began (§18.7)
     const v = occ.unit[h];
     if (v) {
       if (v.side !== u.side) best = Math.max(best, closeAttackEV(s, occ, u, v, 'bonus', true, W).ev);
