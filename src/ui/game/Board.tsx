@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react';
 import { ALL_HEXES, leaderUnit, rowOf, colOf, type GameState, type HexId, type Leader, type Side, type Unit } from '../../engine';
 import { BLOCK_COLORS, LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
+import { rgb } from '../../art/color';
 import { BoardArt, ObjectiveMarkers } from '../terrain';
 import { BOARD_H, BOARD_W, HEX_R, hexCenterId, hexPoints } from '../geometry';
 import { boardArtProps, leaderTokenProps, unitTokenProps } from './boardProps';
@@ -67,7 +68,8 @@ function CommandBadge({ state, command, at = { x: -HEX_R * 0.5, y: -HEX_R * 0.6 
   if (!c) return null;
   const col = BLOCK_COLORS[commandBlocks(state, c)];
   // a pale command colour (Lentulus' grey) takes a dark letter
-  const light = parseInt(col.edge.slice(1, 3), 16) + parseInt(col.edge.slice(3, 5), 16) + parseInt(col.edge.slice(5, 7), 16) > 450;
+  const [r, g, b] = rgb(col.edge);
+  const light = r + g + b > 450;
   return (
     <g className="command-badge" transform={`translate(${at.x}, ${at.y})${scale !== 1 ? ` scale(${scale})` : ''}`}>
       <circle r={7.4} fill={col.edge} stroke={col.edgeShade} strokeWidth={1.4} />

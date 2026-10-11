@@ -6,7 +6,7 @@ import type { ScenarioInfo } from '../../scenarios';
 import { hasHistory, loadHistory, type BattleHistory, type UnitKind } from '../../history';
 import { blockColors } from '../../art';
 import { Button, Modal } from '../kit';
-import { BattleMap, KIND_NAMES, UnitGlyph, darken, luminance, unitSize, type MapColors } from './BattleMap';
+import { BattleMap, KIND_NAMES, UnitGlyph, luminance, shade, unitSize, type MapColors } from './BattleMap';
 import './history.css';
 
 /**
@@ -16,7 +16,7 @@ import './history.css';
 export function sideColors(sc: ScenarioInfo): Record<Side, MapColors> {
   const c = (side: Side): MapColors => {
     const b = blockColors(sc.setup[side].blocks);
-    return luminance(b.edge) > 0.65 ? { fill: b.edgeShade, dark: darken(b.edgeShade, 0.6) } : { fill: b.edge, dark: b.edgeShade };
+    return luminance(b.edge) > 0.65 ? { fill: b.edgeShade, dark: shade(b.edgeShade, 0.6) } : { fill: b.edge, dark: b.edgeShade };
   };
   return { top: c('top'), bottom: c('bottom') };
 }
