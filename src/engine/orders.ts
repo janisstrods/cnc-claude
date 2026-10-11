@@ -22,15 +22,20 @@ const isFoot = (u: Unit) => UNIT_STATS[u.type].foot;
 const isMounted = (u: Unit) => UNIT_STATS[u.type].mounted;
 const ofClass = (c: UnitClass) => (u: Unit) => UNIT_STATS[u.type].cls === c;
 
-/** Determine how a card orders pieces in the current position. */
-export function orderMode(s: GameState, side: Side, kind: CardKind | null): OrderMode {
+/**
+ * Determine how a card orders pieces in the current position. `command` (rule `commandFallback`, 304, §18.5): the command
+ * the card is played for, among whose units alone the type the card names is looked for, so that a command without it
+ * orders "1 unit of your choice" of its own; ignored without the rule (210 Picenum judges the whole army).
+ */
+export function orderMode(s: GameState, side: Side, kind: CardKind | null, command?: string): OrderMode {
   if (!kind) return { mode: 'none' };
-  const units = unitsOf(s, side);
-  const command = s.players[side].command;
+  const own = command !== undefined && fallbackCommands(s, side).includes(command);
+  const units = own ? unitsOf(s, side).filter((u) => inCommand(u, command)) : unitsOf(s, side);
+  const max = s.players[side].command;
   const sec = sectionOrders(kind);
   if (sec) return { mode: 'section', counts: sec };
   const troop = (filter: (u: Unit) => boolean, leaders = false): OrderMode =>
-    units.some(filter) ? { mode: 'troop', filter, max: command, leaders } : { mode: 'one' };
+    units.some(filter) ? { mode: 'troop', filter, max, leaders } : { mode: 'one' };
   switch (kind) {
     case 'orderLight': return troop(ofClass('light'));
     case 'orderMedium': return troop(ofClass('medium'));
@@ -46,6 +51,7 @@ export function orderMode(s: GameState, side: Side, kind: CardKind | null): Orde
     case 'doubleTime': return units.some(isFoot) ? { mode: 'group', max: 4 } : { mode: 'one' };
     case 'clash': return { mode: 'auto' };
     case 'darken': return units.some(canShoot) ? { mode: 'auto' } : { mode: 'one' };
+    // a leader of either command lets Rally act for any (leader effects are not restricted, X3 Q16): the army-wide test
     case 'rally': return leadersOf(s, side).length ? { mode: 'dice' } : { mode: 'one' };
     case 'spartacus': return { mode: 'dice' };
     case 'firstStrike': return { mode: 'none' };
@@ -82,6 +88,55 @@ export function spartacusDiceCount(s: GameState, side: Side): number {
 export const ONE_ARMY = 'One card orders one army only.';
 const NOT_THE_COMMAND = 'That piece is not in the command you named.';
 
+/**
+ * The commands of `side` whose cards look for the type they name within themselves (rule `commandFallback`, 304, §18.5),
+ * in data order; none without the rule.
+ */
+export function fallbackCommands(s: GameState, side: Side): string[] {
+  if (!s.special.rules.includes('commandFallback')) return [];
+  return s.special.commands.filter((c) => c.side === side).map((c) => c.id);
+}
+
+/** A command and the order mode a card has for it (`commandModes`). */
+export interface CommandMode {
+  command: string;
+  mode: OrderMode;
+}
+
+/**
+ * The order mode a card has for each of `side`'s commands (rule `commandFallback`, 304, §18.5), when at least one of them
+ * falls back to "1 unit of your choice" where the army as a whole would not; null otherwise, and always without the rule:
+ * every selection is then judged by the army's mode (`orderMode`). The two never differ in anything but that fallback.
+ */
+export function commandModes(s: GameState, side: Side, kind: CardKind | null): CommandMode[] | null {
+  const cmds = fallbackCommands(s, side);
+  if (!kind || !cmds.length) return null;
+  const whole = orderMode(s, side, kind).mode;
+  const per = cmds.map((command) => ({ command, mode: orderMode(s, side, kind, command) }));
+  return per.some((p) => p.mode.mode !== whole) ? per : null;
+}
+
+/** The command of an order selection: that of its first piece with one (undefined = none yet, or no commands). */
+export function selectionCommand(s: GameState, sel: readonly string[]): string | undefined {
+  for (const id of sel) {
+    const c = commandOf(s, id);
+    if (c !== undefined) return c;
+  }
+  return undefined;
+}
+
+/**
+ * The order mode a selection is judged by: the card's (`orderMode`), or where the commands' modes differ (`commandModes`,
+ * 304) that of the selection's command; null while such a selection names no command yet (more than one mode is open).
+ */
+export function selectionMode(s: GameState, side: Side, kind: CardKind | null, pieces: readonly string[]): OrderMode | null {
+  const per = commandModes(s, side, kind);
+  if (!per) return orderMode(s, side, kind);
+  const own = selectionCommand(s, pieces);
+  if (own === undefined) return null;
+  return per.find((p) => p.command === own)?.mode ?? orderMode(s, side, kind);
+}
+
 /** Command a unit or leader belongs to; undefined = none, so free to go with any command. */
 export function commandOf(s: GameState, id: string): string | undefined {
   return (isLeaderId(id) ? leaderById(s, id) : unitById(s, id))?.command;
@@ -111,7 +166,8 @@ export function commandClash(s: GameState, ids: string[], command?: string): str
  * The commands a card that orders without a selection (Clash of Shields, Darken the Sky) or by dice (Rally, I Am
  * Spartacus) could order, when there is more than one (§18.5): the ids of those with an eligible unit, in the battle's
  * data order. The player names one (`chooseCommand`) before the card acts. Empty = nothing to ask (also in every battle
- * without commands).
+ * without commands). With the rule `commandFallback` (304) a command without the card's units (Darken the Sky's missile
+ * units) can be named too, for 1 unit of its choice.
  */
 export function commandChoices(s: GameState, side: Side, kind: CardKind | null): string[] {
   if (!kind || !s.special.commands.length) return [];
@@ -120,7 +176,11 @@ export function commandChoices(s: GameState, side: Side, kind: CardKind | null):
   if (m.mode === 'auto') pool = autoOrders(s, side, kind).map((id) => unitById(s, id)!);
   else if (m.mode === 'dice') pool = kind === 'rally' ? rallyCandidates(s, side) : unitsOf(s, side);
   else return [];
-  const present = s.special.commands.filter((c) => c.side === side && pool.some((u) => u.command === c.id)).map((c) => c.id);
+  const fallback = m.mode === 'auto' ? (commandModes(s, side, kind) ?? []).filter((p) => p.mode.mode === 'one').map((p) => p.command) : [];
+  const units = unitsOf(s, side);
+  const present = s.special.commands.filter((c) => c.side === side && (
+    pool.some((u) => u.command === c.id) || (fallback.includes(c.id) && units.some((u) => u.command === c.id))
+  )).map((c) => c.id);
   return present.length > 1 ? present : [];
 }
 
@@ -135,9 +195,21 @@ export function autoOrders(s: GameState, side: Side, kind: CardKind, command?: s
   return [];
 }
 
-/** Pieces that could take part in some valid order with this card (for UI highlighting). */
+/**
+ * Pieces that could take part in some valid order with this card (for UI highlighting). Where the commands' modes differ
+ * (`commandModes`, 304) each command's pieces by its own mode.
+ */
 export function eligiblePieces(s: GameState, side: Side, kind: CardKind | null): string[] {
-  const m = orderMode(s, side, kind);
+  const per = commandModes(s, side, kind);
+  if (!per) return eligibleFor(s, side, orderMode(s, side, kind));
+  const out = new Set<string>();
+  for (const { command, mode } of per) {
+    for (const id of eligibleFor(s, side, mode)) if (inCommand({ command: commandOf(s, id) }, command)) out.add(id);
+  }
+  return [...out];
+}
+
+function eligibleFor(s: GameState, side: Side, m: OrderMode): string[] {
   const units = unitsOf(s, side);
   const leaders = leadersOf(s, side);
   switch (m.mode) {
@@ -177,7 +249,8 @@ export function eligiblePieces(s: GameState, side: Side, kind: CardKind | null):
 
 /** Most pieces this card can order given the selection so far (for the UI counter), or null when unbounded or not yet known. */
 export function orderLimit(s: GameState, side: Side, kind: CardKind | null, pieces: string[]): number | null {
-  const m = orderMode(s, side, kind);
+  const m = selectionMode(s, side, kind, pieces);
+  if (!m) return null; // 304: the commands' modes differ and the selection names none yet
   switch (m.mode) {
     case 'section':
       return Object.values(m.counts).reduce((a, n) => a + (n ?? 0), 0);
@@ -262,14 +335,22 @@ function assignSections(hexSecs: SectionName[][], counts: Partial<Record<Section
 
 /**
  * Validate an order selection. Returns an error message, or null when legal. In a battle with separate commands (§18.5)
- * the pieces must also belong to one command.
+ * the pieces must also belong to one command; with the rule `commandFallback` (304) the selection is judged by its own
+ * command's mode (`selectionMode`), and one that names no command yet by any command's.
  */
 export function validateOrders(s: GameState, side: Side, kind: CardKind | null, pieces: string[]): string | null {
-  return validateSelection(s, side, kind, pieces) ?? commandClash(s, pieces);
+  const m = selectionMode(s, side, kind, pieces);
+  if (m) return validateSelection(s, side, m, pieces) ?? commandClash(s, pieces);
+  let err: string | null = null;
+  for (const p of commandModes(s, side, kind)!) {
+    const e = validateSelection(s, side, p.mode, pieces);
+    if (e === null) return null;
+    err ??= e;
+  }
+  return err;
 }
 
-function validateSelection(s: GameState, side: Side, kind: CardKind | null, pieces: string[]): string | null {
-  const m = orderMode(s, side, kind);
+function validateSelection(s: GameState, side: Side, m: OrderMode, pieces: string[]): string | null {
   if (new Set(pieces).size !== pieces.length) return 'A piece may only be ordered once.';
   for (const id of pieces) {
     const p = isLeaderId(id) ? leaderById(s, id) : unitById(s, id);

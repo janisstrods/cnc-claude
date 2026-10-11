@@ -702,6 +702,15 @@ leaders), and a unit merely passing through a hex never counts (X2 Q9e). A side 
       Move-Fire-Move, Rally, I Am Spartacus results) order or rally only units of that command.
     * If the chosen command has no unit of the type a card names, the card's "1 unit of your choice" alternative applies
       within that command.
+      * Engine: the rule `commandFallback` in 304's data (it needs `commands`). The type is looked for among the units of
+        the command the card is played for: the troop type of Order Light, Medium, Heavy or Mounted Troops, Mounted Charge
+        and Move-Fire-Move, foot units for Line Command and Double Time, missile units for Darken the Sky. A selection is
+        judged by its own command's mode (the command of its first piece), so the same card may order up to Command light
+        units of one command or 1 unit of the other. Darken the Sky asks `chooseCommand` among the commands with missile
+        units and those without; one without then orders 1 unit of its own. That unit is a normal order, with no card
+        bonus. Rally keeps its army-wide test **[Interp]**: it names no troop type, and a leader of either command lets it
+        rally the command named, since leader effects are not restricted. 210 has no such rule: its cards judge the
+        whole army.
     * A Leadership card must name a leader of the chosen command, and its chain includes only that command's units; a
       leader may be ordered alone only for his own command. A Counter Attack is played for one chosen command too.
     * Not restricted: First Strike (it is not an order) and leader effects (helmets, flag ignoring, support, Rally

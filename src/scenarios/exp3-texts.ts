@@ -36,7 +36,7 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     specialText: [
       'Marian legions (both armies): medium and heavy infantry on both sides may throw the pilum: range 2, always 1 die, not after moving 2 hexes.',
       'Valentia, the four hexes of the town just right of centre, is impassable and blocks line of sight.',
-      "Two Sertorian commands: Herennius' (grey blocks) and Perpenna's (light-blue blocks). Every card orders units of one command only, tactic cards such as Clash of Shields, Darken the Sky and Rally included; the player names the command when a card could order either. Each Sertorian leader belongs to his own command, so a Leadership card must use a leader of the command named. The Romans have no commands.",
+      "Two Sertorian commands: Herennius' (grey blocks) and Perpenna's (light-blue blocks). Every card orders units of one command only, tactic cards such as Clash of Shields, Darken the Sky and Rally included; the player names the command when a card could order either. If that command has none of the troops a card names (no light units for Order Light Troops, say), the card orders 1 unit of that command instead. Each Sertorian leader belongs to his own command, so a Leadership card must use a leader of the command named. The Romans have no commands.",
       'The Romans move first.',
     ],
     hint: 'Two Sertorian commands against Pompey.',

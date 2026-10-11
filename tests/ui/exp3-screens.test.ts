@@ -15,9 +15,9 @@ import { Board } from '../../src/ui/game/Board';
 import { GameController, newSessionConfig } from '../../src/ui/game/controller';
 import { RandomOpponent } from '../../src/ui/game/opponent';
 import {
-  IMMOBILE_TIP, ambushTexts, boardUi, commandTipLine, counterAttackNote, diceAssignClick, diceOrderSlots, diceRollSummary,
+  IMMOBILE_TIP, ambushTexts, boardUi, commandFallbackNote, commandTipLine, counterAttackNote, diceAssignClick, diceOrderSlots, diceRollSummary,
   diceSlotChoices, diceSlotText, diceTurnOrders, diceTurnText, diceTurnVictim, enteredTipLine, firstOrderDie, fixedEntryHexes,
-  forcedMarchLine, objectiveTipLines, placeUnitPrompt, unitSummary, type DiceTurn, type UiSel,
+  forcedMarchLine, objectiveTipLines, placeUnitPrompt, selectAllUnits, unitSummary, type DiceTurn, type UiSel,
 } from '../../src/ui/game/uiModel';
 import { PICKER_TABS, battlesOf, randomPick } from '../../src/ui/screens/picker';
 import { Expansion3 } from '../../src/ui/screens/RulesReference';
@@ -462,6 +462,53 @@ describe('the board', () => {
     expect(count(board(alone), /class="command-badge"/g)).toBe(units + 1);
     expect(commandTipLine(alone, perpenna)).toBe("Perpenna's command: one card orders one command only");
     expect(commandTipLine(alone, alone.leaders.find((l) => l.name === 'Pompey')!)).toBeNull();
+  });
+});
+
+describe('304: a card falls back to 1 unit within the command named (rule commandFallback)', () => {
+  /** 304 with Perpenna's light cavalry gone: his command has no light or mounted unit left (his MI throw the pilum). */
+  const valentia = () => {
+    const s = game('304');
+    s.units = s.units.filter((u) => !(u.command === 'perpenna' && u.type === 'LC'));
+    return s;
+  };
+
+  it('the order prompt says which command orders 1 unit; the board marks its units and the other\'s light units', () => {
+    const s = valentia();
+    const her = s.units.filter((u) => u.command === 'herennius');
+    const per = s.units.filter((u) => u.command === 'perpenna');
+    const note = "Perpenna's command has no units that fit Order Light Troops: for it, order 1 unit of your choice (a normal order, no card bonus).";
+    expect(commandFallbackNote(s, 'top', 'orderLight', [])).toBe(note);
+    expect(commandFallbackNote(s, 'top', 'orderLight', [per[0].id])).toBe(note);
+    expect(commandFallbackNote(s, 'top', 'orderLight', [her.find((u) => u.type === 'AX')!.id])).toBeNull();
+    expect(commandFallbackNote(s, 'top', 'orderMedium', [])).toBeNull(); // both commands have medium troops
+    expect(commandFallbackNote(game('304'), 'top', 'orderLight', [])).toBeNull(); // the LC is light
+    const d: Decision = { kind: 'orders', side: 'top', card: 'orderLight', mirrored: false };
+    const marked = [...boardUi(s, d, SEL, 'top').highlights.entries()].filter(([, v]) => v === 'eligible').map(([h]) => h).sort((a, b) => a - b);
+    const light = her.filter((u) => UNIT_STATS[u.type].cls === 'light');
+    expect(marked).toEqual([...light, ...per].map((u) => u.hex).sort((a, b) => a - b));
+    // "Select all": Herennius' light units, the one command that obeys the card (5 of them, more than the Command of 4: none)
+    expect(selectAllUnits(s, 'top', 'orderLight')).toBeNull();
+    const fewer = cloneState(s);
+    fewer.units = fewer.units.filter((u) => u.type !== 'AX' || u.command !== 'herennius');
+    expect(selectAllUnits(fewer, 'top', 'orderLight')?.sort()).toEqual(light.filter((u) => u.type !== 'AX').map((u) => u.id).sort());
+  });
+
+  it('Darken the Sky: the command choice says that a command without missile units would order 1 unit', () => {
+    // in 304 itself every Sertorian MI throws the pilum; here Perpenna's MI have no legion, Herennius has an AX
+    const pos = (perpennaShoots: boolean) => build({
+      first: 'top', rules: ['commandFallback'],
+      commands: [{ id: 'herennius', name: 'Herennius', side: 'top' }, { id: 'perpenna', name: 'Perpenna', side: 'top', blocks: 'grk' }],
+      units: [
+        { side: 'top', type: 'AX', at: [2, 6], command: 'herennius' },
+        { side: 'top', type: perpennaShoots ? 'LC' : 'MI', at: [2, 8], command: 'perpenna' }, { side: 'bottom', type: 'MI', at: [6, 6] },
+      ],
+    });
+    expect(commandFallbackNote(pos(false), 'top', 'darken', [])).toBe(
+      "Perpenna's command has no units that fit Darken the Sky: for it, order 1 unit of your choice (a normal order, no card bonus).",
+    );
+    expect(commandFallbackNote(pos(true), 'top', 'darken', [])).toBeNull();
+    expect(commandFallbackNote(game('304'), 'top', 'darken', [])).toBeNull();
   });
 });
 

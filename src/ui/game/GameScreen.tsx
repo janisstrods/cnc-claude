@@ -3,7 +3,7 @@ import {
   CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, cardKind, isLeaderId, leaderAt, leaderById, leaderUnit,
   other, pieceMoves, rallyCandidates, unitAt, unitById, validateOrders, validateRally, validateSpartacus,
   battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf, sectionsOf, orderMode, orderLimit, rollingFirePaths, inCommand,
-  orderDice, validateDiceOrders,
+  orderDice, selectionMode, validateDiceOrders,
   type Answer, type Decision, type DieFace, type GameState, type HexId, type RetreatOption, type SectionName, type Side,
 } from '../../engine';
 import { BLOCK_COLORS, UnitIcon, unitTypeName } from '../../art';
@@ -15,8 +15,8 @@ import type { GameController, LogLine } from './controller';
 import {
   FACE_WORDS, IMMOBILE_TIP, ambushTexts, attackDice, bannerCounts, boardUi, commandBlocks, commandById, commandTipLine, counterAttackNote,
   deploymentSide, diceAssignClick, diceOrderSlots, diceSlotText, diceTurnText, effectiveKind, enteredTipLine, expectedHits, firstOrderDie,
-  forcedMarchLine, leaderTraitLines, leadershipHint, objectiveTipLines, pieceHexOf, pieceName, placeUnitPrompt, possessive, retreatEliminates,
-  rollingFireStep, selectAllUnits, unitSummary, type DiceTurn, type UiSel,
+  commandFallbackNote, forcedMarchLine, leaderTraitLines, leadershipHint, objectiveTipLines, pieceHexOf, pieceName, placeUnitPrompt, possessive,
+  retreatEliminates, rollingFireStep, selectAllUnits, unitSummary, type DiceTurn, type UiSel,
 } from './uiModel';
 import { TerrainTipBlock } from './TerrainTipBlock';
 import { terrainTip } from './terrainTips';
@@ -335,7 +335,9 @@ export function GameScreen({ controller, onExit, onRematch }: {
         const def = CARD_DEFS[d.card];
         const err = validateOrders(s, human, d.card, ui.orderSel);
         const ambush = ambushAvailable(s, human, d.card);
-        const mode = orderMode(s, human, d.card).mode;
+        // 304 (§18.5): the mode of the selection's command; null while the commands' modes differ and none is named yet
+        const mode = selectionMode(s, human, d.card, ui.orderSel)?.mode ?? null;
+        const fallback = commandFallbackNote(s, human, d.card, ui.orderSel);
         const all = eligiblePieces(s, human, d.card);
         const n = ui.orderSel.length;
         const limit = orderLimit(s, human, d.card, ui.orderSel);
@@ -359,8 +361,11 @@ export function GameScreen({ controller, onExit, onRematch }: {
           }
         }
         let text = `${def.text} Click your units to order them.`;
-        if (mode === 'one') text = `None of your troops fit ${def.title}: order 1 unit of your choice (a normal order, no card bonus).`;
+        // a command named for Darken the Sky that has no missile units (304) is asked for its 1 unit alone
+        if (fallback && (mode === 'one' || orderMode(s, human, d.card).mode === 'auto')) text = fallback;
+        else if (mode === 'one') text = `None of your troops fit ${def.title}: order 1 unit of your choice (a normal order, no card bonus).`;
         else if (def.group === 'leadership') text = leadershipHint(s, human, d.card, ui.orderSel);
+        else if (fallback) text = `${text} ${fallback}`;
         if (amb?.fixed && !n) text = noEntry ? `${text} The reinforcements cannot enter now: every entry hex is occupied.` : `${text} Or bring in the reinforcements (Entry).`;
         // separate commands (210, §18.5)
         const myCommands = s.special.commands.filter((c) => c.side === human);
@@ -513,9 +518,12 @@ export function GameScreen({ controller, onExit, onRematch }: {
         // separate commands (210, §18.5): one card acts for one command; hovering or focusing a button marks its units
         const focus = (id: string) => () => setCmdFocus(id);
         const unfocus = (id: string) => () => setCmdFocus((f) => (f === id ? null : f));
+        // 304 (§18.5): a command with no units that fit the card (Darken the Sky's missile units) orders 1 unit instead
+        const eff = s.turn.effective;
+        const fb = eff ? commandFallbackNote(s, human, eff, []) : null;
         return {
           title: 'Which command?',
-          text: `One card orders one army only. Choose the command ${s.turn.effective ? CARD_DEFS[s.turn.effective].title : 'this card'} acts for.`,
+          text: `One card orders one army only. Choose the command ${eff ? CARD_DEFS[eff].title : 'this card'} acts for.${fb ? ` ${fb}` : ''}`,
           buttons: d.options.map((id, i) => {
             const c = commandById(s, id);
             const col = c ? BLOCK_COLORS[commandBlocks(s, c)].edge : undefined;

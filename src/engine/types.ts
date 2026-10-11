@@ -192,8 +192,9 @@ export interface TurnState {
  * `veryHills` (223, §18.6) makes every hill very steep: a unit climbing onto one stops and may not battle, and the
  * close-combat caps change. The Trasimenus hand (006) is no rule of its own any more: it is hand growth
  * (`ScenarioSpecial.handGrowth`, §18.8). Expansion #3: `steepSlopes` (308, §18.7) makes every hexside between a hill (a
- * hill under a camp or wall included) and a forest too steep to climb from the forest and closed to close combat. Scenario
- * data is validated against this list.
+ * hill under a camp or wall included) and a forest too steep to climb from the forest and closed to close combat;
+ * `commandFallback` (304, §18.5) judges the type a card names within the command the card is played for, so a command
+ * without that type orders 1 unit of its own (needs `ScenarioSetup.commands`). Scenario data is validated against this list.
  */
 export const SPECIAL_RULE_IDS = [
   'sacredBand',
@@ -207,6 +208,7 @@ export const SPECIAL_RULE_IDS = [
   'tacticalFlexibility',
   'veryHills',
   'steepSlopes',
+  'commandFallback',
 ] as const;
 /** A scenario special rule (see SPECIAL_RULE_IDS). */
 export type SpecialRuleId = (typeof SPECIAL_RULE_IDS)[number];

@@ -70,9 +70,10 @@ export interface ScenarioSetup {
    */
   legions?: Partial<Record<Side, Legion>>;
   /**
-   * Separate commands (210 Picenum, §18.5): one card orders units of one command only. Each command belongs to one side;
-   * units and leaders name theirs with `command`. A piece with no command goes with any. `blocks` recolours the
-   * command's base edges (art only).
+   * Separate commands (210 Picenum, 304 Valentia, §18.5): one card orders units of one command only. Each command belongs
+   * to one side; units and leaders name theirs with `command`. A piece with no command goes with any. `blocks` recolours
+   * the command's base edges (art only). With the rule `commandFallback` (304) a card's "1 unit of your choice" alternative
+   * is judged per command.
    */
   commands?: CommandDef[];
   /**
@@ -550,6 +551,8 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     hillUnder[h] = t.hill === true;
   }
   const commands = resolveCommands(setup);
+  // 304 (§18.5): the type a card names is judged within the command it is played for, so there must be commands
+  if (setup.rules.includes('commandFallback') && !commands.length) throw new Error('rule commandFallback needs separate commands');
   let nextId = 1;
   const units: Unit[] = setup.units.map((u) => {
     if (!onBoard(u.r, u.c)) throw new Error(`unit off board ${u.r},${u.c}`);

@@ -2,10 +2,10 @@
 // descriptions shown in tooltips and the rules reference.
 import {
   ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, ambushAvailable, attachedLeader, bannerTotal, baselineRow, battleReady,
-  battleTargets, canMarch, cardKind, closeCombatDice, closeHitChance, commandClash, commandOf, diceOrderPieces, eligiblePieces, inCommand, eliteDef,
+  battleTargets, canMarch, cardKind, closeCombatDice, closeHitChance, commandClash, commandModes, commandOf, diceOrderPieces, eligiblePieces, inCommand, eliteDef,
   fireMoveLimit, heldBanners, inSection, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces,
   nextCaptureBanners, orderCommander, orderDice, orderMode, other, pieceMoves, rangeOf, rangedBaseDice, rangedDice, rollingFirePaths, rowOf,
-  sectionsOf, terrainAt, unitAt, unitById, validateDiceOrders,
+  sectionsOf, selectionCommand, terrainAt, unitAt, unitById, validateDiceOrders,
   type Blocks, type CardKind, type CommandDef, type Decision, type DieFace, type EliteAbility, type EvadeRule, type GameState, type HexId,
   type Leader, type LeaderTrait, type ObjectiveDef, type RetreatOption, type SectionName, type Side, type Unit, type UnitClass, type UnitStats,
   type UnitType,
@@ -629,25 +629,37 @@ export function objectiveTipLines(s: GameState, h: HexId): string[] {
   return s.special.objectives.flatMap((o, i) => objectiveLines(s, o, i, h));
 }
 
-/** The command of an order selection: that of its first piece with one (undefined = none yet, or no commands). */
-export function selectionCommand(s: GameState, sel: readonly string[]): string | undefined {
-  for (const id of sel) {
-    const c = commandOf(s, id);
-    if (c !== undefined) return c;
-  }
-  return undefined;
-}
+/** The command of an order selection (the engine's, kept here for the screens). */
+export { selectionCommand };
 
 /**
  * The units the "Select all" button orders for a troop card: every eligible unit, when they fit the side's Command and
- * belong to one command (210, §18.5: one card orders one army only). Null: no such button (another order mode, no
+ * belong to one command (210, §18.5: one card orders one army only). Where the commands' modes differ (304, rule
+ * `commandFallback`) only the one command whose troops fit the card counts. Null: no such button (another order mode, no
  * eligible unit, too many, or units of two commands).
  */
 export function selectAllUnits(s: GameState, side: Side, card: CardKind): string[] | null {
-  if (orderMode(s, side, card).mode !== 'troop') return null;
-  const units = eligiblePieces(s, side, card).filter((id) => !isLeaderId(id));
+  const per = commandModes(s, side, card);
+  const troop = per?.filter((p) => p.mode.mode === 'troop') ?? null;
+  if (troop ? troop.length !== 1 : orderMode(s, side, card).mode !== 'troop') return null;
+  const units = eligiblePieces(s, side, card).filter((id) => !isLeaderId(id) && (!troop || inCommand({ command: commandOf(s, id) }, troop[0].command)));
   if (!units.length || units.length > s.players[side].command) return null;
   return commandClash(s, units) === null ? units : null;
+}
+
+/**
+ * 304 (rule `commandFallback`, §18.5): the prompt line for the commands with no units that fit the card, which order 1
+ * unit of their own instead — those of the selection's command once it names one; null when there are none (always in
+ * other battles).
+ */
+export function commandFallbackNote(s: GameState, side: Side, card: CardKind, sel: readonly string[]): string | null {
+  const per = commandModes(s, side, card);
+  if (!per) return null;
+  const own = selectionCommand(s, sel);
+  const ones = per.filter((p) => p.mode.mode === 'one' && (own === undefined || p.command === own));
+  if (!ones.length) return null;
+  const names = ones.map((p) => possessive(commandById(s, p.command)?.name ?? p.command)).join(' and ');
+  return `${names} command has no units that fit ${CARD_DEFS[card].title}: for it, order 1 unit of your choice (a normal order, no card bonus).`;
 }
 
 /** The definition of a command id. */

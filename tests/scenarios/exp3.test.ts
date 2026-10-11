@@ -99,6 +99,7 @@ describe('Expansion #3 battle list', () => {
         [st.terrain.some((t) => t.hill), /^Hills under camps and walls: /m],
         [st.rules.includes('steepSlopes'), /^Steep slopes: /m],
         [!!st.commands, /^Two Sertorian commands: /m],
+        [st.rules.includes('commandFallback'), /orders 1 unit of that command instead/],
         [st.units.some((u) => u.immobile), /^Immobile recruits: /m],
         [!!st.ambush, /^Gallic reinforcements: /m],
         [!!st.placeUnits, /^Roman reinforcement: /m],

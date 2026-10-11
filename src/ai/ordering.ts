@@ -3,7 +3,7 @@ import { CARD_DEFS, modsFor } from '../engine/cards';
 import { ambushAvailable, ambushSections } from '../engine/flow';
 import { areAdjacent, inSection } from '../engine/hex';
 import { leaderMoves, unitMoves } from '../engine/movement';
-import { commandClash, leadershipChain, orderMode, validateOrders } from '../engine/orders';
+import { commandClash, commandModes, inCommand, leadershipChain, orderMode, validateOrders, type OrderMode } from '../engine/orders';
 import { isLoneLeader, leaderUnit, leadersOf, unitsOf } from '../engine/query';
 import { cloneState } from '../engine/setup';
 import { UNIT_STATS } from '../engine/units';
@@ -146,11 +146,8 @@ function dedupe(cands: OrderCandidate[]): OrderCandidate[] {
 
 /** Candidate order selections for a card (best first). `full`: also offer the card's whole allotment. */
 export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Weights, max = 3, full = true): OrderCandidate[] {
-  const mode = orderMode(s, side, kind);
   const ben = pieceBenefits(s, side, kind, W);
   const b = (id: string) => ben.get(id) ?? 0;
-  const units = unitsOf(s, side);
-  const leaders = leadersOf(s, side);
   const total = (ids: string[]) => ids.reduce((a, id) => a + Math.max(0, b(id)), 0);
   const valid = (ids: string[]) => !validateOrders(s, side, kind, ids);
   // separate commands (§18.5): adding the piece would mix two commands (never in a battle without commands)
@@ -185,103 +182,116 @@ export function orderCandidates(s: GameState, side: Side, kind: CardKind, W: Wei
     }
     if (sel.length > sel0.length) push(sel);
   };
-  // lone leaders, plus attached leaders worth detaching when the card allows it
-  const loneLeaders = leaders.filter((l) => isLoneLeader(s, l) || (CARD_DEFS[kind].detach && b(l.id) > 0.05));
-  switch (mode.mode) {
-    case 'section': {
-      const secs = Object.keys(mode.counts) as SectionName[];
-      const inAny = (h: number) => secs.some((x) => inSection(h, side, x));
-      const elig = sortByBen([
-        ...units.filter((u) => inAny(u.hex)).map((u) => u.id),
-        ...loneLeaders.filter((l) => inAny(l.hex)).map((l) => l.id),
-      ]);
-      const a = fill(elig);
-      push(a);
-      pushFull(a, units.filter((u) => inAny(u.hex)));
-      if (a.length) {
-        // cluster around the most promising unit
-        const top = units.find((u) => u.id === a[0]);
-        if (top) {
-          const clustered = [...elig].sort((x, y) => {
-            const hx = units.find((u) => u.id === x)?.hex ?? leaders.find((l) => l.id === x)!.hex;
-            const hy = units.find((u) => u.id === y)?.hex ?? leaders.find((l) => l.id === y)!.hex;
-            return b(y) - 0.04 * hexDist(top.hex, hy) - (b(x) - 0.04 * hexDist(top.hex, hx));
-          });
-          push(fill(clustered));
-        }
-        push(fill(elig.filter((id) => id !== a[0])));
-      }
-      break;
-    }
-    case 'troop': {
-      const elig = sortByBen([
-        ...units.filter(mode.filter).map((u) => u.id),
-        ...(mode.leaders ? loneLeaders.map((l) => l.id) : []),
-      ]);
-      const sel: string[] = [];
-      for (const id of elig) {
-        if (sel.length >= mode.max) break;
-        if (clash(sel, id)) continue;
-        if (b(id) > 0.002 || sel.length === 0) sel.push(id);
-      }
-      push(sel);
-      pushFull(sel, units.filter(mode.filter));
-      break;
-    }
-    case 'leadership': {
-      const sec = mode.section;
-      const per: OrderCandidate[] = [];
-      for (const l of leaders) {
-        if (sec && !inSection(l.hex, side, sec)) continue;
-        // a satrap's chain is empty (§17.2): he orders only himself and his unit
-        per.push(...leadershipChains(s, side, kind, l, leadershipChain(l, mode.chain), b, units, clash));
-      }
-      per.sort((x, y) => y.benefit - x.benefit);
-      per.slice(0, 2).forEach((c, i) => {
-        push(c.pieces);
-        if (i === 0) pushFull(c.pieces, units);
-      });
-      const singles = sortByBen(units.filter((u) => !sec || inSection(u.hex, side, sec)).map((u) => u.id));
-      if (singles.length) push([singles[0]]);
-      break;
-    }
-    case 'group': {
-      const foot = units.filter((u) => UNIT_STATS[u.type].foot);
-      const seeds = sortByBen(foot.map((u) => u.id));
-      const used = new Set<string>();
-      let groups = 0;
-      for (const seed of seeds) {
-        if (used.has(seed) || groups >= 2) continue;
-        const sel = [seed];
-        const cap = mode.max ?? 99;
-        let grew = true;
-        while (grew && sel.length < cap) {
-          grew = false;
-          const hexes = sel.map((id) => foot.find((u) => u.id === id)!.hex);
-          const cand = foot
-            .filter((u) => !sel.includes(u.id) && !clash(sel, u.id) && hexes.some((h) => areAdjacent(h, u.hex)))
-            .sort((x, y) => b(y.id) - b(x.id));
-          for (const u of cand) {
-            if (b(u.id) <= 0.002 && mode.max !== null) break;
-            if (b(u.id) <= -0.05) break;
-            sel.push(u.id);
-            grew = true;
-            break;
+  /** The candidates of one order mode over these units and leaders (the side's, or one command's). */
+  const collect = (mode: OrderMode, units: Unit[], leaders: Leader[]) => {
+    // lone leaders, plus attached leaders worth detaching when the card allows it
+    const loneLeaders = leaders.filter((l) => isLoneLeader(s, l) || (CARD_DEFS[kind].detach && b(l.id) > 0.05));
+    switch (mode.mode) {
+      case 'section': {
+        const secs = Object.keys(mode.counts) as SectionName[];
+        const inAny = (h: number) => secs.some((x) => inSection(h, side, x));
+        const elig = sortByBen([
+          ...units.filter((u) => inAny(u.hex)).map((u) => u.id),
+          ...loneLeaders.filter((l) => inAny(l.hex)).map((l) => l.id),
+        ]);
+        const a = fill(elig);
+        push(a);
+        pushFull(a, units.filter((u) => inAny(u.hex)));
+        if (a.length) {
+          // cluster around the most promising unit
+          const top = units.find((u) => u.id === a[0]);
+          if (top) {
+            const clustered = [...elig].sort((x, y) => {
+              const hx = units.find((u) => u.id === x)?.hex ?? leaders.find((l) => l.id === x)!.hex;
+              const hy = units.find((u) => u.id === y)?.hex ?? leaders.find((l) => l.id === y)!.hex;
+              return b(y) - 0.04 * hexDist(top.hex, hy) - (b(x) - 0.04 * hexDist(top.hex, hx));
+            });
+            push(fill(clustered));
           }
+          push(fill(elig.filter((id) => id !== a[0])));
         }
-        sel.forEach((id) => used.add(id));
-        push(sel);
-        if (groups++ === 0) pushFull(sel, foot);
+        break;
       }
-      break;
+      case 'troop': {
+        const elig = sortByBen([
+          ...units.filter(mode.filter).map((u) => u.id),
+          ...(mode.leaders ? loneLeaders.map((l) => l.id) : []),
+        ]);
+        const sel: string[] = [];
+        for (const id of elig) {
+          if (sel.length >= mode.max) break;
+          if (clash(sel, id)) continue;
+          if (b(id) > 0.002 || sel.length === 0) sel.push(id);
+        }
+        push(sel);
+        pushFull(sel, units.filter(mode.filter));
+        break;
+      }
+      case 'leadership': {
+        const sec = mode.section;
+        const per: OrderCandidate[] = [];
+        for (const l of leaders) {
+          if (sec && !inSection(l.hex, side, sec)) continue;
+          // a satrap's chain is empty (§17.2): he orders only himself and his unit
+          per.push(...leadershipChains(s, side, kind, l, leadershipChain(l, mode.chain), b, units, clash));
+        }
+        per.sort((x, y) => y.benefit - x.benefit);
+        per.slice(0, 2).forEach((c, i) => {
+          push(c.pieces);
+          if (i === 0) pushFull(c.pieces, units);
+        });
+        const singles = sortByBen(units.filter((u) => !sec || inSection(u.hex, side, sec)).map((u) => u.id));
+        if (singles.length) push([singles[0]]);
+        break;
+      }
+      case 'group': {
+        const foot = units.filter((u) => UNIT_STATS[u.type].foot);
+        const seeds = sortByBen(foot.map((u) => u.id));
+        const used = new Set<string>();
+        let groups = 0;
+        for (const seed of seeds) {
+          if (used.has(seed) || groups >= 2) continue;
+          const sel = [seed];
+          const cap = mode.max ?? 99;
+          let grew = true;
+          while (grew && sel.length < cap) {
+            grew = false;
+            const hexes = sel.map((id) => foot.find((u) => u.id === id)!.hex);
+            const cand = foot
+              .filter((u) => !sel.includes(u.id) && !clash(sel, u.id) && hexes.some((h) => areAdjacent(h, u.hex)))
+              .sort((x, y) => b(y.id) - b(x.id));
+            for (const u of cand) {
+              if (b(u.id) <= 0.002 && mode.max !== null) break;
+              if (b(u.id) <= -0.05) break;
+              sel.push(u.id);
+              grew = true;
+              break;
+            }
+          }
+          sel.forEach((id) => used.add(id));
+          push(sel);
+          if (groups++ === 0) pushFull(sel, foot);
+        }
+        break;
+      }
+      case 'one': {
+        const elig = sortByBen(units.map((u) => u.id));
+        for (const id of elig.slice(0, 3)) push([id]);
+        break;
+      }
+      default:
+        out.push({ pieces: [], benefit: 0 });
     }
-    case 'one': {
-      const elig = sortByBen(units.map((u) => u.id));
-      for (const id of elig.slice(0, 3)) push([id]);
-      break;
+  };
+  // 304 (rule `commandFallback`, §18.5): where a command falls back to "1 unit of your choice", each command's own
+  // candidates by its own mode, best first
+  const per = commandModes(s, side, kind);
+  if (!per) collect(orderMode(s, side, kind), unitsOf(s, side), leadersOf(s, side));
+  else {
+    for (const { command, mode } of per) {
+      collect(mode, unitsOf(s, side).filter((u) => inCommand(u, command)), leadersOf(s, side).filter((l) => inCommand(l, command)));
     }
-    default:
-      out.push({ pieces: [], benefit: 0 });
+    out.sort((x, y) => y.benefit - x.benefit);
   }
   if (!out.length) out.push({ pieces: [], benefit: 0 });
   let res = dedupe(out).slice(0, max);

@@ -1,10 +1,11 @@
 // Expansion #3 units (rules-reference §18.2, §18.3, §18.5, §18.11, §20): Julian legions (the pilum and the march, for one
 // or both armies) and Caesar's forced march, whose engine exists since Expansion #2 (these tests pin the Expansion #3
-// readings); the immobile recruits of 306 Bibracte; and 304 Valentia's two Sertorian commands, whose leaders both carry one.
+// readings); the immobile recruits of 306 Bibracte; and 304 Valentia's two Sertorian commands, whose leaders both carry one
+// and whose cards fall back to "1 unit of your choice" within the command named (rule `commandFallback`).
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   GameDriver, OFF_BOARD, battleTargets, canFireAt, canMarch, cloneState, createGame, evadeOptions, hasPilum, movablePieces, pieceMoves, unitMoves,
-  validateOrders, type LeaderTrait, type UnitType,
+  eligiblePieces, orderLimit, orderMode, validateOrders, type LeaderTrait, type UnitType,
 } from '../../src/engine';
 import { scenarioById } from '../../src/scenarios';
 import { H, build, combatDice, ev, forceDice, giveCard, must, n, noFirstStrike, passTurn, play, setupOf, toBattle, u, type Pos } from './helpers';
@@ -391,5 +392,156 @@ describe('304 Valentia: both Sertorian leaders carry a command (§18.5, X3 Q16)'
     const romans = s.units.filter((x) => x.side === 'bottom').map((x) => x.id);
     expect(s.units.filter((x) => x.side === 'bottom').every((x) => x.command === undefined)).toBe(true);
     expect(validateOrders(s, 'bottom', 'orderMedium', romans.filter((id) => s.units.find((x) => x.id === id)!.type === 'MI').slice(0, 3))).toBeNull();
+  });
+});
+
+describe("304 Valentia: a card's \"1 unit of your choice\" within the command named (rule commandFallback, §18.5, X3 Q16)", () => {
+  const COMMANDS: Pos['commands'] = [
+    { id: 'herennius', name: 'Herennius', side: 'top' }, { id: 'perpenna', name: 'Perpenna', side: 'top', blocks: 'grk' },
+  ];
+  const her = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}) => top(type, at, { command: 'herennius', ...extra });
+  const per = (type: UnitType, at: [number, number], extra: Partial<PosUnit> = {}) => top(type, at, { command: 'perpenna', ...extra });
+  const LEADERS = (perpenna = true): Pos['leaders'] => [
+    { side: 'top', name: 'Herennius', at: [2, 5], command: 'herennius' },
+    ...(perpenna ? [{ side: 'top' as const, name: 'Perpenna', at: [2, 8] as [number, number], command: 'perpenna' }] : []),
+  ];
+  /**
+   * u1 MI (2,5), u2 AX (2,6) and u3 MC (1,4) of Herennius; u4 MI (2,7) and u5 MI (2,8) of Perpenna (no light, mounted or
+   * missile unit); u6 a Roman MI. Herennius (L7) with u1, Perpenna (L8) with u5.
+   */
+  const units = [her('MI', [2, 5]), her('AX', [2, 6]), her('MC', [1, 4]), per('MI', [2, 7]), per('MI', [2, 8]), bottom('MI', [6, 6])];
+  const pos = (ruled = true, extra: Partial<Pos> = {}) =>
+    build({ commands: COMMANDS, first: 'top', units, leaders: LEADERS(), ...(ruled ? { rules: ['commandFallback'] } : {}), ...extra });
+  const NOT_TYPE = 'That unit is not of the type named on the card.';
+  const ONE = 'Order a single unit of your choice.';
+
+  it('Order Light Troops: a command without light units orders 1 unit of its own; the other orders its light units', () => {
+    const s = pos();
+    expect(validateOrders(s, 'top', 'orderLight', ['u4'])).toBeNull();
+    expect(validateOrders(s, 'top', 'orderLight', ['u5'])).toBeNull();
+    expect(validateOrders(s, 'top', 'orderLight', ['u4', 'u5'])).toBe(ONE);
+    expect(validateOrders(s, 'top', 'orderLight', ['L8'])).toBe(ONE);
+    expect(validateOrders(s, 'top', 'orderLight', ['u2'])).toBeNull();
+    expect(validateOrders(s, 'top', 'orderLight', ['u1'])).toBe(NOT_TYPE);
+    expect(validateOrders(s, 'top', 'orderLight', ['u2', 'u4'])).not.toBeNull();
+    expect(validateOrders(s, 'top', 'orderLight', ['u4', 'u2'])).not.toBeNull();
+    expect(validateOrders(s, 'top', 'orderLight', [])).toBeNull();
+    expect(eligiblePieces(s, 'top', 'orderLight').sort()).toEqual(['u2', 'u4', 'u5']);
+    expect(orderMode(s, 'top', 'orderLight', 'perpenna')).toEqual({ mode: 'one' });
+    expect(orderMode(s, 'top', 'orderLight', 'herennius').mode).toBe('troop');
+    expect(orderLimit(s, 'top', 'orderLight', [])).toBeNull();
+    expect(orderLimit(s, 'top', 'orderLight', ['u4'])).toBe(1);
+    expect(orderLimit(s, 'top', 'orderLight', ['u2'])).toBe(s.players.top.command);
+    const d = play(s, 'orderLight', ['u4']);
+    expect(Object.keys(d.state.turn.ordered)).toEqual(['u4']);
+    expect(d.state.turn.mods.passThrough).toBe(false); // a normal order: no card bonus
+  });
+
+  it('without the rule (210 Picenum) the type is judged over the whole army, as before', () => {
+    const s = pos(false);
+    expect(validateOrders(s, 'top', 'orderLight', ['u4'])).toBe(NOT_TYPE);
+    expect(eligiblePieces(s, 'top', 'orderLight')).toEqual(['u2']);
+    expect(orderMode(s, 'top', 'orderLight', 'perpenna').mode).toBe('troop');
+    expect(orderLimit(s, 'top', 'orderLight', [])).toBe(s.players.top.command);
+    expect(validateOrders(s, 'top', 'orderMounted', ['u4'])).toBe(NOT_TYPE);
+    expect(validateOrders(s, 'top', 'lineCommand', ['u3'])).toBe('Only foot units.');
+  });
+
+  it('Order Medium Troops, which both commands can obey, is unchanged', () => {
+    const s = pos();
+    expect(validateOrders(s, 'top', 'orderMedium', ['u1', 'u3'])).toBeNull();
+    expect(validateOrders(s, 'top', 'orderMedium', ['u4', 'u5'])).toBeNull();
+    expect(validateOrders(s, 'top', 'orderMedium', ['u2'])).toBe(NOT_TYPE);
+    expect(eligiblePieces(s, 'top', 'orderMedium')).toEqual(eligiblePieces(pos(false), 'top', 'orderMedium'));
+  });
+
+  it('Order Mounted Troops and Mounted Charge: 1 unit of Perpenna, with no card bonus; Herennius\' cavalry charges', () => {
+    const s = pos();
+    expect(validateOrders(s, 'top', 'orderMounted', ['u4'])).toBeNull();
+    expect(validateOrders(s, 'top', 'orderMounted', ['u3'])).toBeNull();
+    expect(validateOrders(s, 'top', 'orderMounted', ['u1'])).toBe(NOT_TYPE);
+    expect(validateOrders(s, 'top', 'mountedCharge', ['u5'])).toBeNull();
+    expect(validateOrders(s, 'top', 'mountedCharge', ['u4', 'u5'])).toBe(ONE);
+    const one = play(pos(), 'mountedCharge', ['u5']);
+    expect(Object.keys(one.state.turn.ordered)).toEqual(['u5']);
+    expect([one.state.turn.mods.ccBonus, one.state.turn.mods.mountedCharge]).toEqual([0, false]);
+    const charge = play(pos(), 'mountedCharge', ['u3']);
+    expect([charge.state.turn.mods.ccBonus, charge.state.turn.mods.mountedCharge]).toEqual([1, true]);
+  });
+
+  it('Move-Fire-Move: 1 unit of the command without light units, and no second move', () => {
+    const s = pos();
+    expect(validateOrders(s, 'top', 'moveFireMove', ['u4'])).toBeNull();
+    expect(validateOrders(s, 'top', 'moveFireMove', ['u2'])).toBeNull();
+    const d = play(pos(), 'moveFireMove', ['u4']);
+    expect(d.state.turn.mods.moveFireMove).toBe(false);
+  });
+
+  it('Line Command and Double Time: a command with no foot unit orders 1 unit (its cavalry); the other its linked foot', () => {
+    // Perpenna's command is only an LC (u4 at 2,8) here
+    const s = build({
+      commands: COMMANDS, first: 'top', rules: ['commandFallback'], leaders: LEADERS(false),
+      units: [her('MI', [2, 5]), her('AX', [2, 6]), per('LC', [2, 8]), bottom('MI', [6, 6])],
+    });
+    for (const kind of ['lineCommand', 'doubleTime'] as const) {
+      expect(validateOrders(s, 'top', kind, ['u3']), kind).toBeNull();
+      expect(validateOrders(s, 'top', kind, ['u1', 'u2']), kind).toBeNull();
+      expect(validateOrders(s, 'top', kind, ['u1', 'u3']), kind).not.toBeNull();
+      expect(eligiblePieces(s, 'top', kind).sort(), kind).toEqual(['u1', 'u2', 'u3']);
+    }
+    const d = play(s, 'doubleTime', ['u3']);
+    expect(d.state.turn.mods.doubleTime).toBe(false);
+  });
+
+  it('Darken the Sky: naming the command without missile units orders 1 unit of it instead', () => {
+    const d = play(pos(), 'darken');
+    expect(d.pending).toEqual({ kind: 'chooseCommand', side: 'top', options: ['herennius', 'perpenna'] });
+    must(d, { kind: 'choose', index: 1 });
+    expect(d.pending?.kind).toBe('orders');
+    expect(d.answer({ kind: 'orders', pieces: ['u2'] })).toBe(false);
+    expect(d.answer({ kind: 'orders', pieces: ['u4', 'u5'] })).toBe(false);
+    must(d, { kind: 'orders', pieces: ['u4'] });
+    expect(Object.keys(d.state.turn.ordered)).toEqual(['u4']);
+    expect([d.state.turn.mods.noMove, d.state.turn.mods.shots]).toEqual([false, 1]);
+    // Herennius' command: every missile unit of it fires twice, as always (a Roman in range of the AX keeps the turn open)
+    const target = (ruled: boolean) => pos(ruled, { units: [...units.slice(0, 5), bottom('MI', [4, 6])] });
+    const h = play(target(true), 'darken');
+    must(h, { kind: 'choose', index: 0 });
+    expect(Object.keys(h.state.turn.ordered)).toEqual(['u2']);
+    expect(h.state.turn.mods.shots).toBe(2);
+    // without the rule only Herennius' command can be named: nothing is asked
+    const old = play(target(false), 'darken');
+    expect(ev(old).some((e) => e.t === 'log' && /command/.test(e.text))).toBe(false);
+    expect(Object.keys(old.state.turn.ordered)).toEqual(['u2']);
+  });
+
+  it('Rally keeps its army-wide test: a leader of either command lets it rally the command named (leader effects are not restricted)', () => {
+    // Perpenna is gone; Perpenna's damaged u4 stands next to Herennius
+    const s = build({
+      commands: COMMANDS, first: 'top', rules: ['commandFallback'], leaders: LEADERS(false),
+      units: [her('MI', [2, 5], { blocks: 2 }), her('AX', [2, 6]), her('MC', [1, 4]), per('MI', [2, 4], { blocks: 2 }), per('MI', [2, 8]), bottom('MI', [6, 6])],
+    });
+    expect(orderMode(s, 'top', 'rally', 'perpenna')).toEqual({ mode: 'dice' });
+    forceDice(['medium', ...n('flag', 4)]);
+    const d = play(s, 'rally');
+    expect(d.pending).toEqual({ kind: 'chooseCommand', side: 'top', options: ['herennius', 'perpenna'] });
+    must(d, { kind: 'choose', index: 1 });
+    must(d, { kind: 'assign', ids: ['u4', null, null, null, null] });
+    expect(u(d, 'u4')!.blocks).toBe(3);
+  });
+
+  it('304 itself has the rule: with the light cavalry gone, Order Light Troops orders 1 unit of Perpenna', () => {
+    const s = createGame(scenarioById('304').setup, 1);
+    expect(s.special.rules).toEqual(['commandFallback']);
+    const perpenna = s.units.filter((x) => x.command === 'perpenna');
+    const mi = perpenna.find((x) => x.type === 'MI')!;
+    expect(validateOrders(s, 'top', 'orderLight', [mi.id])).toBe(NOT_TYPE); // the LC is light: Perpenna's command obeys the card
+    s.units = s.units.filter((x) => x.type !== 'LC' || x.command !== 'perpenna');
+    expect(validateOrders(s, 'top', 'orderLight', [mi.id])).toBeNull();
+    expect(eligiblePieces(s, 'top', 'orderLight')).toEqual(expect.arrayContaining(perpenna.filter((x) => x.type === 'MI').map((x) => x.id)));
+  });
+
+  it('the rule needs separate commands', () => {
+    expect(() => createGame(setupOf({ rules: ['commandFallback'] }), 1)).toThrow(/^rule commandFallback needs separate commands \(qa\)$/);
   });
 });

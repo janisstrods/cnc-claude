@@ -5,7 +5,7 @@
 // fixed seeds, constructed positions built with the rules suite's helpers).
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  CARD_LIST, GameDriver, OFF_BOARD, createGame, diceOrderPieces, diceOrdered, forceDice, newTurn, other, pieceMoves, retreatOptions,
+  CARD_LIST, GameDriver, OFF_BOARD, createGame, diceOrderPieces, diceOrdered, forceDice, newTurn, other, pieceMoves, randomAnswer, retreatOptions,
   retreatPerFlag, validateDiceOrders, validateOrders, type Decision, type DieFace, type GameEvent, type GameState, type Side, type Unit,
 } from '../../src/engine';
 import { SCENARIOS } from '../../src/scenarios';
@@ -555,6 +555,47 @@ describe('Expansion #3 units', () => {
       }
     }
     expect(orders).toBeGreaterThan(0);
+  });
+
+  /**
+   * 304 with Perpenna's light cavalry gone: his command has no light or mounted unit left, so Order Light and Mounted
+   * Troops, Mounted Charge and Move-Fire-Move order 1 unit of it (rule `commandFallback`). His MI still throw the pilum, so
+   * Darken the Sky still orders them.
+   */
+  const valentia = (seed: number) => {
+    const s = createGame(SCENARIOS.find((x) => x.id === '304')!.setup, seed);
+    s.units = s.units.filter((u) => !(u.command === 'perpenna' && u.type === 'LC'));
+    return s;
+  };
+
+  it('304: with no light unit left in Perpenna\'s command, the AI can order a lone Perpenna unit with Order Light Troops (§18.5)', () => {
+    const s = valentia(304);
+    const perpenna = new Set(s.units.filter((u) => u.command === 'perpenna').map((u) => u.id));
+    for (const kind of ['orderLight', 'orderMounted', 'mountedCharge', 'moveFireMove'] as const) {
+      const cands = orderCandidates(s, 'top', kind, NEUTRAL_W, 6);
+      for (const c of cands) expect(validateOrders(s, 'top', kind, c.pieces), `${kind} ${c.pieces.join(',')}`).toBeNull();
+      expect(cands.some((c) => c.pieces.length === 1 && perpenna.has(c.pieces[0])), kind).toBe(true);
+      // and, for Order Light Troops, Herennius' light units as one order
+      if (kind === 'orderLight') expect(cands.some((c) => c.pieces.length > 1 && c.pieces.every((id) => !perpenna.has(id)))).toBe(true);
+    }
+    // a whole Sertorian turn with the card: every answer legal
+    s.active = 'top';
+    s.turn = newTurn('top', 2);
+    setHand(s, 'top', ['orderLight', 'order2L', 'order2C', 'order2R']);
+    for (const seed of [1, 2]) aiTurn(structuredClone(s), seed);
+  });
+
+  it('304: random legal answers are never rejected, with the commands falling back per card', () => {
+    for (const seed of [5, 6]) {
+      const d = new GameDriver(valentia(seed));
+      let rnd = seed * 48271;
+      const next = () => (rnd = (rnd * 16807) % 2147483647) / 2147483647;
+      for (let step = 0; step < 400 && !d.over; step++) {
+        const dec = d.pending!;
+        const a = randomAnswer(d.state, dec, next);
+        expect(d.answer(a), `seed ${seed} step ${step}: ${d.lastError} for ${JSON.stringify(dec)} -> ${JSON.stringify(a)}`).toBe(true);
+      }
+    }
   });
 });
 

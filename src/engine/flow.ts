@@ -9,8 +9,8 @@ import { ambushEntryHexes, leaderMoves, unitMoves, type MoveTarget } from './mov
 import { bannerTotal, gainBanner, updateHeld } from './banners';
 import { captureOnStop, exitLeader, exitUnit, turnEndObjectives, turnStartObjectives } from './objectives';
 import {
-  autoOrders, commandChoices, diceOrderPieces, diceOrdered, orderDice, orderMode, rallyCandidates, spartacusDiceCount, validateDiceOrders,
-  validateOrders, validateRally, validateSpartacus,
+  autoOrders, commandChoices, diceOrderPieces, diceOrdered, orderDice, orderMode, rallyCandidates, selectionMode, spartacusDiceCount,
+  validateDiceOrders, validateOrders, validateRally, validateSpartacus,
 } from './orders';
 import {
   attachedLeader, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, unitAt, unitById, unitsOf,
@@ -1007,11 +1007,14 @@ function* ordersStep(s: GameState, ctx: FlowCtx, kind: CardKind | null, mirrored
   const mode = orderMode(s, side, kind);
   let ids: string[] = [];
   if (mode.mode === 'none' || !kind) return;
+  let select = mode.mode !== 'auto' && mode.mode !== 'dice';
   if (mode.mode === 'auto') {
     const command = yield* chooseCommandStep(s, ctx, side, kind);
-    ids = autoOrders(s, side, kind, command);
+    // 304 (§18.5): a command named that has none of the card's units orders 1 unit of its own instead
+    if (command !== undefined && orderMode(s, side, kind, command).mode === 'one') select = true;
+    else ids = autoOrders(s, side, kind, command);
   } else if (mode.mode === 'dice') ids = kind === 'rally' ? yield* rallyStep(s, ctx, side) : yield* spartacusStep(s, ctx, side);
-  else {
+  if (select) {
     const ambush = ambushAvailable(s, side, kind);
     const a = (yield* ask(ctx, { kind: 'orders', side, card: kind, mirrored }, (a) => {
       if (a.kind !== 'orders') return 'Choose the units to order.';
@@ -1023,7 +1026,8 @@ function* ordersStep(s: GameState, ctx: FlowCtx, kind: CardKind | null, mirrored
       return;
     }
     ids = a.pieces;
-    if (mode.mode === 'one') t.mods = defaultMods();
+    // "1 unit of your choice" is a normal order: no card bonus (304: judged by the selection's command)
+    if ((selectionMode(s, side, kind, ids) ?? mode).mode === 'one') t.mods = defaultMods();
   }
   // Without the helmet symbol, attached leaders cannot detach: they simply move with their unit.
   if (!CARD_DEFS[kind].detach) ids = ids.filter((id) => !(isLeaderId(id) && leaderUnit(s, leaderById(s, id)!)));

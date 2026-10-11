@@ -19,7 +19,9 @@
   },
   "first": "bottom",
   "banners": 6,
-  "rules": [],
+  "rules": [
+    "commandFallback"
+  ],
   "legions": {
     "top": "marius",
     "bottom": "marius"

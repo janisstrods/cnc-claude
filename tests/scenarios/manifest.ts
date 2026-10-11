@@ -870,7 +870,7 @@ export const MANIFEST_EXP3: Record<string, BattleManifest> = {
       bottom: { LB: 1, LS: 2, MI: 8, MC: 2 },
     },
     legions: { top: 'marius', bottom: 'marius' },
-    elites: [], rules: [],
+    elites: [], rules: ['commandFallback'],
     terrain: { types: { steep: 4 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
     checksum: { terrain: '72990ec5', pieces: '5e952e43' },
   },
