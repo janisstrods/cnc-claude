@@ -3,12 +3,11 @@
 // deterministic (tribune in deterministic mode, fixed seeds, constructed positions).
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  CARD_LIST, GameDriver, OFF_BOARD, UNIT_STATS, UNIT_TYPES, cloneState, closeCombatDice, createGame, distance, forceDice, helmetsCount, hexId,
-  other, sectionsOf, type ArmyLook, type Blocks, type Decision, type EliteId, type GameEvent, type GameState, type LeaderTrait,
-  type ScenarioSetup, type Side, type SpecialRuleId, type TerrainSetup, type UnitType,
+  GameDriver, OFF_BOARD, UNIT_STATS, UNIT_TYPES, cloneState, closeCombatDice, createGame, distance, forceDice, helmetsCount, hexId,
+  other, sectionsOf, type Decision, type GameEvent, type GameState, type Side, type SpecialRuleId, type UnitType,
 } from '../../src/engine';
-import { SCENARIOS } from '../../src/scenarios';
-import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
+import { SCENARIOS, scenarioById } from '../../src/scenarios';
+import { chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
 import { Occ, helmetsOcc } from '../../src/ai/board';
 import { evaluate, rawFeatures, singleUnitRisk, type EvalBreakdown } from '../../src/ai/evaluate';
 import { backDamage, closeAttackEV, evadeEV } from '../../src/ai/estimate';
@@ -17,60 +16,15 @@ import { defendChoice, greedyBattle } from '../../src/ai/policies';
 import { NEUTRAL_W, isSacredLeader, leaderLossCost, leaderVal, leaderWorth, setViewer, unitWeight } from '../../src/ai/values';
 import { safePlacement } from '../../src/ai/sim';
 import { troopName } from '../../src/ai/voice';
+import { aiTurn, detOpts, positionBuilder, setHand, type Army, type Pos } from './helpers';
 import { failOnAiErrors } from './no-ai-errors';
 
 const H = (r: number, c: number) => hexId(r, c);
 
-interface Army { army: string; blocks: Blocks; look: ArmyLook; commander: string }
 const ROMAN: Army = { army: 'Roman', blocks: 'rom', look: 'roman', commander: 'Dentatus' };
 const EPIROTE: Army = { army: 'Epirote', blocks: 'grk', look: 'epirote', commander: 'Pyrrhus' };
 
-interface Pos {
-  units: { side: Side; type: UnitType; at: [number, number]; blocks?: number; elite?: EliteId }[];
-  leaders?: { side: Side; name: string; at: [number, number]; traits?: LeaderTrait[] }[];
-  terrain?: TerrainSetup[];
-  rules?: SpecialRuleId[];
-  top?: Army;
-  bottom?: Army;
-  first?: Side;
-}
-
-/** Units get ids u1.. in order. */
-function position(p: Pos): GameState {
-  const top = p.top ?? EPIROTE;
-  const bottom = p.bottom ?? ROMAN;
-  const setup: ScenarioSetup = {
-    id: 'test', name: 'Test',
-    top: { ...top, cards: 5 }, bottom: { ...bottom, cards: 5 },
-    first: p.first ?? 'bottom', banners: 7,
-    terrain: p.terrain ?? [],
-    units: p.units.map((u) => ({ side: u.side, type: u.type, r: u.at[0], c: u.at[1], elite: u.elite })),
-    leaders: (p.leaders ?? []).map((l) => ({ side: l.side, name: l.name, r: l.at[0], c: l.at[1], traits: l.traits })),
-    reserves: [], reserveLeaders: [], rules: p.rules ?? [],
-  };
-  const s = createGame(setup, 77);
-  p.units.forEach((u, i) => {
-    if (u.blocks !== undefined) s.units[i].blocks = u.blocks;
-  });
-  return s;
-}
-
-/** Give a side exactly these card kinds (taken from the deck / other hand). */
-function setHand(s: GameState, side: Side, kinds: string[]) {
-  const used = new Set<number>();
-  const hand: number[] = [];
-  for (const k of kinds) {
-    const id = CARD_LIST.findIndex((x, i) => x === k && !used.has(i));
-    if (id < 0) throw new Error(`setHand: no card of kind '${k}' left in the deck`);
-    used.add(id);
-    hand.push(id);
-  }
-  const other: Side = side === 'top' ? 'bottom' : 'top';
-  s.players[other].hand = s.players[other].hand.filter((c) => !used.has(c));
-  s.deck = [...s.deck.filter((c) => !used.has(c)), ...s.players[side].hand.filter((c) => !used.has(c))];
-  s.players[side].hand = hand;
-  while (s.players[other].hand.length < 5) s.players[other].hand.push(s.deck.shift()!);
-}
+const position = positionBuilder({ top: EPIROTE, bottom: ROMAN, banners: 7, seed: 77 });
 
 /**
  * The bottom side's advance gap (hexes its sound units still have to close) as the evaluation sees it: the raw feature,
@@ -84,28 +38,6 @@ function bottomGap(units: Pos['units'], extra: Partial<Pos> = {}): { raw: number
   const own = s.units.filter((u) => u.side === 'bottom');
   const mounted = own.length > 0 && own.every((u) => UNIT_STATS[u.type].mounted);
   return { raw, eval: -bd.advance / (NEUTRAL_W.adv * (mounted ? NEUTRAL_W.mountedAdv : 1)) };
-}
-
-const detOpts = (side: Side, seed: number, extra: Partial<AiOptions> = {}): AiOptions => ({
-  side, difficulty: 'tribune', personality: PERSONALITIES[5], seed, deterministic: true, budgetScale: 0.3, ...extra,
-});
-
-/** Let the AI play the active side's whole turn (both sides answer their own decisions); returns the turn's events. */
-function aiTurn(s: GameState, seed: number): { d: GameDriver; events: GameEvent[] } {
-  const d = new GameDriver(s);
-  const side = d.state.active;
-  const turn = d.state.turn.number;
-  const mems = { top: newMemory(), bottom: newMemory() };
-  const events: GameEvent[] = [];
-  let guard = 0;
-  while (d.pending && d.state.active === side && d.state.turn.number === turn && guard++ < 200) {
-    const dec = d.pending;
-    const r = chooseAnswer(d.state, dec, detOpts(dec.side, seed), mems[dec.side]);
-    expect(isLegal(d.state, dec, r.answer)).toBe(true);
-    expect(d.answer(r.answer), d.lastError ?? '').toBe(true);
-    for (const { e } of d.drainEvents()) events.push(e);
-  }
-  return { d, events };
 }
 
 type Defend = Extract<Decision, { kind: 'defend' }>;
@@ -452,7 +384,7 @@ describe('Hellespont leaders', () => {
 // ---------------------------------------------------------------------------------------------------------------------
 
 describe('Asculum leader placement', () => {
-  const asculum = SCENARIOS.find((x) => x.id === '117')!;
+  const asculum = scenarioById('117');
 
   const place = (seed: number) => {
     const d = new GameDriver(createGame(asculum.setup, seed));
@@ -627,7 +559,7 @@ describe('information hiding', () => {
   };
 
   const same = (scId: string, seed: number, kind: Decision['kind']) => {
-    const sc = SCENARIOS.find((x) => x.id === scId)!;
+    const sc = scenarioById(scId);
     const s = createGame(sc.setup, seed);
     const d = new GameDriver(s).pending!;
     expect(d.kind).toBe(kind);

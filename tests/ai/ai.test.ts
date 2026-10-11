@@ -1,44 +1,29 @@
+// Cheap AI checks: reactive policies on constructed positions, hidden information, the in-thread AiClient. The long
+// games are files of their own so that they run in parallel: recruit-games-*.test.ts (AI vs AI, every battle) and
+// tribune-random.slow.test.ts (tribune against a random player).
 import { describe, expect, it } from 'vitest';
 import {
-  CARD_LIST, GameDriver, areAdjacent, createGame, forceDice, forcedDiceLeft, hexId, leaderEvadeOptions, randomAnswer, type Decision, type GameState, type ScenarioSetup,
-  type Side, type TerrainType, type UnitType,
+  CARD_LIST, GameDriver, areAdjacent, createGame, forceDice, forcedDiceLeft, hexId, leaderEvadeOptions, type Decision, type GameState,
+  type Side,
 } from '../../src/engine';
-import { SCENARIOS } from '../../src/scenarios';
-import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
+import { scenarioById } from '../../src/scenarios';
+import { PERSONALITIES, chooseAnswer, isLegal, newMemory, type AiOptions } from '../../src/ai';
 import { AiClient } from '../../src/ai/client';
 import { greedyMoveStep } from '../../src/ai/moves';
 import { chooseLeaderEvade, defendChoice, greedyBattle } from '../../src/ai/policies';
 import { NEUTRAL_W } from '../../src/ai/values';
+import { positionBuilder } from './helpers';
 import { failOnAiErrors } from './no-ai-errors';
 
 const H = (r: number, c: number) => hexId(r, c);
 
 failOnAiErrors();
 
-interface Pos {
-  units?: { side: Side; type: UnitType; at: [number, number]; blocks?: number }[];
-  leaders?: { side: Side; at: [number, number] }[];
-  terrain?: { at: [number, number]; t: TerrainType }[];
-}
-
-/** Build a position. Units get ids u1.. in order, leaders follow. */
-function position(p: Pos): GameState {
-  const setup: ScenarioSetup = {
-    id: 'test', name: 'Test',
-    top: { army: 'Carthaginian', blocks: 'car', look: 'carthaginian', commander: 'Hannibal', cards: 5 },
-    bottom: { army: 'Roman', blocks: 'rom', look: 'roman', commander: 'Varro', cards: 5 },
-    first: 'bottom', banners: 6,
-    terrain: (p.terrain ?? []).map((t) => ({ r: t.at[0], c: t.at[1], t: t.t })),
-    units: (p.units ?? []).map((u) => ({ side: u.side, type: u.type, r: u.at[0], c: u.at[1] })),
-    leaders: (p.leaders ?? []).map((l, i) => ({ side: l.side, name: `L${i}`, r: l.at[0], c: l.at[1] })),
-    reserves: [], reserveLeaders: [], rules: [],
-  };
-  const s = createGame(setup, 99);
-  (p.units ?? []).forEach((u, i) => {
-    if (u.blocks !== undefined) s.units[i].blocks = u.blocks;
-  });
-  return s;
-}
+const position = positionBuilder({
+  top: { army: 'Carthaginian', blocks: 'car', look: 'carthaginian', commander: 'Hannibal' },
+  bottom: { army: 'Roman', blocks: 'rom', look: 'roman', commander: 'Varro' },
+  banners: 6, seed: 99,
+});
 
 function order(s: GameState, ids: string[]) {
   for (const id of ids) {
@@ -50,17 +35,6 @@ function order(s: GameState, ids: string[]) {
     };
   }
   s.turn.phase = 'move';
-}
-
-function mulberry(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 describe('reactive policies', () => {
@@ -144,7 +118,7 @@ describe('reactive policies', () => {
   });
 
   it('never consumes dice forced by the test hook', () => {
-    const sc = SCENARIOS.find((x) => x.id === '005')!;
+    const sc = scenarioById('005');
     const d = new GameDriver(createGame(sc.setup, 3));
     const opts: AiOptions = { side: d.pending!.side, difficulty: 'tribune', personality: PERSONALITIES[1], seed: 9, budgetScale: 0.1 };
     const mem = newMemory();
@@ -165,7 +139,7 @@ describe('reactive policies', () => {
   });
 
   it('does not use hidden information: same decision whatever the opponent holds and the dice will be', () => {
-    const sc = SCENARIOS.find((x) => x.id === '001')!;
+    const sc = scenarioById('001');
     const base = createGame(sc.setup, 5);
     const opts: AiOptions = { side: base.active, difficulty: 'tribune', personality: PERSONALITIES[0], seed: 1234, budgetScale: 0.1, deterministic: true };
     const variant = createGame(sc.setup, 5);
@@ -185,7 +159,7 @@ describe('reactive policies', () => {
 
 describe('AiClient', () => {
   it('falls back to in-thread decisions when Web Workers are unavailable', async () => {
-    const sc = SCENARIOS.find((x) => x.id === '004')!;
+    const sc = scenarioById('004');
     const d = new GameDriver(createGame(sc.setup, 8));
     const c = {
       top: new AiClient({ side: 'top', difficulty: 'recruit', personality: PERSONALITIES[0], seed: 1, budgetScale: 0.3 }),
@@ -203,58 +177,5 @@ describe('AiClient', () => {
     c.top.dispose();
     await expect(c.top.decide(d.state, d.pending!)).rejects.toThrow();
     c.bottom.dispose();
-  });
-});
-
-describe('AI vs AI (recruit) completes every scenario with legal answers', () => {
-  for (const sc of SCENARIOS) {
-    it(`${sc.id} ${sc.name}`, () => {
-      const d = new GameDriver(createGame(sc.setup, 4242 + Number(sc.id)));
-      const opts: Record<Side, AiOptions> = {
-        top: { side: 'top', difficulty: 'recruit', personality: personalityFor(sc.setup.top.commander, sc.setup.top.army), seed: 11, budgetScale: 0.3 },
-        bottom: { side: 'bottom', difficulty: 'recruit', personality: personalityFor(sc.setup.bottom.commander, sc.setup.bottom.army), seed: 22, budgetScale: 0.3 },
-      };
-      const mems = { top: newMemory(), bottom: newMemory() };
-      let steps = 0;
-      while (!d.over && steps++ < 20000) {
-        const dec = d.pending!;
-        const r = chooseAnswer(d.state, dec, opts[dec.side], mems[dec.side]);
-        expect(isLegal(d.state, dec, r.answer), `${dec.kind}: ${JSON.stringify(r.answer)}`).toBe(true);
-        const ok = d.answer(r.answer);
-        if (!ok) throw new Error(`answer rejected: ${d.lastError} for ${JSON.stringify(dec)} -> ${JSON.stringify(r.answer)}`);
-      }
-      expect(d.state.winner).not.toBeNull();
-    });
-  }
-});
-
-describe('tribune beats a random player', () => {
-  it('wins at least 90% of 20 games across scenarios and sides', () => {
-    const ids = ['001', '002', '003', '004', '005', '006', '007', '008', '010', '013'];
-    let wins = 0;
-    let games = 0;
-    for (const id of ids) {
-      const sc = SCENARIOS.find((x) => x.id === id)!;
-      for (const aiSide of ['bottom', 'top'] as Side[]) {
-        const seed = 500 + Number(id) * 2 + (aiSide === 'top' ? 1 : 0);
-        const d = new GameDriver(createGame(sc.setup, seed));
-        const opts: AiOptions = { side: aiSide, difficulty: 'tribune', personality: personalityFor(sc.setup[aiSide].commander, sc.setup[aiSide].army), seed, budgetScale: 0.12 };
-        const mem = newMemory();
-        const rnd = mulberry(seed);
-        let steps = 0;
-        while (!d.over && steps++ < 20000) {
-          const dec = d.pending!;
-          const a = dec.side === aiSide ? chooseAnswer(d.state, dec, opts, mem).answer : randomAnswer(d.state, dec, rnd);
-          if (!d.answer(a)) {
-            expect(dec.side, `AI answer rejected: ${d.lastError}`).not.toBe(aiSide);
-            d.answer(randomAnswer(d.state, d.pending!, rnd));
-          }
-        }
-        games++;
-        if (d.state.winner === aiSide) wins++;
-      }
-    }
-    expect(games).toBe(20);
-    expect(wins).toBeGreaterThanOrEqual(18);
   });
 });

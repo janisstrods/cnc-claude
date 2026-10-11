@@ -3,28 +3,15 @@
 // Expansion #2 (201-223) is in exp2.test.ts.
 import { describe, expect, it } from 'vitest';
 import {
-  COLS, ELITES, GameDriver, HEX_DIRS, OFF_BOARD, createGame, hexId, isImpassable, isLoneLeader, leaderUnit, rowOf,
-  type GameState, type HexDir, type ScenarioSetup, type Side, type UnitType,
+  COLS, ELITES, GameDriver, OFF_BOARD, createGame, isImpassable, isLoneLeader, leaderUnit, rowOf,
+  type GameState, type HexDir, type ScenarioSetup, type Side,
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
 import { checksums, fnv1a, terrainTally } from './checksum';
-import { MANIFEST, MANIFEST_EXP2 } from './manifest';
+import { EXP1, EXP2, H, SIDES, edgesOf, game, unitCounts } from './helpers';
+import { MANIFEST } from './manifest';
 
-const H = (r: number, c: number) => hexId(r, c);
-const EXP1 = Object.keys(MANIFEST).sort();
-const EXP2 = Object.keys(MANIFEST_EXP2).sort();
 const BASE = ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015'];
-const SIDES: Side[] = ['top', 'bottom'];
-const game = (id: string, seed = 1) => createGame(scenarioById(id).setup, seed);
-
-function unitCounts(s: GameState, side: Side): Partial<Record<UnitType, number>> {
-  const n: Partial<Record<UnitType, number>> = {};
-  for (const u of s.units) if (u.side === side) n[u.type] = (n[u.type] ?? 0) + 1;
-  return n;
-}
-
-/** Protected hexsides of a rampart hex, by direction. */
-const edgesOf = (s: GameState, h: number): HexDir[] => HEX_DIRS.filter((_, i) => s.rampart[h] & (1 << i));
 
 describe('Expansion #1 battle list', () => {
   it('the 24 battles 101-124 follow the 15 base battles, then the 23 battles 201-223 (and Expansion #3)', () => {

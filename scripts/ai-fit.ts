@@ -2,11 +2,8 @@
 // Usage: npx vite-node scripts/ai-fit.ts -- --data dir --features ban,mat,riskMeNow,... [--minTurn 1]
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { arg } from './lib';
 
-function arg(name: string, def: string): string {
-  const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : def;
-}
 const dir = arg('data', '.');
 const feats = arg('features', 'ban,mat').split(',');
 const minTurn = Number(arg('minTurn', '1'));

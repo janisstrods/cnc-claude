@@ -4,13 +4,11 @@
 // (tribune in deterministic mode, fixed seeds, constructed positions).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  CARD_LIST, GameDriver, OFF_BOARD, cloneState, createGame, forceDice, hexId, other, rollingFireRoutes, sectionsOf,
-  validateOrders, type ArmyLook, type Blocks, type CommandDef, type Decision, type EliteId, type GameEvent, type GameState,
-  type LeaderTrait, type Legion, type ObjectiveSetup, type ScenarioSetup, type Side, type SpecialRuleId, type TerrainSetup,
-  type UnitType,
+  GameDriver, OFF_BOARD, cloneState, createGame, forceDice, hexId, other, rollingFireRoutes, sectionsOf, validateOrders,
+  type CommandDef, type Decision, type GameEvent, type GameState, type LeaderTrait, type Legion, type Side, type SpecialRuleId,
 } from '../../src/engine';
-import { SCENARIOS } from '../../src/scenarios';
-import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
+import { SCENARIOS, scenarioById } from '../../src/scenarios';
+import { chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
 import { Occ } from '../../src/ai/board';
 import { cardRetention } from '../../src/ai/cardsense';
 import { closeAttackEV, rollingFireEV } from '../../src/ai/estimate';
@@ -22,92 +20,16 @@ import { Rng } from '../../src/ai/rand';
 import { resumeTurn } from '../../src/ai/sim';
 import { NEUTRAL_W, bannerStep, leaderWorth } from '../../src/ai/values';
 import { speak, troopName } from '../../src/ai/voice';
+import { aiTurn, detOpts, positionBuilder, setHand, type Army, type Pos } from './helpers';
 import { failOnAiErrors } from './no-ai-errors';
 
 const H = (r: number, c: number) => hexId(r, c);
 
-interface Army { army: string; blocks: Blocks; look: ArmyLook; commander: string }
 const ROMAN: Army = { army: 'Roman', blocks: 'rom', look: 'marian', commander: 'Marius' };
 const GAUL: Army = { army: 'Gallic', blocks: 'bar', look: 'gallic', commander: 'Aneroestes' };
 const SLAVE: Army = { army: 'Slave', blocks: 'bar', look: 'slave', commander: 'Spartacus' };
 
-interface Pos {
-  units: { side: Side; type: UnitType; at: [number, number]; blocks?: number; elite?: EliteId; command?: string }[];
-  leaders?: { side: Side; name: string; at: [number, number]; traits?: LeaderTrait[] }[];
-  terrain?: TerrainSetup[];
-  rules?: SpecialRuleId[];
-  top?: Army;
-  bottom?: Army;
-  first?: Side;
-  banners?: number;
-  legions?: Partial<Record<Side, Legion>>;
-  objectives?: ObjectiveSetup[];
-  commands?: CommandDef[];
-  rollingFire?: Side;
-  lastRowRetreat?: Side;
-  rampartBreakers?: Side;
-}
-
-/** Units get ids u1.. in order, then the leaders L<n>. */
-function position(p: Pos): GameState {
-  const setup: ScenarioSetup = {
-    id: 'test', name: 'Test',
-    top: { ...(p.top ?? GAUL), cards: 5 }, bottom: { ...(p.bottom ?? ROMAN), cards: 5 },
-    first: p.first ?? 'bottom', banners: p.banners ?? 6,
-    terrain: p.terrain ?? [],
-    units: p.units.map((u) => ({ side: u.side, type: u.type, r: u.at[0], c: u.at[1], elite: u.elite, command: u.command })),
-    leaders: (p.leaders ?? []).map((l) => ({ side: l.side, name: l.name, r: l.at[0], c: l.at[1], traits: l.traits })),
-    reserves: [], reserveLeaders: [], rules: p.rules ?? [],
-    legions: p.legions, objectives: p.objectives, commands: p.commands, rollingFire: p.rollingFire,
-    lastRowRetreat: p.lastRowRetreat, rampartBreakers: p.rampartBreakers,
-  };
-  const s = createGame(setup, 77);
-  p.units.forEach((u, i) => {
-    if (u.blocks !== undefined) s.units[i].blocks = u.blocks;
-  });
-  return s;
-}
-
-/** Give a side exactly these card kinds (taken from the deck / other hand). */
-function setHand(s: GameState, side: Side, kinds: string[]) {
-  const used = new Set<number>();
-  const hand: number[] = [];
-  for (const k of kinds) {
-    const id = CARD_LIST.findIndex((x, i) => x === k && !used.has(i));
-    if (id < 0) throw new Error(`setHand: no card of kind '${k}' left in the deck`);
-    used.add(id);
-    hand.push(id);
-  }
-  const opp = other(side);
-  s.players[opp].hand = s.players[opp].hand.filter((c) => !used.has(c));
-  s.deck = [...s.deck.filter((c) => !used.has(c)), ...s.players[side].hand.filter((c) => !used.has(c))];
-  s.players[side].hand = hand;
-  while (s.players[opp].hand.length < 5) s.players[opp].hand.push(s.deck.shift()!);
-}
-
-const detOpts = (side: Side, seed: number, extra: Partial<AiOptions> = {}): AiOptions => ({
-  side, difficulty: 'tribune', personality: PERSONALITIES[5], seed, deterministic: true, budgetScale: 0.3, ...extra,
-});
-
-/** Let the AI play the active side's whole turn (both sides answer their own decisions); returns the turn's events. */
-function aiTurn(s: GameState, seed: number, extra: Partial<AiOptions> = {}) {
-  const d = new GameDriver(s);
-  const side = d.state.active;
-  const turn = d.state.turn.number;
-  const mems = { top: newMemory(), bottom: newMemory() };
-  const events: GameEvent[] = [];
-  const decisions: { d: Decision; plan: string | undefined; command?: string }[] = [];
-  let guard = 0;
-  while (d.pending && d.state.active === side && d.state.turn.number === turn && guard++ < 200) {
-    const dec = d.pending;
-    const r = chooseAnswer(d.state, dec, detOpts(dec.side, seed, extra), mems[dec.side]);
-    expect(isLegal(d.state, dec, r.answer)).toBe(true);
-    decisions.push({ d: dec, plan: mems[dec.side].plan?.label, command: mems[dec.side].plan?.command });
-    expect(d.answer(r.answer), d.lastError ?? '').toBe(true);
-    for (const { e } of d.drainEvents()) events.push(e);
-  }
-  return { d, events, decisions, mems };
-}
+const position = positionBuilder({ top: GAUL, bottom: ROMAN, banners: 6, seed: 77 });
 
 /** Order unit `id` for the battle phase (not moved, one battle left) under card `kind`. */
 function battleReady(s: GameState, side: Side, ids: string[], kind: Parameters<typeof cardRetention>[2] = 'order2C') {
@@ -375,7 +297,7 @@ describe('separate commands', () => {
   const COMMANDS: CommandDef[] = [{ id: 'lentulus', name: 'Lentulus', side: 'bottom', blocks: 'gry' }, { id: 'gellius', name: 'Gellius', side: 'bottom' }];
 
   it('210: the Roman AI never gives orders that mix the two commands', () => {
-    const sc = SCENARIOS.find((x) => x.id === '210')!;
+    const sc = scenarioById('210');
     const d = new GameDriver(createGame(sc.setup, 210));
     const mems = { top: newMemory(), bottom: newMemory() };
     const command = new Map(d.state.units.map((u) => [u.id, u.command]));
@@ -529,7 +451,7 @@ describe('last-row retreat, very steep hills, Caesar and Spartacus', () => {
 
 describe('206 ambush, information hiding, commanders and voice', () => {
   it('206: Order Light Troops offers the ambush entry in every section, like the Leadership cards', () => {
-    const sc = SCENARIOS.find((x) => x.id === '206')!;
+    const sc = scenarioById('206');
     const s = createGame(sc.setup, 3);
     s.active = 'bottom';
     for (const kind of ['orderLight', 'leadershipAny'] as const) {
@@ -541,7 +463,7 @@ describe('206 ambush, information hiding, commanders and voice', () => {
 
   it('the ambush taunt names the reserve\'s own leader (Mago at the Trebbia, Marcellus at Aquae Sextiae)', () => {
     for (const [id, side, name] of [['005', 'top', 'Mago'], ['206', 'bottom', 'Marcellus']] as const) {
-      const sc = SCENARIOS.find((x) => x.id === id)!;
+      const sc = scenarioById(id);
       const s = createGame(sc.setup, 3);
       const P = personalityFor(sc.setup[side].commander, sc.setup[side].army);
       const lines = new Set<string>();
@@ -556,7 +478,7 @@ describe('206 ambush, information hiding, commanders and voice', () => {
   });
 
   it('210: the first card does not depend on the opponent\'s hand, the deck or the dice', () => {
-    const sc = SCENARIOS.find((x) => x.id === '210')!;
+    const sc = scenarioById('210');
     const s = createGame(sc.setup, 5);
     const d = new GameDriver(s).pending!;
     expect(d.kind).toBe('playCard');
@@ -609,7 +531,7 @@ describe('206 ambush, information hiding, commanders and voice', () => {
 describe('an AI answer replaced by the fallback', () => {
   it('is counted in the memory and reported with console.error (so failOnAiErrors fails on it)', () => {
     // a placement decision with no hex to offer: the AI's answer cannot be legal, so the fallback answers instead
-    const s = createGame(SCENARIOS.find((sc) => sc.id === '210')!.setup, 1);
+    const s = createGame(scenarioById('210').setup, 1);
     const l = s.leaders.find((x) => x.side === s.active)!;
     const d: Decision = { kind: 'placeLeader', side: s.active, leader: l.id, options: [] };
     const mem = newMemory();

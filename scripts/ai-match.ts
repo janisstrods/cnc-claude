@@ -5,17 +5,12 @@
 //   --det: deterministic AI (simulation counts bound the search). Opt-in regression check: tribune should beat the
 //   greedy bot about 65% or more over 30 games. Strength A/Bs need a same-seed baseline (old-vs-old on the same
 //   seeds): side and seed imbalance in this game is large.
-import { GameDriver, bannerTotal, createGame, randomAnswer, type Side } from '../src/engine';
-import { SCENARIOS } from '../src/scenarios';
-import { chooseAnswer, newMemory, personalityById, personalityFor, type AiMemory, type AiOptions, type Difficulty } from '../src/ai';
+import { GameDriver, bannerTotal, createGame, other, randomAnswer, type Side } from '../src/engine';
+import { SCENARIOS, scenarioById } from '../src/scenarios';
+import { personalityById, personalityFor, type AiOptions, type Difficulty } from '../src/ai';
 import { weightsFor } from '../src/ai/values';
 import { Bot, type Strategy } from '../tests/ai/bots';
-
-function arg(name: string, def: string): string {
-  const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : def;
-}
-const flag = (name: string) => process.argv.includes(`--${name}`);
+import { arg, flag, jobSeed, lcg, playAiGame, shardJobs } from './lib';
 
 const A = arg('a', 'tribune') as Difficulty;
 const B = arg('b', 'recruit') as Difficulty;
@@ -23,7 +18,6 @@ const games = Number(arg('games', '1'));
 const scale = Number(arg('scale', '1'));
 const scaleB = Number(arg('scaleB', arg('scale', '1')));
 const scen = arg('scenarios', SCENARIOS.map((s) => s.id).join(',')).split(',');
-const [shard, shards] = arg('shard', '0/1').split('/').map(Number);
 const randomB = flag('random');
 const botB = arg('bot', '') as Strategy | '';
 const det = flag('det');
@@ -44,20 +38,17 @@ function applyTune(o: AiOptions, spec: string) {
   o.tune = out;
 }
 
-interface Job { sc: string; aSide: Side; g: number }
-const jobs: Job[] = [];
-for (const sc of scen) for (let g = 0; g < games; g++) for (const aSide of ['bottom', 'top'] as Side[]) jobs.push({ sc, aSide, g });
-const mine = jobs.filter((_, i) => i % shards === shard);
+const mine = shardJobs(scen, games);
 
 let aWins = 0;
 let bWins = 0;
 const timeA: number[] = [];
 const timeB: number[] = [];
 for (const job of mine) {
-  const info = SCENARIOS.find((x) => x.id === job.sc)!;
-  const seed = 1000 * Number(job.sc) + 17 * (job.g + seedOffset) + (job.aSide === 'top' ? 7 : 0);
+  const info = scenarioById(job.sc);
+  const seed = jobSeed(job, seedOffset);
   const d = new GameDriver(createGame(info.setup, seed));
-  const bSide: Side = job.aSide === 'top' ? 'bottom' : 'top';
+  const bSide = other(job.aSide);
   const mk = (side: Side, diff: Difficulty, sc: number): AiOptions => ({
     side, difficulty: diff, personality: personalityFor(info.setup[side].commander, info.setup[side].army), seed: seed * 3 + (side === 'top' ? 1 : 2), budgetScale: sc,
     deterministic: det,
@@ -70,31 +61,19 @@ for (const job of mine) {
   applyTune(optB, tuneB);
   if (cfgA) optA.cfgPatch = JSON.parse(cfgA);
   if (cfgB) optB.cfgPatch = JSON.parse(cfgB);
-  const memA: AiMemory = newMemory();
-  const memB: AiMemory = newMemory();
-  let r = seed;
-  const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
-  let steps = 0;
+  const rnd = lcg(seed);
   let rejects = 0;
   const bot = botB ? new Bot(botB, rnd) : null;
-  while (!d.over && steps++ < 20000 && d.state.turn.number <= 200) {
-    const dec = d.pending!;
-    const isA = dec.side === job.aSide;
-    let ans;
-    if (!isA && bot) ans = bot.answer(d.state, dec);
-    else if (!isA && randomB) ans = randomAnswer(d.state, dec, rnd);
-    else {
-      const t0 = performance.now();
-      ans = chooseAnswer(d.state, dec, isA ? optA : optB, isA ? memA : memB).answer;
-      // the turn plans: a card decision, or a dice-order side's assignment of its order dice (310, §18.10)
-      if (dec.kind === 'playCard' || dec.kind === 'diceOrders') (isA ? timeA : timeB).push(performance.now() - t0);
-    }
-    if (!d.answer(ans)) {
+  playAiGame(d, { [job.aSide]: optA, [bSide]: optB } as Record<Side, AiOptions>, {
+    maxTurn: 200,
+    answer: (dec) => (dec.side === job.aSide ? undefined : bot ? bot.answer(d.state, dec) : randomB ? randomAnswer(d.state, dec, rnd) : undefined),
+    planMs: (side, ms) => (side === job.aSide ? timeA : timeB).push(ms),
+    rejected: (dec, ans) => {
       rejects++;
       console.log(`REJECT ${job.sc} ${dec.kind} ${d.lastError} ${JSON.stringify(ans)}`);
-      d.answer(randomAnswer(d.state, d.pending!, rnd));
-    }
-  }
+    },
+    fallback: rnd,
+  });
   const w = d.state.winner;
   if (w === job.aSide) aWins++;
   else if (w === bSide) bWins++;

@@ -1,79 +1,29 @@
-// Regression checks from the AI review (cheap and deterministic). Slow win-rate matches against the scripted bots are an
-// opt-in script: npx vite-node scripts/ai-match.ts -- --bot greedy (strength A/Bs need a same-seed baseline).
+// Regression checks from the AI review (cheap and deterministic; the 30-game Castulo check is castulo.slow.test.ts). Slow
+// win-rate matches against the scripted bots are an opt-in script: npx vite-node scripts/ai-match.ts -- --bot greedy
+// (strength A/Bs need a same-seed baseline).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  CARD_LIST, GameDriver, createGame, distance, forceDice, hexId, newTurn, randomAnswer, type CardKind, type Decision, type GameState,
-  type ScenarioSetup, type Side, type TerrainType, type UnitType,
+  GameDriver, createGame, distance, forceDice, hexId, newTurn, randomAnswer, type CardKind, type Decision, type GameState, type Side,
+  type UnitType,
 } from '../../src/engine';
-import { SCENARIOS } from '../../src/scenarios';
+import { scenarioById } from '../../src/scenarios';
 import { DIFFICULTY, PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityById, personalityFor, type AiOptions } from '../../src/ai';
 import { orderCandidates } from '../../src/ai/ordering';
 import { closeRivals, makeCtx, type Cand } from '../../src/ai/planner';
 import { Rng } from '../../src/ai/rand';
 import { chooseCavalryExtra } from '../../src/ai/policies';
 import { NEUTRAL_W, weightsFor } from '../../src/ai/values';
-import { Bot, type Strategy } from './bots';
+import { mulberry32 } from '../support/rng';
+import { Bot } from './bots';
+import { detOpts, positionBuilder, setHand, type Pos } from './helpers';
 import { failOnAiErrors } from './no-ai-errors';
 
 const H = (r: number, c: number) => hexId(r, c);
 
-function mulberry(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-interface Pos {
-  units: { side: Side; type: UnitType; at: [number, number]; blocks?: number }[];
-  leaders?: { side: Side; name: string; at: [number, number] }[];
-  terrain?: { at: [number, number]; t: TerrainType }[];
-  rules?: ScenarioSetup['rules'];
-  objectives?: ScenarioSetup['objectives'];
-  sacredLeader?: { side: Side; name: string };
-  first?: Side;
-}
-
-function position(p: Pos): GameState {
-  const setup: ScenarioSetup = {
-    id: 'test', name: 'Test',
-    top: { army: 'Carthaginian', blocks: 'car', look: 'carthaginian', commander: 'Hasdrubal', cards: 5 },
-    bottom: { army: 'Roman', blocks: 'rom', look: 'roman', commander: 'Scipio', cards: 5 },
-    first: p.first ?? 'bottom', banners: 8,
-    terrain: (p.terrain ?? []).map((t) => ({ r: t.at[0], c: t.at[1], t: t.t })),
-    units: p.units.map((u) => ({ side: u.side, type: u.type, r: u.at[0], c: u.at[1] })),
-    leaders: (p.leaders ?? []).map((l) => ({ side: l.side, name: l.name, r: l.at[0], c: l.at[1] })),
-    reserves: [], reserveLeaders: [], rules: p.rules ?? [], sacredLeader: p.sacredLeader, objectives: p.objectives,
-  };
-  const s = createGame(setup, 77);
-  p.units.forEach((u, i) => {
-    if (u.blocks !== undefined) s.units[i].blocks = u.blocks;
-  });
-  return s;
-}
-
-/** Give a side exactly these card kinds (taken from the deck / other hand). */
-function setHand(s: GameState, side: Side, kinds: string[]) {
-  const used = new Set<number>();
-  const hand: number[] = [];
-  for (const k of kinds) {
-    const id = CARD_LIST.findIndex((x, i) => x === k && !used.has(i));
-    used.add(id);
-    hand.push(id);
-  }
-  const other: Side = side === 'top' ? 'bottom' : 'top';
-  s.players[other].hand = s.players[other].hand.filter((c) => !used.has(c));
-  s.deck = [...s.deck.filter((c) => !used.has(c)), ...s.players[side].hand.filter((c) => !used.has(c))];
-  s.players[side].hand = hand;
-  while (s.players[other].hand.length < 5) s.players[other].hand.push(s.deck.shift()!);
-}
-
-const detOpts = (side: Side, seed: number, extra: Partial<AiOptions> = {}): AiOptions => ({
-  side, difficulty: 'tribune', personality: PERSONALITIES[5], seed, deterministic: true, budgetScale: 0.3, ...extra,
+const position = positionBuilder({
+  top: { army: 'Carthaginian', blocks: 'car', look: 'carthaginian', commander: 'Hasdrubal' },
+  bottom: { army: 'Roman', blocks: 'rom', look: 'roman', commander: 'Scipio' },
+  banners: 8, seed: 77,
 });
 
 afterEach(() => {
@@ -85,13 +35,13 @@ failOnAiErrors();
 
 describe('tempo against a passive opponent', () => {
   it('Akragas: Carthage (Himilco, the Shield) attacks a turtling opponent within 30 turns', () => {
-    const sc = SCENARIOS.find((x) => x.id === '001')!;
+    const sc = scenarioById('001');
     const aiSide: Side = 'top';
     const d = new GameDriver(createGame(sc.setup, 1000));
     const opts: AiOptions = { ...detOpts(aiSide, 3001), personality: personalityFor(sc.setup.top.commander, sc.setup.top.army) };
     expect(opts.personality.id).toBe('shield');
     const mem = newMemory();
-    const rnd = mulberry(1000);
+    const rnd = mulberry32(1000);
     const bot = new Bot('turtle', rnd);
     let firstAttack = -1;
     while (!d.over && d.state.turn.number <= 30 && firstAttack < 0) {
@@ -116,7 +66,7 @@ describe('Castulo: Publius Scipio (losing him loses the battle)', () => {
     for (const seed of [1, 2, 3, 4, 5, 6]) {
       const s = position({
         rules: ['castulo'],
-        objectives: SCENARIOS.find((x) => x.id === '010')!.setup.objectives,
+        objectives: scenarioById('010').setup.objectives,
         sacredLeader: { side: 'bottom', name: 'Scipio' },
         units: [
           { side: 'bottom', type: 'MI', at: [5, 4], blocks: 2 },
@@ -142,44 +92,6 @@ describe('Castulo: Publius Scipio (losing him loses the battle)', () => {
       expect(nearest, `seed ${seed}: Scipio ends the turn adjacent to the enemy`).toBeGreaterThan(1);
     }
   });
-
-  it('keeps Scipio out of contact against a greedy attacker over fixed seeds', () => {
-    // The contact rate is about 10% and varies a lot from game to game (7-17% over blocks of 10 games), so it is
-    // measured over 30 games: a real doubling still fails, an unrelated change in the AI's choices does not.
-    const sc = SCENARIOS.find((x) => x.id === '010')!;
-    let turns = 0;
-    let adjacent = 0;
-    let deaths = 0;
-    for (let g = 0; g < 30; g++) {
-      const seed = 41000 + 97 * g;
-      const d = new GameDriver(createGame(sc.setup, seed));
-      const sid = d.state.special.sacredLeaderId!;
-      const opts: AiOptions = { ...detOpts('bottom', seed * 3 + 1), personality: personalityFor(sc.setup.bottom.commander, sc.setup.bottom.army) };
-      const mem = newMemory();
-      const rnd = mulberry(seed);
-      const bot = new Bot('greedy' as Strategy, rnd);
-      let wasAi = false;
-      while (!d.over && d.state.turn.number <= 36) {
-        const dec = d.pending!;
-        if (dec.kind === 'playCard') {
-          if (wasAi) {
-            const L = d.state.leaders.find((l) => l.id === sid);
-            if (L) {
-              turns++;
-              if (d.state.units.some((u) => u.side === 'top' && u.hex >= 0 && distance(u.hex, L.hex) <= 1)) adjacent++;
-            }
-          }
-          wasAi = dec.side === 'bottom';
-        }
-        const a = dec.side === 'bottom' ? chooseAnswer(d.state, dec, opts, mem).answer : bot.answer(d.state, dec);
-        if (!d.answer(a)) d.answer(randomAnswer(d.state, d.pending!, rnd));
-        for (const { e } of d.drainEvents()) if (e.t === 'leaderKilled' && e.id === sid) deaths++;
-      }
-    }
-    expect(turns).toBeGreaterThan(150);
-    expect(adjacent / turns).toBeLessThanOrEqual(0.15);
-    expect(deaths).toBeLessThanOrEqual(1);
-  }, 240000);
 });
 
 describe('battle phase', () => {
@@ -265,7 +177,7 @@ describe('Baecula camps', () => {
     for (const P of PERSONALITIES) {
       const s = position({
         objectives: [{ kind: 'capture', side: 'bottom' }],
-        terrain: [{ at: [4, 4], t: 'camp' }],
+        terrain: [{ r: 4, c: 4, t: 'camp' }],
         units: [
           { side: 'bottom', type: 'HC', at: [4, 4] },
           { side: 'top', type: 'LB', at: [2, 4], blocks: 1 },
@@ -281,7 +193,7 @@ describe('Baecula camps', () => {
 
 describe('memory and card keeping', () => {
   it('with a fresh memory at the orders decision (resumed game) it re-plans for the card already played', () => {
-    const sc = SCENARIOS.find((x) => x.id === '007')!;
+    const sc = scenarioById('007');
     const d = new GameDriver(createGame(sc.setup, 5));
     const side = d.pending!.side;
     const mem = newMemory();
@@ -296,7 +208,7 @@ describe('memory and card keeping', () => {
   });
 
   it('tracks how long cards have been held and forgets it when the game goes back (undo/resume)', () => {
-    const sc = SCENARIOS.find((x) => x.id === '001')!;
+    const sc = scenarioById('001');
     const s = createGame(sc.setup, 3);
     const side = s.active;
     const mem = newMemory();
@@ -333,7 +245,7 @@ describe('AiClient worker handling', () => {
     vi.useFakeTimers();
     try {
       const { AiClient } = await import('../../src/ai/client');
-      const sc = SCENARIOS.find((x) => x.id === '004')!;
+      const sc = scenarioById('004');
       const d = new GameDriver(createGame(sc.setup, 8));
       const c = new AiClient({ side: d.pending!.side, difficulty: 'recruit', personality: personalityById('fox'), seed: 1, budgetScale: 0.1 });
       expect(c.usingWorker).toBe(true);
@@ -377,7 +289,7 @@ describe('AiClient worker handling', () => {
     vi.useFakeTimers();
     try {
       const { AiClient } = await import('../../src/ai/client');
-      const sc = SCENARIOS.find((x) => x.id === '004')!;
+      const sc = scenarioById('004');
       const d = new GameDriver(createGame(sc.setup, 8));
       const c = new AiClient({ side: d.pending!.side, difficulty: 'recruit', personality: personalityById('fox'), seed: 1, budgetScale: 0.1 });
       const p = c.decide(d.state, d.pending!);
