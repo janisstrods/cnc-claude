@@ -1268,8 +1268,9 @@ export const LOOKS: Record<ArmyLook, LookDef> = {
         ],
       },
       elephant: { drawing: 'base', rider: { torso: 'tunic', helmet: 'none' } },
-      // Juba's legionaries carry the late-Roman pilum, the nobles javelins rather than the base riders' long spears
-      iconBox: { MI: [-42.5, 1.8, -6.1, 10.6], MC: [-38.9, 0.6, -19.7, 20.9] },
+      // Juba's legionaries carry the late-Roman pilum, the nobles javelins rather than the base riders' long spears, the
+      // bare-headed javelinmen (AX) javelins and hide shields rather than the kit's helmeted, long-shielded auxilia
+      iconBox: { MI: [-42.5, 1.8, -6.1, 10.6], MC: [-38.9, 0.6, -19.7, 20.9], AX: [-35.2, 0.3, -11.7, 12.4] },
       general: { cloak: '#7a3a2a' },
     },
   },

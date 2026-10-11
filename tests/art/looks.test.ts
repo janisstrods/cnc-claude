@@ -4,8 +4,10 @@
 //    scenarios 001 and 002 seat them on). palette-baseline.json is the serialised FACTION_PALETTES / FACTION_COLORS of
 //    the last commit that still had `Faction`.
 // 2. The base armies render byte-identically to the art before Expansion #1 (pinned SVG hash).
-// 3. The Expansion #1 looks: all 19 looks and 4 block sets exist, armies that meet look different, elites differ.
-// 4. Opposing armies are told apart by the colours of their figures (tunics, shields), not only by the base edge.
+// 3. The Expansion #1 and #2 armies render byte-identically to the art before Expansion #2 and #3 (pinned SVG hashes);
+//    no older look on a base-drawn cavalry kit gains a mounted override.
+// 4. The Expansion #1 looks: all 19 looks and 4 block sets exist, armies that meet look different, elites differ.
+// 5. Opposing armies are told apart by the colours of their figures (tunics, shields), not only by the base edge.
 import { describe, expect, it } from 'vitest';
 import baselineJson from './palette-baseline.json';
 import { createGame } from '../../src/engine';
@@ -15,6 +17,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { BLOCK_COLORS, LOOKS, blockColors, lookDef, paletteFor, type Kit } from '../../src/art/palettes';
 import { LeaderToken, UnitIcon, UnitToken } from '../../src/art';
 import { ELITE_FOOT, FootFigure, crewFigure, figurePalette, footKit } from '../../src/art/foot';
+import { KITS as ART_KITS } from '../../src/art/kits';
 import { bannerCloth } from '../../src/ui/kit/theme';
 import { SCENARIOS } from '../../src/scenarios';
 import { deltaE, lab } from './delta-e';
@@ -291,6 +294,48 @@ describe('Expansion #1 armies are drawn exactly as before Expansion #2 (rendered
   });
 });
 
+describe('Expansion #2 armies are drawn exactly as before Expansion #3 (rendered SVG)', () => {
+  // SHA-256 of a react-dom/server render of every UnitToken (all strengths, both facings) and UnitIcon of the six
+  // Expansion #2 looks (all 16 types; the Barbarians on their green blocks, the Marian legions on Roman red) and of the
+  // light chariot (BCH, new in Expansion #2) of the base and Expansion #1 looks; LeaderTokens of Caesar, Spartacus,
+  // Vercingetorix and Labienus on every Expansion #2 look; and the Tenth Legion. Computed on main before Expansion #3
+  // (55c1039, v1.4.4) and unchanged since.
+  const BASELINE = '737e952411121c4de0f2d64d40090c5e5094bd6e047951b2e6a10ec37c0c84a4';
+  const EXP2_LOOKS: ArmyLook[] = ['gallic', 'germanic', 'slave', 'belgic', 'briton', 'marian'];
+  const EARLIER: { look: ArmyLook; blockColor: Blocks }[] = [
+    { look: 'roman', blockColor: 'rom' }, { look: 'carthaginian', blockColor: 'car' }, { look: 'syracusan', blockColor: 'grk' },
+    ...(['athenian', 'theban', 'spartan', 'phocian'] as const).map((look) => ({ look, blockColor: 'grk' as const })),
+    ...(['macedonian', 'antigonid', 'epirote', 'craterus', 'eumenes', 'antigonus', 'seleucid', 'ptolemaic', 'persian', 'scythian', 'indian', 'mauryan'] as const)
+      .map((look) => ({ look, blockColor: 'eas' as const })),
+  ];
+  const LEADERS = ['Julius Caesar', 'Spartacus', 'Vercingetorix', 'Labienus'];
+
+  it('every Expansion #2 token, icon, leader and the Tenth Legion render byte-identically', async () => {
+    const parts: string[] = [];
+    const tokens = (a: { look: ArmyLook; blockColor: Blocks; elite?: EliteId }, type: UnitType) => {
+      for (let blocks = 1; blocks <= MAX[type]; blocks++) {
+        for (const facing of ['left', 'right'] as const) parts.push(svg(h(UnitToken, { type, ...a, blocks, maxBlocks: MAX[type], facing })));
+      }
+      for (const size of [24, 64]) parts.push(svg(h(UnitIcon, { type, ...a, size })));
+    };
+    for (const look of EXP2_LOOKS) {
+      const a = { look, blockColor: (look === 'marian' ? 'rom' : 'bar') as Blocks };
+      for (const type of ALL_TYPES) tokens(a, type);
+      for (const name of LEADERS) {
+        for (const facing of ['left', 'right'] as const) {
+          for (const attached of [false, true]) parts.push(svg(h(LeaderToken, { ...a, facing, attached, name, showName: true })));
+        }
+      }
+    }
+    for (const a of EARLIER) tokens(a, 'BCH');
+    tokens({ look: 'marian', blockColor: 'rom', elite: 'tenthLegion' }, 'HI');
+    expect(parts).toHaveLength(6 * (ALL_TYPES.reduce((n, t) => n + 2 * MAX[t] + 2, 0) + LEADERS.length * 4) + EARLIER.length * 8 + 10);
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(parts.join('')));
+    const hex = [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, '0')).join('');
+    expect(hex).toBe(BASELINE);
+  });
+});
+
 /** The looks new in Expansion #3, with their own art (see EXP3_KITS and tests/art/exp3-looks.test.ts). */
 type Exp3Look = 'sullan' | 'samnite' | 'sertorian' | 'pompeian' | 'caesarian' | 'helvetii' | 'numidian' | 'pontic';
 
@@ -399,6 +444,17 @@ describe('army looks of Expansion #1', () => {
       const byKit = new Set(['roman', 'carthaginian', 'syracusan', 'macedonian', 'persian', 'scythian', 'indian'].map((look) =>
         svg(h(UnitToken, { type, look: look as ArmyLook, blockColor: 'grk', blocks: 4, maxBlocks: 4, facing: 'right' }))));
       expect(byKit.size, type).toBe(7);
+    }
+  });
+
+  it('no look before Expansion #3 on a kit with base-drawn cavalry has a mounted override (it would reroute its horsemen)', () => {
+    // MountedFigure draws a base-drawn kit's LC, MC and HC from the kit's own mount as soon as the look overrides that type
+    // (Expansion #3's Numidian nobles): an override slipped into an older look would change its cavalry silently
+    const base = ALL_LOOKS.filter((l) => ART_KITS[KITS[l]].cavalry.drawing === 'base');
+    expect(base).toEqual(expect.arrayContaining(['roman', 'carthaginian', 'syracusan']));
+    for (const look of base) {
+      const over = Object.keys(LOOKS[look].style.mounted ?? {}).filter((t) => t === 'LC' || t === 'MC' || t === 'HC');
+      expect([look, over]).toEqual([look, []]);
     }
   });
 
