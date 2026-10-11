@@ -58,8 +58,8 @@ function hit(d: GameDriver, id: string) {
   must(d, { kind: 'choose', index: i });
 }
 
-/** Finish the active turn: the first retreat option, no movement, no battle. */
-function endTurn(d: GameDriver) {
+/** Finish the active turn: the first retreat option, no movement, no battle (`endTurn` takes no retreats). */
+function endTurnTakingFirstRetreat(d: GameDriver) {
   for (let guard = 0; guard < 50 && d.pending; guard++) {
     const k = d.pending.kind;
     if (k === 'retreat') must(d, { kind: 'choose', index: 0 });
@@ -286,7 +286,7 @@ describe('cards: the dice side never draws or plays one (§18.10)', () => {
     const d = start(numidia(), ['light', 'medium']);
     const deck = d.state.deck.length;
     must(d, { kind: 'assign', ids: ['u1', 'u2'] });
-    endTurn(d);
+    endTurnTakingFirstRetreat(d);
     expect(ev(d).some((e) => e.t === 'draw')).toBe(false);
     expect(d.state.players.top.hand).toEqual([]);
     expect(d.state.deck.length).toBe(deck);
@@ -301,7 +301,7 @@ describe('cards: the dice side never draws or plays one (§18.10)', () => {
   it('a Caesarian Counter Attack has nothing to copy and orders nothing', () => {
     const d = start(numidia(), ['light', 'medium']);
     must(d, { kind: 'assign', ids: ['u1', 'u2'] });
-    endTurn(d);
+    endTurnTakingFirstRetreat(d);
     const card = giveCard(d.state, 'bottom', 'counterAttack');
     forceDice(['heavy', 'heavy']); // the next Numidian roll
     must(d, { kind: 'playCard', card });
@@ -323,7 +323,7 @@ describe('cards: the dice side never draws or plays one (§18.10)', () => {
     expect(d.pending).toEqual({ kind: 'defend', side: 'bottom', attacker: 'u1', target: 'u2', canEvade: false, canFirstStrike: true, bonus: false });
     ev(d);
     must(d, { kind: 'defend', choice: 'firstStrike' });
-    endTurn(d); // the MC has used its battle: the Numidian turn ends
+    endTurnTakingFirstRetreat(d); // the MC has used its battle: the Numidian turn ends
     const e = ev(d);
     expect(e.map((x) => x.t)).toContain('turnStart'); // the Caesarian turn has begun
     expect(e.filter((x) => x.t === 'draw')).toEqual([{ t: 'draw', side: 'bottom' }]); // First Strike's replacement only

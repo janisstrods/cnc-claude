@@ -9,7 +9,9 @@ import {
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory } from '../../src/ai';
 import { scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
 import gergoviaJson from '../../src/scenarios/data/308.json';
-import { H, build, combatDice, ev, forceDice, giveCard, must, n, noFirstStrike, passTurn, setupOf, u, type Pos } from './helpers';
+import {
+  H, build, combatDice, endMoves, ev, forceDice, giveCard, must, n, noFirstStrike, passTurn, setupOf, u, type Pos,
+} from './helpers';
 
 beforeEach(() => forceDice([]));
 
@@ -66,10 +68,8 @@ function springAmbush(d: GameDriver, kind: CardKind, section: SectionName) {
   must(d, { kind: 'orders', pieces: [], ambushSection: section });
 }
 
-function endMoves(d: GameDriver) {
-  while (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
-}
-function endTurn(d: GameDriver) {
+/** `endTurn` that also answers the reserve leader's placement (`attachLeader`, §18.9) with the first hex offered. */
+function endTurnPlacingLeaders(d: GameDriver) {
   endMoves(d);
   while (d.pending?.kind === 'placeLeader') must(d, { kind: 'hex', hex: (d.pending as Extract<Decision, { kind: 'placeLeader' }>).options[0] });
   while (d.pending?.kind === 'battle') must(d, { kind: 'endBattle' });
@@ -213,7 +213,7 @@ describe('reinforcements: fixed entry hexes (§18.9)', () => {
       must(d, { kind: 'move', piece: id, to: H(...at) });
     }
     must(d, { kind: 'move', piece: 'L8', to: H(4, 0) });
-    endTurn(d); // u7 was not placed
+    endTurnPlacingLeaders(d); // u7 was not placed
     expect(d.state.special.reserveUnits.map((x) => x.id)).toEqual(['u7']);
     expect(d.state.special.reserveLeaders).toEqual([]);
     expect(d.pending?.kind).toBe('placeUnit'); // Romans: the forced placement comes first
@@ -285,7 +285,7 @@ describe('reinforcements: no further move, 2 dice (§18.9)', () => {
     const d = startGame(gergovia());
     springAmbush(d, 'leadershipAny', 'center');
     must(d, { kind: 'move', piece: 'u4', to: H(4, 0) });
-    endTurn(d);
+    endTurnPlacingLeaders(d);
     pass(d); // Romans (after their forced placement)
     playCard(d, 'order3R'); // the board's left edge is the Gallic right
     must(d, { kind: 'orders', pieces: ['u4'] });
@@ -357,7 +357,7 @@ describe('reinforcements: forced placement (§18.9)', () => {
     springAmbush(d, 'leadershipAny', 'center');
     must(d, { kind: 'move', piece: unit, to: H(3, 0) });
     must(d, { kind: 'move', piece: leader, to: H(3, 0) });
-    endTurn(d);
+    endTurnPlacingLeaders(d);
     return d;
   }
 
@@ -368,7 +368,7 @@ describe('reinforcements: forced placement (§18.9)', () => {
     passTurn(d);
     // the Gauls spring it but nobody enters: still nothing
     springAmbush(d, 'leadershipAny', 'center');
-    endTurn(d);
+    endTurnPlacingLeaders(d);
     expect(d.state.special.reserveEntered).toBe(false);
     expect(d.pending).toMatchObject({ kind: 'playCard', side: 'bottom' });
   });
@@ -407,13 +407,13 @@ describe('reinforcements: forced placement (§18.9)', () => {
     springAmbush(d, 'leadershipAny', 'center');
     must(d, { kind: 'move', piece: 'u7', to: H(3, 0) });
     must(d, { kind: 'move', piece: 'L11', to: H(3, 0) });
-    endTurn(d);
+    endTurnPlacingLeaders(d);
     expect(d.pending).toMatchObject({ kind: 'playCard', side: 'bottom' }); // every hex taken: it waits
     // the Romans move the LI on (8,3) away
     playCard(d, 'order2L');
     must(d, { kind: 'orders', pieces: ['u5'] });
     must(d, { kind: 'move', piece: 'u5', to: H(7, 3) });
-    endTurn(d);
+    endTurnPlacingLeaders(d);
     passTurn(d); // Gauls
     expect(d.pending).toEqual({ kind: 'placeUnit', side: 'bottom', unit: 'u12', options: [H(8, 3)] });
     must(d, { kind: 'hex', hex: H(8, 3) });
@@ -489,7 +489,7 @@ describe('308 Gergovia itself (src/scenarios/data/308.json)', () => {
     must(d, { kind: 'endMove' });
     expect(d.pending).toEqual({ kind: 'placeLeader', side: 'top', leader: verc, options: hexes([[3, 0], [4, 0], [5, 0], [7, 0]]) });
     must(d, { kind: 'hex', hex: H(4, 0) });
-    endTurn(d);
+    endTurnPlacingLeaders(d);
     expect(d.pending).toEqual({ kind: 'placeUnit', side: 'bottom', unit: mi, options: hexes(ROMAN_LEFT) });
     must(d, { kind: 'hex', hex: H(8, 1) });
     expect(u(d, mi)).toMatchObject({ type: 'MI', hex: H(8, 1), legion: 'julian' });

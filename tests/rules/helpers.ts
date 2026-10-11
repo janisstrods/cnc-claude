@@ -174,14 +174,35 @@ export function n(face: DieFace, k: number): DieFace[] {
 
 export { forceDice, forcedDiceLeft };
 
+/** Play a card of `kind` for the active side of a running game and order `pieces` (hands are manipulated in place). */
+export function turn(d: GameDriver, kind: CardKind, pieces: string[]) {
+  const card = giveCard(d.state, d.state.active, kind);
+  must(d, { kind: 'playCard', card });
+  if (d.pending?.kind === 'orders') must(d, { kind: 'orders', pieces });
+}
+
+/** End the movement of the ordered pieces still to move. */
+export function endMoves(d: GameDriver) {
+  while (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
+}
+
+/** Finish the active player's turn: end the movement, then the battles not fought. */
+export function endTurn(d: GameDriver) {
+  endMoves(d);
+  while (d.pending?.kind === 'battle') must(d, { kind: 'endBattle' });
+}
+
 /** Finish the active player's turn doing nothing with a plain section card (hands are manipulated in place). */
 export function passTurn(d: GameDriver, kind: CardKind = 'order2L') {
-  const side = d.state.active;
-  const card = giveCard(d.state, side, kind);
-  must(d, { kind: 'playCard', card });
-  if (d.pending?.kind === 'orders') must(d, { kind: 'orders', pieces: [] });
-  while (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
-  while (d.pending?.kind === 'battle') must(d, { kind: 'endBattle' });
+  turn(d, kind, []);
+  endTurn(d);
+}
+
+/** Events from the latest turnStart of `side` on. */
+export function fromTurnStart(es: GameEvent[], side: Side): GameEvent[] {
+  const i = es.map((e) => e.t === 'turnStart' && e.side === side).lastIndexOf(true);
+  expect(i).toBeGreaterThanOrEqual(0);
+  return es.slice(i);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

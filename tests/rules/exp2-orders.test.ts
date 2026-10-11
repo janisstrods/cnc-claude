@@ -10,7 +10,7 @@ import {
 } from '../../src/engine';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory } from '../../src/ai';
 import { scenarioById, scenarioFromJson, type ScenarioJson } from '../../src/scenarios';
-import { H, build, ev, giveCard, must, n, noFirstStrike, passTurn, play, setupOf, u, type Pos } from './helpers';
+import { H, build, endMoves, endTurn, ev, giveCard, must, n, noFirstStrike, passTurn, play, setupOf, u, type Pos } from './helpers';
 
 beforeEach(() => forceDice([]));
 
@@ -59,15 +59,6 @@ function playCard(d: GameDriver, kind: CardKind) {
 function springAmbush(d: GameDriver, kind: CardKind, section: SectionName) {
   playCard(d, kind);
   must(d, { kind: 'orders', pieces: [], ambushSection: section });
-}
-
-/** End the movement stage (then the battle stage) of the active turn. */
-function endMoves(d: GameDriver) {
-  while (d.pending?.kind === 'move') must(d, { kind: 'endMove' });
-}
-function endTurn(d: GameDriver) {
-  endMoves(d);
-  while (d.pending?.kind === 'battle') must(d, { kind: 'endBattle' });
 }
 
 const logs = (d: GameDriver) => ev(d).flatMap((e) => (e.t === 'log' ? [e.text] : []));
