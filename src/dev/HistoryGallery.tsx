@@ -9,6 +9,7 @@ import { validateHistory } from '../history/validate';
 import { UnitToken } from '../art';
 import { BoardArt } from '../ui/terrain';
 import { BOARD_H, BOARD_W, hexCenterId } from '../ui/geometry';
+import { boardArtProps, unitTokenProps } from '../ui/game/boardProps';
 import { MapSlide, OutcomeSlide, RoadSlide, SLIDE_TITLES, sideColors } from '../ui/history/HistoryDialog';
 import { BattleMap } from '../ui/history/BattleMap';
 import '../ui/history/history.css';
@@ -17,12 +18,12 @@ function GameBoard({ sc }: { sc: ScenarioInfo }) {
   const s = useMemo(() => createGame(sc.setup, 1), [sc]);
   return (
     <svg viewBox={`0 0 ${BOARD_W} ${BOARD_H}`} style={{ width: 460, display: 'block' }}>
-      <BoardArt terrain={s.terrain} fords={s.fords} rampart={s.rampart} flipped={false} topLabel={s.players.top.army} bottomLabel={s.players.bottom.army} />
+      <BoardArt {...boardArtProps(s, false)} />
       {s.units.map((u) => {
         const { x, y } = hexCenterId(u.hex, false);
         return (
           <g key={u.id} transform={`translate(${x}, ${y})`}>
-            <UnitToken type={u.type} look={s.players[u.side].look} blockColor={s.players[u.side].blocks} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={u.side === 'bottom' ? 'right' : 'left'} elite={u.elite} />
+            <UnitToken {...unitTokenProps(s, u, 'bottom')} />
           </g>
         );
       })}
@@ -55,7 +56,7 @@ function Battle({ sc }: { sc: ScenarioInfo }) {
         <h2 style={h2}>I. {SLIDE_TITLES[0]}</h2>
         <RoadSlide h={h} colors={colors} />
       </div>
-      {h.map.phases.map((ph, i) => (
+      {h.map.phases.map((_, i) => (
         <div key={i} style={sheet} className="kit-modal__body">
           <h2 style={h2}>II. {SLIDE_TITLES[1]}: phase {i + 1} of {h.map.phases.length}</h2>
           <MapSlide h={h} phase={i} colors={colors} />

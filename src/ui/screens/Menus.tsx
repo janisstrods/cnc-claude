@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { UNIT_STATS, createGame, leaderUnit, orderDice, steepSlopes, veryHills, type GameOptions, type GameState, type Side, type UnitType } from '../../engine';
+import { UNIT_STATS, createGame, leaderUnit, orderDice, type GameOptions, type GameState, type Side, type UnitType } from '../../engine';
 import { SCENARIOS, type Expansion, type ScenarioInfo } from '../../scenarios';
 import { LEADER_ATTACH_OFFSET, LeaderToken, UnitToken } from '../../art';
-import { BoardArt, ObjectiveMarkers, scenarioArt } from '../terrain';
+import { BoardArt, ObjectiveMarkers } from '../terrain';
 import { ALL_DIE_FACES, Button, DieSymbol, Icon, Modal, Panel } from '../kit';
 import { BOARD_H, BOARD_W, hexCenterId } from '../geometry';
 import type { Difficulty, SavedGame } from '../game/controller';
-import { edgeBlocksOf } from '../game/uiModel';
+import { boardArtProps, leaderTokenProps, unitTokenProps } from '../game/boardProps';
 import { PERSONALITIES, personalityFor } from '../../ai';
 import { RulesReference } from './RulesReference';
 import { HistoryButton } from '../history/HistoryDialog';
@@ -83,24 +83,17 @@ export function MainMenu(p: { saved: SavedGame | null; notice?: string | null; o
   );
 }
 
-function SetupPreview({ sc, state, flipped, humanSide }: { sc: ScenarioInfo; state: GameState; flipped: boolean; humanSide: Side }) {
-  const top = flipped ? 'bottom' : 'top';
-  const bottom = flipped ? 'top' : 'bottom';
-  const art = scenarioArt(sc.id);
+function SetupPreview({ state, flipped, humanSide }: { state: GameState; flipped: boolean; humanSide: Side }) {
   const blocks = { top: state.players.top.blocks, bottom: state.players.bottom.blocks };
   return (
     <svg className="preview-svg" viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}>
-      <BoardArt
-        terrain={state.terrain} fords={state.fords} rampart={state.rampart} art={art} steepHills={veryHills(state)}
-        hillUnder={state.hillUnder} steepSlopes={steepSlopes(state)}
-        flipped={flipped} topLabel={state.players[top].army} bottomLabel={state.players[bottom].army}
-      />
+      <BoardArt {...boardArtProps(state, flipped)} />
       <ObjectiveMarkers objectives={state.special.objectives} objState={state.special.objState} flipped={flipped} blocks={blocks} units={state.units} />
       {state.units.map((u) => {
         const { x, y } = hexCenterId(u.hex, flipped);
         return (
           <g key={u.id} transform={`translate(${x}, ${y})`}>
-            <UnitToken type={u.type} look={state.players[u.side].look} blockColor={state.players[u.side].blocks} edgeBlocks={edgeBlocksOf(state, u)} blocks={u.blocks} maxBlocks={u.maxBlocks} facing={u.side === humanSide ? 'right' : 'left'} elite={u.elite} />
+            <UnitToken {...unitTokenProps(state, u, humanSide)} />
           </g>
         );
       })}
@@ -110,7 +103,7 @@ function SetupPreview({ sc, state, flipped, humanSide }: { sc: ScenarioInfo; sta
         const att = !!leaderUnit(state, l);
         return (
           <g key={l.id} transform={`translate(${x + (att ? LEADER_ATTACH_OFFSET.x : 0)}, ${y + (att ? LEADER_ATTACH_OFFSET.y : 0)})`}>
-            <LeaderToken look={state.players[l.side].look} blockColor={state.players[l.side].blocks} edgeBlocks={edgeBlocksOf(state, l)} facing={l.side === humanSide ? 'right' : 'left'} attached={att} name={l.name} showName={!att} />
+            <LeaderToken {...leaderTokenProps(state, l, humanSide, att)} name={l.name} />
           </g>
         );
       })}
@@ -292,7 +285,7 @@ export function ScenarioSelect(p: {
           </div>
         </Panel>
         <div className="preview-wrap">
-          <SetupPreview sc={sel} state={preview} flipped={side === 'top'} humanSide={side} />
+          <SetupPreview state={preview} flipped={side === 'top'} humanSide={side} />
         </div>
         <div className="choose-row">
           <div className="choose-group">
