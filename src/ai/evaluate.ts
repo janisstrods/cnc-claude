@@ -471,14 +471,23 @@ export function singleUnitRisk(s: GameState, occ: Occ, u: Unit, W: Weights): num
   return unitRisk(s, occ, u, info[0], per[0], bm);
 }
 
-/** Distance from u to the nearest of `enemies` (99 if none). */
+/** Distance from u to the nearest of `enemies` (99 if none). 1 is the least there is (no two units share a hex). */
 export function nearestDist(u: Unit, enemies: readonly Unit[]): number {
   let best = 99;
   for (const e of enemies) {
     const d = hexDist(u.hex, e.hex);
-    if (d < best) best = d;
+    if (d < best) {
+      best = d;
+      if (d === 1) break;
+    }
   }
   return best;
+}
+
+/** Is there another of `units` within 2 hexes of u? */
+function friendWithin2(u: Unit, units: readonly Unit[]): boolean {
+  for (const f of units) if (f !== u && hexDist(f.hex, u.hex) <= 2) return true;
+  return false;
 }
 
 function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side: Side, W: Weights, own: boolean): number {
@@ -490,11 +499,7 @@ function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side
     if (walls && isWall(s, u.hex)) v += WALL_HOLD;
     const d = nearestDist(u, enemies);
     near.set(u, d);
-    if (d <= 4) {
-      let fd = 99;
-      for (const f of units) if (f !== u) fd = Math.min(fd, hexDist(f.hex, u.hex));
-      if (fd > 2) v -= W.stray;
-    }
+    if (d <= 4 && !friendWithin2(u, units)) v -= W.stray;
     if (d > 2) continue;
     const sc = supportOcc(occ, u);
     if (sc >= 2) v += W.support;
@@ -856,11 +861,7 @@ export function rawFeatures(s: GameState, me: Side, next: Side, W: Weights): Rec
     let stray = 0;
     for (const u of units) {
       const d = nearestDist(u, enemies);
-      if (d <= 4) {
-        let fd = 99;
-        for (const x of units) if (x !== u) fd = Math.min(fd, hexDist(x.hex, u.hex));
-        if (fd > 2) stray++;
-      }
+      if (d <= 4 && !friendWithin2(u, units)) stray++;
       if (d > 2) continue;
       const sc = supportOcc(occ, u);
       if (sc >= 2) support++;
