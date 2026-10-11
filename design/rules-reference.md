@@ -240,8 +240,8 @@ Base-game battles with special rules are listed here. The Expansion #1 battles 1
   Leadership card after its first turn: units placed on Roman baseline hexes in the card's section (Any Section: chosen),
   placement counts as 1 hex of movement; these units retreat toward the Carthaginian side.
 * 006 Lake Trasimenus: lake and the four steep hills impassable; Roman hand 2 -> 3 -> 4 (draws 2 after turns 1 and 2; scenario data `handGrowth`, §18.8).
-* 010 Castulo: if Publius Scipio is eliminated Carthage wins at once; a Roman unit exiting the Carthaginian baseline from
-  a centre or Roman-right hex scores 1 banner and is removed.
+* 010 Castulo: if Publius Scipio is eliminated Carthage wins at once (scenario data `sacredLeader`); a Roman unit exiting
+  the Carthaginian baseline from a centre or Roman-right hex scores 1 banner and is removed (an `exit` objective, §18.4).
 * 011 Baecula: a Roman unit ending its move on a Carthaginian camp hex gains 1 banner (once per camp).
 * 012 Metaurus: both streams fordable.
 
@@ -518,17 +518,18 @@ block colours. Fordable rivers use the §4/§7/§9.6 rules, except 108 (§16).
   * **River Siris:** only the bend hexes are passable; every other river hex is impassable. The bend hexes follow the
     fordable-river rules **[Interp]** (the 002 Crimissos precedent; the rules know only "fordable" as passable river, Q8).
   * **Fright at First Sight** (scenario data `frightAtFirstSight` names the Roman side): a Roman foot unit may not
-    ignore **any** flag rolled by an elephant: not for an attached leader, not for support, not for any other source (§10). "Infantry" is read as every
-    foot type — LI, AX, MI and HI in this battle; war machines are not infantry. It applies to every close combat
-    between an elephant and a Roman foot unit: the elephant attacking, battling back, in its bonus combat, or rolling on
-    First Strike. It concerns only flags the elephant rolls; the Roman unit's own rolls and the elephant's ignores are
-    unchanged, and Roman MC are unaffected **[Interp]** (plain reading of the scenario text, Q9).
-* **117 Asculum (279 BC):** **6 banners** (War Council text; the site's "7 banners" tag is ignored, Q11). Leaders are placed
-  after the deal (scenario data `placeLeaders`): each player has seen his hand, then before the first turn the Roman side
-  places its 2 leaders one at a time, then the Epirote side its 2; the Romans move first in play. A legal hex holds an own unit that has
-  no leader (the leader attaches) or is empty (no unit, no leader) and passable (not lake, sea, steep hill or
-  non-fordable river). No other restriction is stated (RAW), so empty hexes anywhere, including next to the enemy, are
-  legal; a leader on an empty hex stands alone (§11). Placement is not movement and costs no order.
+    ignore **any** flag rolled by an elephant: not for an attached leader, not for support, not for any other source
+    (§10). "Infantry" is read as every foot type — LI, AX, MI and HI in this battle; war machines are not infantry. It
+    applies to every close combat between an elephant and a Roman foot unit: the elephant attacking, battling back, in
+    its bonus combat, or rolling on First Strike. It concerns only flags the elephant rolls; the Roman unit's own rolls
+    and the elephant's ignores are unchanged, and Roman MC are unaffected **[Interp]** (plain reading of the scenario
+    text, Q9).
+* **117 Asculum (279 BC):** **6 banners** (War Council text; the site's "7 banners" tag is ignored, Q11). Leaders are
+  placed after the deal (scenario data `placeLeaders`): each player has seen his hand, then before the first turn the
+  Roman side places its 2 leaders one at a time, then the Epirote side its 2; the Romans move first in play. A legal hex
+  holds an own unit that has no leader (the leader attaches) or is empty (no unit, no leader) and passable (not lake,
+  sea, steep hill or non-fordable river). No other restriction is stated (RAW), so empty hexes anywhere, including next
+  to the enemy, are legal; a leader on an empty hex stands alone (§11). Placement is not movement and costs no order.
 * **118 Beneventum (275 BC):** no special rules. Terrain: the Roman baseline has 3 fortified camps joined by 4 rampart
   hexes (`faces: 'top'`, towards the Epirotes); the two Roman HWM stand on rampart hexes (no dice penalty, §16); about 14
   forest hexes in the Epirote half. Camps and ramparts carry no banner. The Roman leader is Dentatus (the War Council's
@@ -941,8 +942,8 @@ Data: side `cards: 0`, `orders: 'dice'`, `orderDice: 2`; the roll purpose is `di
 * Then the normal move and battle phases follow for the ordered units, with no card modifiers.
 * No legion rule applies (X3 Q1).
 * Engine: side data `orders: 'dice'` with `orderDice` (a whole number from 1) and `cards: 0` (validated; such a side may have
-  no `initialCommand`, hand growth or Command bonus) → `GameState.scenario.orderDice[side]` (0 for a side that plays cards; such a side needs
-  `cards` of 1 or more, validated too). In `turnFlow`, after
+  no `initialCommand`, hand growth or Command bonus) → `GameState.scenario.orderDice[side]` (0 for a side that plays
+  cards; such a side needs `cards` of 1 or more, validated too). In `turnFlow`, after
   the turn-start objectives and forced placements, a dice side rolls `orderDice` dice (event `roll`, purpose `diceOrders`;
   phase `orders`, `card` and `effective` null, default modifiers). Each flag face, then each swords face, asks
   `diceVictim { face, options }` (the side's units on the board, unit order, asked even with one; answer `choose`), each
