@@ -15,6 +15,7 @@ import {
   saveOptionChoice, savePickerTab, tabForKey, type OptionId,
 } from './picker';
 import { BUILD_TIME, RELEASE, buildLabel } from '../../version';
+import { storage } from '../storage';
 import './screens.css';
 
 const MENU_ARMY_L: UnitType[] = ['HI', 'MI', 'LC'];
@@ -159,13 +160,7 @@ export function ScenarioSelect(p: {
     tabRefs.current[t]?.focus();
   };
   const [side, setSide] = useState<Side>('bottom');
-  const [diff, setDiff] = useState<Difficulty>(() => {
-    try {
-      return (localStorage.getItem('cca-difficulty') as Difficulty) || 'tribune';
-    } catch {
-      return 'tribune';
-    }
-  });
+  const [diff, setDiff] = useState<Difficulty>(() => (storage.get('cca-difficulty') as Difficulty) || 'tribune');
   // Random battle: a battle from any box and a side; the list then scrolls to it (only after a random pick)
   const listRef = useRef<HTMLDivElement>(null);
   const reveal = useRef(false);
@@ -203,11 +198,7 @@ export function ScenarioSelect(p: {
     return `${growth?.side === sd && growth.to > startCommand ? `${startCommand}→${growth.to}` : armies[sd].cards} cards`;
   };
   const start = () => {
-    try {
-      localStorage.setItem('cca-difficulty', diff);
-    } catch {
-      /* ignore */
-    }
+    storage.set('cca-difficulty', diff);
     p.onStart(sel.id, side, diff, persona || undefined, chosenOptions(sel, choices));
   };
   return (

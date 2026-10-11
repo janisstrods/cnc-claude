@@ -1,7 +1,8 @@
 // Battle picker logic: the boxes as tabs, and the optional rules a battle offers (with the player's remembered
-// choices). Pure apart from the try/catch-wrapped localStorage helpers.
+// choices). Pure apart from the tab and the choices remembered in storage.
 import type { GameOptions, Side } from '../../engine';
 import type { Expansion, ScenarioInfo } from '../../scenarios';
+import { storage } from '../storage';
 
 export interface PickerTab {
   id: Expansion;
@@ -51,20 +52,12 @@ const TAB_KEY = 'cca-battle-tab';
 
 /** The tab shown last time (the base game when none is stored or the value is unknown). */
 export function loadPickerTab(): Expansion {
-  try {
-    const v = localStorage.getItem(TAB_KEY);
-    return PICKER_TABS.find((t) => t.id === v)?.id ?? 'base';
-  } catch {
-    return 'base';
-  }
+  const v = storage.get(TAB_KEY);
+  return PICKER_TABS.find((t) => t.id === v)?.id ?? 'base';
 }
 
 export function savePickerTab(tab: Expansion) {
-  try {
-    localStorage.setItem(TAB_KEY, tab);
-  } catch {
-    /* ignore */
-  }
+  storage.set(TAB_KEY, tab);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -105,8 +98,8 @@ const OPTIONS_KEY = 'cca-options';
 
 /** The player's last choice per optional rule (only known rules with a boolean value survive). */
 export function loadOptionChoices(): GameOptions {
+  const raw = storage.get(OPTIONS_KEY);
   try {
-    const raw = localStorage.getItem(OPTIONS_KEY);
     const parsed: unknown = raw ? JSON.parse(raw) : null;
     const out: GameOptions = {};
     if (parsed && typeof parsed === 'object') {
@@ -124,11 +117,7 @@ export function loadOptionChoices(): GameOptions {
 /** Remember one choice (merged into the stored choices); returns the new set. */
 export function saveOptionChoice(choices: GameOptions, id: OptionId, value: boolean): GameOptions {
   const next: GameOptions = { ...choices, [id]: value };
-  try {
-    localStorage.setItem(OPTIONS_KEY, JSON.stringify(next));
-  } catch {
-    /* ignore */
-  }
+  storage.set(OPTIONS_KEY, JSON.stringify(next));
   return next;
 }
 

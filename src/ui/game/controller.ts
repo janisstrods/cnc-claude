@@ -9,6 +9,7 @@ import { SCENARIOS, scenarioById } from '../../scenarios';
 import type { Opponent } from './opponent';
 import { FACE_WORDS, currentDiceTurn, diceRollSummary, diceTurnOrders, diceTurnVictim, pieceName, type DiceTurn } from './diceOrders';
 import { sfx } from '../sound';
+import { storage } from '../storage';
 
 export type Difficulty = 'recruit' | 'tribune' | 'consul';
 
@@ -115,9 +116,9 @@ export interface ViewState {
 const SAVE_KEY = 'cca-autosave-v1';
 
 export function loadSaved(): SavedGame | null {
+  const raw = storage.get(SAVE_KEY);
+  if (!raw) return null;
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
     const s = JSON.parse(raw) as SavedGame;
     const ok = !!s && s.version === 1 && s.engine === ENGINE_VERSION && typeof s.config?.scenarioId === 'string' &&
       Array.isArray(s.answers) && SCENARIOS.some((x) => x.id === s.config.scenarioId);
@@ -132,11 +133,7 @@ export function loadSaved(): SavedGame | null {
 }
 
 export function clearSaved() {
-  try {
-    localStorage.removeItem(SAVE_KEY);
-  } catch {
-    /* ignore */
-  }
+  storage.remove(SAVE_KEY);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -201,12 +198,7 @@ export class GameController {
     } else {
       this.driver = new GameDriver(initial, { snapshots: true });
     }
-    let speed = 1;
-    try {
-      speed = Number(localStorage.getItem('cca-speed') ?? '1') || 1;
-    } catch {
-      /* ignore */
-    }
+    const speed = Number(storage.get('cca-speed') ?? '1') || 1;
     this.view = {
       display: cloneState(this.driver.state),
       pending: null,
@@ -271,11 +263,7 @@ export class GameController {
   }
 
   setSpeed(speed: number) {
-    try {
-      localStorage.setItem('cca-speed', String(speed));
-    } catch {
-      /* ignore */
-    }
+    storage.set('cca-speed', String(speed));
     this.set({ speed });
   }
 
@@ -302,16 +290,12 @@ export class GameController {
 
   private save() {
     if (this.disposed) return;
-    try {
-      const s: SavedGame = {
-        version: 1, engine: ENGINE_VERSION, config: this.config, answers: this.driver.answers, savedAt: Date.now(),
-        check: { n: this.driver.answers.length, rngCalls: this.driver.state.rngCalls },
-      };
-      if (this.driver.state.winner) clearSaved();
-      else localStorage.setItem(SAVE_KEY, JSON.stringify(s));
-    } catch {
-      /* storage unavailable: ignore */
-    }
+    const s: SavedGame = {
+      version: 1, engine: ENGINE_VERSION, config: this.config, answers: this.driver.answers, savedAt: Date.now(),
+      check: { n: this.driver.answers.length, rngCalls: this.driver.state.rngCalls },
+    };
+    if (this.driver.state.winner) clearSaved();
+    else storage.set(SAVE_KEY, JSON.stringify(s));
   }
 
   // ---------------------------------------------------------------- human input
