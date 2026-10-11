@@ -220,8 +220,12 @@ function killLeader(s: GameState, ctx: FlowCtx, l: Leader, reason: string) {
   leaderLost(s, ctx, l, reason, `${l.name || 'A leader'} (${sideName(s, l.side)}) has fallen!`);
 }
 
-/** Remove blocks; returns true if the unit was eliminated. */
-function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: string): boolean {
+/**
+ * Remove up to `n` blocks; returns true if the unit was eliminated. The enemy then scores its banner, or with `batch` the
+ * banner waits there for `settleBanners` (the elephant's blocked retreat, §10). The attached leader is the caller's
+ * business (`hurt`).
+ */
+function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: string, batch?: BannerBatch): boolean {
   const k = Math.min(n, u.blocks);
   if (k <= 0) return false;
   u.blocks -= k;
@@ -230,7 +234,8 @@ function loseBlocks(s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: stri
     s.units = s.units.filter((x) => x.id !== u.id);
     ctx.emit({ t: 'eliminated', id: u.id });
     log(ctx, `${sideName(s, u.side)} ${unitName(u)} eliminated.`, u.side);
-    gainBanner(s, ctx, other(u.side), 'unit eliminated'); // held banners first: the unit no longer holds anything
+    if (batch) batch.gains.push(other(u.side));
+    else gainBanner(s, ctx, other(u.side), 'unit eliminated'); // held banners first: the unit no longer holds anything
     return true;
   }
   return false;
@@ -320,22 +325,34 @@ function* leaderOrphaned(s: GameState, ctx: FlowCtx, l: Leader, checked?: { done
   if (leaderCheck(s, ctx, l, 1)) yield* leaderEvade(s, ctx, l);
 }
 
+/**
+ * `u` loses `n` blocks (`n` ≥ 1; `loseBlocks`), then its attached leader's casualty check (§11): if the unit was eliminated,
+ * 1 die and then he evades (`leaderOrphaned`); if it survived, 2 dice, unless the one check of the combat sequence was
+ * already made (`checked`, §10) or `survivorCheck` is false (an elephant's losses for a retreat it could not take).
+ * Returns true if the unit was eliminated.
+ */
+function* hurt(
+  s: GameState, ctx: FlowCtx, u: Unit, n: number, reason: string, checked: { done: boolean } = { done: false }, survivorCheck = true,
+): Gen<boolean> {
+  const l = attachedLeader(s, u);
+  if (loseBlocks(s, ctx, u, n, reason)) {
+    if (l) yield* leaderOrphaned(s, ctx, l, checked);
+    return true;
+  }
+  if (l && survivorCheck && !checked.done) {
+    checked.done = true;
+    leaderCheck(s, ctx, l, 2);
+  }
+  return false;
+}
+
 /** Marsh check for a unit entering a marsh hex. Returns true if the unit was eliminated. */
 function* marshCheckUnit(s: GameState, ctx: FlowCtx, u: Unit, leaderChecked: { done: boolean }): Gen<boolean> {
   const f = rollDie(s);
   const cls = UNIT_STATS[u.type].cls;
   emitRoll(ctx, 'marsh', [f], [f === cls], null, u.id);
   if (f !== cls) return false;
-  const l = attachedLeader(s, u);
-  if (loseBlocks(s, ctx, u, 1, 'sunk in the marsh')) {
-    if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
-    return true;
-  }
-  if (l && !leaderChecked.done) {
-    leaderChecked.done = true;
-    leaderCheck(s, ctx, l, 2);
-  }
-  return false;
+  return yield* hurt(s, ctx, u, 1, 'sunk in the marsh', leaderChecked);
 }
 
 /** Move a unit (and attached leader) to hex h without checks. */
@@ -365,12 +382,7 @@ function* rampage(s: GameState, ctx: FlowCtx, el: Unit): Gen {
       const cls = UNIT_STATS[v.type].cls;
       emitRoll(ctx, 'rampage', faces, faces.map((f) => f === cls), el.id, v.id);
       const hits = faces.filter((f) => f === cls).length;
-      if (hits) {
-        const l = attachedLeader(s, v);
-        if (loseBlocks(s, ctx, v, hits, 'trampled by elephants')) {
-          if (l) yield* leaderOrphaned(s, ctx, l);
-        } else if (l) leaderCheck(s, ctx, l, 2);
-      }
+      if (hits) yield* hurt(s, ctx, v, hits, 'trampled by elephants');
       continue;
     }
     const l = leaderAt(s, h);
@@ -435,14 +447,7 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
     const v = unitById(s, b.id);
     if (!v) continue;
     const l = attachedLeader(s, v);
-    const k = Math.min(b.n, v.blocks);
-    v.blocks -= k;
-    ctx.emit({ t: 'damage', id: v.id, amount: k, left: v.blocks, reason: 'crushed by retreating elephants' });
-    if (v.blocks <= 0) {
-      s.units = s.units.filter((x) => x.id !== v.id);
-      ctx.emit({ t: 'eliminated', id: v.id });
-      log(ctx, `${sideName(s, v.side)} ${unitName(v)} eliminated.`, v.side);
-      batch.gains.push(other(v.side));
+    if (loseBlocks(s, ctx, v, b.n, 'crushed by retreating elephants', batch)) {
       if (l) orphans.push(l);
     } else if (l) survivorsWithLeader.push(l);
   }
@@ -454,15 +459,14 @@ function* elephantBlockerLosses(s: GameState, ctx: FlowCtx, blockers: { id: stri
 }
 
 /**
- * The unit has walked its retreat and could not take `opt.losses` hexes: it loses a block for each (`reason` names the loss),
- * or, under last-row retreat (214, §18.5, X2 Q10), every block when it stands on its own baseline row of the battle's
- * `lastRowRetreat` side and joined no leader (a log line says so). Returns true if the unit was eliminated (the enemy
- * scores; the caller deals with the leader). An evade never gets here.
+ * The unit has walked its retreat and could not take `opt.losses` hexes: the blocks it loses for them, one for each, or,
+ * under last-row retreat (214, §18.5, X2 Q10), every block when it stands on its own baseline row of the battle's
+ * `lastRowRetreat` side and joined no leader (a log line says so). An evade never gets here.
  */
-function loseBlocksShortOfRetreat(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, reason: string): boolean {
-  if (s.special.lastRowRetreat !== u.side || opt.attachLeader || !atOwnBaseline(u)) return loseBlocks(s, ctx, u, opt.losses, reason);
+function retreatShortfall(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption): number {
+  if (s.special.lastRowRetreat !== u.side || opt.attachLeader || !atOwnBaseline(u)) return opt.losses;
   log(ctx, `${sideName(s, u.side)} ${unitName(u)} has no ground left to retreat and is cut down!`, u.side);
-  return loseBlocks(s, ctx, u, u.blocks, reason);
+  return u.blocks;
 }
 
 function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leaderChecked: { done: boolean }): Gen<HitOutcome> {
@@ -475,11 +479,9 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
     if (yield* walkPath(s, ctx, u, opt, 'retreat', leaderChecked)) return { eliminated: true, vacated: true };
     if (opt.blockers.length) yield* elephantBlockerLosses(s, ctx, opt.blockers);
     if (opt.losses > 0 && unitById(s, u.id)) {
-      const l = attachedLeader(s, u);
-      if (loseBlocksShortOfRetreat(s, ctx, u, opt, 'could not retreat')) {
-        if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
-        return { eliminated: true, vacated: true };
-      }
+      // a surviving elephant's leader makes no casualty check for these losses (the ordinary retreat's leader does, below)
+      const lost = retreatShortfall(s, ctx, u, opt);
+      if (yield* hurt(s, ctx, u, lost, 'could not retreat', leaderChecked, false)) return { eliminated: true, vacated: true };
     }
     updateHeld(s, ctx); // where the retreat ends, after its losses
     return { eliminated: false, vacated: u.hex !== start };
@@ -488,15 +490,8 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
   const opt = yield* chooseOption(s, ctx, u.side, u.id, opts, 'retreat');
   if (yield* walkPath(s, ctx, u, opt, 'retreat', leaderChecked)) return { eliminated: true, vacated: true };
   if (opt.losses > 0) {
-    const l = attachedLeader(s, u);
-    if (loseBlocksShortOfRetreat(s, ctx, u, opt, 'retreat blocked')) {
-      if (l) yield* leaderOrphaned(s, ctx, l, leaderChecked);
-      return { eliminated: true, vacated: true };
-    }
-    if (l && !leaderChecked.done) {
-      leaderChecked.done = true;
-      leaderCheck(s, ctx, l, 2);
-    }
+    const lost = retreatShortfall(s, ctx, u, opt);
+    if (yield* hurt(s, ctx, u, lost, 'retreat blocked', leaderChecked)) return { eliminated: true, vacated: true };
   }
   updateHeld(s, ctx); // where the retreat ends, after its losses (an eliminated unit's banner already brought them up to date)
   return { eliminated: false, vacated: u.hex !== start };
@@ -511,20 +506,15 @@ function* applyHits(
   info: { kind: 'close' | 'ranged'; striker: Unit | null; fullAtStart: boolean; role?: StrikeRole; noFlagIgnore?: boolean; reason?: string },
 ): Gen<HitOutcome> {
   const l = attachedLeader(s, target);
-  let leaderAlive = !!l;
   const checked = { done: false };
   if (hits > 0) {
-    if (loseBlocks(s, ctx, target, hits, info.reason ?? (info.kind === 'ranged' ? 'missile fire' : 'close combat'))) {
-      if (l) yield* leaderOrphaned(s, ctx, l);
+    if (yield* hurt(s, ctx, target, hits, info.reason ?? (info.kind === 'ranged' ? 'missile fire' : 'close combat'), checked)) {
       return { eliminated: true, vacated: true };
-    }
-    if (l) {
-      checked.done = true;
-      leaderAlive = leaderCheck(s, ctx, l, 2);
     }
     if (s.winner) return { eliminated: false, vacated: false };
   }
   if (flags <= 0) return { eliminated: false, vacated: false };
+  const leaderAlive = !!l && !!leaderById(s, l.id); // he counts for the flags only if he survived the casualty check (§10)
   const max = info.noFlagIgnore
     ? 0
     : Math.min(flags, ignorableFlags(s, target, { kind: info.kind, striker: info.striker, leaderAlive, fullAtStart: info.fullAtStart, role: info.role }));
@@ -686,10 +676,7 @@ function* rollingFire(s: GameState, ctx: FlowCtx, u: Unit, path: HexId[]): Gen {
     }
   }
   if (s.winner || !unitById(s, u.id)) return;
-  const l = attachedLeader(s, u);
-  if (loseBlocks(s, ctx, u, 1, 'rolling fire')) {
-    if (l) yield* leaderOrphaned(s, ctx, l);
-  } else if (l) leaderCheck(s, ctx, l, 2);
+  yield* hurt(s, ctx, u, 1, 'rolling fire');
 }
 
 function holdsFirstStrike(s: GameState, side: Side): number | null {
@@ -751,14 +738,9 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
     const faces = rollDice(s, dice);
     const sc = scoreClassOnly(tu, faces, false, vsMountedIgnores(attacker, tu)); // camels vs horses [Interp] §15
     emitRoll(ctx, 'evade', faces, sc.scoring, attacker.id, tu.id);
-    const l = attachedLeader(s, tu);
     const checked = { done: false };
     if (sc.hits > 0) {
-      if (loseBlocks(s, ctx, tu, sc.hits, 'caught evading')) {
-        if (l) yield* leaderOrphaned(s, ctx, l);
-        return false;
-      }
-      if (l) { checked.done = true; leaderCheck(s, ctx, l, 2); }
+      if (yield* hurt(s, ctx, tu, sc.hits, 'caught evading', checked)) return false;
       if (s.winner) return false;
     }
     const opts = evadeOptions(s, tu);
@@ -1414,10 +1396,7 @@ function* diceOrdersStep(s: GameState, ctx: FlowCtx, side: Side): Gen {
         yield* applyHits(s, ctx, u, 0, 1, { kind: 'ranged', striker: null, fullAtStart: u.blocks === u.maxBlocks, noFlagIgnore: true });
       } else {
         log(ctx, `Swords on the order dice: the ${sideName(s, side)} ${unitName(u)} loses a block.`, side);
-        const l = attachedLeader(s, u);
-        if (loseBlocks(s, ctx, u, 1, 'swords on the order dice')) {
-          if (l) yield* leaderOrphaned(s, ctx, l);
-        } else if (l) leaderCheck(s, ctx, l, 2);
+        yield* hurt(s, ctx, u, 1, 'swords on the order dice');
       }
       if (s.winner) return;
     }
