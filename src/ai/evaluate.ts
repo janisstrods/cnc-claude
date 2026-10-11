@@ -690,16 +690,19 @@ export interface EvalBreakdown {
 }
 
 /**
- * Evaluations of the current AI decision, per weights object and by `evalKey` (null = off). A search meets the same
- * position again and again (every piece's "stay" option, the same moves in another order), so `chooseAnswer` turns the
- * cache on for each decision and off after it; it stays off for everyone else (tests and scripts change a state in
- * place and evaluate it again).
+ * Caches of the current AI decision (null = off), per weights object: evaluations by `${me}${next}` + `positionKey`, and
+ * memos of position-only scores (`positionMemo`). A search meets the same position again and again (every piece's "stay"
+ * option, the same moves in another order, each card's order benefits), so `chooseAnswer` turns them on for each
+ * decision and off after it; they stay off for everyone else (tests and scripts change a state in place and evaluate it
+ * again).
  */
 let evalCache: WeakMap<Weights, Map<string, number>> | null = null;
+let memoCache: WeakMap<Weights, Map<string, Map<string, number>>> | null = null;
 
-/** Start (`true`) or end (`false`) the evaluation cache of one AI decision (`chooseAnswer`). */
+/** Start (`true`) or end (`false`) the caches of one AI decision (`chooseAnswer`). */
 export function evalCacheFor(on: boolean): void {
   evalCache = on ? new WeakMap() : null;
+  memoCache = on ? new WeakMap() : null;
 }
 
 /** Ids of the terrain and rampart arrays (a changed hex replaces both, `setTerrain`, the AI's rampart breakers). */
@@ -712,18 +715,19 @@ function arrayId(a: object): number {
 }
 
 /**
- * Everything `evaluate` (with its threat model, goals and values) reads from a state that is not winning, apart from the
- * game's fixed data (scenario rules and objectives, unit and leader types, sides, elites and traits, armies, fords,
- * hills under camps, banners to win, the dice-order counts) and the AI's `viewer`, which are fixed for a decision: the
- * active side; the terrain and rampart arrays; each side's banners, hand size and Command; the leaders each side has
- * lost; every unit's id, hex and blocks and every leader's id and hex, in state order; the reserve's units and leaders;
- * each objective's captured hexes, held banners and scored sections. It reads nothing of the turn (the exact threat
- * model moves units under the default card modifiers) nor any other hand content, the deck or the dice.
+ * Everything `evaluate` (with its threat model, goals and values) reads from a state that is not winning, besides `me` and
+ * `next`, apart from the game's fixed data (scenario rules and objectives, unit and leader types, sides, elites and
+ * traits, armies, fords, hills under camps, banners to win, the dice-order counts) and the AI's `viewer`, which are fixed
+ * for a decision: the active side; the terrain and rampart arrays; each side's banners, hand size and Command; the leaders
+ * each side has lost; every unit's id, hex and blocks and every leader's id and hex, in state order; the reserve's units
+ * and leaders; each objective's captured hexes, held banners and scored sections. It reads nothing of the turn (the exact
+ * threat model moves units under the default card modifiers) nor any other hand content, the deck or the dice. `head`
+ * starts the key.
  */
-function evalKey(s: GameState, me: Side, next: Side): string {
+function positionKey(s: GameState, head = ''): string {
   const { top, bottom } = s.players;
   const sp = s.special;
-  let k = `${me}${next}${s.active}${arrayId(s.terrain)},${arrayId(s.rampart)}|${top.banners},${top.hand.length},${top.command}|`
+  let k = `${head}${s.active}${arrayId(s.terrain)},${arrayId(s.rampart)}|${top.banners},${top.hand.length},${top.command}|`
     + `${bottom.banners},${bottom.hand.length},${bottom.command}|${sp.leadersEliminated.top},${sp.leadersEliminated.bottom}|`;
   for (const u of s.units) k += `${u.id}:${u.hex}:${u.blocks},`;
   k += '|';
@@ -733,6 +737,21 @@ function evalKey(s: GameState, me: Side, next: Side): string {
   for (const l of sp.reserveLeaders) k += `${l.id},`;
   for (const o of sp.objState) k += `|${o.taken}/${o.held.top},${o.held.bottom}/${o.sections}`;
   return k;
+}
+
+/**
+ * Inside an AI decision, a memo for scores that read no more of the state than `evaluate` does (`positionKey`) and are
+ * worked out with weights `W` from state `s` (e.g. ordering.ts's local scores of each unit and destination); null
+ * outside one.
+ */
+export function positionMemo(s: GameState, W: Weights): Map<string, number> | null {
+  if (!memoCache) return null;
+  let byKey = memoCache.get(W);
+  if (!byKey) memoCache.set(W, (byKey = new Map()));
+  const key = positionKey(s);
+  let memo = byKey.get(key);
+  if (!memo) byKey.set(key, (memo = new Map()));
+  return memo;
 }
 
 /**
@@ -748,7 +767,7 @@ export function evaluate(s: GameState, me: Side, next: Side, W: Weights, breakdo
   if (!evalCache || breakdown) return evaluatePosition(s, me, next, W, breakdown);
   let byKey = evalCache.get(W);
   if (!byKey) evalCache.set(W, (byKey = new Map()));
-  const key = evalKey(s, me, next);
+  const key = positionKey(s, me + next);
   let v = byKey.get(key);
   if (v === undefined) byKey.set(key, (v = evaluatePosition(s, me, next, W)));
   return v;
