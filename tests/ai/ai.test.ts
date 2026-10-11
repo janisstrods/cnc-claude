@@ -1,45 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CARD_LIST, GameDriver, areAdjacent, createGame, forceDice, forcedDiceLeft, hexId, leaderEvadeOptions, randomAnswer, type Decision, type GameState, type ScenarioSetup,
-  type Side, type TerrainType, type UnitType,
+  CARD_LIST, GameDriver, areAdjacent, createGame, forceDice, forcedDiceLeft, hexId, leaderEvadeOptions, randomAnswer, type Decision, type GameState,
+  type Side,
 } from '../../src/engine';
-import { SCENARIOS } from '../../src/scenarios';
+import { SCENARIOS, scenarioById } from '../../src/scenarios';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
 import { AiClient } from '../../src/ai/client';
 import { greedyMoveStep } from '../../src/ai/moves';
 import { chooseLeaderEvade, defendChoice, greedyBattle } from '../../src/ai/policies';
 import { NEUTRAL_W } from '../../src/ai/values';
 import { mulberry32 } from '../support/rng';
+import { positionBuilder } from './helpers';
 import { failOnAiErrors } from './no-ai-errors';
 
 const H = (r: number, c: number) => hexId(r, c);
 
 failOnAiErrors();
 
-interface Pos {
-  units?: { side: Side; type: UnitType; at: [number, number]; blocks?: number }[];
-  leaders?: { side: Side; at: [number, number] }[];
-  terrain?: { at: [number, number]; t: TerrainType }[];
-}
-
-/** Build a position. Units get ids u1.. in order, leaders follow. */
-function position(p: Pos): GameState {
-  const setup: ScenarioSetup = {
-    id: 'test', name: 'Test',
-    top: { army: 'Carthaginian', blocks: 'car', look: 'carthaginian', commander: 'Hannibal', cards: 5 },
-    bottom: { army: 'Roman', blocks: 'rom', look: 'roman', commander: 'Varro', cards: 5 },
-    first: 'bottom', banners: 6,
-    terrain: (p.terrain ?? []).map((t) => ({ r: t.at[0], c: t.at[1], t: t.t })),
-    units: (p.units ?? []).map((u) => ({ side: u.side, type: u.type, r: u.at[0], c: u.at[1] })),
-    leaders: (p.leaders ?? []).map((l, i) => ({ side: l.side, name: `L${i}`, r: l.at[0], c: l.at[1] })),
-    reserves: [], reserveLeaders: [], rules: [],
-  };
-  const s = createGame(setup, 99);
-  (p.units ?? []).forEach((u, i) => {
-    if (u.blocks !== undefined) s.units[i].blocks = u.blocks;
-  });
-  return s;
-}
+const position = positionBuilder({
+  top: { army: 'Carthaginian', blocks: 'car', look: 'carthaginian', commander: 'Hannibal' },
+  bottom: { army: 'Roman', blocks: 'rom', look: 'roman', commander: 'Varro' },
+  banners: 6, seed: 99,
+});
 
 function order(s: GameState, ids: string[]) {
   for (const id of ids) {
@@ -134,7 +116,7 @@ describe('reactive policies', () => {
   });
 
   it('never consumes dice forced by the test hook', () => {
-    const sc = SCENARIOS.find((x) => x.id === '005')!;
+    const sc = scenarioById('005');
     const d = new GameDriver(createGame(sc.setup, 3));
     const opts: AiOptions = { side: d.pending!.side, difficulty: 'tribune', personality: PERSONALITIES[1], seed: 9, budgetScale: 0.1 };
     const mem = newMemory();
@@ -155,7 +137,7 @@ describe('reactive policies', () => {
   });
 
   it('does not use hidden information: same decision whatever the opponent holds and the dice will be', () => {
-    const sc = SCENARIOS.find((x) => x.id === '001')!;
+    const sc = scenarioById('001');
     const base = createGame(sc.setup, 5);
     const opts: AiOptions = { side: base.active, difficulty: 'tribune', personality: PERSONALITIES[0], seed: 1234, budgetScale: 0.1, deterministic: true };
     const variant = createGame(sc.setup, 5);
@@ -175,7 +157,7 @@ describe('reactive policies', () => {
 
 describe('AiClient', () => {
   it('falls back to in-thread decisions when Web Workers are unavailable', async () => {
-    const sc = SCENARIOS.find((x) => x.id === '004')!;
+    const sc = scenarioById('004');
     const d = new GameDriver(createGame(sc.setup, 8));
     const c = {
       top: new AiClient({ side: 'top', difficulty: 'recruit', personality: PERSONALITIES[0], seed: 1, budgetScale: 0.3 }),
@@ -224,7 +206,7 @@ describe('tribune beats a random player', () => {
     let wins = 0;
     let games = 0;
     for (const id of ids) {
-      const sc = SCENARIOS.find((x) => x.id === id)!;
+      const sc = scenarioById(id);
       for (const aiSide of ['bottom', 'top'] as Side[]) {
         const seed = 500 + Number(id) * 2 + (aiSide === 'top' ? 1 : 0);
         const d = new GameDriver(createGame(sc.setup, seed));

@@ -1,5 +1,5 @@
 import { GameDriver, createGame, randomAnswer, type GameEvent, type GameState } from '../../src/engine';
-import { SCENARIOS } from '../../src/scenarios';
+import { scenarioById } from '../../src/scenarios';
 import { PERSONALITIES, chooseAnswer, newMemory, type AiOptions } from '../../src/ai';
 import { mulberry32 } from '../support/rng';
 
@@ -24,7 +24,7 @@ function hashEvents(h: number, evs: GameEvent[]): number { for (const e of evs) 
 
 /** Random-legal games: engine only. */
 function randomGame(scId: string, seed: number): Golden {
-  const sc = SCENARIOS.find((x) => x.id === scId)!;
+  const sc = scenarioById(scId);
   const d = new GameDriver(createGame(sc.setup, seed));
   const rnd = mulberry32(seed);
   let h = hashEvents(0x811c9dc5, d.drainEvents().map((q) => q.e));
@@ -39,7 +39,7 @@ function randomGame(scId: string, seed: number): Golden {
 
 /** Deterministic AI-vs-AI games (recruit settings, small budget) — guards the AI-estimator rework. */
 function aiGame(scId: string, seed: number): Golden {
-  const sc = SCENARIOS.find((x) => x.id === scId)!;
+  const sc = scenarioById(scId);
   const d = new GameDriver(createGame(sc.setup, seed));
   const mem = { top: newMemory(), bottom: newMemory() };
   const opt = (side: 'top' | 'bottom'): AiOptions => ({ side, difficulty: 'recruit', personality: PERSONALITIES[5], seed: seed + (side === 'top' ? 1 : 2), deterministic: true, budgetScale: 0.2 });

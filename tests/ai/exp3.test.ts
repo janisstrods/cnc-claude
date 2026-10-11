@@ -5,11 +5,11 @@
 // fixed seeds, constructed positions built with the rules suite's helpers).
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  CARD_LIST, GameDriver, OFF_BOARD, createGame, diceOrderPieces, diceOrdered, forceDice, newTurn, other, pieceMoves, randomAnswer, retreatOptions,
+  GameDriver, OFF_BOARD, createGame, diceOrderPieces, diceOrdered, forceDice, newTurn, pieceMoves, randomAnswer, retreatOptions,
   retreatPerFlag, validateDiceOrders, validateOrders, type Decision, type DieFace, type GameEvent, type GameState, type Side, type Unit,
 } from '../../src/engine';
-import { SCENARIOS } from '../../src/scenarios';
-import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
+import { SCENARIOS, scenarioById } from '../../src/scenarios';
+import { chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
 import { Occ, canEvadeOcc } from '../../src/ai/board';
 import { attackNowValue, closeAttackEV } from '../../src/ai/estimate';
 import { evaluate, orderingPower, singleUnitRisk } from '../../src/ai/evaluate';
@@ -20,53 +20,13 @@ import { Rng } from '../../src/ai/rand';
 import { NEUTRAL_W, WIN_SCORE, bannerStep } from '../../src/ai/values';
 import { speak, troopName } from '../../src/ai/voice';
 import { H, build, must, type Pos } from '../rules/helpers';
+import { aiTurn, detOpts, setHand } from './helpers';
 import { failOnAiErrors } from './no-ai-errors';
 
 type D<K extends Decision['kind']> = Extract<Decision, { kind: K }>;
 type PosUnit = NonNullable<Pos['units']>[number];
 const top = (type: PosUnit['type'], at: [number, number], extra: Partial<PosUnit> = {}): PosUnit => ({ side: 'top', type, at, ...extra });
 const bottom = (type: PosUnit['type'], at: [number, number], extra: Partial<PosUnit> = {}): PosUnit => ({ side: 'bottom', type, at, ...extra });
-
-/** Give a side exactly these card kinds (taken from the deck / other hand). */
-function setHand(s: GameState, side: Side, kinds: string[]) {
-  const used = new Set<number>();
-  const hand: number[] = [];
-  for (const k of kinds) {
-    const id = CARD_LIST.findIndex((x, i) => x === k && !used.has(i));
-    if (id < 0) throw new Error(`setHand: no card of kind '${k}' left in the deck`);
-    used.add(id);
-    hand.push(id);
-  }
-  const opp = other(side);
-  s.players[opp].hand = s.players[opp].hand.filter((c) => !used.has(c));
-  s.deck = [...s.deck.filter((c) => !used.has(c)), ...s.players[side].hand.filter((c) => !used.has(c))];
-  s.players[side].hand = hand;
-  while (s.players[opp].hand.length < 5 && s.players[opp].command > 0) s.players[opp].hand.push(s.deck.shift()!);
-}
-
-const detOpts = (side: Side, seed: number, extra: Partial<AiOptions> = {}): AiOptions => ({
-  side, difficulty: 'tribune', personality: PERSONALITIES[5], seed, deterministic: true, budgetScale: 0.3, ...extra,
-});
-
-/** Let the AI play the active side's whole turn (both sides answer their own decisions); returns the turn's events. */
-function aiTurn(s: GameState, seed: number, extra: Partial<AiOptions> = {}) {
-  const d = new GameDriver(s);
-  const side = d.state.active;
-  const turn = d.state.turn.number;
-  const mems = { top: newMemory(), bottom: newMemory() };
-  const events: GameEvent[] = [];
-  const decisions: { d: Decision; a: unknown }[] = [];
-  let guard = 0;
-  while (d.pending && d.state.active === side && d.state.turn.number === turn && guard++ < 200) {
-    const dec = d.pending;
-    const r = chooseAnswer(d.state, dec, detOpts(dec.side, seed, extra), mems[dec.side]);
-    expect(isLegal(d.state, dec, r.answer)).toBe(true);
-    decisions.push({ d: dec, a: r.answer });
-    expect(d.answer(r.answer), d.lastError ?? '').toBe(true);
-    for (const { e } of d.drainEvents()) events.push(e);
-  }
-  return { d, events, decisions, mems };
-}
 
 const moves = (events: GameEvent[]) => events.filter((e): e is Extract<GameEvent, { t: 'move' }> => e.t === 'move');
 const combats = (events: GameEvent[]) => events.filter((e): e is Extract<GameEvent, { t: 'combat' }> => e.t === 'combat');
@@ -78,7 +38,7 @@ function blockedRetreat(s: GameState, u: Unit): boolean {
 
 /** The 310 battle with the Numidians (top) to act, their order dice forced to `faces`. */
 function uticaAt(seed: number, faces: DieFace[], edit?: (s: GameState) => void): GameDriver {
-  const sc = SCENARIOS.find((x) => x.id === '310')!;
+  const sc = scenarioById('310');
   const s = createGame(sc.setup, seed);
   s.active = 'top';
   s.turn = newTurn('top', 2);
@@ -232,7 +192,7 @@ describe('dice orders (310)', () => {
   });
 
   it('AI against AI plays 310 to the end with no fallback answer', () => {
-    const sc = SCENARIOS.find((x) => x.id === '310')!;
+    const sc = scenarioById('310');
     const d = new GameDriver(createGame(sc.setup, 3107));
     const opt = (side: Side, seed: number): AiOptions => ({
       side, difficulty: 'tribune', personality: personalityFor(sc.setup[side].commander, sc.setup[side].army), seed, deterministic: true,
@@ -357,13 +317,13 @@ describe('city walls and steep slopes', () => {
 
 describe('308 reinforcements and the forced placement', () => {
   it('a Leadership card offers the fixed-entry reinforcements once: the section it names changes nothing', () => {
-    const s = createGame(SCENARIOS.find((x) => x.id === '308')!.setup, 3);
+    const s = createGame(scenarioById('308').setup, 3);
     s.active = 'top';
     for (const kind of ['leadershipAny', 'inspiredL', 'inspiredR'] as const) {
       expect(orderCandidates(s, 'top', kind, NEUTRAL_W, 2).filter((c) => c.ambush), kind).toHaveLength(1);
     }
     // 206 keeps one candidate per section the card allows (its entry depends on the section)
-    const t = createGame(SCENARIOS.find((x) => x.id === '206')!.setup, 3);
+    const t = createGame(scenarioById('206').setup, 3);
     t.active = 'bottom';
     expect(orderCandidates(t, 'bottom', 'leadershipAny', NEUTRAL_W, 2).filter((c) => c.ambush)).toHaveLength(3);
   });
@@ -531,7 +491,7 @@ describe('Expansion #3 units', () => {
   });
 
   it('304: the Sertorian AI never gives orders that mix Herennius\' and Perpenna\'s commands', () => {
-    const sc = SCENARIOS.find((x) => x.id === '304')!;
+    const sc = scenarioById('304');
     const d = new GameDriver(createGame(sc.setup, 304));
     const mems = { top: newMemory(), bottom: newMemory() };
     const command = new Map<string, string | undefined>([
@@ -563,7 +523,7 @@ describe('Expansion #3 units', () => {
    * Darken the Sky still orders them.
    */
   const valentia = (seed: number) => {
-    const s = createGame(SCENARIOS.find((x) => x.id === '304')!.setup, seed);
+    const s = createGame(scenarioById('304').setup, seed);
     s.units = s.units.filter((u) => !(u.command === 'perpenna' && u.type === 'LC'));
     return s;
   };
@@ -634,7 +594,7 @@ describe('Expansion #3 commanders and voice', () => {
   });
 
   it('308: Vercingetorix brings up his own reinforcements: he does not call on himself', () => {
-    const sc = SCENARIOS.find((x) => x.id === '308')!;
+    const sc = scenarioById('308');
     const s = createGame(sc.setup, 3);
     const P = personalityFor(sc.setup.top.commander, sc.setup.top.army);
     for (let seed = 1; seed < 40; seed++) {
