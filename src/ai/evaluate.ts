@@ -8,13 +8,13 @@ import { halfCol, neighbours, rowOf } from '../engine/hex';
 import { exitAllows, leaderExitAllows } from '../engine/objectives';
 import { diceOrderPieces, orderDice } from '../engine/orders';
 import { isRomanArmy, leaderHas, other } from '../engine/query';
-import { ccCapOfHex, isHill, isImpassable, isWall, steepSlope, steepSlopes, veryHills } from '../engine/terrain';
+import { ccCapOfHex, isHill, isImpassable, isWall, steepSlope, steepSlopes, terrainAt, veryHills } from '../engine/terrain';
 import { eliteHas, hasPilum, rangeOf } from '../engine/elites';
-import { UNIT_STATS, barredTerrain, canEvadeType, elephantDiceVs, type UnitStats } from '../engine/units';
-import type { DieFace, GameState, HexId, Leader, ObjectiveOf, Side, TerrainType, Unit } from '../engine/types';
+import { UNIT_STATS, canEvadeType, elephantDiceVs, forbidsTerrain, type UnitStats } from '../engine/units';
+import type { DieFace, GameState, HexId, Leader, ObjectiveOf, Side, Unit } from '../engine/types';
 import {
   Occ, advanceGap, attachedLeaderOcc, canEvadeOcc, canFireOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, hasTerrain, helmetsOcc,
-  hexDist, ignorableOcc, isRangedLight, isWarMachine, reachOf, retreatRoom, rowsToOwnEdge, stopAwareReach, supportOcc, terrainForbids,
+  hexDist, ignorableOcc, isRangedLight, isWarMachine, reachOf, retreatRoom, rowsToOwnEdge, stopAwareReach, supportOcc,
 } from './board';
 import { closeProfile, strikeValue } from './estimate';
 import { goalTerms } from './goals';
@@ -104,17 +104,16 @@ interface X3Terrain {
 
 /**
  * Is there a hex next to `target` within `reach` of `e` that `e` may move to and attack from: free, passable, not
- * terrain it may not enter (`forbidden`, its `barredTerrain`: broken ground or marsh for a war machine, a city wall for a
- * mounted unit or war machine) and without an enemy leader? Not across a steep slope from the target, and not a city wall
- * `e` does not start next to (a wall is climbed only from an adjacent hex, §18.7).
+ * terrain it may not enter (`forbidsTerrain`: broken ground or marsh for a war machine, a city wall for a mounted unit or
+ * war machine) and without an enemy leader? Not across a steep slope from the target, and not a city wall `e` does not
+ * start next to (a wall is climbed only from an adjacent hex, §18.7). The approach itself is not walked: no step test
+ * (`closedTo`) for the last step into the hex, a deliberate approximation.
  */
-function hasFreeApproach(
-  s: GameState, occ: Occ, e: Unit, forbidden: readonly TerrainType[], target: number, reach: number, x3: X3Terrain,
-): boolean {
+function hasFreeApproach(s: GameState, occ: Occ, e: Unit, target: number, reach: number, x3: X3Terrain): boolean {
   // very steep hills (223): a unit climbing onto a hill from lower ground may not battle that turn
   const noClimb = veryHills(s) && !isHill(s, e.hex);
   for (const nb of neighbours(target)) {
-    if (hexDist(e.hex, nb) > reach || occ.unit[nb] || isImpassable(s, nb) || terrainForbids(s, forbidden, nb)) continue;
+    if (hexDist(e.hex, nb) > reach || occ.unit[nb] || isImpassable(s, nb) || forbidsTerrain(e.type, terrainAt(s, nb))) continue;
     if (noClimb && isHill(s, nb)) continue;
     if (x3.slopes && steepSlope(s, nb, target)) continue;
     if (x3.walls && isWall(s, nb) && hexDist(e.hex, nb) > 1) continue;
@@ -296,7 +295,6 @@ function threatsAgainst(
     // a mounted unit or war machine attacks a piece on a wall only if it began the turn next to it (§18.7)
     const noWall = x3.walls && !S.infantry;
     const from = exact ? attackHexes(s, e) : null;
-    const forbidden = barredTerrain(e.type);
     let walk: Set<number> | null = null;
     const canReach = (target: number) => {
       if (from) {
@@ -308,7 +306,7 @@ function threatsAgainst(
         for (const nb of neighbours(target)) if (walk.has(nb)) return true;
         return false;
       }
-      return hasFreeApproach(s, occ, e, forbidden, target, reach, x3);
+      return hasFreeApproach(s, occ, e, target, reach, x3);
     };
     const range = rangeOf(e);
     // the pilum (§18.2) is a 1-die throw: a legion unit that can step into contact threatens its close combat instead

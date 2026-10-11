@@ -183,17 +183,13 @@ for (const t of UNIT_TYPES) {
   BARRED[t] = UNIT_STATS[t].infantry ? own : [...own, 'wall'];
 }
 
-/** The terrain a unit of type `t` may not enter: see `forbidsTerrain` (a shared list, not to be modified). */
-export function barredTerrain(t: UnitType): readonly TerrainType[] {
-  return BARRED[t];
-}
-
 /**
  * May a unit of type `t` not enter terrain `terrain` (movement, momentum, retreat and evade)? Its `forbiddenTerrain` (war
  * machines: broken ground, marsh), and a city wall for mounted units and war machines (§18.7).
  */
 export function forbidsTerrain(t: UnitType, terrain: TerrainType): boolean {
-  return BARRED[t].includes(terrain);
+  const barred = BARRED[t];
+  return barred.length > 0 && barred.includes(terrain); // most types bar nothing (the AI's searches ask constantly)
 }
 
 /** Normal close-combat dice of a unit (used for leader escape): attacking dice, no terrain, no card bonus. */

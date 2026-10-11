@@ -1,6 +1,6 @@
 // Terrain effects (rules-reference §4, §7, §8; Expansion #1 terrain §16; Expansion #2 and #3 terrain §18.6, §18.7).
 import { sidesCrossed } from './hex';
-import { UNIT_STATS } from './units';
+import { UNIT_STATS, forbidsTerrain } from './units';
 import type { FlowCtx, GameState, HexId, Side, TerrainType, UnitType } from './types';
 
 /**
@@ -250,6 +250,25 @@ export function steepSlope(s: GameState, a: HexId, b: HexId): boolean {
  */
 export function steepSlopeUp(s: GameState, from: HexId, to: HexId): boolean {
   return s.terrain[from] === 'forest' && isHill(s, to) && steepSlopes(s);
+}
+
+/**
+ * Is the step from `from` into its neighbour `to` closed by the terrain to a unit of type `type`, or to a lone leader (`type`
+ * null), when it moves, advances, retreats or evades? Impassable terrain, terrain the unit's type may not enter
+ * (`forbidsTerrain`: §15 war machines; a city wall for mounted units and war machines, §18.7), or a steep slope up from a
+ * forest (308, §18.7). The pieces on `to` and the city wall's climbing rule (§18.7) are the caller's business.
+ */
+export function closedTo(s: GameState, type: UnitType | null, from: HexId, to: HexId): boolean {
+  return isImpassable(s, to) || (type !== null && forbidsTerrain(type, terrainAt(s, to))) || steepSlopeUp(s, from, to);
+}
+
+/**
+ * Does a unit of type `type` that enters `to` from `from` (`OFF_BOARD` for a reserve) stop there (§7, §18.6)? Terrain that
+ * stops every unit, or mounted units, or a climb onto a very steep hill (`steepClimb`). Lone leaders stop on both kinds
+ * of stopping terrain and never climb.
+ */
+export function stopsOnEntry(s: GameState, type: UnitType, from: HexId, to: HexId): boolean {
+  return stopsAll(s, to) || (UNIT_STATS[type].mounted && stopsMounted(s, to)) || steepClimb(s, from, to);
 }
 
 /**

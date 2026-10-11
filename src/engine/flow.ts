@@ -19,11 +19,11 @@ import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOption
 import { randInt, rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
 import {
-  breakRamparts, hasEntryRoll, isHill, isImpassable, isWall, mayAdvanceOut, mayBattleAfterEntering, oneHexOut, steepClimb, steepSlope,
-  steepSlopeUp, stopsAll, stopsMounted, terrainAt,
+  breakRamparts, closedTo, hasEntryRoll, isHill, isImpassable, isWall, mayAdvanceOut, mayBattleAfterEntering, oneHexOut, steepClimb,
+  steepSlope, stopsOnEntry, terrainAt,
 } from './terrain';
 import { canShoot, fireMoveLimit } from './elites';
-import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forbidsTerrain } from './units';
+import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice } from './units';
 import {
   OFF_BOARD, SECTIONS,
   type Answer, type CardKind, type Decision, type DieFace, type FlowCtx, type GameState, type HexId, type Leader,
@@ -787,11 +787,11 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
 }
 
 function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attack' | 'bonus', adv: AdvanceTrack): Gen {
-  if (s.winner || !isEmptyHex(s, hex) || isImpassable(s, hex)) return;
-  // war machines and immobile units (306, §18.11) never advance (§15), and no unit advances into terrain it may not enter (a
-  // mounted unit onto a city wall, §18.7; a foot unit's advance onto a wall is allowed and ends there) or up a steep slope
-  // (308; unreachable, since no close combat crosses one)
-  if (UNIT_STATS[u.type].noMomentum || u.immobile || forbidsTerrain(u.type, terrainAt(s, hex)) || steepSlopeUp(s, u.hex, hex)) return;
+  if (s.winner || !isEmptyHex(s, hex)) return;
+  // war machines and immobile units (306, §18.11) never advance (§15), and no unit advances where the terrain closes the step
+  // (`closedTo`: a mounted unit onto a city wall, §18.7, while a foot unit's advance onto a wall is allowed and ends there;
+  // up a steep slope, 308, unreachable since no close combat crosses one)
+  if (UNIT_STATS[u.type].noMomentum || u.immobile || closedTo(s, u.type, u.hex, hex)) return;
   const op = s.turn.ordered[u.id];
   if (!mayAdvanceOut(s, u.hex, !!op?.enteredHexThisTurn)) return;
   const a = yield* ask(s, ctx, { kind: 'momentum', side: u.side, unit: u.id, hex, bonus: role === 'bonus' });
@@ -808,12 +808,12 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   // a very steep hill (§18.6) climbed from lower ground ends the advance: no extra hex and no bonus combat
   if (s.winner || role === 'bonus' || steepClimb(s, from, hex)) return;
   const st = UNIT_STATS[u.type];
-  const stopped = stopsAll(s, hex) || (st.mounted && stopsMounted(s, hex));
+  const stopped = stopsOnEntry(s, u.type, from, hex);
   let climbedExtra = false; // the extra hex climbed a very steep hill: it ends the advance, no bonus combat (§18.6)
   if (st.momentumExtraHex && !stopped && !oneHexOut(s, from)) {
     const hasLeader = !!attachedLeader(s, u);
     const opts = neighbours(u.hex).filter((h) => {
-      if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || steepSlopeUp(s, u.hex, h) || unitAt(s, h)) return false;
+      if (closedTo(s, u.type, u.hex, h) || unitAt(s, h)) return false;
       const l = leaderAt(s, h);
       if (l) return l.side === u.side && !hasLeader;
       return true;

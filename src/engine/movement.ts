@@ -4,9 +4,10 @@ import { baselineRow, hexId, inSection, neighbours } from './hex';
 import { exitHexes, leaderExitHexes } from './objectives';
 import { attachedLeader, enemyPieceAdjacent, isEmptyHex, leaderAt, leaderById, leaderHas, other, unitAt, unitById } from './query';
 import {
-  isImpassable, isWall, mayBattleAfterEntering, oneHexOut, steepClimb, steepSlope, steepSlopeUp, steepSlopes, stopsAll, stopsMounted, terrainAt,
+  closedTo, isImpassable, isWall, mayBattleAfterEntering, oneHexOut, steepClimb, steepSlope, steepSlopes, stopsAll, stopsMounted,
+  stopsOnEntry, terrainAt,
 } from './terrain';
-import { UNIT_STATS, forbidsTerrain, isLightFoot } from './units';
+import { UNIT_STATS, isLightFoot } from './units';
 import { COLS, OFF_BOARD, type GameState, type HexId, type Leader, type OrderMods, type SectionName, type Side, type Unit } from './types';
 
 export interface MoveTarget {
@@ -85,7 +86,6 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   // the leader attached at the start of the move (a unit that joins one during its move gets nothing from him)
   const leader = fromReserve ? undefined : attachedLeader(s, u);
   const lim = unitMoveLimits(u, mods, fromReserve ? OFF_BOARD : startHex, s, leader);
-  const st = UNIT_STATS[u.type];
   const hasLeader = !!leader;
   const passThrough = mods.passThrough && isLightFoot(u);
   const results = new Map<HexId, MoveTarget>();
@@ -95,15 +95,11 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
   const best = new Map<HexId, number>();
 
   /** Is entering `h` from `from` (OFF_BOARD for a reserve) the end of the move? Stopping terrain, or a climb onto a very steep hill. */
-  const stopsThere = (from: HexId, h: HexId) =>
-    stopsAll(s, h) || (st.mounted && stopsMounted(s, h)) || steepClimb(s, from, h);
+  const stopsThere = (from: HexId, h: HexId) => stopsOnEntry(s, u.type, from, h);
 
   const canEnter = (h: HexId, from: HexId): 'no' | 'pass' | 'stop' | 'yes' | 'attach' => {
-    if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h))) return 'no';
-    // a city wall (§18.7) is climbed only by a move that begins next to it (never by a reserve entering), and a steep slope
-    // (308) never from the forest below
-    if (isWall(s, h) && (fromReserve || from !== startHex)) return 'no';
-    if (steepSlopeUp(s, from, h)) return 'no';
+    // a city wall (§18.7) is climbed only by a move that begins next to it (never by a reserve entering)
+    if (closedTo(s, u.type, from, h) || (isWall(s, h) && (fromReserve || from !== startHex))) return 'no';
     const v = unitAt(s, h);
     if (v) {
       // passing through means not stopping: impossible through a friend standing where the unit would have to stop (stopping
@@ -247,7 +243,7 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
     const n = queue.shift()!;
     if (n.dist >= max) continue;
     for (const h of neighbours(n.hex)) {
-      if (isImpassable(s, h) || (isWall(s, h) && n.hex !== start) || steepSlopeUp(s, n.hex, h)) continue;
+      if (closedTo(s, null, n.hex, h) || (isWall(s, h) && n.hex !== start)) continue;
       const v = unitAt(s, h);
       if (v && v.side !== l.side) continue;
       const other = leaderAt(s, h);
