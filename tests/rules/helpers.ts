@@ -1,65 +1,33 @@
 // Independent QA helpers for the rules suite (tests/rules). Uses only the public engine API.
 import {
   CARD_LIST, GameDriver, createGame, forceDice, forcedDiceLeft, hexId,
-  type Answer, type CardKind, type Decision, type DieFace, type EliteId, type GameEvent, type GameState, type HexDir, type LeaderTrait,
-  type ScenarioSetup, type Side, type TerrainType, type Unit, type UnitType,
+  type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameState, type ScenarioSetup, type Side, type TerrainSetup,
+  type Unit,
 } from '../../src/engine';
 
-export interface Pos {
-  /** `command`: the command id the unit belongs to (needs `commands`, §18.5); `immobile`: never moves or advances (306, §18.11). */
-  units?: { side: Side; type: UnitType; at: [number, number]; blocks?: number; elite?: EliteId; command?: string; immobile?: boolean }[];
-  leaders?: { side: Side; name?: string; at: [number, number]; traits?: LeaderTrait[]; command?: string }[];
-  /**
-   * `ford: 'nocap'` = fordable without dice caps; `faces` / `edges` = a rampart's protected hexsides (§16); `hill` = a hill
-   * under a camp or wall (§18.7); `art` = a drawing hint the engine ignores.
-   */
-  terrain?: { at: [number, number]; t: TerrainType; ford?: boolean | 'nocap'; faces?: Side; edges?: HexDir[]; hill?: boolean; art?: string }[];
-  first?: Side;
-  rules?: ScenarioSetup['rules'];
+/** A scenario entry placed `at: [r, c]` instead of by `r` and `c`. */
+type At<T> = Omit<T, 'r' | 'c'> & { at: [number, number] };
+
+/**
+ * A QA battle: any `ScenarioSetup` fields (the rest take defaults: no pieces or terrain, `first: 'bottom'`, `banners: 99`,
+ * no rules) plus shorthands. Pieces and terrain stand `at: [r, c]`; a unit's `blocks` sets its strength after the build; a
+ * leader's name defaults to Ldr<i>; the armies are `topArmy` (Carthaginian) and `bottomArmy` (Roman), each holding `cards`
+ * cards (5) unless `orderDice` gives the side dice orders (310 Utica P1, §18.10: `orders: 'dice'`, `cards: 0`). Every other
+ * field passes through unchanged, so a new scenario field needs no change here.
+ *
+ * Ids: units and leaders share one id counter, in the order board units, board leaders, `placeLeaders`, `reserves`,
+ * `reserveLeaders`, `placeUnits` (§18.5, §18.9). With n board units and no leaders the reserve units are u<n+1>..., each
+ * leader before them takes a number first.
+ */
+export type Pos = Partial<Omit<ScenarioSetup, 'top' | 'bottom' | 'units' | 'leaders' | 'terrain'>> & {
+  units?: (At<ScenarioSetup['units'][number]> & { blocks?: number })[];
+  leaders?: (Omit<At<ScenarioSetup['leaders'][number]>, 'name'> & { name?: string })[];
+  terrain?: At<TerrainSetup>[];
   cards?: number;
-  banners?: number;
   topArmy?: string;
   bottomArmy?: string;
-  sacredLeader?: ScenarioSetup['sacredLeader'];
-  initialCommand?: ScenarioSetup['initialCommand'];
-  /** Battle objectives (camp capture, exits, §18.4). */
-  objectives?: ScenarioSetup['objectives'];
-  /** Scenario options (Tactical Flexibility, §17.3). */
-  options?: ScenarioSetup['options'];
-  /** Leaders placed before the first turn, in placement order (rule `leaderPlacement`, 117 Asculum, §17.4). */
-  placeLeaders?: ScenarioSetup['placeLeaders'];
-  /**
- * Off-board reserve force (rule `magoAmbush`, §18.5). Units and leaders share one id counter, in the order board units,
- * board leaders, `placeLeaders`, reserve units, reserve leaders: with n board units and no leaders the reserve units are
- * u<n+1>..., each leader before them takes a number first.
- */
-  reserves?: ScenarioSetup['reserves'];
-  reserveLeaders?: ScenarioSetup['reserveLeaders'];
-  /** Ambush trigger configuration (defaults: Trebbia, §14). */
-  ambush?: ScenarioSetup['ambush'];
-  /** Legion rule per side: every MI and HI of the side has the pilum (Marius; Julian adds the march), §18.2. */
-  legions?: ScenarioSetup['legions'];
-  /** Separate commands of a side's army (210 Picenum, §18.5): one card orders units of one command. */
-  commands?: ScenarioSetup['commands'];
-  /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs. */
-  rollingFire?: ScenarioSetup['rollingFire'];
-  /** The side whose units remove the ramparts they enter or pass through (223 Medway, §18.6). */
-  rampartBreakers?: ScenarioSetup['rampartBreakers'];
-  /** The side whose units are eliminated by a retreat that ends on their baseline row (214 Silarus, §18.5). */
-  lastRowRetreat?: ScenarioSetup['lastRowRetreat'];
-  /** Hand growth (006 Trasimenus, 313 Brindisi Raid, §18.8). */
-  handGrowth?: ScenarioSetup['handGrowth'];
-  /**
-   * Forced placements (308, §18.9): off-board units placed at a turn start after the ambush. Their ids follow the reserve
-   * leaders' (the last ids of the setup).
-   */
-  placeUnits?: ScenarioSetup['placeUnits'];
-  /**
-   * Dice orders (310 Utica P1, §18.10): the sides that order by rolling this many dice instead of playing cards (`orders:
-   * 'dice'`, `cards: 0`).
-   */
   orderDice?: Partial<Record<Side, number>>;
-}
+};
 
 /** A side of the QA battle: its cards, or its dice orders (`Pos.orderDice`). */
 function sideOf(p: Pos, side: Side, army: string, blocks: 'car' | 'rom', look: 'carthaginian' | 'roman', commander: string): ScenarioSetup['top'] {
@@ -70,41 +38,23 @@ function sideOf(p: Pos, side: Side, army: string, blocks: 'car' | 'rom', look: '
 
 export const H = (r: number, c: number) => hexId(r, c);
 
+/** The scenario data of a QA battle (`Pos`). */
 export function setupOf(p: Pos): ScenarioSetup {
+  const { units, leaders, terrain, cards: _cards, topArmy, bottomArmy, orderDice: _orderDice, ...rest } = p;
   return {
     id: 'qa',
     name: 'QA',
-    top: sideOf(p, 'top', p.topArmy ?? 'Carthaginian', 'car', 'carthaginian', 'T'),
-    bottom: sideOf(p, 'bottom', p.bottomArmy ?? 'Roman', 'rom', 'roman', 'B'),
+    ...rest,
+    top: sideOf(p, 'top', topArmy ?? 'Carthaginian', 'car', 'carthaginian', 'T'),
+    bottom: sideOf(p, 'bottom', bottomArmy ?? 'Roman', 'rom', 'roman', 'B'),
     first: p.first ?? 'bottom',
     banners: p.banners ?? 99,
-    terrain: (p.terrain ?? []).map((t) => ({
-      r: t.at[0], c: t.at[1], t: t.t, ford: t.ford, faces: t.faces, edges: t.edges,
-      ...(t.hill !== undefined ? { hill: t.hill } : {}), ...(t.art !== undefined ? { art: t.art } : {}),
-    })),
-    units: (p.units ?? []).map((u) => ({
-      side: u.side, type: u.type, r: u.at[0], c: u.at[1], elite: u.elite, ...(u.command !== undefined ? { command: u.command } : {}),
-      ...(u.immobile !== undefined ? { immobile: u.immobile } : {}),
-    })),
-    leaders: (p.leaders ?? []).map((l, i) => ({
-      side: l.side, name: l.name ?? `Ldr${i}`, r: l.at[0], c: l.at[1], traits: l.traits, ...(l.command !== undefined ? { command: l.command } : {}),
-    })),
+    terrain: (terrain ?? []).map(({ at: [r, c], ...t }) => ({ ...t, r, c })),
+    units: (units ?? []).map(({ at: [r, c], blocks: _blocks, ...u }) => ({ ...u, r, c })),
+    leaders: (leaders ?? []).map(({ at: [r, c], name, ...l }, i) => ({ ...l, name: name ?? `Ldr${i}`, r, c })),
     reserves: p.reserves ?? [],
     reserveLeaders: p.reserveLeaders ?? [],
     rules: p.rules ?? [],
-    sacredLeader: p.sacredLeader,
-    initialCommand: p.initialCommand,
-    objectives: p.objectives,
-    options: p.options,
-    placeLeaders: p.placeLeaders,
-    ambush: p.ambush,
-    legions: p.legions,
-    commands: p.commands,
-    ...(p.rollingFire !== undefined ? { rollingFire: p.rollingFire } : {}),
-    ...(p.rampartBreakers !== undefined ? { rampartBreakers: p.rampartBreakers } : {}),
-    ...(p.lastRowRetreat !== undefined ? { lastRowRetreat: p.lastRowRetreat } : {}),
-    ...(p.handGrowth !== undefined ? { handGrowth: p.handGrowth } : {}),
-    ...(p.placeUnits !== undefined ? { placeUnits: p.placeUnits } : {}),
   };
 }
 

@@ -6,10 +6,10 @@ import { H, build, forceDice, forcedDiceLeft, must, n, toBattle, u, type Pos } f
 beforeEach(() => forceDice([]));
 
 /** Bottom HI (u1) at (5,6) attacks the top unit (u2) at (4,6) with the given dice. */
-function hiAttack(p: Omit<Pos, 'units'> & { def: UnitType; defBlocks?: number; extra?: Pos['units'] }, dice: DieFace[]) {
+function hiAttack({ def, defBlocks, extra, ...p }: Omit<Pos, 'units'> & { def: UnitType; defBlocks?: number; extra?: Pos['units'] }, dice: DieFace[]) {
   const s = build({
     ...p,
-    units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: p.def, at: [4, 6], blocks: p.defBlocks }, ...(p.extra ?? [])],
+    units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: def, at: [4, 6], blocks: defBlocks }, ...(extra ?? [])],
   });
   const d = toBattle(s, 'order4C', ['u1']);
   forceDice(dice);
