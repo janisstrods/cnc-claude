@@ -1,5 +1,5 @@
 // Turn flow as a generator: yields Decisions, receives Answers (rules-reference §5-§13).
-import { CARD_DEFS, cardKind, defaultMods, drawCard, mirrorKind, modsFor } from './cards';
+import { CARD_DEFS, cardKind, defaultMods, drawCard, effectiveCard, modsFor } from './cards';
 import {
   canFireAt, closeCombatDice, helmetsCount, ignorableFlags, rangedDice, retreatPerFlag, scoreClassOnly, scoreClose,
   swordIgnores, vsMountedIgnores, type StrikeRole,
@@ -13,7 +13,7 @@ import {
   validateDiceOrders, validateOrders, validateRally, validateSpartacus,
 } from './orders';
 import {
-  attachedLeader, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, unitAt, unitById, unitsOf,
+  attachedLeader, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, pieceHex, unitAt, unitById, unitsOf,
 } from './query';
 import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption } from './retreat';
 import { randInt, rollDice, rollDie, shuffle } from './rng';
@@ -23,6 +23,7 @@ import {
   steepSlope, stopsOnEntry, terrainAt,
 } from './terrain';
 import { canShoot, fireMoveLimit } from './elites';
+import { possessive } from './text';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice } from './units';
 import {
   OFF_BOARD, SECTIONS,
@@ -182,8 +183,6 @@ function settleBanners(s: GameState, ctx: FlowCtx, b: BannerBatch, reason: strin
   for (const g of b.gains) gainBanner(s, ctx, g, reason);
   for (const side of b.leaderLosses) afterLeaderLoss(s, ctx, side);
 }
-
-const possessive = (name: string) => (name.endsWith('s') ? `${name}'` : `${name}'s`);
 
 /**
  * Hellespont rules (§17.4) after a leader of `side` was eliminated and its banner awarded (only via `leaderLost` and
@@ -921,9 +920,8 @@ export function battleTargets(s: GameState, unitId: string): BattleTarget[] {
  */
 export function newOrderedPiece(s: GameState, id: string): OrderedPiece {
   const isLeader = isLeaderId(id);
-  const hex = isLeader ? leaderById(s, id)?.hex ?? OFF_BOARD : unitById(s, id)?.hex ?? OFF_BOARD;
   return {
-    id, isLeader, startHex: hex, moved: 0, moveDone: false, move2Done: false,
+    id, isLeader, startHex: pieceHex(s, id) ?? OFF_BOARD, moved: 0, moveDone: false, move2Done: false,
     battlesLeft: isLeader ? 0 : s.turn.mods.shots, canBattle: true, mustBattle: false,
     enteredHexThisTurn: false, attachedThisTurn: false,
   };
@@ -1357,16 +1355,7 @@ function* cardStep(s: GameState, ctx: FlowCtx, side: Side): Gen {
   hand.splice(hand.indexOf(cardId), 1);
   t.card = cardId;
   const kind = cardKind(cardId);
-  let effective: CardKind | null = kind;
-  let mirrored = false;
-  if (kind === 'counterAttack') {
-    const last = s.lastCard[other(side)];
-    if (!last) effective = null;
-    else {
-      effective = mirrorKind(last);
-      mirrored = effective !== last;
-    }
-  }
+  const { kind: effective, mirrored } = effectiveCard(s, side, cardId);
   t.effective = effective;
   ctx.emit({ t: 'cardPlayed', side, card: cardId, kind, effective: effective ?? kind });
   t.phase = 'orders';

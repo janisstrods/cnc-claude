@@ -1,4 +1,5 @@
 // The 60-card Command deck. Texts are paraphrased summaries of each card's effect.
+import { other } from './query';
 import { shuffle } from './rng';
 import type { CardDef, CardKind, FlowCtx, GameState, OrderMods, SectionName, Side } from './types';
 
@@ -166,6 +167,20 @@ export function sectionOrders(kind: CardKind): Partial<Record<SectionName, numbe
     case 'coordinated': return { left: 1, center: 1, right: 1 };
     default: return null;
   }
+}
+
+/**
+ * The card kind `side` executes by playing card `cardId` (§12): the card's own, or for Counter Attack a copy of the
+ * opponent's last card (`lastCard`), mirrored left for right (`mirrored` true when the copy differs), or null when there is
+ * nothing to copy.
+ */
+export function effectiveCard(s: GameState, side: Side, cardId: number): { kind: CardKind | null; mirrored: boolean } {
+  const kind = cardKind(cardId);
+  if (kind !== 'counterAttack') return { kind, mirrored: false };
+  const last = s.lastCard[other(side)];
+  if (!last) return { kind: null, mirrored: false };
+  const copy = mirrorKind(last);
+  return { kind: copy, mirrored: copy !== last };
 }
 
 /** Mirror a card for Counter Attack (left <-> right). */

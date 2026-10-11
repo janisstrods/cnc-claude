@@ -30,8 +30,14 @@ export function isLeaderId(id: string): boolean {
   return id.startsWith('L');
 }
 
+/** The unit or leader with this id (leader ids start with L), on the board or off it; undefined once it is gone. */
+export function pieceById(s: GameState, id: string): Unit | Leader | undefined {
+  return isLeaderId(id) ? leaderById(s, id) : unitById(s, id);
+}
+
+/** Hex of the unit or leader with this id (`OFF_BOARD` while it waits off the board); undefined once it is gone. */
 export function pieceHex(s: GameState, id: string): HexId | undefined {
-  return isLeaderId(id) ? leaderById(s, id)?.hex : unitById(s, id)?.hex;
+  return pieceById(s, id)?.hex;
 }
 
 /** Leader attached to (sharing the hex of) a unit. */

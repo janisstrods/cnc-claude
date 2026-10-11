@@ -2,7 +2,7 @@
 import { sectionOrders } from './cards';
 import { areAdjacent, inSection, sectionsOf } from './hex';
 import {
-  isLeaderId, isLoneLeader, leaderById, leaderHas, leaderUnit, leadersOf, unitById, unitsOf, enemyUnitAdjacent,
+  isLeaderId, isLoneLeader, leaderById, pieceById, leaderHas, leaderUnit, leadersOf, unitById, unitsOf, enemyUnitAdjacent,
 } from './query';
 import { canShoot } from './elites';
 import { UNIT_STATS } from './units';
@@ -141,7 +141,7 @@ export function selectionMode(s: GameState, side: Side, kind: CardKind | null, p
 
 /** Command a unit or leader belongs to; undefined = none, so free to go with any command. */
 export function commandOf(s: GameState, id: string): string | undefined {
-  return (isLeaderId(id) ? leaderById(s, id) : unitById(s, id))?.command;
+  return pieceById(s, id)?.command;
 }
 
 /** Is a piece with this command part of the command named (if any)? A piece with no command always is. */
@@ -355,7 +355,7 @@ export function validateOrders(s: GameState, side: Side, kind: CardKind | null, 
 function validateSelection(s: GameState, side: Side, m: OrderMode, pieces: string[]): string | null {
   if (new Set(pieces).size !== pieces.length) return 'A piece may only be ordered once.';
   for (const id of pieces) {
-    const p = isLeaderId(id) ? leaderById(s, id) : unitById(s, id);
+    const p = pieceById(s, id);
     if (!p || p.side !== side || p.hex < 0) return 'Not one of your pieces on the battlefield.';
   }
   const units = pieces.filter((id) => !isLeaderId(id)).map((id) => unitById(s, id)!);
