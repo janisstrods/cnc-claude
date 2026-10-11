@@ -4,49 +4,14 @@
 // orders, hand growth, leader exits) reaches the game state as rules-reference §18 and §20 give it.
 import { describe, expect, it } from 'vitest';
 import {
-  ALL_HEXES, COLS, ELITES, GameDriver, HEX_DIRS, OFF_BOARD, createGame, forbidsTerrain, hexId, isHill, isImpassable, isLoneLeader,
+  ALL_HEXES, COLS, ELITES, GameDriver, OFF_BOARD, createGame, forbidsTerrain, isHill, isImpassable, isLoneLeader,
   leaderUnit, lineOfSight, neighbours, onBoard, randomAnswer, rowOf, steepSlope,
   type GameState, type HexDir, type ObjectiveDef, type ScenarioSetup, type Side, type UnitType,
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
 import { checksums, terrainTally } from './checksum';
+import { EXP1, EXP2, EXP3, H, SIDES, cols, edgesOf, game, hexesOf, range, rampartsOf, rc, sorted, unitCounts, type NoText } from './helpers';
 import { MANIFEST, MANIFEST_EXP2, MANIFEST_EXP3 } from './manifest';
-
-const H = (r: number, c: number) => hexId(r, c);
-const EXP1 = Object.keys(MANIFEST).sort();
-const EXP2 = Object.keys(MANIFEST_EXP2).sort();
-const EXP3 = Object.keys(MANIFEST_EXP3).sort();
-const SIDES: Side[] = ['top', 'bottom'];
-const game = (id: string, seed = 1) => createGame(scenarioById(id).setup, seed);
-const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => String(a + i));
-const rc = (h: number) => `${rowOf(h)},${h - rowOf(h) * COLS}`;
-
-function unitCounts(s: GameState, side: Side): Partial<Record<UnitType, number>> {
-  const n: Partial<Record<UnitType, number>> = {};
-  for (const u of s.units) if (u.side === side) n[u.type] = (n[u.type] ?? 0) + 1;
-  return n;
-}
-
-/** Protected hexsides of a rampart hex, by direction. */
-const edgesOf = (s: GameState, h: number): HexDir[] => HEX_DIRS.filter((_, i) => s.rampart[h] & (1 << i));
-
-/** Every rampart hex as 'r,c' -> its protected hexsides, sorted and joined with '+'. */
-function rampartsOf(s: GameState): Record<string, string> {
-  const out: Record<string, string> = {};
-  s.terrain.forEach((t, h) => {
-    if (t === 'rampart') out[rc(h)] = [...edgesOf(s, h)].sort().join('+');
-  });
-  return out;
-}
-
-/** The hexes of a terrain type as sorted 'r,c' strings. */
-function hexesOf(s: GameState, type: string): string[] {
-  const out: string[] = [];
-  s.terrain.forEach((t, h) => {
-    if (t === type) out.push(rc(h));
-  });
-  return out.sort();
-}
 
 /** The hexes of a battle's terrain entries with art `art`, as sorted 'r,c' strings. */
 const artOf = (id: string, art: string) => scenarioById(id).setup.terrain.filter((t) => t.art === art).map((t) => `${t.r},${t.c}`).sort();
@@ -59,12 +24,6 @@ const unitAt = (s: GameState, r: number, c: number) => {
   const u = s.units.find((x) => x.hex === H(r, c));
   return u && [u.side, u.type];
 };
-
-/** A union member without its `text` (Omit alone would flatten the union). */
-type NoText<T> = T extends unknown ? Omit<T, 'text'> : never;
-
-const cols = (r: number, a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => `${r},${a + i}`);
-const sorted = (xs: string[]) => [...xs].sort();
 
 describe('Expansion #3 battle list', () => {
   it('the 19 battles 301-319 follow the base, Expansion #1 and Expansion #2 battles; no id or name is used twice', () => {
