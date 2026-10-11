@@ -1,8 +1,8 @@
-// Fast board helpers for the AI: distance table, occupancy, retreat room, LOS and flag rules mirrored with O(1) lookups.
-import { ALL_HEXES, distance, hasLineOfSight, neighbours, rearHexes, rowOf } from '../engine/hex';
-import { closedTo, isCamp, isWall, stopsOnEntry, terrainBlocksSight } from '../engine/terrain';
-import { frightAtFirstSight, rampartShields, sightGroupsOf, wallShields, type StrikeRole } from '../engine/combat';
-import { canShoot, eliteHas, rangeOf } from '../engine/elites';
+// Fast board helpers for the AI: distance table, occupancy (the engine rules' piece index), retreat room, reach.
+import { ALL_HEXES, distance, neighbours, rearHexes, rowOf } from '../engine/hex';
+import { closedTo, isWall, stopsOnEntry } from '../engine/terrain';
+import { ignorableFlags, type StrikeRole } from '../engine/combat';
+import { canShoot, rangeOf } from '../engine/elites';
 import { leaderHas } from '../engine/query';
 import { UNIT_STATS } from '../engine/units';
 import { COLS, ROWS, type GameState, type HexId, type Leader, type Side, type TerrainType, type Unit } from '../engine/types';
@@ -28,12 +28,13 @@ function rearOf(h: HexId, side: Side): readonly HexId[] {
   return REAR[side][h] ?? rearHexes(h, side);
 }
 
-/** Occupancy lookup for a game state (rebuild after any position change). */
+/**
+ * Occupancy lookup for a game state (rebuild after any position change); the engine rules that look around a hex take it
+ * as their `PieceIndex` (supportCount, helmetsCount, ignorableFlags, canFireAt, lineOfSight, canEvade, unitsOn, ...).
+ */
 export class Occ {
   readonly unit: (Unit | null)[] = new Array(NHEX).fill(null);
   readonly leader: (Leader | null)[] = new Array(NHEX).fill(null);
-  /** The unit on hex h, as an engine `UnitLookup` (held.ts's `unitsOn`, `majorityHolder`). */
-  readonly unitOn = (h: HexId): Unit | null => this.unit[h];
   constructor(s: GameState) {
     for (const u of s.units) if (u.hex >= 0) this.unit[u.hex] = u;
     for (const l of s.leaders) if (l.hex >= 0) this.leader[l.hex] = l;
@@ -44,21 +45,6 @@ export function attachedLeaderOcc(occ: Occ, u: Unit): Leader | null {
   if (u.hex < 0) return null;
   const l = occ.leader[u.hex];
   return l && l.side === u.side ? l : null;
-}
-
-/** Friendly units and lone friendly leaders adjacent to u. */
-export function supportOcc(occ: Occ, u: Unit): number {
-  let n = 0;
-  for (const h of neighbours(u.hex)) {
-    const v = occ.unit[h];
-    if (v) {
-      if (v.side === u.side) n++;
-      continue;
-    }
-    const l = occ.leader[h];
-    if (l && l.side === u.side) n++;
-  }
-  return n;
 }
 
 export function friendlyUnitsAdjacent(occ: Occ, h: HexId, side: Side): number {
@@ -80,45 +66,14 @@ export function enemyUnitsAdjacent(occ: Occ, h: HexId, side: Side): number {
 }
 
 /**
- * Mirror of engine ignorableFlags using the occupancy table. `role` = the striker's close-combat role (a rampart counts
- * only against an attack or bonus combat, §16); null = a roll against a unit that is attacking (battle back, First Strike).
- * Fright at First Sight (116) applies when the striker is known.
+ * Engine ignorableFlags for a roll still to come, as the AI prices it: the attached leader alive, the unit's strength now
+ * its strength at the start of the combat. `role` = the striker's close-combat role (a rampart counts only against an
+ * attack or bonus combat, §16); null = a roll against a unit that is attacking (battle back, First Strike).
  */
 export function ignorableOcc(
   s: GameState, occ: Occ, t: Unit, kind: 'close' | 'ranged', striker: Unit | null, role: StrikeRole | null = null,
 ): number {
-  if (striker && frightAtFirstSight(s, t, striker, kind)) return 0;
-  const T = UNIT_STATS[t.type];
-  let n = 0;
-  if (!T.noLeaderBenefit) {
-    if (attachedLeaderOcc(occ, t)) n++;
-    if (supportOcc(occ, t) >= 2) n++;
-  }
-  if (isCamp(s, t.hex) && T.foot) n++;
-  if (T.fullStrengthBonus && t.blocks === t.maxBlocks) n++;
-  if (t.elite && eliteHas(t, 'ignoreFlag')) n++;
-  if (T.vsMountedIgnoreFlag && kind === 'close' && striker) {
-    const st = UNIT_STATS[striker.type];
-    if (st.cavalry || st.chariot) n++;
-  }
-  if (striker && rampartShields(s, t, striker, kind, role)) n++;
-  if (wallShields(s, t, kind, role)) n++;
-  return n;
-}
-
-/**
- * Leader attached to or adjacent to the striker (helmets hit in close combat), for units that benefit from leaders.
- * Mirror of engine helmetsCount: a satrap (`attachedOnly`) counts only for his own unit.
- */
-export function helmetsOcc(occ: Occ, u: Unit): boolean {
-  if (UNIT_STATS[u.type].noLeaderBenefit) return false;
-  const l = occ.leader[u.hex];
-  if (l && l.side === u.side) return true;
-  for (const h of neighbours(u.hex)) {
-    const x = occ.leader[h];
-    if (x && x.side === u.side && !leaderHas(x, 'attachedOnly')) return true;
-  }
-  return false;
+  return ignorableFlags(s, t, { kind, striker, role, leaderAlive: true, fullAtStart: t.blocks === t.maxBlocks }, occ);
 }
 
 /**
@@ -145,45 +100,6 @@ export function retreatRoom(s: GameState, occ: Occ, u: Unit, need: number): numb
     return best;
   };
   return walk(u.hex, need);
-}
-
-/** Can the unit evade at all (mirror of engine evadeOptions non-emptiness)? */
-export function canEvadeOcc(s: GameState, occ: Occ, u: Unit): boolean {
-  if (u.immobile) return false; // 306 (§18.11): an immobile unit never evades
-  const hasLeader = !!attachedLeaderOcc(occ, u);
-  for (const h of rearOf(u.hex, u.side)) {
-    if (closedTo(s, u.type, u.hex, h) || occ.unit[h]) continue;
-    const l = occ.leader[h];
-    if (l && (l.side !== u.side || hasLeader)) continue;
-    return true;
-  }
-  return false;
-}
-
-/** Mirror of engine lineOfSight using occupancy (the terrain decided by the engine's `terrainBlocksSight`). */
-export function losOcc(s: GameState, occ: Occ, from: HexId, to: HexId): boolean {
-  const groups = sightGroupsOf(s);
-  return hasLineOfSight(from, to, (h) => !!occ.unit[h] || !!occ.leader[h] || terrainBlocksSight(s, from, to, h, groups));
-}
-
-/** Mirror of engine canFireAt using occupancy. */
-export function canFireOcc(s: GameState, occ: Occ, f: Unit, target: HexId): boolean {
-  const range = rangeOf(f);
-  if (!range) return false;
-  const d = hexDist(f.hex, target);
-  if (d < 2 || d > range) return false;
-  for (const h of neighbours(f.hex)) {
-    const v = occ.unit[h];
-    if (v && v.side !== f.side) return false;
-  }
-  const tu = occ.unit[target];
-  if (tu) {
-    if (tu.side === f.side) return false;
-  } else {
-    const tl = occ.leader[target];
-    if (!tl || tl.side === f.side) return false;
-  }
-  return losOcc(s, occ, f.hex, target);
 }
 
 /** Rows a side still has to advance to reach the far edge. */

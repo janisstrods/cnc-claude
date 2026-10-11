@@ -15,7 +15,9 @@ import {
 import {
   attachedLeader, enemyUnitAdjacent, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, pieceHex, unitAt, unitById, unitsOf,
 } from './query';
-import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption } from './retreat';
+import {
+  canEvade, elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption,
+} from './retreat';
 import { randInt, rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
 import {
@@ -733,14 +735,15 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
   const atkFull = attacker.blocks === attacker.maxBlocks;
   const defFull = tu.blocks === tu.maxBlocks;
   const atkHex = attacker.hex;
-  const canEvade = canEvadeType(tu.type, attacker.type) && evadeOptions(s, tu).length > 0;
+  const mayEvade = canEvadeType(tu.type, attacker.type) && canEvade(s, tu);
   const wallFirst = wallStrikesFirst(s, tu, attacker);
   const fsCard = wallFirst ? null : holdsFirstStrike(s, tu.side);
   type DefendChoice = 'stand' | 'evade' | 'firstStrike';
   let choice = 'stand' as DefendChoice;
-  if (canEvade || fsCard !== null) {
+  if (mayEvade || fsCard !== null) {
     const a = yield* ask(s, ctx, {
-      kind: 'defend', side: tu.side, attacker: attacker.id, target: tu.id, canEvade, canFirstStrike: fsCard !== null, bonus: role === 'bonus',
+      kind: 'defend', side: tu.side, attacker: attacker.id, target: tu.id, canEvade: mayEvade, canFirstStrike: fsCard !== null,
+      bonus: role === 'bonus',
     });
     choice = (a as { choice: DefendChoice }).choice;
   }

@@ -8,7 +8,7 @@ import {
 } from '../../src/engine';
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
 import { chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
-import { Occ, helmetsOcc } from '../../src/ai/board';
+import { Occ } from '../../src/ai/board';
 import { evaluate, rawFeatures, singleUnitRisk, type EvalBreakdown } from '../../src/ai/evaluate';
 import { backDamage, closeAttackEV, evadeEV } from '../../src/ai/estimate';
 import { orderCandidates } from '../../src/ai/ordering';
@@ -490,7 +490,7 @@ describe('elites and leader traits', () => {
     for (const c of withHim) expect([...c.pieces].sort()).toEqual([s.leaders[0].id, 'u1'].sort());
   });
 
-  it('a satrap\'s helmets hit only for his own unit, not its neighbours (helmetsOcc mirrors helmetsCount)', () => {
+  it('a satrap\'s helmets hit only for his own unit, not its neighbours (the occupancy index agrees with the scan)', () => {
     const s = position({
       top: MAC, bottom: PER,
       units: [{ side: 'bottom', type: 'MC', at: [6, 6] }, { side: 'bottom', type: 'MC', at: [6, 5] }, { side: 'top', type: 'MI', at: [3, 6] }],
@@ -499,8 +499,8 @@ describe('elites and leader traits', () => {
     const [own, neighbour] = s.units;
     const helmets = (u: typeof own) => {
       const occ = new Occ(s);
-      expect(helmetsOcc(occ, u), u.id).toBe(helmetsCount(s, u));
-      return helmetsOcc(occ, u);
+      expect(helmetsCount(s, u, occ), u.id).toBe(helmetsCount(s, u));
+      return helmetsCount(s, u, occ);
     };
     expect(helmets(own)).toBe(true);
     expect(helmets(neighbour)).toBe(false);

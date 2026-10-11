@@ -1,15 +1,18 @@
 // Analytic combat estimator: expected value (in banner units) of attacks, battle backs, evades and ranged fire.
 import { CARD_DEFS } from '../engine/cards';
 import { battleTargets, mayAttackInto, rollingFirePaths, rollingFireRoutes, wallStrikesFirst } from '../engine/flow';
-import { closeCombatDice, rangedDice, retreatPerFlag, swordIgnores, vsMountedIgnores, type StrikeRole } from '../engine/combat';
+import {
+  canFireAt, closeCombatDice, helmetsCount, rangedDice, retreatPerFlag, swordIgnores, vsMountedIgnores, type StrikeRole,
+} from '../engine/combat';
 import { neighbours } from '../engine/hex';
 import { other, unitById } from '../engine/query';
+import { canEvade } from '../engine/retreat';
 import { isHill } from '../engine/terrain';
 import { canShoot, eliteHas, fireMoveLimit, rangeOf } from '../engine/elites';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType } from '../engine/units';
 import type { Answer, GameState, HexId, Leader, Unit } from '../engine/types';
 import {
-  Occ, attachedLeaderOcc, canEvadeOcc, canFireOcc, helmetsOcc, hexDist, ignorableOcc, retreatRoom, shortfall,
+  Occ, attachedLeaderOcc, hexDist, ignorableOcc, retreatRoom, shortfall,
 } from './board';
 import { binom, pAnyHelmet, strikeDist, type Prof } from './dice';
 import { blockVal, leaderVal, nextBanner, type Weights } from './values';
@@ -21,7 +24,7 @@ export function closeProfile(s: GameState, occ: Occ, st: Unit, t: Unit, n: numbe
   const S = UNIT_STATS[st.type];
   let pc = SIXTH;
   let ps = S.swordHits ? SIXTH : 0;
-  const ph = helmetsOcc(occ, st) || eliteHas(st, 'helmetHits') ? SIXTH : 0;
+  const ph = helmetsCount(s, st, occ) || eliteHas(st, 'helmetHits') ? SIXTH : 0;
   let pf = SIXTH;
   let sw = 0;
   if (UNIT_STATS[t.type].ignoreAllSwords) ps = 0;
@@ -228,7 +231,7 @@ export function closeAttackEV(s: GameState, occ: Occ, a: Unit, t: Unit, role: St
   const n = closeCombatDice(s, a, t, { role, fullAtStart: a.blocks === a.maxBlocks, ordered });
   const mom = momentumValue(s, occ, a, role, W);
   const st = wallStrikesFirst(s, t, a) ? wallStandEV(s, occ, a, t, n, mom) : standEV(s, occ, a, t, n, mom);
-  if (canEvadeType(t.type, a.type) && canEvadeOcc(s, occ, t)) {
+  if (canEvadeType(t.type, a.type) && canEvade(s, t, occ)) {
     const ev = evadeEV(s, occ, a, t, n);
     if (ev.ev <= st.ev) return ev;
   }
@@ -445,7 +448,7 @@ export function shotValue(s: GameState, occ: Occ, u: Unit, moved: number, floor 
       if (v.side === u.side || v.hex < 0) continue;
       const d = hexDist(u.hex, v.hex);
       if (d < 2 || d > range) continue;
-      if (!canFireOcc(s, occ, u, v.hex)) continue;
+      if (!canFireAt(s, u, v.hex, occ)) continue;
       const dice = rangedDice(s, u, v.hex, moved, true);
       const ev = rangedEV(s, occ, u, v.hex, dice).ev * Math.max(1, m.shots);
       if (ev > best) best = ev;

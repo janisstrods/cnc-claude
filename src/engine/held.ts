@@ -3,9 +3,9 @@
 // leaders); the `held` events and the victory check are banners.ts's (`updateHeld`), which every banner goes through.
 // This module sits below banners.ts in the import graph.
 import { sectionsOf } from './hex';
-import { unitAt } from './query';
+import { unitOn, type PieceIndex } from './query';
 import {
-  SECTIONS, SIDES, type GameState, type HexId, type ObjectiveOf, type ObjectiveState, type SectionName, type Side, type Unit,
+  SECTIONS, SIDES, type GameState, type HexId, type ObjectiveOf, type ObjectiveState, type SectionName, type Side,
 } from './types';
 
 /** Banners `side` holds right now through its objectives (hold, majority, section clear); lost again when they lapse. */
@@ -20,13 +20,10 @@ export function heldSnapshot(s: GameState): Record<Side, number>[] {
   return s.special.objState.map((st) => ({ ...st.held }));
 }
 
-/** Where `unitsOn` and `majorityHolder` find the unit on a hex: the AI passes its occupancy table (default: `unitAt`). */
-export type UnitLookup = (h: HexId) => Unit | null | undefined;
-
-/** Units of `side` on `hexes` (`unitOn`: see `UnitLookup`). */
-export function unitsOn(s: GameState, hexes: readonly HexId[], side: Side, unitOn?: UnitLookup): number {
+/** Units of `side` on `hexes` (`at`: see PieceIndex). */
+export function unitsOn(s: GameState, hexes: readonly HexId[], side: Side, at?: PieceIndex): number {
   let n = 0;
-  for (const h of hexes) if ((unitOn ? unitOn(h) : unitAt(s, h))?.side === side) n++;
+  for (const h of hexes) if (unitOn(s, h, at)?.side === side) n++;
   return n;
 }
 
@@ -35,10 +32,13 @@ function enemyIn(s: GameState, side: Side, sec: SectionName): boolean {
   return s.units.some((u) => u.side !== side && u.hex >= 0 && sectionsOf(u.hex, side).includes(sec));
 }
 
-/** The side of `o.sides` with strictly more units on the hexes, or null (a tie, or the leader is not in `sides`). */
-export function majorityHolder(s: GameState, o: ObjectiveOf<'majority'>, unitOn?: UnitLookup): Side | null {
-  const top = unitsOn(s, o.hexes, 'top', unitOn);
-  const bottom = unitsOn(s, o.hexes, 'bottom', unitOn);
+/**
+ * The side of `o.sides` with strictly more units on the hexes, or null (a tie, or the leader is not in `sides`). `at`: see
+ * PieceIndex.
+ */
+export function majorityHolder(s: GameState, o: ObjectiveOf<'majority'>, at?: PieceIndex): Side | null {
+  const top = unitsOn(s, o.hexes, 'top', at);
+  const bottom = unitsOn(s, o.hexes, 'bottom', at);
   const lead: Side | null = top > bottom ? 'top' : bottom > top ? 'bottom' : null;
   return lead && o.sides.includes(lead) ? lead : null;
 }

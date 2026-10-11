@@ -1,12 +1,12 @@
 // Expansion #1 elite units and leader traits (rules-reference §17.1, §17.2; base mechanics §3, §4, §6, §10, §11, §12).
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  ELITES, GameDriver, autoOrders, battleTargets, closeCombatDice, createGame, eligiblePieces, ignorableFlags, orderLimit,
+  ELITES, GameDriver, autoOrders, battleTargets, closeCombatDice, createGame, eligiblePieces, helmetsCount, ignorableFlags, orderLimit,
   baseSwordIgnores, pieceMoves, rallyCandidates, validateOrders,
   type CardKind, type EliteId, type LeaderTrait, type Unit,
 } from '../../src/engine';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory, type AiOptions } from '../../src/ai';
-import { Occ, helmetsOcc } from '../../src/ai/board';
+import { Occ } from '../../src/ai/board';
 import { orderCandidates } from '../../src/ai/ordering';
 import { LEADER_VALUE, NEUTRAL_W, leaderVal } from '../../src/ai/values';
 import {
@@ -599,8 +599,8 @@ describe('AI leader traits', () => {
       leaders: [{ side: 'bottom', at: [5, 6], traits: SATRAP }],
     });
     const occ = new Occ(s);
-    expect(helmetsOcc(occ, s.units[0])).toBe(true);
-    expect(helmetsOcc(occ, s.units[1])).toBe(false);
+    expect(helmetsCount(s, s.units[0], occ)).toBe(true);
+    expect(helmetsCount(s, s.units[1], occ)).toBe(false);
   });
 
   it('Alexander is worth 1.5 ordinary leaders', () => {

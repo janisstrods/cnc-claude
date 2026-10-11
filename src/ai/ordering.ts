@@ -4,11 +4,11 @@ import { ambushAvailable, ambushSections } from '../engine/flow';
 import { areAdjacent, inSection } from '../engine/hex';
 import { leaderMoves, unitMoves } from '../engine/movement';
 import { commandClash, commandModes, inCommand, leadershipChain, orderMode, validateOrders, type OrderMode } from '../engine/orders';
-import { isLoneLeader, leaderUnit, leadersOf, unitsOf } from '../engine/query';
+import { isLoneLeader, leaderUnit, leadersOf, supportCount, unitsOf } from '../engine/query';
 import { cloneState } from '../engine/setup';
 import { UNIT_STATS } from '../engine/units';
 import { OFF_BOARD, type CardKind, type GameState, type Leader, type SectionName, type Side, type Unit } from '../engine/types';
-import { Occ, hasTerrain, hexDist, isWarMachine, supportOcc } from './board';
+import { Occ, hasTerrain, hexDist, isWarMachine } from './board';
 import { attackNowValue, shotValue } from './estimate';
 import { battered, holdsWall, nearestDist, positionMemo, singleUnitRisk, unitGap } from './evaluate';
 import { isSacredLeader, type Weights } from './values';
@@ -36,7 +36,7 @@ function localScore(s: GameState, occ: Occ, u: Unit, enemies: readonly Unit[], W
   const gap = walls && holdsWall(s, u) ? 0 : unitGap(u, enemies, d);
   if (gap) v -= W.adv * gap * (UNIT_STATS[u.type].mounted ? W.mountedAdv : 1) * 1.5;
   if (d <= 2) {
-    const sc = supportOcc(occ, u);
+    const sc = supportCount(s, u, occ);
     if (sc >= 2) v += W.support;
     else if (sc === 0) v -= W.isolated;
   }

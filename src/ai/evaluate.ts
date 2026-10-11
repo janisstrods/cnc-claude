@@ -1,20 +1,22 @@
 // Static evaluation of a position from one side's point of view (1.0 ~ one banner).
 import { defaultMods } from '../engine/cards';
 import {
-  baseSwordIgnores, closeCombatDice, frightAtFirstSight, leaderDiceBonus, rampartShields, rangedDice, wallShields,
+  baseSwordIgnores, canFireAt, closeCombatDice, frightAtFirstSight, helmetsCount, leaderDiceBonus, rampartShields, rangedDice,
+  wallShields,
 } from '../engine/combat';
 import { unitMoves } from '../engine/movement';
 import { halfCol, neighbours, rowOf } from '../engine/hex';
 import { exitAllows, leaderExitAllows } from '../engine/objectives';
 import { diceOrderPieces, orderDice } from '../engine/orders';
-import { isRomanArmy, leaderHas, other } from '../engine/query';
+import { isRomanArmy, leaderHas, other, supportCount } from '../engine/query';
+import { canEvade } from '../engine/retreat';
 import { ccCapOfHex, isHill, isImpassable, isWall, steepSlope, steepSlopes, terrainAt, veryHills } from '../engine/terrain';
 import { eliteHas, hasPilum, rangeOf } from '../engine/elites';
 import { UNIT_STATS, canEvadeType, elephantDiceVs, forbidsTerrain, type UnitStats } from '../engine/units';
 import type { DieFace, GameState, HexId, Leader, ObjectiveOf, Side, Unit } from '../engine/types';
 import {
-  NHEX, Occ, advanceGap, attachedLeaderOcc, canEvadeOcc, canFireOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, hasTerrain, helmetsOcc,
-  hexDist, ignorableOcc, isRangedLight, isWarMachine, reachOf, retreatRoom, rowsToOwnEdge, stopAwareReach, supportOcc,
+  NHEX, Occ, advanceGap, attachedLeaderOcc, enemyUnitsAdjacent, friendlyUnitsAdjacent, hasTerrain, hexDist, ignorableOcc,
+  isRangedLight, isWarMachine, reachOf, retreatRoom, rowsToOwnEdge, stopAwareReach,
 } from './board';
 import { closeProfile, strikeValue } from './estimate';
 import { goalTerms } from './goals';
@@ -38,8 +40,8 @@ export function battered(u: Unit): boolean {
 }
 
 /** Do helmets score for `e` in close combat (a leader with or next to it, or an elite whose helmets hit)? */
-function helmetsHit(occ: Occ, e: Unit): boolean {
-  return helmetsOcc(occ, e) || eliteHas(e, 'helmetHits');
+function helmetsHit(s: GameState, occ: Occ, e: Unit): boolean {
+  return helmetsCount(s, e, occ) || eliteHas(e, 'helmetHits');
 }
 
 /**
@@ -209,7 +211,7 @@ function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number, frightRule: boo
   // Fright at First Sight (116): a Roman infantry unit ignores no flag an elephant rolls (decided per threat)
   const frightProne = st.infantry && frightRule && isRomanArmy(s, u.side);
   // a war machine that evades is abandoned anyway (§15): price its threats as if it stands
-  const canEv = st.evade !== 'never' && !st.evadeRemoves && canEvadeOcc(s, occ, u);
+  const canEv = st.evade !== 'never' && !st.evadeRemoves && canEvade(s, u, occ);
   const l = attachedLeaderOcc(occ, u);
   return {
     pFlagHit, pFlagHitShielded, pFlagHitFright: frightProne ? flagHitOf(lossPerFlag, 0) : pFlagHit,
@@ -334,10 +336,10 @@ function threatsAgainst(
         if (x3.walls && isWall(s, u.hex) && !isWall(s, e.hex)) base *= 1 - wallFirstStop(s, occ, u, e);
         const shield = shielded(s, vi, u, e, 'close');
         fk = flagCase(s, vi, u, e, 'close', shield);
-        p = evades ? SIXTH : hitP(S, vi, shield, (helmets ??= helmetsHit(occ, e))) + flagHitP(vi, fk);
+        p = evades ? SIXTH : hitP(S, vi, shield, (helmets ??= helmetsHit(s, occ, e))) + flagHitP(vi, fk);
         p -= camelIgnoreP(S, vi, n);
         flags = !evades;
-      } else if (range && d <= range && canFireOcc(s, occ, e, u.hex) && !(pilumOnly && d - 1 <= reach && canReach(u.hex))) {
+      } else if (range && d <= range && canFireAt(s, e, u.hex, occ) && !(pilumOnly && d - 1 <= reach && canReach(u.hex))) {
         n = rangedDice(s, e, u.hex, 0, false);
         base = pAdj * 0.85;
         fk = flagCase(s, vi, u, e, 'ranged', shielded(s, vi, u, e, 'ranged'));
@@ -350,7 +352,7 @@ function threatsAgainst(
         // not adjacent yet: the rampart counts when e lies on its protected side
         const shield = shielded(s, vi, u, e, 'close');
         fk = flagCase(s, vi, u, e, 'close', shield);
-        p = evades ? SIXTH : hitP(S, vi, shield, (helmets ??= helmetsHit(occ, e))) + flagHitP(vi, fk);
+        p = evades ? SIXTH : hitP(S, vi, shield, (helmets ??= helmetsHit(s, occ, e))) + flagHitP(vi, fk);
         p -= camelIgnoreP(S, vi, n);
         flags = !evades;
       } else continue;
@@ -367,7 +369,7 @@ function threatsAgainst(
         if (x3.slopes && steepSlope(s, e.hex, l.hex)) continue;
         n = closeCombatDice(s, e, l, { role: 'attack', fullAtStart: e.blocks === e.maxBlocks, ordered: false });
         base = pAdj;
-      } else if (range && d <= range && canFireOcc(s, occ, e, l.hex) && !(pilumOnly && d - 1 <= reach && canReach(l.hex))) {
+      } else if (range && d <= range && canFireAt(s, e, l.hex, occ) && !(pilumOnly && d - 1 <= reach && canReach(l.hex))) {
         n = rangedDice(s, e, l.hex, 0, false);
         base = pAdj * 0.85;
       } else if (d - 1 <= reach && !(noWall && isWall(s, l.hex)) && canReach(l.hex)) {
@@ -501,7 +503,7 @@ function positional(s: GameState, occ: Occ, units: Unit[], enemies: Unit[], side
     near.set(u, d);
     if (d <= 4 && !friendWithin2(u, units)) v -= W.stray;
     if (d > 2) continue;
-    const sc = supportOcc(occ, u);
+    const sc = supportCount(s, u, occ);
     if (sc >= 2) v += W.support;
     else if (sc === 0) v -= W.isolated;
   }
@@ -863,7 +865,7 @@ export function rawFeatures(s: GameState, me: Side, next: Side, W: Weights): Rec
       const d = nearestDist(u, enemies);
       if (d <= 4 && !friendWithin2(u, units)) stray++;
       if (d > 2) continue;
-      const sc = supportOcc(occ, u);
+      const sc = supportCount(s, u, occ);
       if (sc >= 2) support++;
       else if (sc === 0) isolated++;
     }
