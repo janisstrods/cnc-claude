@@ -2,7 +2,7 @@
 // and the error names the scenario. Every shipped scenario passes.
 import { describe, expect, it } from 'vitest';
 import {
-  ARMY_LOOKS, BLOCKS, SPECIAL_RULE_IDS, createGame, type ArmyLook, type Blocks, type ScenarioSetup, type SpecialRuleId,
+  ARMY_LOOKS, BLOCKS, SPECIAL_RULE_IDS, createGame, type ArmyLook, type Blocks, type ScenarioSetup, type Side, type SpecialRuleId,
   type TerrainType, type UnitType,
 } from '../../src/engine';
 import { LOOKS, BLOCK_COLORS } from '../../src/art/palettes';
@@ -59,6 +59,23 @@ describe('scenario data validation', () => {
     expect(build(changed((st) => { st.initialCommand = 2 as ScenarioSetup['initialCommand']; }))).toThrow(/^initialCommand must be an object of sides \(test\)$/);
     expect(build(changed((st) => { st.initialCommand = { left: 2 } as ScenarioSetup['initialCommand']; }))).toThrow(/^initialCommand: unknown side left \(test\)$/);
     expect(build(changed((st) => { st.initialCommand = { top: 0 }; }))).toThrow(/^initialCommand: top must be a whole number, 1 or more \(test\)$/);
+  });
+
+  it('a Command bonus (009) names a side, banner count, Command, cards to draw and its text', () => {
+    const ok = { side: 'bottom' as const, atBanners: 3, command: 6, draw: 2, text: 'Six cards.' };
+    const bonus = (b: unknown) => build(changed((st) => { st.commandBonus = b as ScenarioSetup['commandBonus']; }));
+    expect(createGame(changed((st) => { st.commandBonus = ok; }), 1).special.commandBonus).toEqual(ok);
+    expect(bonus([ok])).toThrow(/^commandBonus must be an object \(test\)$/);
+    expect(bonus({ ...ok, side: 'left' })).toThrow(/^commandBonus: unknown side left \(test\)$/);
+    expect(bonus({ ...ok, atBanners: 0 })).toThrow(/^commandBonus: atBanners must be a whole number, 1 or more \(test\)$/);
+    expect(bonus({ ...ok, command: 2.5 })).toThrow(/^commandBonus: command must be a whole number, 1 or more \(test\)$/);
+    expect(bonus({ ...ok, draw: -1 })).toThrow(/^commandBonus: draw must be a whole number, 0 or more \(test\)$/);
+    expect(bonus({ ...ok, text: undefined })).toThrow(/^commandBonus: text must be a string \(test\)$/);
+  });
+
+  it('a one-army rule names a known side (Fright at First Sight, Tactical Flexibility)', () => {
+    expect(build(changed((st) => { st.frightAtFirstSight = 'left' as Side; }))).toThrow(/^frightAtFirstSight: unknown side left \(test\)$/);
+    expect(build(changed((st) => { st.tacticalFlexibility = 'roman' as Side; }))).toThrow(/^tacticalFlexibility: unknown side roman \(test\)$/);
   });
 
   it('the sacred leader (010) must be a leader of the side named', () => {

@@ -28,6 +28,8 @@ export interface Pos {
   rollingFire?: ScenarioSetup['rollingFire'];
   lastRowRetreat?: ScenarioSetup['lastRowRetreat'];
   rampartBreakers?: ScenarioSetup['rampartBreakers'];
+  frightAtFirstSight?: ScenarioSetup['frightAtFirstSight'];
+  tacticalFlexibility?: ScenarioSetup['tacticalFlexibility'];
 }
 
 /** A suite's defaults for `Pos`: the armies, the banners to win and the game seed. */
@@ -48,7 +50,8 @@ export function positionBuilder(def: PosDefaults): (p: Pos) => GameState {
       leaders: (p.leaders ?? []).map((l, i) => ({ side: l.side, name: l.name ?? `L${i}`, r: l.at[0], c: l.at[1], traits: l.traits })),
       reserves: [], reserveLeaders: [], rules: p.rules ?? [],
       sacredLeader: p.sacredLeader, legions: p.legions, objectives: p.objectives, commands: p.commands, rollingFire: p.rollingFire,
-      lastRowRetreat: p.lastRowRetreat, rampartBreakers: p.rampartBreakers,
+      lastRowRetreat: p.lastRowRetreat, rampartBreakers: p.rampartBreakers, frightAtFirstSight: p.frightAtFirstSight,
+      tacticalFlexibility: p.tacticalFlexibility,
     };
     const s = createGame(setup, def.seed);
     p.units.forEach((u, i) => {

@@ -4,6 +4,9 @@ import { GameDriver, OFF_BOARD, createGame, distance, inSection, pieceMoves, row
 import { SCENARIOS, scenarioById } from '../../src/scenarios';
 import { H, build, forceDice, giveCard, must, n, noFirstStrike, passTurn, play, toBattle, u, type Pos } from './helpers';
 
+/** 009's Command bonus (§14): the Romans hold 6 cards from their 3rd banner and draw 2 at once. */
+const BENEVENTUM = scenarioById('009').setup.commandBonus;
+
 beforeEach(() => forceDice([]));
 
 describe('turn structure', () => {
@@ -86,7 +89,9 @@ describe('scenario data', () => {
     expect(scenarioById('002').setup.units.filter((u) => u.elite).map((u) => [u.side, u.type, u.r, u.c, u.elite])).toEqual([['top', 'HI', 3, 2, 'carthSacredBand']]);
     expect(scenarioById('005').setup.ambush).toEqual({}); // the Trebbia defaults
     expect(scenarioById('006').setup.handGrowth).toEqual({ side: 'bottom', to: 4 });
-    expect(scenarioById('009').setup.rules).toContain('beneventumHand');
+    expect(scenarioById('009').setup.commandBonus).toEqual({
+      side: 'bottom', atBanners: 3, command: 6, draw: 2, text: 'Gracchus rallies his volunteers: the Roman player now holds 6 command cards.',
+    });
     expect(scenarioById('010').setup.sacredLeader).toEqual({ side: 'bottom', name: 'Scipio' });
     expect(scenarioById('011').setup.objectives).toEqual([{ kind: 'capture', side: 'bottom', text: 'The Romans storm a Carthaginian camp!' }]);
   });
@@ -137,7 +142,7 @@ describe('Lake Trasimenus: Roman hand 2 -> 3 -> 4', () => {
 describe('2nd Beneventum: Roman hand grows to 6 at the 3rd banner', () => {
   it('on the 3rd Roman banner Command becomes 6 and 2 cards are drawn at once', () => {
     const s = build({
-      rules: ['beneventumHand'], cards: 4, bottomArmy: 'Roman',
+      commandBonus: BENEVENTUM, cards: 4, bottomArmy: 'Roman',
       units: [{ side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'MI', at: [4, 6], blocks: 1 }, { side: 'top', type: 'MI', at: [2, 2] }],
     });
     s.players.bottom.banners = 2;
@@ -153,7 +158,7 @@ describe('2nd Beneventum: Roman hand grows to 6 at the 3rd banner', () => {
   });
   it('the Carthaginians do not gain the bonus', () => {
     const s = build({
-      rules: ['beneventumHand'], cards: 4, bottomArmy: 'Roman', first: 'top',
+      commandBonus: BENEVENTUM, cards: 4, bottomArmy: 'Roman', first: 'top',
       units: [{ side: 'top', type: 'HI', at: [4, 6] }, { side: 'bottom', type: 'MI', at: [5, 6], blocks: 1 }, { side: 'bottom', type: 'MI', at: [7, 2] }],
     });
     s.players.top.banners = 2;
@@ -338,7 +343,7 @@ describe('more scenario rules', () => {
   });
   it('2nd Beneventum: the bonus also triggers when the 3rd Roman banner comes from a battle back', () => {
     const s = build({
-      rules: ['beneventumHand'], cards: 4, bottomArmy: 'Roman', first: 'top',
+      commandBonus: BENEVENTUM, cards: 4, bottomArmy: 'Roman', first: 'top',
       units: [{ side: 'top', type: 'MI', at: [4, 6], blocks: 1 }, { side: 'bottom', type: 'HI', at: [5, 6] }, { side: 'top', type: 'MI', at: [1, 1] }],
     });
     s.players.bottom.banners = 2;

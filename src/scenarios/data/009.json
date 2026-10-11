@@ -18,9 +18,13 @@
   },
   "first": "bottom",
   "banners": 7,
-  "rules": [
-    "beneventumHand"
-  ],
+  "commandBonus": {
+    "side": "bottom",
+    "atBanners": 3,
+    "command": 6,
+    "draw": 2,
+    "text": "Gracchus rallies his volunteers: the Roman player now holds 6 command cards."
+  },
   "terrain": [
     {
       "r": 0,

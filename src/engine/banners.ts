@@ -3,7 +3,7 @@
 // brought up to date before any banner is scored, so a total never counts a held banner already lost.
 import { drawCard } from './cards';
 import { heldBanners, heldSnapshot, refreshHeld } from './held';
-import { isRomanArmy, other } from './query';
+import { other } from './query';
 import type { FlowCtx, GameState, Side } from './types';
 
 /** A side's banner total: its permanent banners plus its held banners. */
@@ -51,7 +51,8 @@ export function updateHeld(s: GameState, ctx: FlowCtx, change?: (s: GameState) =
 /**
  * `side` scores a permanent banner (`reason` goes in the `banner` event, whose `total` is the banner total). The held
  * banners are brought up to date first (`updateHeld`, which may end the battle). A total reaching the battle's target
- * wins it. 2nd Beneventum: the Romans grow to 6 cards on their 3rd banner.
+ * wins it. Then the battle's Command bonus, once, when this is `side`'s banner it names (009: the Romans hold 6 cards
+ * from their 3rd banner and draw 2 at once).
  */
 export function gainBanner(s: GameState, ctx: FlowCtx, side: Side, reason: string) {
   updateHeld(s, ctx);
@@ -60,12 +61,12 @@ export function gainBanner(s: GameState, ctx: FlowCtx, side: Side, reason: strin
   p.banners++;
   ctx.emit({ t: 'banner', side, total: bannerTotal(s, side), reason });
   if (bannerVictory(s, ctx, side)) return;
-  if (s.special.rules.includes('beneventumHand') && isRomanArmy(s, side) && p.banners === 3 && !s.special.beneventumBonusGiven) {
-    s.special.beneventumBonusGiven = true;
-    p.command = 6;
-    ctx.emit({ t: 'command', side, command: 6 });
-    ctx.emit({ t: 'log', text: `Gracchus rallies his volunteers: the ${p.army} player now holds 6 command cards.`, side });
-    drawCard(s, ctx, side);
-    drawCard(s, ctx, side);
+  const bonus = s.special.commandBonus;
+  if (bonus && bonus.side === side && p.banners === bonus.atBanners && !s.special.commandBonusGiven) {
+    s.special.commandBonusGiven = true;
+    p.command = bonus.command;
+    ctx.emit({ t: 'command', side, command: bonus.command });
+    ctx.emit({ t: 'log', text: bonus.text, side });
+    for (let i = 0; i < bonus.draw; i++) drawCard(s, ctx, side);
   }
 }

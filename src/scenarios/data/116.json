@@ -19,9 +19,8 @@
   },
   "first": "top",
   "banners": 7,
-  "rules": [
-    "frightAtFirstSight"
-  ],
+  "rules": [],
+  "frightAtFirstSight": "bottom",
   "options": {},
   "terrain": [
     {

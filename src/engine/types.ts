@@ -186,24 +186,20 @@ export interface TurnState {
 
 /**
  * Scenario special rules (§14, §17): battle-wide switches. A rule that needs data is turned on by its data instead: 002's
- * Sacred Band is an elite unit, 010's Scipio `ScenarioSetup.sacredLeader` and its exit a battle objective, 117's leader
- * placement `ScenarioSetup.placeLeaders`. Expansion #1: `leaderLossCostsCard` and `allLeadersSuddenDeath` (112
- * Hellespont), `frightAtFirstSight` (116 Heraclea) and `tacticalFlexibility` (the optional Roman rule of 120, 121, 124,
- * §17.3). Camp capture (011 Baecula, 114 Gabiene) is a battle objective (`ObjectiveDef`), not a rule, and an ambush
- * reserve (005 Trebbia, 206, 308) is `ScenarioSetup.ambush`. Expansion #2: `veryHills` (223, §18.6) makes every hill very
- * steep: a unit climbing onto one stops and may not battle, and the close-combat caps change. The Trasimenus hand (006) is no rule of its own any more: it
- * is hand growth (`ScenarioSpecial.handGrowth`, §18.8). Expansion #3: `steepSlopes` (308, §18.7) makes every hexside
- * between a hill (a hill under a camp or wall included) and a forest too steep to climb from the forest and closed to close
- * combat; `commandFallback` (304, §18.5) judges the type a card names within the command the card is played for, so a
- * command without that type orders 1 unit of its own (needs `ScenarioSetup.commands`). Scenario data is validated against
- * this list.
+ * Sacred Band is an elite unit, 005's ambush `ScenarioSetup.ambush`, 009's hand `commandBonus`, 010's Scipio
+ * `sacredLeader` and its exit a battle objective, 117's leader placement `placeLeaders`, and a rule that falls on one army
+ * names its side (`frightAtFirstSight` 116, `tacticalFlexibility` 120, 121, 124, `rollingFire` and so on). Expansion #1:
+ * `leaderLossCostsCard` and `allLeadersSuddenDeath` (112 Hellespont). Camp capture (011 Baecula, 114 Gabiene) is a battle
+ * objective (`ObjectiveDef`), not a rule. Expansion #2: `veryHills` (223, §18.6) makes every hill very steep: a unit
+ * climbing onto one stops and may not battle, and the close-combat caps change. Expansion #3: `steepSlopes` (308, §18.7)
+ * makes every hexside between a hill (a hill under a camp or wall included) and a forest too steep to climb from the
+ * forest and closed to close combat; `commandFallback` (304, §18.5) judges the type a card names within the command the
+ * card is played for, so a command without that type orders 1 unit of its own (needs `ScenarioSetup.commands`). Scenario
+ * data is validated against this list.
  */
 export const SPECIAL_RULE_IDS = [
-  'beneventumHand',
   'leaderLossCostsCard',
   'allLeadersSuddenDeath',
-  'frightAtFirstSight',
-  'tacticalFlexibility',
   'veryHills',
   'steepSlopes',
   'commandFallback',
@@ -322,10 +318,34 @@ export interface HandGrowth {
   to: number;
 }
 
+/**
+ * A one-off Command bonus (009 2nd Beneventum, §14): when `side` scores its `atBanners`-th permanent banner, its Command
+ * becomes `command` (event `command`), `text` is logged and it draws `draw` cards at once. Once per battle.
+ */
+export interface CommandBonus {
+  side: Side;
+  atBanners: number;
+  command: number;
+  draw: number;
+  text: string;
+}
+
 export interface ScenarioSpecial {
   rules: SpecialRuleId[];
   /** Hand growth of one side (§18.8); null in most battles. Never changed during play. */
   handGrowth: HandGrowth | null;
+  /** The Command bonus at a banner count (009, §14); null in most battles. Never changed during play. */
+  commandBonus: CommandBonus | null;
+  /**
+   * Fright at First Sight (116 Heraclea, §17.4): the side (the Romans) whose infantry may ignore no flag an elephant rolls
+   * in close combat; null in most battles. Never changed during play.
+   */
+  frightAtFirstSight: Side | null;
+  /**
+   * Roman Tactical Flexibility (§17.3): the Roman side, whose MI and HI attacks an unsupported enemy HI battles back with
+   * 3 dice; null in most battles and when the player switched the option off. Never changed during play.
+   */
+  tacticalFlexibility: Side | null;
   /** Separate commands (§18.5), in data order; empty in most battles. Never changed during play: `cloneState` shares the array. */
   commands: CommandDef[];
   /** Rolling Fire (210 Picenum, §18.5): the side whose infantry on hills may roll burning logs; null in most battles. */
@@ -365,7 +385,8 @@ export interface ScenarioSpecial {
   objState: ObjectiveState[];
   /** Castulo: id of Publius Scipio. */
   sacredLeaderId: string | null;
-  beneventumBonusGiven: boolean;
+  /** The `commandBonus` was given (it is given once). */
+  commandBonusGiven: boolean;
   /** Leaders each side had at the start (on the board, in reserve or still to be placed). */
   leadersAtStart: Record<Side, number>;
   /**

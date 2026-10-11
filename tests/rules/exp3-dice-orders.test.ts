@@ -96,6 +96,8 @@ describe('dice orders: data (§18.10)', () => {
     expect(bad({ orders: 'cards' as 'dice' })).toThrow(/^top army: unknown orders cards \(qa\)$/);
     expect(bad({}, { handGrowth: { side: 'top', to: 4 } })).toThrow(/^handGrowth: the top army orders by dice and holds no cards \(qa\)$/);
     expect(bad({}, { initialCommand: { top: 3 } })).toThrow(/^initialCommand: the top army orders by dice and holds no cards \(qa\)$/);
+    expect(bad({}, { commandBonus: { side: 'top', atBanners: 3, command: 6, draw: 2, text: 'x' } }))
+      .toThrow(/^commandBonus: the top army orders by dice and holds no cards \(qa\)$/);
     expect(() => createGame(base, 1)).not.toThrow();
   });
 

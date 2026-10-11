@@ -9,7 +9,7 @@ import { TERRAIN_STATS, isImpassable, isWall, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain } from './units';
 import {
   ARMY_LOOKS, BLOCKS, COLS, LEGIONS, OFF_BOARD, ROWS, SIDES, SPECIAL_RULE_IDS,
-  type AmbushDef, type ArmyLook, type Blocks, type CommandDef, type EliteId, type GameState, type HandGrowth, type HexDir, type HexId, type Leader, type LeaderTrait,
+  type AmbushDef, type ArmyLook, type Blocks, type CommandBonus, type CommandDef, type EliteId, type GameState, type HandGrowth, type HexDir, type HexId, type Leader, type LeaderTrait,
   type Legion, type ObjectiveMarker, type PlaceUnitDef, type Side, type SpecialRuleId, type TerrainType, type TurnState, type Unit, type UnitType,
 } from './types';
 
@@ -104,11 +104,27 @@ export interface ScenarioSetup {
    * Command is below `to`, it draws 2 cards instead of 1 and its Command rises by 1. Left out: no hand growth.
    */
   handGrowth?: HandGrowth;
+  /**
+   * A one-off Command bonus at a banner count (009 2nd Beneventum, §14: the Romans hold 6 cards from their 3rd banner and
+   * draw 2 at once; see `CommandBonus`). Left out: none.
+   */
+  commandBonus?: CommandBonus;
+  /**
+   * Fright at First Sight (116 Heraclea, §17.4): infantry of this side (the Romans) may ignore no flag an elephant rolls
+   * against it in close combat. Left out: no such rule.
+   */
+  frightAtFirstSight?: Side;
+  /**
+   * Roman Tactical Flexibility (§17.3): the Roman side, whose MI and HI attacks an unsupported HI of the other side not on
+   * broken ground battles back with 3 dice. Offered as an option (`options.tacticalFlexibility`, 120, 121, 124) the player
+   * switches it; otherwise it is always on. Left out: no such rule.
+   */
+  tacticalFlexibility?: Side;
   /** Battle objectives (§18.4): camp capture (011 Baecula, 114 Gabiene), exits (010 Castulo) and the like. */
   objectives?: ObjectiveSetup[];
   /**
-   * Optional rules this scenario offers, with their default (Tactical Flexibility in 120, 121, 124, §17.3). A player's
-   * choice is passed to `createGame` as `GameOptions`.
+   * Optional rules this scenario offers, with their default (Tactical Flexibility in 120, 121, 124, §17.3; it needs the
+   * `tacticalFlexibility` side). A player's choice is passed to `createGame` as `GameOptions`.
    */
   options?: GameOptions;
 }
@@ -207,17 +223,16 @@ function withTraits(l: Leader, traits: LeaderTrait[] | undefined): Leader {
 }
 
 /**
- * Effective rule list: the scenario's rules with each optional rule it offers set by `options` (else its default).
- * An option the scenario does not offer is ignored, so a stored player choice never changes a battle without it.
+ * The Roman side of Tactical Flexibility (§17.3), or null: when the scenario offers it as an option, `options` switches it
+ * (else the scenario's default). An option the scenario does not offer is ignored, so a stored player choice never changes
+ * a battle without it.
  */
-function effectiveRules(setup: ScenarioSetup, options: GameOptions | undefined): SpecialRuleId[] {
-  const rules = [...setup.rules];
+function resolveTacticalFlexibility(setup: ScenarioSetup, options: GameOptions | undefined): Side | null {
+  const side = setup.tacticalFlexibility ?? null;
   const offered = setup.options?.tacticalFlexibility;
-  if (offered === undefined) return rules;
-  const on = options?.tacticalFlexibility ?? offered;
-  const out: SpecialRuleId[] = rules.filter((r) => r !== 'tacticalFlexibility');
-  if (on) out.push('tacticalFlexibility');
-  return out;
+  if (offered === undefined) return side;
+  if (side === null) throw new Error('options.tacticalFlexibility needs the tacticalFlexibility side');
+  return (options?.tacticalFlexibility ?? offered) ? side : null;
 }
 
 const known = (list: readonly string[], v: unknown): boolean => typeof v === 'string' && list.includes(v);
@@ -319,6 +334,7 @@ function checkIds(setup: ScenarioSetup) {
   checkLegions(setup.legions);
   for (const [name, side] of [
     ['rollingFire', setup.rollingFire], ['rampartBreakers', setup.rampartBreakers], ['lastRowRetreat', setup.lastRowRetreat],
+    ['frightAtFirstSight', setup.frightAtFirstSight], ['tacticalFlexibility', setup.tacticalFlexibility],
   ] as [string, unknown][]) {
     if (side !== undefined && side !== 'top' && side !== 'bottom') throw new Error(`${name}: unknown side ${String(side)}`);
   }
@@ -381,8 +397,8 @@ function checkPositions(setup: ScenarioSetup, s: GameState) {
 
 /**
  * The order dice of each side (§18.10), validated: `orders: 'dice'` needs `cards: 0` and `orderDice` a whole number from 1;
- * `orderDice` comes only with it. A dice side holds no cards, so neither a starting Command (`initialCommand`) nor hand growth
- * may give it one. 0 = the side plays cards.
+ * `orderDice` comes only with it. A dice side holds no cards, so neither a starting Command (`initialCommand`), hand growth
+ * nor a Command bonus may give it one. 0 = the side plays cards.
  */
 function orderDiceOf(setup: ScenarioSetup): Record<Side, number> {
   const out: Record<Side, number> = { top: 0, bottom: 0 };
@@ -404,6 +420,7 @@ function orderDiceOf(setup: ScenarioSetup): Record<Side, number> {
     const held = (what: string) => new Error(`${what}: the ${side} army orders by dice and holds no cards`);
     if (setup.initialCommand?.[side]) throw held('initialCommand');
     if ((setup.handGrowth as { side?: unknown } | undefined)?.side === side) throw held('handGrowth');
+    if ((setup.commandBonus as { side?: unknown } | undefined)?.side === side) throw held('commandBonus');
     out[side] = n;
   }
   return out;
@@ -432,6 +449,20 @@ function resolveHandGrowth(setup: ScenarioSetup): HandGrowth | null {
   if (side !== 'top' && side !== 'bottom') throw new Error(`handGrowth: unknown side ${String(side)}`);
   if (!Number.isInteger(to) || (to as number) < 1) throw new Error('handGrowth: to must be a whole number, 1 or more');
   return { side, to: to as number };
+}
+
+/** The Command bonus of a battle (009, §14), copied and validated: null when the scenario gives none. */
+function resolveCommandBonus(setup: ScenarioSetup): CommandBonus | null {
+  const b: unknown = setup.commandBonus;
+  if (b === undefined) return null;
+  if (typeof b !== 'object' || b === null || Array.isArray(b)) throw new Error('commandBonus must be an object');
+  const { side, atBanners, command, draw, text } = b as Partial<CommandBonus>;
+  if (side !== 'top' && side !== 'bottom') throw new Error(`commandBonus: unknown side ${String(side)}`);
+  for (const [k, v, min] of [['atBanners', atBanners, 1], ['command', command, 1], ['draw', draw, 0]] as const) {
+    if (!Number.isInteger(v) || (v as number) < min) throw new Error(`commandBonus: ${k} must be a whole number, ${min} or more`);
+  }
+  if (typeof text !== 'string') throw new Error('commandBonus: text must be a string');
+  return { side, atBanners: atBanners as number, command: command as number, draw: draw as number, text };
 }
 
 /** Trebbia's ambush: a Leadership card after the side's first turn (§14). */
@@ -627,10 +658,12 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     return leader;
   });
   // Asculum: leaders still to be placed wait off the board (placement order = id order)
-  const rules = effectiveRules(setup, options);
+  const rules = [...setup.rules];
+  const tacticalFlexibility = resolveTacticalFlexibility(setup, options);
   checkPlacement(setup);
   const ambush = resolveAmbush(setup);
   const handGrowth = resolveHandGrowth(setup);
+  const commandBonus = resolveCommandBonus(setup);
   const unplaced: string[] = [];
   for (const l of setup.placeLeaders ?? []) {
     const leader = withTraits({ id: `L${nextId++}`, side: l.side, name: l.name, hex: OFF_BOARD }, l.traits);
@@ -686,6 +719,9 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
     special: {
       rules,
       handGrowth,
+      commandBonus,
+      frightAtFirstSight: setup.frightAtFirstSight ?? null,
+      tacticalFlexibility,
       commands,
       rollingFire: setup.rollingFire ?? null,
       rampartBreakers: setup.rampartBreakers ?? null,
@@ -702,7 +738,7 @@ function buildGame(setup: ScenarioSetup, seed: number, options: GameOptions | un
       objectives: [],
       objState: [],
       sacredLeaderId: sacred,
-      beneventumBonusGiven: false,
+      commandBonusGiven: false,
       leadersAtStart: leaderCount(setup),
       unplaced,
       leadersEliminated: { top: 0, bottom: 0 },

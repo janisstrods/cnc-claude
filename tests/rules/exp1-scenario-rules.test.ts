@@ -500,7 +500,7 @@ describe('allLeadersSuddenDeath (112 Hellespont)', () => {
 // 116 Heraclea: Fright at First Sight
 // ---------------------------------------------------------------------------------------------------------------------
 
-const FRIGHT: Pos = { rules: ['frightAtFirstSight'] };
+const FRIGHT: Pos = { frightAtFirstSight: 'bottom' };
 
 /**
  * The Roman (bottom) `target` at (5,6) with an attached leader and two supporting MI at (5,5) and (5,7); the
@@ -554,8 +554,8 @@ describe('frightAtFirstSight (116 Heraclea)', () => {
     expect(attackRoman('EL', 'MC').pending).toMatchObject({ kind: 'ignoreFlags', unit: 'u2', max: 1 });
   });
 
-  it('only Roman units: a Carthaginian MI attacked by a Roman elephant keeps its ignores', () => {
-    const s = romanLine('EL', 'MI', { ...FRIGHT, topArmy: 'Roman', bottomArmy: 'Carthaginian' });
+  it('only units of the side named: with the rule on the elephant\'s own (Roman) side, the bottom MI keeps its ignores', () => {
+    const s = romanLine('EL', 'MI', { frightAtFirstSight: 'top', topArmy: 'Roman', bottomArmy: 'Carthaginian' });
     const ctx = { kind: 'close' as const, striker: s.units[0], leaderAlive: true, fullAtStart: true, role: 'attack' as const };
     expect(ignorableFlags(s, s.units[1], ctx)).toBe(2);
     expect(frightAtFirstSight(s, s.units[1], s.units[0], 'close')).toBe(false);
@@ -634,7 +634,7 @@ describe('frightAtFirstSight (116 Heraclea)', () => {
 // 120/121/124: optional Roman Tactical Flexibility (§17.3)
 // ---------------------------------------------------------------------------------------------------------------------
 
-const TF: Pos = { rules: ['tacticalFlexibility'], topArmy: 'Macedonian' };
+const TF: Pos = { tacticalFlexibility: 'bottom', topArmy: 'Macedonian' };
 
 /**
  * The Roman (bottom) `atk` at (5,6) attacks the Macedonian HI at (4,6); every die misses. Returns the battle-back dice
@@ -690,11 +690,11 @@ describe('tacticalFlexibility (§17.3)', () => {
     expect(r.back).toBe(3);
   });
 
-  it('against Roman AX, LI or cavalry: normal dice; a Carthaginian attacker or no rule: normal dice', () => {
+  it('against Roman AX, LI or cavalry: normal dice; an attacker of the other side or no rule: normal dice', () => {
     expect(tfDuel('AX').back).toBe(5);
     expect(tfDuel('LI').back).toBe(5);
     expect(tfDuel('HC').back).toBe(5);
-    expect(tfDuel('MI', { ...TF, bottomArmy: 'Carthaginian' }).back).toBe(5);
+    expect(tfDuel('MI', { ...TF, tacticalFlexibility: 'top' }).back).toBe(5);
     expect(tfDuel('MI', { topArmy: 'Macedonian' }).back).toBe(5);
   });
 
@@ -738,18 +738,20 @@ describe('tacticalFlexibility (§17.3)', () => {
   });
 
   it('scenario option: on by default where the scenario offers it, off on request, ignored where it is not offered', () => {
-    const offered: ScenarioSetup = { ...setupOf({ topArmy: 'Macedonian' }), options: { tacticalFlexibility: true } };
-    expect(createGame(offered, 1).special.rules).toContain('tacticalFlexibility');
-    expect(createGame(offered, 1, { tacticalFlexibility: true }).special.rules).toContain('tacticalFlexibility');
-    expect(createGame(offered, 1, { tacticalFlexibility: false }).special.rules).not.toContain('tacticalFlexibility');
+    const tf = (st: ScenarioSetup, o?: { tacticalFlexibility: boolean }) => createGame(st, 1, o).special.tacticalFlexibility;
+    const offered: ScenarioSetup = { ...setupOf(TF), options: { tacticalFlexibility: true } };
+    expect([tf(offered), tf(offered, { tacticalFlexibility: true }), tf(offered, { tacticalFlexibility: false })]).toEqual(['bottom', 'bottom', null]);
     const offOffered: ScenarioSetup = { ...offered, options: { tacticalFlexibility: false } };
-    expect(createGame(offOffered, 1).special.rules).not.toContain('tacticalFlexibility');
-    expect(createGame(offOffered, 1, { tacticalFlexibility: true }).special.rules).toContain('tacticalFlexibility');
-    // a base battle never gets it from a stray option
-    expect(createGame(scenarioById('007').setup, 1, { tacticalFlexibility: true }).special.rules).not.toContain('tacticalFlexibility');
+    expect([tf(offOffered), tf(offOffered, { tacticalFlexibility: true })]).toEqual([null, 'bottom']);
+    // not offered: always on with its side, and a stray option changes nothing; a base battle never gets it
+    expect([tf(setupOf(TF), { tacticalFlexibility: false }), tf(scenarioById('007').setup, { tacticalFlexibility: true })]).toEqual(['bottom', null]);
+    // an option needs the side it serves
+    expect(() => createGame({ ...setupOf({ topArmy: 'Macedonian' }), options: { tacticalFlexibility: true } }, 1))
+      .toThrow(/^options.tacticalFlexibility needs the tacticalFlexibility side \(qa\)$/);
+    expect(() => createGame(setupOf({ tacticalFlexibility: 'left' as Side }), 1)).toThrow(/^tacticalFlexibility: unknown side left \(qa\)$/);
     // option off: the HI battles back with 5
     const s = createGame({
-      ...setupOf({ topArmy: 'Macedonian', units: [{ side: 'bottom', type: 'MI', at: [5, 6] }, { side: 'top', type: 'HI', at: [4, 6] }] }),
+      ...setupOf({ ...TF, units: [{ side: 'bottom', type: 'MI', at: [5, 6] }, { side: 'top', type: 'HI', at: [4, 6] }] }),
       options: { tacticalFlexibility: true },
     }, 1, { tacticalFlexibility: false });
     expect(closeCombatDice(s, s.units[1], s.units[0], { role: 'back', fullAtStart: true, ordered: false })).toBe(5);
@@ -893,7 +895,7 @@ describe('AI vs AI with the Expansion #1 scenario rules', () => {
   it('003 Bagradas with Hellespont, Fright at First Sight and Tactical Flexibility: legal answers to the end', () => {
     const base = scenarioById('003').setup;
     const setup: ScenarioSetup = {
-      ...base, rules: [...base.rules, 'leaderLossCostsCard', 'allLeadersSuddenDeath', 'frightAtFirstSight', 'tacticalFlexibility'],
+      ...base, rules: [...base.rules, 'leaderLossCostsCard', 'allLeadersSuddenDeath'], frightAtFirstSight: 'bottom', tacticalFlexibility: 'bottom', // the Romans
     };
     const d = new GameDriver(createGame(setup, 4245));
     const opts: Record<Side, AiOptions> = {

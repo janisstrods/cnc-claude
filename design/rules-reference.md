@@ -234,7 +234,8 @@ plus scenario objectives.
 Base-game battles with special rules are listed here. The Expansion #1 battles 101–124 are in §17.
 
 * 002 Crimissos: river fordable only at the bend hexes; Sacred Band unit.
-* 004 Ticinus: river not fordable. 009 2nd Beneventum: Calor not fordable; Roman hand 4 -> 6 at their 3rd banner.
+* 004 Ticinus: river not fordable. 009 2nd Beneventum: Calor not fordable; Roman hand 4 -> 6 at their 3rd banner, with 2
+  cards drawn at once (scenario data `commandBonus`: side, banner count, Command, cards drawn and the log line).
 * 005 Trebbia: river fordable; Mago's ambush (Carthaginian reserve: 1 MC + 2 WA + Mago) enters when Carthage plays a
   Leadership card after its first turn: units placed on Roman baseline hexes in the card's section (Any Section: chosen),
   placement counts as 1 hex of movement; these units retreat toward the Carthaginian side.
@@ -435,10 +436,11 @@ block, it cannot be transferred), and add to everything else. A preset may only 
 
 ### 17.3 Optional rule: Roman Tactical Flexibility (scenarios 120, 121, 124)
 
-Rule `tacticalFlexibility`, a scenario option stored in the game config (default **on**; when off the scenario has no
-special rule). Official text: GMT Bonus Pack #2 (Pydna); the web pages omit the terrain clause (Q12).
+Scenario data `tacticalFlexibility` names the Roman side; the scenario offers it as an option stored in the game config
+(`options.tacticalFlexibility`, default **on**; when off the scenario has no special rule). Official text: GMT Bonus
+Pack #2 (Pydna); the web pages omit the terrain clause (Q12).
 * It affects one roll: the battle back of a HI of the **non-Roman army** (Macedonians in 120 and 124, Seleucids in 121;
-  decided by army, not block colour) against a Roman **MI or HI** that attacked it, including that Roman unit's bonus
+  the side the data does not name) against a Roman **MI or HI** that attacked it, including that Roman unit's bonus
   close combat. If every condition holds the HI rolls **3 dice** (instead of 5), and the caps and penalties of §4 then
   apply as usual.
 * Conditions: the HI is **unsupported** — fewer than 2 adjacent friendly units or lone leaders (the §10 flag-support
@@ -515,8 +517,8 @@ block colours. Fordable rivers use the §4/§7/§9.6 rules, except 108 (§16).
 * **116 Heraclea (280 BC):** two rules.
   * **River Siris:** only the bend hexes are passable; every other river hex is impassable. The bend hexes follow the
     fordable-river rules **[Interp]** (the 002 Crimissos precedent; the rules know only "fordable" as passable river, Q8).
-  * **Fright at First Sight** (`frightAtFirstSight`): a Roman foot unit may not ignore **any** flag rolled by an
-    elephant: not for an attached leader, not for support, not for any other source (§10). "Infantry" is read as every
+  * **Fright at First Sight** (scenario data `frightAtFirstSight` names the Roman side): a Roman foot unit may not
+    ignore **any** flag rolled by an elephant: not for an attached leader, not for support, not for any other source (§10). "Infantry" is read as every
     foot type — LI, AX, MI and HI in this battle; war machines are not infantry. It applies to every close combat
     between an elephant and a Roman foot unit: the elephant attacking, battling back, in its bonus combat, or rolling on
     First Strike. It concerns only flags the elephant rolls; the Roman unit's own rolls and the elephant's ignores are

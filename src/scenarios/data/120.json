@@ -23,6 +23,7 @@
   "options": {
     "tacticalFlexibility": true
   },
+  "tacticalFlexibility": "bottom",
   "terrain": [
     {
       "r": 2,

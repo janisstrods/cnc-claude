@@ -95,11 +95,10 @@ describe('Expansion #3 battle list', () => {
     }
   });
 
-  it('no battle uses a rule keyed on the army name "Roman" (Fright at First Sight, Tactical Flexibility, the Beneventum hand)', () => {
+  it('no battle uses the one-army rules of the earlier boxes (Fright at First Sight, Tactical Flexibility, a Command bonus) or offers an option', () => {
     for (const id of EXP3) {
       const st = scenarioById(id).setup;
-      expect([id, st.rules.filter((r) => ['frightAtFirstSight', 'tacticalFlexibility', 'beneventumHand'].includes(r))]).toEqual([id, []]);
-      expect([id, st.options]).toEqual([id, undefined]);
+      expect([id, st.frightAtFirstSight, st.tacticalFlexibility, st.commandBonus, st.options]).toEqual([id, undefined, undefined, undefined, undefined]);
     }
   });
 

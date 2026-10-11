@@ -84,7 +84,9 @@ for (const id of EXP1) {
       expect([s.first, s.active, s.bannersToWin]).toEqual([m.first, m.first, m.banners]);
       expect(sc.setup.rules).toEqual(m.rules);
       expect(sc.setup.options).toEqual(m.options);
-      expect(s.special.rules).toEqual(m.options?.tacticalFlexibility ? [...m.rules, 'tacticalFlexibility'] : m.rules);
+      expect(s.special.rules).toEqual(m.rules);
+      expect([sc.setup.frightAtFirstSight, sc.setup.tacticalFlexibility]).toEqual([m.frightAtFirstSight, m.tacticalFlexibility]);
+      expect([s.special.frightAtFirstSight, s.special.tacticalFlexibility]).toEqual([m.frightAtFirstSight ?? null, m.tacticalFlexibility ?? null]);
     });
 
     it('units per side and type, leaders and elites', () => {
@@ -240,9 +242,9 @@ describe('battle-specific setup', () => {
   for (const id of ['120', '121', '124']) {
     it(`${id} ${MANIFEST[id].name}: Roman Tactical Flexibility is on by default and can be switched off`, () => {
       const st = scenarioById(id).setup;
-      expect(createGame(st, 1).special.rules).toContain('tacticalFlexibility');
-      expect(createGame(st, 1, { tacticalFlexibility: true }).special.rules).toContain('tacticalFlexibility');
-      expect(createGame(st, 1, { tacticalFlexibility: false }).special.rules).not.toContain('tacticalFlexibility');
+      expect(createGame(st, 1).special.tacticalFlexibility).toBe('bottom');
+      expect(createGame(st, 1, { tacticalFlexibility: true }).special.tacticalFlexibility).toBe('bottom');
+      expect(createGame(st, 1, { tacticalFlexibility: false }).special.tacticalFlexibility).toBeNull();
     });
   }
 
@@ -250,7 +252,7 @@ describe('battle-specific setup', () => {
     expect(SCENARIOS.filter((sc) => sc.setup.options).map((sc) => sc.id)).toEqual(['120', '121', '124']);
     for (const sc of SCENARIOS) {
       if (['120', '121', '124'].includes(sc.id)) continue;
-      expect([sc.id, createGame(sc.setup, 1, { tacticalFlexibility: true }).special.rules.includes('tacticalFlexibility')]).toEqual([sc.id, false]);
+      expect([sc.id, createGame(sc.setup, 1, { tacticalFlexibility: true }).special.tacticalFlexibility]).toEqual([sc.id, null]);
     }
   });
 

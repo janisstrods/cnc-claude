@@ -8,7 +8,7 @@ import { unitMoves } from '../engine/movement';
 import { halfCol, neighbours, rowOf } from '../engine/hex';
 import { exitAllows, leaderExitAllows } from '../engine/objectives';
 import { diceOrderPieces, orderDice } from '../engine/orders';
-import { isRomanArmy, leaderHas, other, supportCount } from '../engine/query';
+import { leaderHas, other, supportCount } from '../engine/query';
 import { canEvade } from '../engine/retreat';
 import { ccCapOfHex, isHill, isImpassable, isWall, steepSlope, steepSlopes, terrainAt, veryHills } from '../engine/terrain';
 import { eliteHas, hasPilum, rangeOf } from '../engine/elites';
@@ -192,8 +192,8 @@ function flagHitOf(lossPerFlag: number, k: number): number {
   return lossPerFlag > 0 ? SIXTH * lossPerFlag * (k >= 2 ? 0.1 : k === 1 ? 0.35 : 1) : 0;
 }
 
-/** `frightRule`: the battle plays Fright at First Sight (116). */
-function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number, frightRule: boolean): VictimInfo {
+/** `fright`: the side Fright at First Sight falls on (116), or null. */
+function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number, fright: Side | null): VictimInfo {
   const st = UNIT_STATS[u.type];
   const per = st.retreat;
   const room = retreatRoom(s, occ, u, per);
@@ -209,7 +209,7 @@ function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number, frightRule: boo
   const onRampart = !!s.rampart[u.hex] && st.foot;
   const pFlagHitShielded = onRampart ? flagHitOf(lossPerFlag, ign + 1) : pFlagHit;
   // Fright at First Sight (116): a Roman infantry unit ignores no flag an elephant rolls (decided per threat)
-  const frightProne = st.infantry && frightRule && isRomanArmy(s, u.side);
+  const frightProne = st.infantry && fright === u.side;
   // a war machine that evades is abandoned anyway (§15): price its threats as if it stands
   const canEv = st.evade !== 'never' && !st.evadeRemoves && canEvade(s, u, occ);
   const l = attachedLeaderOcc(occ, u);
@@ -275,10 +275,10 @@ function threatsAgainst(
   const pAdj = W.pOrderAdj * f;
   const pReach = W.pOrderReach * f;
   const bm = nextBanner(s, aSide);
-  const frightRule = s.special.rules.includes('frightAtFirstSight');
+  const fright = s.special.frightAtFirstSight;
   // plain loops, not map / Array.from, and candidate slots reused across attackers: this runs on every evaluation
   const info: VictimInfo[] = [];
-  for (const u of victims) info.push(victimInfo(s, occ, u, bm, frightRule));
+  for (const u of victims) info.push(victimInfo(s, occ, u, bm, fright));
   const per: Threat[][] = [];
   for (let i = victims.length + lone.length; i > 0; i--) per.push([]);
   const cand: { vi: number; base: number; t: Threat; val: number }[] = [];

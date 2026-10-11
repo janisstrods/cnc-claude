@@ -21,6 +21,7 @@ const RAW: ScenarioJson = {
   banners: 8,
   rules: [],
   options: { tacticalFlexibility: true },
+  tacticalFlexibility: 'top',
   objectives: [{ kind: 'capture', side: 'top', hexes: [[8, 12]], text: 'The camp falls!' }],
   terrain: [
     { r: 4, c: 3, t: 'river', ford: 'nocap' },
@@ -83,8 +84,8 @@ describe('scenario loader', () => {
     expect(info.setup.objectives).toEqual([{ kind: 'capture', side: 'top', hexes: [[8, 12]], text: 'The camp falls!' }]);
     expect(info.setup.placeLeaders).toEqual([{ side: 'bottom', name: 'Darius', traits: ['attachedOnly'] }, { side: 'top', name: 'Craterus' }]);
     const s = createGame(info.setup, 1);
-    expect(s.special.rules).toEqual(['tacticalFlexibility']);
-    expect(createGame(info.setup, 1, { tacticalFlexibility: false }).special.rules).not.toContain('tacticalFlexibility');
+    expect([s.special.rules, s.special.tacticalFlexibility]).toEqual([[], 'top']);
+    expect(createGame(info.setup, 1, { tacticalFlexibility: false }).special.tacticalFlexibility).toBeNull();
     expect(s.special.objectives).toEqual([{
       kind: 'capture', side: 'top', hexes: [H(8, 12)], when: 'stop', banners: [1], together: 0, remove: false, text: 'The camp falls!',
     }]);
@@ -174,9 +175,9 @@ describe('scenario loader', () => {
   });
 
   it('an empty options object offers no optional rule', () => {
-    const { setup } = scenarioFromJson({ ...RAW, options: {}, rules: [], objectives: undefined, placeLeaders: undefined });
+    const { setup } = scenarioFromJson({ ...RAW, options: {}, tacticalFlexibility: undefined, rules: [], objectives: undefined, placeLeaders: undefined });
     expect(setup.options).toBeUndefined();
-    expect(createGame(setup, 1, { tacticalFlexibility: true }).special.rules).toEqual([]);
+    expect(createGame(setup, 1, { tacticalFlexibility: true }).special.tacticalFlexibility).toBeNull();
   });
 
   it('the setup is a copy: changing it leaves the JSON data alone', () => {
@@ -205,16 +206,23 @@ describe('scenario loader', () => {
     expect(scenarioById('010').setup.sacredLeader).toEqual({ side: 'bottom', name: 'Scipio' });
   });
 
-  it('the starting Command and the sacred leader reach the setup as copies', () => {
-    const raw: ScenarioJson = JSON.parse(JSON.stringify({ ...RAW, initialCommand: { bottom: 2 }, sacredLeader: { side: 'top', name: 'Alexander' } }));
+  it('the starting Command, the Command bonus, the sacred leader and the one-army rules reach the setup (objects as copies)', () => {
+    const bonus = { side: 'top', atBanners: 2, command: 7, draw: 1, text: 'More cards!' };
+    const raw: ScenarioJson = JSON.parse(JSON.stringify({
+      ...RAW, initialCommand: { bottom: 2 }, commandBonus: bonus, sacredLeader: { side: 'top', name: 'Alexander' }, frightAtFirstSight: 'bottom',
+    }));
     const keep = JSON.parse(JSON.stringify(raw));
     const { setup } = scenarioFromJson(raw);
-    expect([setup.initialCommand, setup.sacredLeader]).toEqual([{ bottom: 2 }, { side: 'top', name: 'Alexander' }]);
+    expect([setup.initialCommand, setup.commandBonus, setup.sacredLeader, setup.frightAtFirstSight, setup.tacticalFlexibility]).toEqual([
+      { bottom: 2 }, bonus, { side: 'top', name: 'Alexander' }, 'bottom', 'top',
+    ]);
     setup.initialCommand!.bottom = 3;
+    setup.commandBonus!.draw = 0;
     setup.sacredLeader!.name = 'X';
     expect(raw).toEqual(keep);
     const s = createGame(scenarioFromJson(raw).setup, 1);
     expect([s.players.bottom.command, s.players.bottom.hand.length]).toEqual([2, 2]);
+    expect([s.special.commandBonus, s.special.frightAtFirstSight, s.special.tacticalFlexibility]).toEqual([bonus, 'bottom', 'top']);
     expect(s.special.sacredLeaderId).toBe(s.leaders.find((l) => l.name === 'Alexander')?.id);
   });
 

@@ -141,7 +141,7 @@ describe('optional rules in the briefing', () => {
 
 describe('optional rules reach the engine on start and on restore', () => {
   useFakeClock();
-  const tf = (s: GameState) => s.special.rules.includes('tacticalFlexibility');
+  const tf = (s: GameState) => s.special.tacticalFlexibility !== null;
 
   it('the session config carries the options into createGame', () => {
     const off = newSessionConfig('120', 'bottom', 'recruit', { tacticalFlexibility: false });

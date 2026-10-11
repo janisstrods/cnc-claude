@@ -43,6 +43,10 @@ export interface BattleManifest {
   rules: SpecialRuleId[];
   /** Optional rules the battle offers, with their default. */
   options?: GameOptions;
+  /** The side Fright at First Sight falls on (116: the Romans). */
+  frightAtFirstSight?: Side;
+  /** The Roman side of Tactical Flexibility (120, 121, 124). */
+  tacticalFlexibility?: Side;
   /** Terrain hexes by type (plain excluded), river crossing and rampart edge. */
   terrain: TerrainTally;
   /** FNV-1a checksums of the terrain and of the unit and leader positions. */
@@ -286,7 +290,7 @@ export const MANIFEST: Record<string, BattleManifest> = {
       top: { LI: 1, LB: 3, AX: 2, MI: 2, HI: 4, LC: 1, MC: 2, EL: 2 },
       bottom: { LI: 3, AX: 1, MI: 4, HI: 3, MC: 4 },
     },
-    elites: [], rules: ['frightAtFirstSight'],
+    elites: [], rules: [], frightAtFirstSight: 'bottom',
     terrain: { types: { hill: 2, river: 5 }, rivers: { ford: 2, blocked: 3, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
     checksum: { terrain: '1f416b52', pieces: '8199bb45' },
   },
@@ -347,7 +351,7 @@ export const MANIFEST: Record<string, BattleManifest> = {
       top: { LI: 4, LS: 1, AX: 3, HI: 6, MC: 2 },
       bottom: { LI: 3, AX: 4, MI: 4, HI: 2, LC: 1, MC: 2, EL: 1 },
     },
-    elites: [], rules: [], options: { tacticalFlexibility: true },
+    elites: [], rules: [], options: { tacticalFlexibility: true }, tacticalFlexibility: 'bottom',
     terrain: { types: { hill: 18 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
     checksum: { terrain: '9e8af8cb', pieces: 'b3823bb6' },
   },
@@ -362,7 +366,7 @@ export const MANIFEST: Record<string, BattleManifest> = {
       top: { LI: 3, LB: 2, AX: 1, WA: 1, MI: 1, HI: 2, LBC: 1, MC: 1, HC: 1, CAM: 1, EL: 2, HCH: 1 },
       bottom: { LI: 4, LB: 2, AX: 2, MI: 4, HI: 1, MC: 2, EL: 1 },
     },
-    elites: [], rules: [], options: { tacticalFlexibility: true },
+    elites: [], rules: [], options: { tacticalFlexibility: true }, tacticalFlexibility: 'bottom',
     terrain: { types: { river: 7 }, rivers: { ford: 0, blocked: 7, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
     checksum: { terrain: 'f5aa154b', pieces: 'b6dedc83' },
   },
@@ -407,7 +411,7 @@ export const MANIFEST: Record<string, BattleManifest> = {
       top: { LI: 4, LB: 2, AX: 2, MI: 1, HI: 4, LC: 1, MC: 2, HC: 1 },
       bottom: { LI: 3, AX: 2, MI: 5, HI: 2, LC: 2, MC: 1, HC: 1, EL: 2 },
     },
-    elites: [], rules: [], options: { tacticalFlexibility: true },
+    elites: [], rules: [], options: { tacticalFlexibility: true }, tacticalFlexibility: 'bottom',
     terrain: { types: { broken: 7, camp: 2 }, rivers: { ford: 0, blocked: 0, nocap: 0 }, ramparts: { hexes: 0, edges: 0 } },
     checksum: { terrain: '420c6f0a', pieces: '8e9b23d8' },
   },

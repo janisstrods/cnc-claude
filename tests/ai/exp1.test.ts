@@ -279,9 +279,9 @@ describe('threat model: ramparts and Fright at First Sight', () => {
   });
 
   it('Roman infantry cannot shrug off elephant flags under Fright at First Sight (116)', () => {
-    const risk = (rules: SpecialRuleId[]) => {
+    const risk = (fright?: Side) => {
       const s = position({
-        rules,
+        frightAtFirstSight: fright,
         units: [
           { side: 'bottom', type: 'MI', at: [6, 6] }, { side: 'bottom', type: 'MI', at: [6, 5] }, { side: 'bottom', type: 'MI', at: [6, 7] },
           { side: 'top', type: 'EL', at: [5, 6] },
@@ -290,7 +290,7 @@ describe('threat model: ramparts and Fright at First Sight', () => {
       });
       return singleUnitRisk(s, new Occ(s), s.units[0], NEUTRAL_W);
     };
-    expect(risk(['frightAtFirstSight'])).toBeGreaterThan(risk([]) + 0.01);
+    expect(risk('bottom')).toBeGreaterThan(risk() + 0.01);
   });
 });
 
@@ -517,8 +517,8 @@ describe('elites and leader traits', () => {
 describe('Tactical Flexibility in the combat estimate', () => {
   it('an unsupported non-Roman HI battling back at a Roman MI rolls 3 dice: less battle-back damage, a better attack', () => {
     const units: Pos['units'] = [{ side: 'bottom', type: 'MI', at: [5, 6] }, { side: 'top', type: 'HI', at: [4, 6] }];
-    const est = (rules: SpecialRuleId[]) => {
-      const s = position({ units, rules });
+    const est = (tacticalFlexibility?: Side) => {
+      const s = position({ units, tacticalFlexibility });
       s.active = 'bottom';
       const occ = new Occ(s);
       const [mi, hi] = s.units;
@@ -528,8 +528,8 @@ describe('Tactical Flexibility in the combat estimate', () => {
         attack: closeAttackEV(s, occ, mi, hi, 'attack', true, NEUTRAL_W).ev,
       };
     };
-    const tf = est(['tacticalFlexibility']);
-    const plain = est([]);
+    const tf = est('bottom');
+    const plain = est();
     expect([tf.dice, plain.dice]).toEqual([3, 5]);
     expect(tf.back).toBeLessThan(plain.back);
     expect(tf.attack).toBeGreaterThan(plain.attack);

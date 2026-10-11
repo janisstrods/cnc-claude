@@ -38,6 +38,10 @@ export interface ScenarioJson {
   placeUnits?: ScenarioSetup['placeUnits'];
   /** Optional rules the battle offers, with their default (Tactical Flexibility, §17.3). */
   options?: GameOptions;
+  /** Roman Tactical Flexibility (120, 121, 124, §17.3): the Roman side; `options` makes it a player's choice. */
+  tacticalFlexibility?: Side;
+  /** Fright at First Sight (116 Heraclea, §17.4): the side (the Romans) whose infantry ignores no elephant flag. */
+  frightAtFirstSight?: Side;
   /** Battle objectives (camp capture, exits, §18.4). */
   objectives?: ObjectiveSetup[];
   /** Legion rule per side (§18.2): Marius for the Romans of 206-223 and both armies of 301-305, Julian in 306-319 but 310. */
@@ -49,6 +53,8 @@ export interface ScenarioJson {
    * below `to`.
    */
   handGrowth?: ScenarioSetup['handGrowth'];
+  /** The Command bonus at a banner count (009 2nd Beneventum: the Romans hold 6 cards from their 3rd banner, §14). */
+  commandBonus?: ScenarioSetup['commandBonus'];
   /** The leader whose loss loses the battle (010 Castulo's Publius Scipio). */
   sacredLeader?: ScenarioSetup['sacredLeader'];
   /** Separate commands (210 Picenum, §18.5); units and leaders name theirs with `command`. */
@@ -121,6 +127,9 @@ function copyObjective(o: ObjectiveSetup): ObjectiveSetup {
   return out as ObjectiveSetup;
 }
 
+/** A plain object copied (its values are plain); anything else as it is, for the engine to reject. */
+const copyObject = <T>(v: T): T => (typeof v === 'object' && v !== null && !Array.isArray(v) ? { ...v } : v);
+
 /** A list of `[r, c]` hexes copied pair by pair (anything else is left for the engine to reject). */
 const copyHexes = <T>(v: T): T => (Array.isArray(v) ? (v.map((x: unknown) => (Array.isArray(x) ? [...x] : x)) as T) : v);
 
@@ -155,10 +164,12 @@ export function scenarioFromJson(j: ScenarioJson): ScenarioInfo {
   }
   if (j.options && Object.keys(j.options).length) setup.options = { ...j.options };
   if (j.legions && Object.keys(j.legions).length) setup.legions = { ...j.legions };
-  if (j.initialCommand !== undefined) setup.initialCommand = { ...j.initialCommand };
-  const { handGrowth } = j;
-  if (handGrowth !== undefined) setup.handGrowth = typeof handGrowth === 'object' && handGrowth !== null ? { ...handGrowth } : handGrowth; // the engine rejects a non-object
-  if (j.sacredLeader !== undefined) setup.sacredLeader = { ...j.sacredLeader };
+  if (j.initialCommand !== undefined) setup.initialCommand = copyObject(j.initialCommand);
+  if (j.handGrowth !== undefined) setup.handGrowth = copyObject(j.handGrowth);
+  if (j.commandBonus !== undefined) setup.commandBonus = copyObject(j.commandBonus);
+  if (j.sacredLeader !== undefined) setup.sacredLeader = copyObject(j.sacredLeader);
+  if (j.frightAtFirstSight !== undefined) setup.frightAtFirstSight = j.frightAtFirstSight; // the engine rejects an unknown side
+  if (j.tacticalFlexibility !== undefined) setup.tacticalFlexibility = j.tacticalFlexibility; // likewise
   if (j.commands !== undefined) setup.commands = Array.isArray(j.commands) ? j.commands.map((c) => ({ ...c })) : j.commands; // the engine rejects a non-list
   if (j.rollingFire !== undefined) setup.rollingFire = j.rollingFire; // the engine rejects an unknown side
   if (j.rampartBreakers !== undefined) setup.rampartBreakers = j.rampartBreakers; // likewise
