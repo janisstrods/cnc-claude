@@ -16,6 +16,17 @@ export function hexDist(a: HexId, b: HexId): number {
   return DIST[a * NHEX + b];
 }
 
+/** Distance from hex h to the nearest unit on the board of `side`'s enemy (99 if none). */
+export function nearestEnemy(s: GameState, h: HexId, side: Side): number {
+  let best = 99;
+  for (const u of s.units) {
+    if (u.side === side || u.hex < 0) continue;
+    const d = hexDist(h, u.hex);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
 /** Engine rearHexes tabled per side and hex (it builds a fresh array per call; retreat walks ask for it constantly). */
 const REAR: Record<Side, HexId[][]> = { top: [], bottom: [] };
 for (let h = 0; h < NHEX; h++) {

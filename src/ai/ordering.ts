@@ -8,7 +8,7 @@ import { isLoneLeader, leaderUnit, leadersOf, supportCount, unitsOf } from '../e
 import { cloneState } from '../engine/setup';
 import { UNIT_STATS } from '../engine/units';
 import { OFF_BOARD, type CardKind, type GameState, type Leader, type SectionName, type Side, type Unit } from '../engine/types';
-import { Occ, hasTerrain, hexDist, isWarMachine } from './board';
+import { Occ, hasTerrain, hexDist, isWarMachine, nearestEnemy } from './board';
 import { attackNowValue, shotValue } from './estimate';
 import { battered, holdsWall, nearestDist, positionMemo, singleUnitRisk, unitGap } from './evaluate';
 import { isSacredLeader, type Weights } from './values';
@@ -17,12 +17,6 @@ export interface OrderCandidate {
   pieces: string[];
   ambush?: SectionName;
   benefit: number;
-}
-
-function nearestEnemy(s: GameState, h: number, side: Side): number {
-  let best = 99;
-  for (const u of s.units) if (u.side !== side && u.hex >= 0) best = Math.min(best, hexDist(h, u.hex));
-  return best;
 }
 
 /**

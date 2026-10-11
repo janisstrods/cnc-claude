@@ -8,14 +8,8 @@ import { UNIT_STATS } from '../engine/units';
 import { SECTIONS, type CardKind, type GameState, type SectionName, type Side, type Unit } from '../engine/types';
 import { areAdjacent } from '../engine/hex';
 import { rallyCandidates, spartacusDiceCount } from '../engine/orders';
-import { hexDist } from './board';
+import { hexDist, nearestEnemy } from './board';
 import type { Weights } from './values';
-
-function nearestEnemy(s: GameState, u: Unit): number {
-  let best = 99;
-  for (const v of s.units) if (v.side !== u.side && v.hex >= 0) best = Math.min(best, hexDist(u.hex, v.hex));
-  return best;
-}
 
 /**
  * I Am Spartacus with Spartacus on the board (§18.3): his side rolls Command + 2 dice. The card's worth scales with the
@@ -44,7 +38,7 @@ for (const kind of Object.keys(CARD_DEFS) as CardKind[]) {
 /** Value (in banners) of keeping this card for a later turn. */
 export function cardRetention(s: GameState, side: Side, kind: CardKind, W: Weights): number {
   const units = unitsOf(s, side);
-  const engaged = (u: Unit) => nearestEnemy(s, u) <= 3;
+  const engaged = (u: Unit) => nearestEnemy(s, u.hex, u.side) <= 3;
   const activity = (sec: SectionName, n: number) => {
     const c = units.filter((u) => inSection(u.hex, side, sec));
     const e = c.filter(engaged).length;

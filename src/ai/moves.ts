@@ -4,7 +4,7 @@ import { nextCaptureBanners, stopCaptureAt } from '../engine/objectives';
 import { attachedLeader, isLeaderId, leaderById, leaderUnit, other, unitById } from '../engine/query';
 import type { MoveTarget } from '../engine/movement';
 import { OFF_BOARD, type Answer, type GameState, type HexId, type Side, type TerrainType } from '../engine/types';
-import { Occ, hexDist } from './board';
+import { Occ, nearestEnemy } from './board';
 import { attackNowValue } from './estimate';
 import { evaluate } from './evaluate';
 import { hasHeldObjectives, heldNow } from './goals';
@@ -22,12 +22,6 @@ export interface MoveCtx {
   orderNoise?: number;
   /** Plan the pieces with the biggest immediate strike first (so a shooter's only firing hex is not taken). */
   strikeFirst?: boolean;
-}
-
-function nearestEnemy(s: GameState, hex: HexId, side: Side): number {
-  let best = 99;
-  for (const u of s.units) if (u.side !== side && u.hex >= 0) best = Math.min(best, hexDist(hex, u.hex));
-  return best;
 }
 
 /**

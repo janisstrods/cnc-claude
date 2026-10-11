@@ -18,7 +18,7 @@ import { UNIT_STATS, bonusCombatEligible, escapeDice } from '../engine/units';
 import {
   OFF_BOARD, type Answer, type Decision, type DieFace, type GameState, type HexId, type RetreatOption, type Side, type Unit,
 } from '../engine/types';
-import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist, isWarMachine } from './board';
+import { Occ, attachedLeaderOcc, enemyUnitsAdjacent, hexDist, isWarMachine, nearestEnemy } from './board';
 import { pAnyHelmet } from './dice';
 import {
   attackAnswer, attackNowValue, attackOptions, closeAttackEV, closeProfile, dmgValue, evadeEV, leaderAttackEV, momentumValue, standEV,
@@ -82,12 +82,7 @@ interface PlaceCand {
  */
 function placeCands(s: GameState, side: Side, options: HexId[]): PlaceCand[] {
   const occ = new Occ(s);
-  const enemies = s.units.filter((u) => u.side !== side && u.hex >= 0);
-  const near = (h: HexId) => {
-    let best = 99;
-    for (const e of enemies) best = Math.min(best, hexDist(h, e.hex));
-    return best;
-  };
+  const near = (h: HexId) => nearestEnemy(s, h, side);
   let front = 99;
   for (const u of s.units) if (u.side === side && u.hex >= 0) front = Math.min(front, near(u.hex));
   const out: PlaceCand[] = [];
