@@ -170,6 +170,11 @@ describe('hit scoring in close combat', () => {
     expect(scoreClose(s, U('u10'), U('u12'), ['swords', 'swords'], false, 'attack').hits).toBe(1);
     expect(scoreClose(s, U('u9'), U('u13'), ['swords', 'swords'], false, 'attack').hits).toBe(2);
   });
+  it('the camp protects only a defender: the bonus combat against it, not the battle back or First Strike', () => {
+    expect(scoreClose(s, U('u10'), U('u12'), ['swords', 'swords'], false, 'bonus').hits).toBe(1);
+    expect(scoreClose(s, U('u10'), U('u12'), ['swords', 'swords'], false, 'back').hits).toBe(2);
+    expect(scoreClose(s, U('u10'), U('u12'), ['swords', 'swords'], false, 'firstStrike').hits).toBe(2);
+  });
   it('elephants ignore all sword hits', () => {
     expect(scoreClose(s, U('u9'), U('u8'), ['swords', 'swords', 'heavy'], false, 'attack').hits).toBe(1);
   });
@@ -270,6 +275,19 @@ describe('warriors full-strength bonus across combats', () => {
     forceDice([...n('light', 4), ...n('light', 3)]);
     must(d, { kind: 'attack', unit: 'u2', target: H(4, 7) });
     expect(combatDice(ev(d), 'battleBack')).toBe(3);
+  });
+});
+
+describe('a foot unit attacking out of a fortified camp (§4: only the defender is protected)', () => {
+  it('ignores no sword and no flag of the battle back', () => {
+    const s = build({ units: [{ side: 'bottom', type: 'MI', at: [5, 6] }, { side: 'top', type: 'HI', at: [4, 6] }], terrain: [{ at: [5, 6], t: 'camp' }] });
+    const d = toBattle(s, 'order4C', ['u1']);
+    // MI on a camp rolls 4-1 = 3 dice (all miss); the HI battles back with 5: 2 swords and a flag
+    forceDice([...n('light', 3), 'swords', 'swords', 'flag', 'light', 'light']);
+    must(d, { kind: 'attack', unit: 'u1', target: H(4, 6) });
+    expect(u(d, 'u1')!.blocks).toBe(2);
+    expect(d.pending?.kind).toBe('retreat');
+    expect(forcedDiceLeft()).toBe(0);
   });
 });
 

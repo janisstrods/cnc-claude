@@ -164,49 +164,61 @@ export interface Scored {
 }
 
 /**
- * Rampart protection (§16) of `target` against a roll by `striker`: only a foot unit, and only when the roll reaches it
- * through a protected hexside of its rampart hex. Close combat: the roll of an enemy attacking it (`role` 'attack' or
- * 'bonus', incl. the attack after its own First Strike) from the neighbour across that side; never the battle back or
- * First Strike against a rampart unit that attacked out **[Interp]**. Ranged: the line of fire enters through that side
- * (at a corner, either side counts **[Interp]**).
+ * Is the target **defending** against this roll, the condition of every terrain protection (fortified camp §4, rampart
+ * §16, city wall §18.7)? Ranged: always. Close combat: only against the roll of the enemy that began the combat (`role`
+ * 'attack', also after the target's own First Strike, or 'bonus'). The unit that began the combat is never the defender
+ * **[Interp]**: the battle back or First Strike against a unit that attacked out of such a hex is not protected.
+ */
+export function defends(kind: 'close' | 'ranged', role?: StrikeRole | null): boolean {
+  return kind === 'ranged' || role === 'attack' || role === 'bonus';
+}
+
+/**
+ * Fortified camp (§4): does `target`, a foot unit on a camp hex, defend there against this roll (`defends`)? It then
+ * ignores 1 sword (close combat) and may ignore 1 more flag, against rolls from every side.
+ */
+export function campShields(s: GameState, target: Unit, kind: 'close' | 'ranged', role?: StrikeRole | null): boolean {
+  return isCamp(s, target.hex) && UNIT_STATS[target.type].foot && defends(kind, role);
+}
+
+/**
+ * Rampart protection (§16) of `target` against a roll by `striker`: only a foot unit defending (`defends`), and only
+ * when the roll reaches it through a protected hexside of its rampart hex: in close combat from the neighbour across that
+ * side, in ranged combat along a line of fire entering through it (at a corner, either side counts **[Interp]**).
  */
 export function rampartShields(s: GameState, target: Unit, striker: Unit | null, kind: 'close' | 'ranged', role?: StrikeRole | null): boolean {
-  if (!striker || !s.rampart[target.hex] || !UNIT_STATS[target.type].foot) return false;
-  if (kind === 'close' && role !== 'attack' && role !== 'bonus') return false;
+  if (!striker || !s.rampart[target.hex] || !UNIT_STATS[target.type].foot || !defends(kind, role)) return false;
   return rampartProtects(s, target.hex, striker.hex);
 }
 
 /**
  * City wall (§18.7): does `target`, an infantry unit (the only units that may stand on a wall) on a wall hex, defend there
- * against this roll? In close combat only against an attack or bonus combat (`role`; never the battle back or First Strike
- * against a wall unit that attacked out **[Interp]**), and against any ranged fire. It then ignores 1 sword (close
- * combat) and may ignore 1 more flag.
+ * against this roll (`defends`)? It then ignores 1 sword (close combat) and may ignore 1 more flag.
  */
 export function wallShields(s: GameState, target: Unit, kind: 'close' | 'ranged', role?: StrikeRole | null): boolean {
-  if (!isWall(s, target.hex) || !UNIT_STATS[target.type].infantry) return false;
-  return kind === 'ranged' || role === 'attack' || role === 'bonus';
+  return isWall(s, target.hex) && UNIT_STATS[target.type].infantry && defends(kind, role);
 }
 
 /**
- * Sword hits the target ignores whoever rolls against it: its type (EL all, HCH 1), a foot unit on a camp, the
- * Companions. **Excludes the rampart** (§16) and the city wall (§18.7), which depend on the striker's position or role:
- * use `swordIgnores` for an actual roll.
+ * Sword hits the target ignores whoever rolls against it: its type (EL all, HCH 1), the Companions. **Excludes the
+ * terrain** (camp §4, rampart §16, city wall §18.7), which protects only a defender: use `swordIgnores` for an actual
+ * roll.
  */
-export function baseSwordIgnores(s: GameState, target: Unit): number {
+export function baseSwordIgnores(target: Unit): number {
   const t = UNIT_STATS[target.type];
   if (t.ignoreAllSwords) return 99;
   let n = t.swordIgnore;
-  if (isCamp(s, target.hex) && t.foot) n += 1;
   if (eliteHas(target, 'ignoreSword')) n += 1;
   return n;
 }
 
 /**
  * How many sword hits the target ignores from a close-combat roll by `striker` in `role` (an elephant does not re-roll an
- * ignored sword): `baseSwordIgnores` plus the rampart (§16) and the city wall (§18.7).
+ * ignored sword): `baseSwordIgnores` plus the camp (§4), the rampart (§16) and the city wall (§18.7).
  */
 export function swordIgnores(s: GameState, target: Unit, striker: Unit, role: StrikeRole): number {
-  let n = baseSwordIgnores(s, target);
+  let n = baseSwordIgnores(target);
+  if (campShields(s, target, 'close', role)) n++;
   if (rampartShields(s, target, striker, 'close', role)) n++;
   if (wallShields(s, target, 'close', role)) n++;
   return n;
@@ -336,7 +348,7 @@ export function ignorableFlags(s: GameState, target: Unit, ctx: IgnoreContext, a
     if (ctx.leaderAlive && attachedLeader(s, target, at)) n++;
     if (supportCount(s, target, at) >= 2) n++;
   }
-  if (isCamp(s, target.hex) && t.foot) n++;
+  if (campShields(s, target, ctx.kind, ctx.role)) n++;
   if (t.fullStrengthBonus && ctx.fullAtStart) n++;
   if (eliteHas(target, 'ignoreFlag')) n++;
   if (t.vsMountedIgnoreFlag && ctx.kind === 'close' && ctx.striker && cavalryOrChariot(ctx.striker)) n++;

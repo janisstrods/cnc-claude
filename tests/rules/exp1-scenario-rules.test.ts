@@ -878,7 +878,7 @@ describe('hardening', () => {
     const [hi, mi] = s.units;
     expect(swordIgnores(s, mi, hi, 'attack')).toBe(1);
     expect(swordIgnores(s, mi, hi, 'back')).toBe(0);
-    expect(baseSwordIgnores(s, mi)).toBe(0);
+    expect(baseSwordIgnores(mi)).toBe(0);
     const typeCheck = (g: GameState, t: Unit) => {
       // @ts-expect-error the striker and role are required, so the rampart cannot be left out by accident
       swordIgnores(g, t);

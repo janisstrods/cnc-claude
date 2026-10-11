@@ -156,8 +156,8 @@ describe('Companions', () => {
     const ctx = { kind: 'close' as const, striker: hi, leaderAlive: true, fullAtStart: true };
     expect(ignorableFlags(s, comp, ctx)).toBe(3);
     expect(ignorableFlags(s, alone, ctx)).toBe(1);
-    expect(baseSwordIgnores(s, comp)).toBe(1);
-    expect(baseSwordIgnores(s, alone)).toBe(1);
+    expect(baseSwordIgnores(comp)).toBe(1);
+    expect(baseSwordIgnores(alone)).toBe(1);
   });
 });
 

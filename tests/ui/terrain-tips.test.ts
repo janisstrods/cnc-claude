@@ -31,6 +31,8 @@ const BLOCKS = 'sight: Blocks line of sight';
 const HILL_SIGHT = 'sight: Blocks line of sight, unless firer and target stand on the same hill';
 const ADVANCE_OUT = 'combat: A unit here may advance out after combat only if it did not move this turn';
 const FORD = [STOPS, 'combat: Close combat in or out: max 2 dice. Firing out: max 1 die', ADVANCE_OUT, CLEAR];
+/** Camps, ramparts and walls protect only a defender (§4, §16, §18.7). */
+const DEFENDER_ONLY = 'combat: A unit attacking out of it is not protected against the battle back';
 const NO_HWM = 'move: Heavy war machines may not enter';
 
 describe('terrain tooltips: every battle', () => {
@@ -134,7 +136,8 @@ describe('terrain tooltips: each terrain', () => {
     expect(lines(tipOf('camp'))).toEqual([
       'move: No effect',
       'combat: A unit here rolls 1 die fewer when it battles',
-      'combat: Foot here ignore 1 sword and may ignore 1 flag',
+      'combat: Foot defending here ignore 1 sword and may ignore 1 flag',
+      DEFENDER_ONLY,
       BLOCKS,
     ]);
     expect(tipOf('ditch')!.name).toBe('Ditch');
@@ -183,11 +186,11 @@ describe('terrain tooltips: battle variants', () => {
       `combat: Protects ${sides}: foot here ignore 1 sword and may ignore 1 flag when attacked across them, 1 flag when fired at through them`;
     const beneventum = game('118'); // Roman (bottom) ramparts face up the board
     const r = hexId(8, 4);
-    expect(lines(terrainTip(beneventum, r, false))).toEqual(['move: No effect', protects('its upper hexsides'), CLEAR]);
+    expect(lines(terrainTip(beneventum, r, false))).toEqual(['move: No effect', protects('its upper hexsides'), DEFENDER_ONLY, CLEAR]);
     expect(lines(terrainTip(beneventum, r, true))[1]).toBe(protects('its lower hexsides'));
     const himera = game('102');
     expect(lines(terrainTip(himera, hexId(3, 1), false))[1]).toBe(protects('its lower hexsides'));
-    expect(lines(terrainTip(himera, hexId(0, 8), false))).toEqual(['move: No effect', protects('its left and lower-left hexsides'), CLEAR]);
+    expect(lines(terrainTip(himera, hexId(0, 8), false))).toEqual(['move: No effect', protects('its left and lower-left hexsides'), DEFENDER_ONLY, CLEAR]);
   });
 });
 
@@ -200,6 +203,7 @@ describe('terrain tooltips: Expansion #3 (§18.7)', () => {
   const WALL_COMBAT = [
     'combat: Close combat with a unit here: max 2 dice, card and leader bonuses on top',
     'combat: Foot defending here strike first (not against an attacker also on a wall), ignore 1 sword and may ignore 1 flag (1 flag against missiles)',
+    DEFENDER_ONLY,
     'combat: Mounted units and war machines attack a unit here only if they began the turn next to it',
   ];
   const hwm: Partial<Pos> = { units: [{ side: 'bottom', type: 'HWM', at: [7, 6] }] };
@@ -216,6 +220,7 @@ describe('terrain tooltips: Expansion #3 (§18.7)', () => {
       'move: Mounted units never enter it, not even by retreat or advance',
       WALL_COMBAT[0],
       WALL_COMBAT[1],
+      DEFENDER_ONLY,
       'combat: Mounted units attack a unit here only if they began the turn next to it',
       'sight: Blocks line of sight, except between units on the same wall',
     ]);
@@ -231,7 +236,8 @@ describe('terrain tooltips: Expansion #3 (§18.7)', () => {
       'combat: Battling up onto it from lower ground: max 2 dice',
       'combat: Battling from it: foot max 3 dice, mounted max 2',
       'combat: A unit here rolls 1 die fewer when it battles, after the hill limit',
-      'combat: Foot here ignore 1 sword and may ignore 1 flag',
+      'combat: Foot defending here ignore 1 sword and may ignore 1 flag',
+      DEFENDER_ONLY,
       'sight: Blocks line of sight, also between units on the same hill',
     ]);
     const wall = tipOf('wall', { ...hwm, terrain: [{ at: [4, 6], t: 'wall', hill: true }] });

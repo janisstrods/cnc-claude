@@ -179,7 +179,7 @@ function Terrain() {
     ['Fordable river', 'Stops movement. Close combat in or out: max 2 dice; firing out: max 1 die (not at the Pinarus, Expansion #1 battle 108).'],
     ['Marsh', 'Stops movement; a unit leaving it moves only 1 hex. Roll a die for a lost block on entry. Close combat in or out: max 2 dice; firing out: max 1 die. Heavy war machines may not enter.'],
     ['Broken ground', 'Mounted units stop and may not battle that turn. Max 2 dice in close combat. Heavy war machines may not enter.'],
-    ['Fortified camp', 'Foot defending ignore one sword and one flag. Units in a camp roll one die fewer. Blocks line of sight.'],
+    ['Fortified camp', 'Foot defending ignore one sword and one flag (a unit that attacked out of the camp gets neither against the battle back). Units in a camp roll one die fewer. Blocks line of sight.'],
     ['Lake / steep hills', 'Impassable.'],
   ];
   return (
@@ -251,7 +251,7 @@ export function Expansion() {
   const terrain: [string, string][] = [
     ['Sea', 'Impassable, like a lake, for every move, retreat and evade. Does not block line of sight.'],
     ['Steep hills', 'Impassable and block line of sight (101 Marathon, 113 Paraitacene).'],
-    ['Rampart', 'A wall along some sides of the hex (hover the hex to see which). A foot unit on it, attacked from across a walled side, ignores 1 sword and may ignore 1 flag; fired at through a walled side, it may ignore 1 flag. It helps only the defender; mounted units and lone leaders gain nothing. No effect on movement, line of sight or dice.'],
+    ['Rampart', 'A wall along some sides of the hex (hover the hex to see which). A foot unit on it, attacked from across a walled side, ignores 1 sword and may ignore 1 flag; fired at through a walled side, it may ignore 1 flag. It helps only the defender, never a unit that attacked out of it (so not against the battle back); mounted units and lone leaders gain nothing. No effect on movement, line of sight or dice.'],
     ['Ford, no dice limit', 'The Pinarus (108 Issus): a fordable river without the 2-dice close-combat and 1-die firing limits. Units entering it still stop.'],
   ];
   return (

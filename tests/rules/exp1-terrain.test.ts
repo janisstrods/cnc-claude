@@ -287,7 +287,7 @@ describe('rampart in close combat (foot defender attacked across a protected edg
     expectRole('back', 0);
     expectRole('firstStrike', 0);
     // the position-independent part leaves the rampart out
-    expect(baseSwordIgnores(s, mi)).toBe(0);
+    expect(baseSwordIgnores(mi)).toBe(0);
   });
 
   it('the rampart unit attacking out rolls its normal dice, and the battle back against it is not reduced', () => {

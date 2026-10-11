@@ -48,7 +48,9 @@ const ADVANCE_OUT = combat('A unit here may advance out after combat only if it 
 /** Heavy war machines (§15): only in the battles that field one. */
 const NO_HWM = move('Heavy war machines may not enter');
 /** A fortified camp's protection of foot (§4), also on a camp on a hill (§18.7). */
-const CAMP_FOOT = combat('Foot here ignore 1 sword and may ignore 1 flag');
+const CAMP_FOOT = combat('Foot defending here ignore 1 sword and may ignore 1 flag');
+/** Terrain protects only a defender (camp §4, rampart §16, city wall §18.7), never the unit that attacked out of it. */
+const DEFENDER_ONLY = combat('A unit attacking out of it is not protected against the battle back');
 
 /** "max 2 dice", "max 1 die" */
 const maxDice = (n: number) => `max ${n} ${n === 1 ? 'die' : 'dice'}`;
@@ -119,6 +121,7 @@ const EFFECTS: Record<TerrainType, readonly TipLine[]> = {
     move(NO_EFFECT),
     combat('A unit here rolls 1 die fewer when it battles'),
     CAMP_FOOT,
+    DEFENDER_ONLY,
     BLOCKS,
   ],
   rampart: [move(NO_EFFECT), CLEAR], // `rampartLines` adds the protected sides
@@ -138,6 +141,7 @@ function wallLines(machines: boolean): TipLine[] {
     move(`${barred} never enter it, not even by retreat or advance`),
     combat(`Close combat with a unit here: ${maxDice(TERRAIN_STATS.wall.ccCap)}, card and leader bonuses on top`),
     combat('Foot defending here strike first (not against an attacker also on a wall), ignore 1 sword and may ignore 1 flag (1 flag against missiles)'),
+    DEFENDER_ONLY,
     combat(`${barred} attack a unit here only if they began the turn next to it`),
     sight('Blocks line of sight, except between units on the same wall'),
   ];
@@ -158,6 +162,7 @@ function hillUnderLines(t: 'camp' | 'wall', machines: boolean): TipLine[] {
       ...HILL_COMBAT,
       combat('A unit here rolls 1 die fewer when it battles, after the hill limit'),
       CAMP_FOOT,
+      DEFENDER_ONLY,
       sight('Blocks line of sight, also between units on the same hill'),
     ];
   }
@@ -197,6 +202,7 @@ function rampartLines(s: GameState, h: HexId, flipped: boolean): TipLine[] {
   const lines = [
     first,
     combat(`Protects ${sides}: foot here ignore 1 sword and may ignore 1 flag when attacked across them, 1 flag when fired at through them`),
+    DEFENDER_ONLY,
     ...rest,
   ];
   const breakers = s.scenario.rampartBreakers;

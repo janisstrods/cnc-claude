@@ -77,8 +77,14 @@ The site's Units FAQ applies the camp −1 to the base dice before the caps (a f
   Hills (CC only): attacking a unit that is on a hill from a non-hill hex: max 2 (any unit). Attacking from a hill to a
   non-hill hex, or hill to hill: foot max 3, mounted max 2. Battle back uses the same logic from the battling-back unit's side.
 * Caps in ranged combat: target in forest: max 1; firer in marsh or fordable river: max 1 (not a no-cap ford, §16).
-* Fortified camp: a unit on a camp hex rolls 1 fewer die when it battles. A foot unit on a camp ignores 1 sword hit in
-  close combat (and may ignore 1 flag, see §10).
+* Fortified camp: a unit on a camp hex rolls 1 fewer die when it battles. A foot unit **defending** on a camp ignores 1
+  sword hit in close combat (and may ignore 1 flag, see §10), against attacks from every side.
+* **Defender only** (camp, rampart §16, city wall §18.7) **[Interp]**: the attacker is the unit that began the combat.
+  Terrain protects the unit it attacks against the attack roll, the bonus combat and the attack after the defender's First
+  Strike, and against any ranged fire. It never protects the attacker: the battle back or First Strike against a unit
+  that attacked out of a camp, rampart or wall is unprotected. LR p.20 gives the camp to "a unit defending" and the rampart
+  to "the defending unit" when "attacked"; the rulebook still calls the battling-back unit the defender. No official
+  ruling on the battle back was found (checked 2026-10-11); the user chose this reading.
 * Card bonus (only for ordered units, on the active turn): Clash of Shields +2 CC, Mounted Charge +1 CC (incl. bonus CC),
   I Am Spartacus +1 (CC and ranged). Bonuses are added after caps (cards "modify the maximum"). Alexander's +1 (§17) is
   added at the same step.
@@ -154,7 +160,7 @@ Sequence for each attack (attacker = ordered unit adjacent to target unit or lon
 ## 10. Flags & retreat
 
 * Ignorable flags (cumulative): attached leader (+1; if the unit lost blocks, only if the leader survived the check);
-  supported by 2+ adjacent friendly units/lone leaders (+1; elephants never receive support); foot unit on camp (+1);
+  supported by 2+ adjacent friendly units/lone leaders (+1; elephants never receive support); foot unit defending on a camp (+1);
   full-strength WA (+1); Sacred Band (+1); elephant vs cavalry/chariot roller (+1). Ignoring is optional per flag.
   Expansion #1 adds: other elites with `ignoreFlag` (§17) and a foot defender behind a protected rampart edge (§16);
   Fright at First Sight (§17, scenario 116) forbids all ignoring of an elephant's flags by Roman foot.
@@ -362,7 +368,7 @@ the normal hill line-of-sight rule gives the same result (Q19).
   rear) is unaffected. This covers the enemy's bonus close combat and its attack roll after the defender's First Strike.
 * **Defender only:** a roll made by an enemy that is itself attacking is protected; when the rampart unit attacks out, it gets no
   bonus and no penalty, and the target's battle back against it is not protected **[Interp]** (Q16: ramparts help
-  "only the unit defending behind them"; LR p.20 speaks of an attacked defender).
+  "only the unit defending behind them"; LR p.20 speaks of an attacked defender). The same holds for camps and walls (§4).
 * **Ranged:** a foot target fired at through a protected edge may ignore 1 flag (no sword or dice effect). "Through" is the
   centre-to-centre line of §8 entering the target hex. If that line passes exactly through a corner of the target hex it
   crosses both edges meeting there, and it counts if **either** is protected **[Interp]** (LR is silent).
@@ -807,7 +813,7 @@ merely passing through a hex never counts (X2 Q9e). A side wins as soon as its *
   * **Defender.** A foot unit **defending** on a wall hex (against an attack or bonus combat from any adjacent hex) ignores
     1 sword and may ignore 1 flag in close combat, and may ignore 1 flag against ranged fire; these are in addition to the
     other flag ignores (§10, cumulative). The ignores protect only a defender: a unit attacking out of a wall gets none,
-    and the battle back against it is unprotected **[Interp]** (as for ramparts, §16). A lone leader on a wall gains
+    and the battle back against it is unprotected **[Interp]** (as for camps and ramparts, §4). A lone leader on a wall gains
     neither the ignores nor the first strike **[Interp]**.
   * **Defender strikes first.** A unit defending on a wall hex that does not (or cannot) evade battles **before** the
     attacker rolls, as if it had played First Strike, unless the attacker itself stands on a wall hex. No card is needed,

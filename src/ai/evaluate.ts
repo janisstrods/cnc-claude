@@ -1,7 +1,7 @@
 // Static evaluation of a position from one side's point of view (1.0 ~ one banner).
 import { defaultMods } from '../engine/cards';
 import {
-  baseSwordIgnores, canFireAt, closeCombatDice, frightAtFirstSight, helmetsCount, leaderDiceBonus, rampartShields, rangedDice,
+  baseSwordIgnores, campShields, canFireAt, closeCombatDice, frightAtFirstSight, helmetsCount, leaderDiceBonus, rampartShields, rangedDice,
   wallShields,
 } from '../engine/combat';
 import { unitMoves } from '../engine/movement';
@@ -200,9 +200,9 @@ function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number, fright: Side | 
   let lossPerFlag = Math.min(2, per - room);
   // last-row retreat (214): a retreat that ends on its own baseline short of hexes eliminates the unit
   if (lossPerFlag > 0 && s.scenario.lastRowRetreat === u.side && room === rowsToOwnEdge(u.hex, u.side)) lossPerFlag = u.blocks;
-  // a foot unit defending on a city wall (§18.7) ignores 1 more flag (attacks and fire) and 1 sword (attacks)
-  const wall = wallShields(s, u, 'close', 'attack') ? 1 : 0;
-  const ign = ignorableOcc(s, occ, u, 'close', null) + wall;
+  // a foot unit defending on a camp (§4) or city wall (§18.7) ignores 1 more flag (attacks and fire) and 1 sword (attacks)
+  const fort = (campShields(s, u, 'close', 'attack') ? 1 : 0) + (wallShields(s, u, 'close', 'attack') ? 1 : 0);
+  const ign = ignorableOcc(s, occ, u, 'close', null) + fort;
   const unignored = unignoredOf(ign);
   const pFlagHit = flagHitOf(lossPerFlag, ign);
   // a foot unit on a rampart: one more ignorable flag against rolls coming across a protected side (decided per threat)
@@ -217,7 +217,7 @@ function victimInfo(s: GameState, occ: Occ, u: Unit, bm: number, fright: Side | 
     pFlagHit, pFlagHitShielded, pFlagHitFright: frightProne ? flagHitOf(lossPerFlag, 0) : pFlagHit,
     unignored, unignoredShielded: onRampart ? unignoredOf(ign + 1) : unignored, onRampart, frightProne,
     lossPerFlag, canEv, leaderBonus: l ? SIXTH * (bm + leaderVal(s, l)) : 0,
-    swordIgnores: baseSwordIgnores(s, u) + wall, ignoresSwords: st.ignoreAllSwords, camel: st.vsMountedIgnoreHit !== null && !st.elephantTable,
+    swordIgnores: baseSwordIgnores(u) + fort, ignoresSwords: st.ignoreAllSwords, camel: st.vsMountedIgnoreHit !== null && !st.elephantTable,
   };
 }
 

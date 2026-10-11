@@ -23,7 +23,7 @@ export const EXP1_TEXTS: Record<string, ScenarioTexts> = {
     blurb: "Gelon of Syracuse marches to relieve Himera, besieged on Sicily's northern coast by Hamilcar's Carthaginians, whose army sits behind a palisaded camp beside the shore. Tradition places the battle on the same day as Salamis. By one ancient account, Syracusan horsemen pass themselves off as expected allied cavalry, ride into the camp and kill Hamilcar while the main armies grind together.",
     specialText: [
       "Rampart hexes shelter the Carthaginian line. A foot unit standing on a rampart ignores the first sword and may ignore 1 extra flag when attacked from across the rampart's front edge (the side facing the enemy), and may ignore 1 flag from missile fire across it. Mounted units gain nothing.",
-      'The three Carthaginian camps are fortified: a unit in one rolls 1 fewer die when it battles, and a foot unit there ignores 1 sword and may ignore 1 flag. Camps carry no banner.',
+      'The three Carthaginian camps are fortified: a unit in one rolls 1 fewer die when it battles, and a foot unit defending there ignores 1 sword and may ignore 1 flag. Camps carry no banner.',
       'Hamilcar starts alone in his hex, without a unit, and the Syracusan cavalry with Eumachus starts already inside the Carthaginian position. The sea on the right edge is impassable.',
     ],
     hint: 'Ramparts, camps; kill Hamilcar.',
@@ -144,7 +144,7 @@ export const EXP1_TEXTS: Record<string, ScenarioTexts> = {
     blurb: "Pyrrhus tries to catch Manius Curius Dentatus off guard with a night march through the woods around Beneventum. Torches burn low, the column straggles into daylight, and the Romans are waiting among their camps. In the fighting that follows the elephants take fright under a rain of missiles and trample their own lines; Pyrrhus leaves Italy soon afterward.",
     specialText: [
       "Rampart hexes join the Roman camps. A foot unit standing on a rampart ignores the first sword and may ignore 1 extra flag when attacked from across the rampart's front edge (the side facing the enemy), and may ignore 1 flag from missile fire across it. Mounted units gain nothing.",
-      'The three Roman camps are fortified: a unit in one rolls 1 fewer die when it battles, and a foot unit there ignores 1 sword and may ignore 1 flag. Camps and ramparts carry no banner.',
+      'The three Roman camps are fortified: a unit in one rolls 1 fewer die when it battles, and a foot unit defending there ignores 1 sword and may ignore 1 flag. Camps and ramparts carry no banner.',
       'The two Roman war machines (heavy war machines) fire up to 6 hexes with 2 dice if they have not moved, but never at an adjacent enemy.',
     ],
     hint: 'Ramparts and artillery vs elephants.',

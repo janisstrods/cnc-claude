@@ -468,7 +468,7 @@ describe('pilum and march', () => {
       expect(retreatPerFlag(t, unitOf('EL'))).toBe(1);
       const s = build({ units: [bottom('HI', [5, 6], { elite: 'tenthLegion' }), top('HI', [4, 6])] });
       expect(ignorableFlags(s, s.units[0], { kind: 'close', leaderAlive: false, fullAtStart: true, striker: s.units[1] })).toBe(0);
-      expect(baseSwordIgnores(s, s.units[0])).toBe(0);
+      expect(baseSwordIgnores(s.units[0])).toBe(0);
     });
     it('Double Time: moves 2 and may battle, never 3', () => {
       const d = play(build({ units: [tenth([6, 6])] }), 'doubleTime', ['u1']);

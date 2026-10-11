@@ -4,7 +4,7 @@
 // variant that differs by a word stays inline in its battle. Plain-language paraphrases of design/rules-reference.md.
 
 /** Fortified camps (rules-reference §4). */
-export const FORTIFIED_CAMPS = 'Fortified camps: a unit in one rolls 1 fewer die when it battles, and a foot unit there ignores 1 sword and may ignore 1 flag.';
+export const FORTIFIED_CAMPS = 'Fortified camps: a unit in one rolls 1 fewer die when it battles, and a foot unit defending there ignores 1 sword and may ignore 1 flag.';
 
 /** Ramparts (§16). */
 export const RAMPARTS = "Ramparts shelter foot units: one standing on a rampart ignores the first sword and may ignore 1 extra flag when attacked from across the rampart's front edge, and may ignore 1 flag from missile fire across it. Mounted units gain nothing.";

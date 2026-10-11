@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   UNIT_STATS, autoOrders, battleTargets, bonusCombatEligible, ignorableFlags, leaderById, pieceMoves, rallyCandidates, retreatOptions,
-  baseSwordIgnores, retreatPerFlag, rowOf, scoreClose, unitAt, validateOrders, validateRally, validateSpartacus,
+  retreatPerFlag, rowOf, scoreClose, swordIgnores, unitAt, validateOrders, validateRally, validateSpartacus,
   type CardKind, type DieFace, type GameEvent, type HexId, type UnitType,
 } from '../../src/engine';
 import { PERSONALITIES, chooseAnswer, isLegal, newMemory, type AiOptions } from '../../src/ai';
@@ -389,10 +389,11 @@ describe('heavy war machine: support and fortified camp', () => {
     const give = build({ units: [{ side: 'top', type: 'MI', at: [4, 6] }, { side: 'top', type: 'HWM', at: [4, 5] }, { side: 'top', type: 'HWM', at: [4, 7] }] });
     expect(ignorableFlags(give, give.units[0], ctx)).toBe(1);
   });
-  it('as foot on a fortified camp it ignores 1 sword hit and 1 flag', () => {
-    const s = build({ units: [{ side: 'top', type: 'HWM', at: [4, 6] }], terrain: [{ at: [4, 6], t: 'camp' }] });
-    expect(baseSwordIgnores(s, s.units[0])).toBe(1);
-    expect(ignorableFlags(s, s.units[0], ctx)).toBe(1);
+  it('as foot defending on a fortified camp it ignores 1 sword hit and 1 flag', () => {
+    const s = build({ units: [{ side: 'top', type: 'HWM', at: [4, 6] }, { side: 'bottom', type: 'MI', at: [5, 6] }], terrain: [{ at: [4, 6], t: 'camp' }] });
+    const [hwm, mi] = s.units;
+    expect(swordIgnores(s, hwm, mi, 'attack')).toBe(1);
+    expect(ignorableFlags(s, hwm, { ...ctx, striker: mi, role: 'attack' })).toBe(1);
   });
 });
 
