@@ -1173,14 +1173,17 @@ function validateMove(s: GameState, a: Answer, stage: 1 | 2): string | null {
   return null;
 }
 
+/** May ordered piece `id` move in this movement stage? */
+const canMove = (s: GameState, id: string, stage: 1 | 2): boolean => pieceMoves(s, id, stage).length > 0;
+
 export function movablePieces(s: GameState, stage: 1 | 2): string[] {
-  return Object.keys(s.turn.ordered).filter((id) => pieceMoves(s, id, stage).length > 0);
+  return Object.keys(s.turn.ordered).filter((id) => canMove(s, id, stage));
 }
 
 function* movePhase(s: GameState, ctx: FlowCtx, stage: 1 | 2): Gen {
   for (;;) {
     if (s.winner) return;
-    if (!movablePieces(s, stage).length) break;
+    if (!Object.keys(s.turn.ordered).some((id) => canMove(s, id, stage))) break;
     const a = yield* ask(s, ctx, { kind: 'move', side: s.active, stage });
     if (a.kind === 'endMove') break;
     if (a.kind === 'move') {
@@ -1225,9 +1228,12 @@ function* attachReserveLeaders(s: GameState, ctx: FlowCtx): Gen {
 // battle
 // ---------------------------------------------------------------------------
 
-/** Ordered units that can battle now: a target to attack, or a Rolling Fire path (§18.5). */
+/** Can ordered unit `id` battle now: a target to attack, or a Rolling Fire path (§18.5)? */
+const canBattleNow = (s: GameState, id: string): boolean => battleTargets(s, id).length > 0 || rollingFirePaths(s, id).length > 0;
+
+/** Ordered units that can battle now (`canBattleNow`). */
 export function battleReady(s: GameState): string[] {
-  return Object.keys(s.turn.ordered).filter((id) => battleTargets(s, id).length > 0 || rollingFirePaths(s, id).length > 0);
+  return Object.keys(s.turn.ordered).filter((id) => canBattleNow(s, id));
 }
 
 /**
@@ -1261,7 +1267,7 @@ function validateBattle(s: GameState, a: Answer): string | null {
 function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
   for (;;) {
     if (s.winner) return;
-    if (!battleReady(s).length) break;
+    if (!Object.keys(s.turn.ordered).some((id) => canBattleNow(s, id))) break;
     const a = yield* ask(s, ctx, { kind: 'battle', side: s.active });
     if (a.kind === 'endBattle') break;
     // answerError lets through only endBattle, rollingFire and attack, so nothing else reaches here
