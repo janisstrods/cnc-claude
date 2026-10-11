@@ -5,8 +5,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { UnitToken } from '../art';
 import { rampartMask, type TerrainSetup } from '../engine/setup';
+import { hexId, NUM_HEXES, onBoard } from '../engine/hex';
 import { COLS, ROWS, type ArmyLook, type Blocks, type ObjectiveDef, type ObjectiveState, type Side, type TerrainType, type UnitType } from '../engine/types';
-import { BOARD_H, BOARD_W, hexCenter, isOnBoard } from '../ui/geometry';
+import { BOARD_H, BOARD_W, hexCenter } from '../ui/geometry';
 import { BoardArt, ObjectiveMarkers, TerrainIcon, terrainArtOf, terrainName } from '../ui/terrain';
 
 /** A terrain entry: the scenario file format, plus `art` and the Expansion #3 hill under a camp or wall (`hill`). */
@@ -242,18 +243,17 @@ const OBJECTIVES: ScenarioJson = {
     { side: 'top', type: 'BCH', r: 4, c: 6 },
   ],
 };
-const hx = (r: number, c: number) => r * COLS + c;
 const OBJECTIVE_DEFS: ObjectiveDef[] = [
-  { kind: 'capture', side: 'bottom', hexes: [hx(0, 2), hx(0, 3), hx(1, 9)], when: 'turnStart', banners: [0, 0, 1], together: 0, remove: false, text: '' },
-  { kind: 'capture', side: 'top', hexes: [hx(6, 4)], when: 'turnStart', banners: [1], together: 0, remove: true, text: '' },
-  { kind: 'hold', side: 'top', hexes: [hx(7, 9), hx(8, 11)], max: 1, text: '' },
-  { kind: 'majority', sides: ['top', 'bottom'], hexes: [hx(3, 5), hx(3, 6), hx(4, 6), hx(4, 1)], banners: 2, when: 'turnEnd', text: '' },
-  { kind: 'exit', side: 'top', hexes: [0, 1, 2, 3, 4, 5].map((c) => hx(8, c)), units: 'foot', leadersScore: false, text: '' },
-  { kind: 'exit', side: 'bottom', hexes: [hx(3, 0), hx(4, 12), hx(5, 11), hx(0, 12)], units: 'any', leadersScore: false, text: '' },
+  { kind: 'capture', side: 'bottom', hexes: [hexId(0, 2), hexId(0, 3), hexId(1, 9)], when: 'turnStart', banners: [0, 0, 1], together: 0, remove: false, text: '' },
+  { kind: 'capture', side: 'top', hexes: [hexId(6, 4)], when: 'turnStart', banners: [1], together: 0, remove: true, text: '' },
+  { kind: 'hold', side: 'top', hexes: [hexId(7, 9), hexId(8, 11)], max: 1, text: '' },
+  { kind: 'majority', sides: ['top', 'bottom'], hexes: [hexId(3, 5), hexId(3, 6), hexId(4, 6), hexId(4, 1)], banners: 2, when: 'turnEnd', text: '' },
+  { kind: 'exit', side: 'top', hexes: [0, 1, 2, 3, 4, 5].map((c) => hexId(8, c)), units: 'foot', leadersScore: false, text: '' },
+  { kind: 'exit', side: 'bottom', hexes: [hexId(3, 0), hexId(4, 12), hexId(5, 11), hexId(0, 12)], units: 'any', leadersScore: false, text: '' },
   { kind: 'sectionClear', side: 'bottom', text: '' },
 ];
 const OBJECTIVE_STATE: ObjectiveState[] = [
-  { taken: [hx(0, 3)], held: { top: 0, bottom: 0 }, sections: [] },
+  { taken: [hexId(0, 3)], held: { top: 0, bottom: 0 }, sections: [] },
   { taken: [], held: { top: 0, bottom: 0 }, sections: [] },
   { taken: [], held: { top: 1, bottom: 0 }, sections: [] },
   { taken: [], held: { top: 0, bottom: 0 }, sections: [] },
@@ -304,11 +304,11 @@ const WALLS: ScenarioJson = {
 /** 313 Brindisi: the ship markers on the coast played as a ford (Pompeian top, Caesarian bottom), one of them taken. */
 const SHIPS_ID = '313';
 const shipDefs = (): ObjectiveDef[] => [
-  { kind: 'capture', side: 'top', hexes: [8, 9, 10, 11].map((c) => hx(0, c)), when: 'turnStart', banners: [1], together: 0, remove: false, text: '', marker: 'ship' } as ObjectiveDef,
-  { kind: 'capture', side: 'bottom', hexes: [0, 1, 2, 3].map((c) => hx(0, c)), when: 'turnStart', banners: [1], together: 0, remove: false, text: '', marker: 'ship' } as ObjectiveDef,
+  { kind: 'capture', side: 'top', hexes: [8, 9, 10, 11].map((c) => hexId(0, c)), when: 'turnStart', banners: [1], together: 0, remove: false, text: '', marker: 'ship' } as ObjectiveDef,
+  { kind: 'capture', side: 'bottom', hexes: [0, 1, 2, 3].map((c) => hexId(0, c)), when: 'turnStart', banners: [1], together: 0, remove: false, text: '', marker: 'ship' } as ObjectiveDef,
 ];
 const SHIP_STATE: ObjectiveState[] = [
-  { taken: [hx(0, 9)], held: { top: 0, bottom: 0 }, sections: [] },
+  { taken: [hexId(0, 9)], held: { top: 0, bottom: 0 }, sections: [] },
   { taken: [], held: { top: 0, bottom: 0 }, sections: [] },
 ];
 const SHIP_BLOCKS: Record<Side, Blocks> = { top: 'gry', bottom: 'rom' };
@@ -384,16 +384,16 @@ function boardArrays(s: ScenarioJson): { terrain: TerrainType[]; fords: boolean[
   const terrain: TerrainType[] = [];
   const fords: boolean[] = [];
   const rampart: number[] = [];
-  const hillUnder: boolean[] = new Array(ROWS * COLS).fill(false);
+  const hillUnder: boolean[] = new Array(NUM_HEXES).fill(false);
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      terrain.push(isOnBoard(r, c) ? 'plain' : 'void');
+      terrain.push(onBoard(r, c) ? 'plain' : 'void');
       fords.push(false);
       rampart.push(0);
     }
   }
   for (const t of s.terrain) {
-    const id = t.r * COLS + t.c;
+    const id = hexId(t.r, t.c);
     // a sea played as a ford (217) is a fordable river to the engine
     const seaFord = t.t === 'sea' && !!t.ford;
     terrain[id] = seaFord ? 'river' : t.t;
@@ -475,7 +475,7 @@ function Board({
   const { terrain, fords, rampart, art, hillUnder } = useMemo(() => boardArrays(s), [s]);
   const topLabel = flipped ? s.bottom.army : s.top.army;
   const bottomLabel = flipped ? s.top.army : s.bottom.army;
-  const placed = useMemo(() => (s.units ?? []).map((u) => ({ side: u.side, hex: u.r * COLS + u.c })), [s]);
+  const placed = useMemo(() => (s.units ?? []).map((u) => ({ side: u.side, hex: hexId(u.r, u.c) })), [s]);
   return (
     <svg viewBox={viewBox ?? `0 0 ${BOARD_W} ${BOARD_H}`} style={{ width, display: 'block', borderRadius: 4, boxShadow: '0 6px 22px rgba(0,0,0,0.45)' }}>
       <BoardArt

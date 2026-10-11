@@ -2,9 +2,10 @@
 // hexside the sea shares with land, and surf foam - no reeds, unlike a lake. Along a board edge the coast runs on under
 // the frame, so the sea reads as continuing off the board. It is painted before the rivers, which run across the beach
 // and fade out into it (paintRivers).
-import { COLS, ROWS } from '../../engine/types';
+import { ROWS } from '../../engine/types';
+import { clampCol, parity } from '../geometry';
 import { blurGrid, contours, decimate, loopArea, makeGrid, polyPath, sampleGrid, smoothClosed, type Grid } from './field';
-import { corner, DIRS, edgeCorners, fmt, neighborRC, parity, screenDir, type PaintCtx, type Pt, type Rect } from './hexmath';
+import { corner, DIRS, edgeCorners, fmt, neighborRC, screenDir, type PaintCtx, type Pt, type Rect } from './hexmath';
 import { clamp, fbm, rng } from './noise';
 import { P } from './palette';
 
@@ -49,8 +50,7 @@ function distSeg(px: number, py: number, s: Seg): number {
  */
 function boardSea(ctx: PaintCtx, ford = false): (r: number, c: number) => boolean {
   const at = (r: number, c: number) => {
-    const maxC = parity(r) === 0 ? COLS - 1 : COLS - 2;
-    const h = ctx.get(r, clamp(c, 0, maxC));
+    const h = ctx.get(r, clampCol(r, c));
     return h?.t === 'sea' && (!ford || h.ford);
   };
   return (r, c) => {

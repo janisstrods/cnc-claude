@@ -1,10 +1,10 @@
 // Small single-hex terrain swatch for tooltips and the legend (same painters as the board).
 import { useId, useMemo } from 'react';
 import type { TerrainType } from '../../engine/types';
-import { HEX_R } from '../geometry';
+import { hexPoints } from '../geometry';
 import { paintDitches } from './ditch';
 import { paintBroken, paintCamps } from './ground';
-import { corner, iconCtx } from './hexmath';
+import { iconCtx } from './hexmath';
 import { paintHills, paintSteep } from './hills';
 import { paintRamparts } from './rampart';
 import { P } from './palette';
@@ -101,9 +101,7 @@ function iconArt(t: TerrainType, ford: boolean, hexArt?: string, hill = false): 
   return el;
 }
 
-const HEX_PTS = Array.from({ length: 6 }, (_, i) => corner({ x: 0, y: 0 }, i, HEX_R))
-  .map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`)
-  .join(' ');
+const HEX_PTS = hexPoints(0, 0);
 
 /**
  * A painted hex swatch of terrain `t`, `size` pixels square. `art`: the hex's art where it differs from its terrain

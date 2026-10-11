@@ -1,5 +1,6 @@
 // Battlefield / terrain art for Commands & Colors: Ancients (original procedural SVG).
-import { COLS, ROWS, type TerrainType } from '../../engine/types';
+import { hexId, NUM_HEXES } from '../../engine/hex';
+import type { TerrainType } from '../../engine/types';
 import { scenarioById } from '../../scenarios';
 
 export { BoardArt, boardArtPropsEqual } from './BoardArt';
@@ -23,10 +24,10 @@ export interface TerrainArtEntry {
  * ford (`{ t: 'sea', ford: true }`, which the engine stores as a fordable river). Undefined everywhere else.
  */
 export function terrainArtOf(setup: { terrain: readonly TerrainArtEntry[] }): (string | undefined)[] {
-  const out: (string | undefined)[] = new Array(ROWS * COLS).fill(undefined);
+  const out: (string | undefined)[] = new Array(NUM_HEXES).fill(undefined);
   for (const e of setup.terrain) {
     const art = e.art ?? (e.t === 'sea' && e.ford ? 'coast' : undefined);
-    if (art !== undefined) out[e.r * COLS + e.c] = art;
+    if (art !== undefined) out[hexId(e.r, e.c)] = art;
   }
   return out;
 }

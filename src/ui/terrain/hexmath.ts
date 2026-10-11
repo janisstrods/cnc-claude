@@ -1,8 +1,9 @@
 // Hex helpers for the terrain painters. Works in board SVG coordinates and also for "virtual"
 // off-board hexes (negative rows, column 13, ...), which painters use to run rivers and lakes
-// under the frame.
-import { COLS, ROWS, type TerrainType } from '../../engine/types';
-import { BOARD_H, BOARD_MARGIN, BOARD_W, HEX_R, HEX_W, ROW_H } from '../geometry';
+// under the frame. The board geometry itself (hex centres, row parity) is in ../geometry.
+import { ALL_HEXES, colOf, hexId, onBoard, rowOf } from '../../engine/hex';
+import { ROWS, type TerrainType } from '../../engine/types';
+import { BOARD_H, BOARD_MARGIN, BOARD_W, clampCol, HEX_R, HEX_W, hexCenter, parity } from '../geometry';
 
 export interface Pt {
   x: number;
@@ -22,8 +23,6 @@ export const RI = HEX_W / 2;
 export type Dir = 0 | 1 | 2 | 3 | 4 | 5;
 export const DIRS: Dir[] = [0, 1, 2, 3, 4, 5];
 
-export const parity = (r: number) => ((r % 2) + 2) % 2;
-
 export function neighborRC(r: number, c: number, d: Dir): [number, number] {
   const odd = parity(r) === 1;
   switch (d) {
@@ -40,17 +39,6 @@ export function neighborRC(r: number, c: number, d: Dir): [number, number] {
     case 5:
       return [r - 1, odd ? c + 1 : c];
   }
-}
-
-export function onBoard(r: number, c: number): boolean {
-  return r >= 0 && r < ROWS && c >= 0 && c < (parity(r) === 0 ? COLS : COLS - 1);
-}
-
-/** Centre of any (possibly off-board) hex in board coordinates. */
-export function vCenter(r: number, c: number, flipped: boolean): Pt {
-  const x = BOARD_MARGIN + HEX_W / 2 + c * HEX_W + (parity(r) === 1 ? HEX_W / 2 : 0);
-  const y = BOARD_MARGIN + HEX_R + r * ROW_H;
-  return flipped ? { x: BOARD_W - x, y: BOARD_H - y } : { x, y };
 }
 
 /** Offset coordinates of the hex containing board point (x, y) (may be off-board). */
@@ -133,34 +121,31 @@ export interface PaintCtx {
 export function boardCtx(terrain: readonly TerrainType[], fords: readonly boolean[], flipped: boolean, extras: BoardExtras = {}): PaintCtx {
   const hexes: HexInfo[] = [];
   const byId = new Map<number, HexInfo>();
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (!onBoard(r, c)) continue;
-      const id = r * COLS + c;
-      const p = vCenter(r, c, flipped);
-      const t = terrain[id] ?? 'plain';
-      const h: HexInfo = { id, r, c, x: p.x, y: p.y, t: t === 'void' ? 'plain' : t, ford: !!fords[id] };
-      if (extras.hillUnder?.[id]) h.hillUnder = true;
-      const art = extras.art?.[id];
-      if (art === 'wall' || art === 'town') h.art = art;
-      hexes.push(h);
-      byId.set(id, h);
-    }
+  for (const id of ALL_HEXES) {
+    const r = rowOf(id);
+    const c = colOf(id);
+    const p = hexCenter(r, c, flipped);
+    const t = terrain[id] ?? 'plain';
+    const h: HexInfo = { id, r, c, x: p.x, y: p.y, t: t === 'void' ? 'plain' : t, ford: !!fords[id] };
+    if (extras.hillUnder?.[id]) h.hillUnder = true;
+    const art = extras.art?.[id];
+    if (art === 'wall' || art === 'town') h.art = art;
+    hexes.push(h);
+    byId.set(id, h);
   }
-  const get = (r: number, c: number) => (onBoard(r, c) ? byId.get(r * COLS + c) : undefined);
+  const get = (r: number, c: number) => (onBoard(r, c) ? byId.get(hexId(r, c)) : undefined);
   return {
     flipped,
     hexes,
     get,
-    center: (r, c) => vCenter(r, c, flipped),
+    center: (r, c) => hexCenter(r, c, flipped),
     terrainAt(x, y) {
       let [r, c] = pixelToRC(x, y, flipped);
       if (!onBoard(r, c)) {
         r = Math.max(0, Math.min(ROWS - 1, r));
-        const maxC = parity(r) === 0 ? COLS - 1 : COLS - 2;
-        c = Math.max(0, Math.min(maxC, c));
+        c = clampCol(r, c);
       }
-      return byId.get(r * COLS + c)?.t ?? 'plain';
+      return byId.get(hexId(r, c))?.t ?? 'plain';
     },
     bounds: { x0: 0, y0: 0, x1: BOARD_W, y1: BOARD_H },
     ext: BOARD_MARGIN + 30,
@@ -169,7 +154,7 @@ export function boardCtx(terrain: readonly TerrainType[], fords: readonly boolea
 
 /** Context describing a single hex centred on (0, 0) (legend/tooltip icons); `hill`: a hill under it, `art`: its hex art. */
 export function iconCtx(t: TerrainType, ford: boolean, hill = false, art?: string): PaintCtx {
-  const o = vCenter(0, 0, false);
+  const o = hexCenter(0, 0, false);
   const h: HexInfo = { id: 0, r: 0, c: 0, x: 0, y: 0, t, ford };
   if (hill) h.hillUnder = true;
   if (art === 'wall' || art === 'town') h.art = art;
@@ -183,7 +168,7 @@ export function iconCtx(t: TerrainType, ford: boolean, hill = false, art?: strin
     hexes: [h],
     get: (r, c) => (r === 0 && c === 0 ? h : undefined),
     center: (r, c) => {
-      const p = vCenter(r, c, false);
+      const p = hexCenter(r, c, false);
       return { x: p.x - o.x, y: p.y - o.y };
     },
     terrainAt: (x, y) => (inHex(x, y) ? t : 'plain'),
