@@ -196,11 +196,6 @@ export function forbidsTerrain(t: UnitType, terrain: TerrainType): boolean {
   return BARRED[t].includes(terrain);
 }
 
-/** Units that may battle after moving into a forest. */
-export function forestFighter(t: UnitType): boolean {
-  return UNIT_STATS[t].forestFighter;
-}
-
 /** Normal close-combat dice of a unit (used for leader escape): attacking dice, no terrain, no card bonus. */
 export function escapeDice(u: Unit): number {
   const st = UNIT_STATS[u.type];

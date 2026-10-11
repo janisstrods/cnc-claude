@@ -19,10 +19,11 @@ import { elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOption
 import { randInt, rollDice, rollDie, shuffle } from './rng';
 import { newTurn } from './setup';
 import {
-  breakRamparts, isFord, isHill, isImpassable, isWall, steepClimb, steepSlope, steepSlopeUp, stopsAll, stopsMounted, terrainAt,
+  breakRamparts, hasEntryRoll, isHill, isImpassable, isWall, mayAdvanceOut, mayBattleAfterEntering, oneHexOut, steepClimb, steepSlope,
+  steepSlopeUp, stopsAll, stopsMounted, terrainAt,
 } from './terrain';
 import { canShoot, fireMoveLimit } from './elites';
-import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forbidsTerrain, forestFighter } from './units';
+import { UNIT_STATS, bonusCombatEligible, canEvadeType, escapeDice, forbidsTerrain } from './units';
 import {
   OFF_BOARD, SECTIONS,
   type Answer, type CardKind, type Decision, type DieFace, type FlowCtx, type GameState, type HexId, type Leader,
@@ -288,7 +289,7 @@ function* leaderEvade(s: GameState, ctx: FlowCtx, l: Leader): Gen {
         return;
       }
     }
-    if (terrainAt(s, h) === 'marsh') {
+    if (hasEntryRoll(s, h)) {
       const f = rollDie(s);
       emitRoll(ctx, 'marsh', [f], [f === 'leader'], null, l.id);
       if (f === 'leader') {
@@ -409,7 +410,7 @@ function* walkPath(s: GameState, ctx: FlowCtx, u: Unit, opt: RetreatOption, kind
   for (const h of opt.path) {
     relocate(s, u, h);
     walked.push(h);
-    if (terrainAt(s, h) === 'marsh') {
+    if (hasEntryRoll(s, h)) {
       if (yield* marshCheckUnit(s, ctx, u, leaderChecked)) {
         ctx.emit({ t: kind, id: u.id, path: walked });
         breakRamparts(s, ctx, u.side, walked.slice(1)); // the hexes it entered before it sank
@@ -792,8 +793,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   // (308; unreachable, since no close combat crosses one)
   if (UNIT_STATS[u.type].noMomentum || u.immobile || forbidsTerrain(u.type, terrainAt(s, hex)) || steepSlopeUp(s, u.hex, hex)) return;
   const op = s.turn.ordered[u.id];
-  const fromT = terrainAt(s, u.hex);
-  if ((fromT === 'marsh' || isFord(s, u.hex)) && op?.enteredHexThisTurn) return;
+  if (!mayAdvanceOut(s, u.hex, !!op?.enteredHexThisTurn)) return;
   const a = yield* ask(s, ctx, { kind: 'momentum', side: u.side, unit: u.id, hex, bonus: role === 'bonus' });
   if (!(a as { yes: boolean }).yes) return;
   const from = u.hex;
@@ -803,14 +803,14 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   ctx.emit({ t: 'advance', id: u.id, path: [from, hex] });
   breakRamparts(s, ctx, u.side, [hex]);
   const checked = { done: false };
-  if (terrainAt(s, hex) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
+  if (hasEntryRoll(s, hex) && (yield* marshCheckUnit(s, ctx, u, checked))) return;
   updateHeld(s, ctx); // where the advance ends, after the marsh check (a unit sunk there holds nothing)
   // a very steep hill (§18.6) climbed from lower ground ends the advance: no extra hex and no bonus combat
   if (s.winner || role === 'bonus' || steepClimb(s, from, hex)) return;
   const st = UNIT_STATS[u.type];
   const stopped = stopsAll(s, hex) || (st.mounted && stopsMounted(s, hex));
   let climbedExtra = false; // the extra hex climbed a very steep hill: it ends the advance, no bonus combat (§18.6)
-  if (st.momentumExtraHex && !stopped && fromT !== 'marsh') {
+  if (st.momentumExtraHex && !stopped && !oneHexOut(s, from)) {
     const hasLeader = !!attachedLeader(s, u);
     const opts = neighbours(u.hex).filter((h) => {
       if (isImpassable(s, h) || forbidsTerrain(u.type, terrainAt(s, h)) || steepSlopeUp(s, u.hex, h) || unitAt(s, h)) return false;
@@ -831,7 +831,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
         ctx.emit({ t: 'advance', id: u.id, path: [f2, to] });
         if (joining && joining.side === u.side) ctx.emit({ t: 'attach', leader: joining.id, unit: u.id });
         breakRamparts(s, ctx, u.side, [to]);
-        if (terrainAt(s, to) === 'marsh' && (yield* marshCheckUnit(s, ctx, u, checked))) return;
+        if (hasEntryRoll(s, to) && (yield* marshCheckUnit(s, ctx, u, checked))) return;
         updateHeld(s, ctx); // after the marsh check, as above
         if (s.winner) return;
       }
@@ -839,12 +839,8 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   }
   // bonus close combat
   if (climbedExtra) return;
-  const terr = terrainAt(s, u.hex);
-  let eligible = bonusCombatEligible(st, !!attachedLeader(s, u));
-  if (terr === 'forest' && !forestFighter(u.type)) eligible = false;
-  if (terr === 'broken' && st.mounted) eligible = false;
-  if (s.turn.mods.noClose) eligible = false;
-  if (!eligible) return;
+  const eligible = bonusCombatEligible(st, !!attachedLeader(s, u)) && mayBattleAfterEntering(u.type, terrainAt(s, u.hex));
+  if (!eligible || s.turn.mods.noClose) return;
   const targets = closeTargets(s, u);
   if (!targets.length) return;
   const c = yield* ask(s, ctx, { kind: 'bonusCombat', side: u.side, unit: u.id, targets });
@@ -1115,7 +1111,7 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
       ctx.emit({ t: 'attach', leader: l.id, unit: u.id });
       const uo = t.ordered[u.id];
       if (uo && !uo.moveDone) uo.attachedThisTurn = true;
-    } else if (terrainAt(s, to) === 'marsh') {
+    } else if (hasEntryRoll(s, to)) {
       const f = rollDie(s);
       emitRoll(ctx, 'marsh', [f], [f === 'leader'], null, l.id);
       if (f === 'leader') killLeader(s, ctx, l, 'leader lost in the marsh');
@@ -1157,9 +1153,7 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
       if (lo) lo.moveDone = true;
     }
   }
-  if (terrainAt(s, to) === 'marsh') {
-    if (yield* marshCheckUnit(s, ctx, u, { done: false })) return;
-  }
+  if (hasEntryRoll(s, to) && (yield* marshCheckUnit(s, ctx, u, { done: false }))) return;
   captureOnStop(s, ctx, u);
 }
 

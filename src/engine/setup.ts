@@ -5,7 +5,7 @@ import { shuffle } from './rng';
 import { ELITES, type EliteDef } from './elites';
 import { newObjectiveState, resolveObjectives } from './objectives';
 import { LEADER_TRAITS } from './query';
-import { TERRAIN_NAMES, isImpassable, isWall, terrainAt } from './terrain';
+import { TERRAIN_STATS, isImpassable, isWall, terrainAt } from './terrain';
 import { UNIT_STATS, forbidsTerrain } from './units';
 import {
   ARMY_LOOKS, BLOCKS, COLS, LEGIONS, OFF_BOARD, ROWS, SIDES, SPECIAL_RULE_IDS,
@@ -309,7 +309,7 @@ function checkIds(setup: ScenarioSetup) {
   }
   for (const t of setup.terrain) {
     // 'void' marks the hexes off the board: it is not scenario terrain
-    if (!has(TERRAIN_NAMES, t.t) || t.t === 'void') throw new Error(`unknown terrain ${String(t.t)} at ${t.r},${t.c}`);
+    if (!has(TERRAIN_STATS, t.t) || t.t === 'void') throw new Error(`unknown terrain ${String(t.t)} at ${t.r},${t.c}`);
     if (t.ford !== undefined && t.ford !== true && t.ford !== false && t.ford !== 'nocap') {
       throw new Error(`ford at ${t.r},${t.c} must be true, false or 'nocap' (not ${String(t.ford)})`);
     }

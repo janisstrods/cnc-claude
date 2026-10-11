@@ -3,8 +3,10 @@ import { canMarch } from './elites';
 import { baselineRow, hexId, inSection, neighbours } from './hex';
 import { exitHexes, leaderExitHexes } from './objectives';
 import { attachedLeader, enemyPieceAdjacent, isEmptyHex, leaderAt, leaderById, leaderHas, other, unitAt, unitById } from './query';
-import { isImpassable, isWall, steepClimb, steepSlope, steepSlopeUp, steepSlopes, stopsAll, stopsMounted, terrainAt } from './terrain';
-import { UNIT_STATS, forbidsTerrain, forestFighter, isLightFoot } from './units';
+import {
+  isImpassable, isWall, mayBattleAfterEntering, oneHexOut, steepClimb, steepSlope, steepSlopeUp, steepSlopes, stopsAll, stopsMounted, terrainAt,
+} from './terrain';
+import { UNIT_STATS, forbidsTerrain, isLightFoot } from './units';
 import { COLS, OFF_BOARD, type GameState, type HexId, type Leader, type OrderMods, type SectionName, type Side, type Unit } from './types';
 
 export interface MoveTarget {
@@ -51,7 +53,7 @@ export function unitMoveLimits(u: Unit, mods: OrderMods, startHex: HexId, s: Gam
     max = Math.min(max, mods.maxMove);
     battleMax = Math.min(battleMax, max);
   }
-  if (startHex >= 0 && (terrainAt(s, startHex) === 'marsh' || isWall(s, startHex))) {
+  if (startHex >= 0 && oneHexOut(s, startHex)) {
     max = Math.min(max, 1);
     battleMax = Math.min(battleMax, 1);
   }
@@ -210,9 +212,7 @@ export function unitMoves(s: GameState, unitId: string, opts: UnitMoveOptions = 
         continue;
       }
     }
-    const terr = terrainAt(s, t.hex);
-    if (terr === 'forest' && !forestFighter(u.type)) can = false;
-    if (terr === 'broken' && st.mounted) can = false;
+    if (!mayBattleAfterEntering(u.type, terrainAt(s, t.hex))) can = false;
     t.canBattle = can;
     if (!can) t.mustBattle = false;
   }
@@ -238,7 +238,7 @@ export function leaderMoves(s: GameState, leaderId: string, opts: { entryHexes?:
     return [...results.values()];
   }
   const start = l.hex;
-  const max = terrainAt(s, start) === 'marsh' || isWall(s, start) ? 1 : 3;
+  const max = oneHexOut(s, start) ? 1 : 3;
   type Node = { hex: HexId; dist: number; path: HexId[] };
   const queue: Node[] = [{ hex: start, dist: 0, path: [start] }];
   const best = new Map<HexId, number>([[start, 0]]);

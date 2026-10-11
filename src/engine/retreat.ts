@@ -1,7 +1,7 @@
 // Retreat / evade / leader-evade path enumeration (rules-reference §9, §10, §11). Pure functions.
 import { onBaseline, rearHexes } from './hex';
 import { attachedLeader, leaderAt, unitAt } from './query';
-import { isImpassable, steepSlopeUp, terrainAt } from './terrain';
+import { entryRollCount, isImpassable, steepSlopeUp, terrainAt } from './terrain';
 import { forbidsTerrain } from './units';
 import { OFF_BOARD, type GameState, type HexId, type Leader, type RetreatOption, type Unit } from './types';
 
@@ -10,13 +10,7 @@ export interface ElephantRetreatOption extends RetreatOption {
   blockers: { id: string; n: number }[];
 }
 
-function marshCount(s: GameState, path: HexId[]): number {
-  let n = 0;
-  for (const h of path) if (h >= 0 && terrainAt(s, h) === 'marsh') n++;
-  return n;
-}
-
-/** Keep minimal-loss options, one per end hex (fewest marsh hexes on the way). */
+/** Keep minimal-loss options, one per end hex (fewest marsh hexes on the way: `entryRollCount`). */
 function prune(s: GameState, opts: RetreatOption[]): RetreatOption[] {
   if (!opts.length) return opts;
   const minLoss = Math.min(...opts.map((o) => o.losses));
@@ -25,7 +19,7 @@ function prune(s: GameState, opts: RetreatOption[]): RetreatOption[] {
     if (o.losses !== minLoss) continue;
     const key = `${o.end}|${o.offBoard ? 1 : 0}`;
     const prev = byEnd.get(key);
-    if (!prev || marshCount(s, o.path) < marshCount(s, prev.path)) byEnd.set(key, o);
+    if (!prev || entryRollCount(s, o.path) < entryRollCount(s, prev.path)) byEnd.set(key, o);
   }
   return [...byEnd.values()];
 }

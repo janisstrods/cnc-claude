@@ -7,7 +7,7 @@ import {
 } from './terrain';
 import { eliteHas, rangeOf, rangedBaseDice } from './elites';
 import { UNIT_STATS, elephantDiceVs, frightens } from './units';
-import type { DieFace, GameState, HexId, Leader, Unit, UnitType } from './types';
+import type { DieFace, GameState, HexId, Leader, TerrainType, Unit, UnitType } from './types';
 
 export type StrikeRole = 'attack' | 'bonus' | 'back' | 'firstStrike';
 
@@ -42,10 +42,14 @@ export function leaderDiceBonus(s: GameState, striker: Unit): number {
   return l && leaderHas(l, 'ccBonus') ? 1 : 0;
 }
 
-/** Tactical Flexibility (§17.3): the non-Roman unit type affected, the Roman attackers it applies against, its dice. */
+/**
+ * Tactical Flexibility (§17.3): the non-Roman unit type affected, the Roman attackers it applies against, its dice, and the
+ * terrain where it does not apply.
+ */
 const TF_DEFENDERS: readonly UnitType[] = ['HI'];
 const TF_ATTACKERS: readonly UnitType[] = ['MI', 'HI'];
 const TF_DICE = 3;
+const TF_NOT_ON: readonly TerrainType[] = ['broken'];
 
 /**
  * Roman Tactical Flexibility (rule `tacticalFlexibility`, §17.3): does `striker`, battling back against `target`, roll
@@ -57,7 +61,7 @@ export function tacticalFlexibility(s: GameState, striker: Unit, target: Unit | 
   if (role !== 'back' || !('type' in target) || !s.special.rules.includes('tacticalFlexibility')) return false;
   if (!TF_DEFENDERS.includes(striker.type) || !TF_ATTACKERS.includes(target.type)) return false;
   if (isRomanArmy(s, striker.side) || !isRomanArmy(s, target.side)) return false;
-  return supportCount(s, striker) < 2 && terrainAt(s, striker.hex) !== 'broken';
+  return supportCount(s, striker) < 2 && !TF_NOT_ON.includes(terrainAt(s, striker.hex));
 }
 
 /**
