@@ -11,9 +11,7 @@ import { isHill } from '../engine/terrain';
 import { canShoot, eliteHas, fireMoveLimit, rangeOf } from '../engine/elites';
 import { UNIT_STATS, bonusCombatEligible, canEvadeType } from '../engine/units';
 import type { Answer, GameState, HexId, Leader, Unit } from '../engine/types';
-import {
-  Occ, attachedLeaderOcc, hexDist, ignorableOcc, retreatRoom, shortfall,
-} from './board';
+import { Occ, attachedLeaderOcc, hexDist, ignorableOcc, retreatRoom, shortfall } from './board';
 import { binom, pAnyHelmet, strikeDist, type Prof } from './dice';
 import { blockVal, leaderVal, nextBanner, type Weights } from './values';
 

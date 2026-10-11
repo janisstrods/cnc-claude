@@ -13,7 +13,8 @@ import {
   validateDiceOrders, validateOrders, validateRally, validateSpartacus,
 } from './orders';
 import {
-  attachedLeader, enemyUnitAdjacent, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, pieceHex, unitAt, unitById, unitsOf,
+  attachedLeader, enemyUnitAdjacent, isEmptyHex, isLeaderId, leaderAt, leaderById, leaderUnit, other, pieceHex, unitAt, unitById,
+  unitsOf,
 } from './query';
 import {
   canEvade, elephantRetreatOptions, evadeOptions, leaderEvadeOptions, retreatOptions, type ElephantRetreatOption,
@@ -1114,8 +1115,9 @@ export function pieceMoves(s: GameState, id: string, stage: 1 | 2 = s.turn.phase
   return unitMoves(s, id);
 }
 
-/** Piece `id` makes move `target` (one of its `pieceMoves`) to hex `to`. */
-function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2, target: MoveTarget): Gen {
+/** Piece `id` makes move `target`, one of its `pieceMoves`. */
+function* doMove(s: GameState, ctx: FlowCtx, id: string, stage: 1 | 2, target: MoveTarget): Gen {
+  const to = target.hex;
   const t = s.turn;
   const op = t.ordered[id];
   if (op.isLeader) {
@@ -1207,7 +1209,7 @@ function* movePhase(s: GameState, ctx: FlowCtx, stage: 1 | 2): Gen {
     const a = yield* ask(s, ctx, { kind: 'move', side: s.active, stage }, found);
     if (a.kind === 'endMove') break;
     if (a.kind === 'move') {
-      yield* doMove(s, ctx, a.piece, a.to, stage, found.move!);
+      yield* doMove(s, ctx, a.piece, stage, found.move!);
       updateHeld(s, ctx); // after every move, an ambush entry or an exit included
     }
   }
