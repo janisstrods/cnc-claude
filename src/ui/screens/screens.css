@@ -219,7 +219,8 @@
 
 /* ---------- rules */
 .rules { display: flex; flex-direction: column; gap: 10px; color: var(--kit-ink); max-height: 72vh; }
-.rules-battle { flex: none; padding: 8px 12px; background: rgba(142, 27, 27, .07); border: 1px solid rgba(142, 27, 27, .3); border-left: 4px solid #8e1b1b; border-radius: 6px; }
+/* a battle's special rules (in play) can be long (308 has ten): they scroll on their own, so the tabs stay in view */
+.rules-battle { flex: 0 1 auto; min-height: 0; max-height: 30vh; overflow-y: auto; padding: 8px 12px; background: rgba(142, 27, 27, .07); border: 1px solid rgba(142, 27, 27, .3); border-left: 4px solid #8e1b1b; border-radius: 6px; }
 .rules-battle h3 { font-family: var(--kit-font-title); font-weight: 400; color: #6e1a14; margin: 0 0 4px; font-size: 17px; }
 .rules-battle ul { margin: 0; padding-left: 20px; }
 .rules-battle li { font-size: 15.5px; line-height: 1.42; }

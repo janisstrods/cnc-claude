@@ -6,7 +6,7 @@ import { CardView, DieView } from '../kit';
 import { EXP2_UNIT_TYPES, unitCardLines } from '../game/uiModel';
 import './screens.css';
 
-type Tab = 'basics' | 'units' | 'combat' | 'terrain' | 'cards' | 'exp1' | 'exp2';
+type Tab = 'basics' | 'units' | 'combat' | 'terrain' | 'cards' | 'exp1' | 'exp2' | 'exp3';
 
 /** Unit types new in Expansion #1 (§15): described in the Expansion #1 tab, not in the base Units list. */
 export const EXP1_UNIT_TYPES: readonly UnitType[] = ['LBC', 'CAM', 'HWM'];
@@ -33,6 +33,7 @@ export function RulesReference({ scenario }: { scenario?: ScenarioInfo } = {}) {
     ['cards', 'Command cards'],
     ['exp1', 'Expansion #1'],
     ['exp2', 'Expansion #2'],
+    ['exp3', 'Expansion #3'],
   ];
   return (
     <div className="rules">
@@ -57,6 +58,7 @@ export function RulesReference({ scenario }: { scenario?: ScenarioInfo } = {}) {
         {tab === 'cards' && <Cards />}
         {tab === 'exp1' && <Expansion />}
         {tab === 'exp2' && <Expansion2 />}
+        {tab === 'exp3' && <Expansion3 />}
       </div>
     </div>
   );
@@ -161,7 +163,7 @@ function Terrain() {
   return (
     <>
       <TerrainTable rows={rows} />
-      <p className="rules-note">Sea, ramparts and the ford without dice limits come with Expansion #1; ditches, very steep hills and the coast played as a ford with Expansion #2: see their tabs.</p>
+      <p className="rules-note">Sea, ramparts and the ford without dice limits come with Expansion #1; ditches, very steep hills and the coast played as a ford with Expansion #2; city walls, walled towns and steep slopes with Expansion #3: see their tabs.</p>
     </>
   );
 }
@@ -299,6 +301,51 @@ export function Expansion2() {
       </ul>
       <h3>Terrain</h3>
       <TerrainTable rows={terrain} />
+    </div>
+  );
+}
+
+/**
+ * Expansion #3 tab: the legions of the civil wars, Caesar, city walls and towns, hills under camps and walls, steep slopes,
+ * the new objectives and the battle rules (dice orders, reinforcements, immobile units, hand growth, commands; §18.2–§18.11,
+ * §20). Paraphrased; no new unit types.
+ */
+export function Expansion3() {
+  const terrain: [string, string][] = [
+    ['City wall', 'The walls of Gergovia (308) and Ilerda (309). Only foot units (not war machines) and lone leaders may climb onto one, and only by a move that begins on a hex next to it; that move ends there, and a unit that starts its move on a wall moves at most 1 hex. Mounted units and war machines never enter a wall, not even by a retreat or an advance, and may attack a unit on one only if they began the turn next to it.'],
+    ['Fighting on a wall', 'Any close combat in which either unit stands on a wall: at most 2 dice, card and leader bonuses (Caesar\'s die too) added on top. A foot unit defending on a wall ignores 1 sword, may ignore 1 flag (also 1 flag from missiles) and strikes first: it battles back before the attacker rolls, unless the attacker stands on a wall as well. An attacker that survives in its hex then attacks normally, and the defender does not battle back again.'],
+    ['Wall and sight', 'A wall blocks line of sight, except between units standing on the same stretch of wall.'],
+    ['Impassable walls and towns', 'The Wall of Rome (301) and the towns of Lauron (303) and Valentia (304): nothing may enter them, and they block line of sight.'],
+    ['Camp or wall on a hill', 'At Gergovia the Gallic camps and the walls stand on the heights. The hex is both: the hill limits apply in close combat (a camp\'s −1 die comes after them), and it blocks line of sight even between units on the same hill. A camp removed there leaves the hill.'],
+    ['Steep slopes', 'At Gergovia, where a hill (or a camp or wall on one) meets a forest: nothing climbs from the forest up onto the hill (no move, advance, retreat or evade), and no close combat crosses the hexside either way. Going down into the forest is allowed. Hover a hex to see its slopes.'],
+  ];
+  return (
+    <div className="rules-text">
+      <p><i>The Roman Civil Wars</i> adds 19 battles (301–319), from Sulla at the Colline Gate in 82 BC to Caesar at Munda in 45 BC: Romans against Samnites, Sertorius in Spain, Caesar in Gaul and the war between Caesar and Pompey&apos;s party. Often both armies are Roman: grey blocks against red. There are no new unit types. Everything in the other tabs still applies unless a rule here says otherwise.</p>
+      <h3>The legions</h3>
+      <ul>
+        <li><b>Marian legions</b> (301–305, both armies): every medium and heavy infantry unit of the side throws the pilum (range 2, always 1 die, not after moving 2 hexes), Samnites and Sertorians included.</li>
+        <li><b>Julian legions</b> (306–319, the sides each battle names): the pilum and the march. A unit may move 2 hexes if it does not battle at all that turn, or 1 hex and battle. Line Command still allows 1 hex; Double Time gives 2 hexes and close combat, never 3.</li>
+        <li><b>Julius Caesar</b> (306–309, 314–319): +1 close combat die for his unit, also in its first strike from a wall. An infantry unit that has him with it when its move begins may move 2 hexes and still close combat, but a pilum unit never throws after 2 hexes.</li>
+      </ul>
+      <h3>Terrain</h3>
+      <TerrainTable rows={terrain} />
+      <h3>Battle objectives</h3>
+      <p>As in Expansion #2, hover a marked hex to see what it scores. New here:</p>
+      <ul>
+        <li><b>Ship markers</b> (313 Brindisi Raid, ships on the coast): a side with a unit on an enemy ship marker at the start of its turn takes it for 1 banner. The marker blocks nothing and the hex does not change.</li>
+        <li><b>Leaders score at the exit</b> (317 Ruspina, arrows with a gold medallion): every Caesarian unit and every leader that leaves by the Numidian baseline scores 1 banner, so a unit leaving with its leader scores 2, and a lone leader may leave too.</li>
+        <li><b>The hillock</b> (309 Ilerda): only the Caesarians can hold it: 1 banner while they have more units on its three hills than the Pompeians, lost the moment they do not.</li>
+        <li><b>Camps in order</b> (308, 309): some battles score only from the second camp taken; the hover text says which.</li>
+      </ul>
+      <h3>Battle rules</h3>
+      <ul>
+        <li><b>Dice orders</b> (310 Utica): the Numidians hold no cards. At the start of each of their turns they roll 2 order dice. Each flag makes one of their own units, their choice, fall back as for one flag that cannot be ignored; each crossed swords costs one of their units a block. Then each green, blue or red die orders one unit of that class anywhere on the board, and a helmet orders Saburra with his unit; a die with nothing to order is lost. The Numidian player, human or computer, makes every choice. A Caesarian Counter Attack has no card to copy and orders nothing.</li>
+        <li><b>Reinforcements</b> (308 Gergovia): Vercingetorix and four Gallic units wait off the board. When the Gauls play a Leadership card, from the first turn, they may bring them in instead of ordering units: they enter on the empty marked hexes at the western edge, Vercingetorix with one of them, and may battle but not move that turn. At the start of the next Roman turn, before the card, the Roman player must place an extra medium infantry unit on an empty hex of his left baseline.</li>
+        <li><b>Immobile recruits</b> (306 Bibracte, marked with an anchor): the two Roman auxiliaries in the camps never move or advance, but are ordered, fire, fight and battle back, and retreat when flags force them.</li>
+        <li><b>A growing hand</b> (313): the Caesarians start with 2 cards and draw 2 after each turn, gaining 1 Command each time, until they hold 5.</li>
+        <li><b>Two commands</b> (304 Valentia): the Sertorian army is Herennius&apos; command and Perpenna&apos;s (light-blue blocks); each unit shows its commander&apos;s initial. Every card orders units of one command only, and here each leader belongs to his own command, so a Leadership card must use a leader of the command it orders.</li>
+      </ul>
     </div>
   );
 }
