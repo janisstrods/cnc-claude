@@ -1,11 +1,14 @@
 // Expansion #2 art parts: the Celtic, Germanic and late-Roman shields, the new shield devices, the helmets, the Suebian
-// knot, the woad arm bands and the raised wing of the Roman eagle. parts.tsx hands the kinds it does not draw itself to this
-// module (Shield, Device, Helm, Head, Arm), and this module draws with parts.tsx's primitives, so the two import each other:
-// nothing here reads from parts.tsx while the modules load, only while rendering.
+// knot, the woad arm bands and the raised wing of the Roman eagle. The devices, shields and helmets are renderer tables
+// that parts.tsx merges into its own (Emblem, Shield, Helm); Head and Arm draw the knot and the arm bands. Drawn with the
+// primitives of draw.tsx, so this module does not import parts.tsx.
 import type { ReactNode } from 'react';
 import { darken, lighten } from './color';
 import type { EmblemKind } from './palettes';
-import { DISC_WING, Emblem, Hi, Line2, OL, OW, Paint, Shape, dots, type Crest, type Fig, type Helmet, type ShieldKind } from './parts';
+import {
+  DISC_WING, Hi, Line2, OL, OW, Paint, Shape, dots,
+  type DeviceRenderer, type Fig, type HelmRenderer, type ShieldFace, type ShieldRenderer,
+} from './draw';
 
 // ---------------------------------------------------------------------------------------------
 // The raised wing of the Roman eagle
@@ -40,73 +43,59 @@ const CRESCENTS = 'M-2.4 -2.4 A2.4 2 0 0 0 2.4 -2.4 A1.9 1.3 0 0 1 -2.4 -2.4 Z M
 const HORSE = 'M-3.3 -0.3 C-1.6 -1.3 0.6 -1.3 1.9 -0.9 L2.7 -2.3 L3.5 -1.6 L2.6 -1.2 M-2.7 0.4 C-1 -0.2 0.8 -0.2 2 0.1 M-2.3 0.3 L-3.1 2.2 M-1.5 0.2 L-0.9 2.2 M1.1 0 L0.8 2.2 M1.8 0 L2.7 1.8 M-3.3 -0.3 L-3.7 0.7';
 const BOLT_ZIGZAG = 'M0 -1 L0.6 -2 L-0.4 -2.5 L0.2 -3.4 M0 1 L-0.6 2 L0.4 2.5 L-0.2 3.4';
 
-/** The Expansion #2 devices of Device (parts.tsx), in a unit frame (radius ~3); `null` for any other kind. */
-export function Exp2Device({ kind, col, bg }: { kind: EmblemKind; col: string; bg: string }) {
-  const edge = darken(col, 0.45);
-  switch (kind) {
-    case 'scroll':
-      // La Tene S-scroll with spiral ends
-      return <path d={SCROLL} fill="none" stroke={col} strokeWidth={0.62} strokeLinecap="round" />;
-    case 'boar':
-      // a Celtic boar with its bristling crest
-      return (
-        <g>
-          <path d={BOAR} fill={col} stroke={edge} strokeWidth={0.25} strokeLinejoin="round" />
-          <path d={BOAR_BRISTLES} fill={col} stroke={edge} strokeWidth={0.2} strokeLinejoin="round" />
-          <circle cx={2.25} cy={-0.55} r={0.26} fill={bg} />
-          <path d="M2.9 0.55 L3.15 -0.2" stroke={bg} strokeWidth={0.28} strokeLinecap="round" />
-          <path d="M-3 0.4 C-3.5 0.2 -3.6 -0.3 -3.3 -0.65" fill="none" stroke={col} strokeWidth={0.3} strokeLinecap="round" />
-        </g>
-      );
-    case 'crescents':
-      // two crescents back to back (the lunula)
-      return (
-        <g fill={col}>
-          <path d={CRESCENTS} />
-          <circle r={0.62} />
-        </g>
-      );
-    case 'horse':
-      // a flowing chalk-figure horse
-      return <path d={HORSE} fill="none" stroke={col} strokeWidth={0.55} strokeLinecap="round" strokeLinejoin="round" />;
-    case 'halves':
-      return (
-        <g>
-          <path d="M0 -2.8 A2.8 2.8 0 0 0 0 2.8 Z" fill={col} />
-          <circle r={2.8} fill="none" stroke={col} strokeWidth={0.4} />
-        </g>
-      );
-    case 'ring':
-      return (
-        <g>
-          <circle r={2.3} fill="none" stroke={col} strokeWidth={0.8} />
-          <circle r={0.8} fill={col} />
-        </g>
-      );
-    case 'bands':
-      return <path d="M-2.8 0.6 L0.6 -2.8 M-0.6 2.8 L2.8 -0.6" stroke={col} strokeWidth={1.1} strokeLinecap="round" />;
-    case 'wingedBolt':
-      // Jupiter's thunderbolt with wings (the legions' shield device)
-      return (
-        <g>
-          <path d={BOLT_ZIGZAG} fill="none" stroke={col} strokeWidth={0.5} strokeLinejoin="round" strokeLinecap="round" />
-          <path d={DISC_WING} transform="translate(-0.3 -0.1) scale(0.78)" fill={col} />
-          <path d={DISC_WING} transform="translate(0.3 -0.1) scale(-0.78 0.78)" fill={col} />
-          <ellipse rx={0.55} ry={1.05} fill={col} stroke={edge} strokeWidth={0.2} />
-        </g>
-      );
-    case 'pileus':
-      // the felt cap of a freed slave
-      return (
-        <g fill={col} stroke={edge} strokeWidth={0.25} strokeLinejoin="round">
-          <path d="M-1.9 1.4 C-2.1 -0.7 -1.2 -2.6 0 -2.9 C1.2 -2.6 2.1 -0.7 1.9 1.4 Z" />
-          <path d="M-2.5 1.2 L2.5 1.2 L2.5 2.4 L-2.5 2.4 Z" />
-        </g>
-      );
-    default:
-      return null;
-  }
-}
+/** The Expansion #2 devices, in a unit frame (radius ~3). */
+export const EXP2_DEVICES = {
+  // La Tene S-scroll with spiral ends
+  scroll: ({ col }) => <path d={SCROLL} fill="none" stroke={col} strokeWidth={0.62} strokeLinecap="round" />,
+  // a Celtic boar with its bristling crest
+  boar: ({ col, bg, edge }) => (
+    <g>
+      <path d={BOAR} fill={col} stroke={edge} strokeWidth={0.25} strokeLinejoin="round" />
+      <path d={BOAR_BRISTLES} fill={col} stroke={edge} strokeWidth={0.2} strokeLinejoin="round" />
+      <circle cx={2.25} cy={-0.55} r={0.26} fill={bg} />
+      <path d="M2.9 0.55 L3.15 -0.2" stroke={bg} strokeWidth={0.28} strokeLinecap="round" />
+      <path d="M-3 0.4 C-3.5 0.2 -3.6 -0.3 -3.3 -0.65" fill="none" stroke={col} strokeWidth={0.3} strokeLinecap="round" />
+    </g>
+  ),
+  // two crescents back to back (the lunula)
+  crescents: ({ col }) => (
+    <g fill={col}>
+      <path d={CRESCENTS} />
+      <circle r={0.62} />
+    </g>
+  ),
+  // a flowing chalk-figure horse
+  horse: ({ col }) => <path d={HORSE} fill="none" stroke={col} strokeWidth={0.55} strokeLinecap="round" strokeLinejoin="round" />,
+  halves: ({ col }) => (
+    <g>
+      <path d="M0 -2.8 A2.8 2.8 0 0 0 0 2.8 Z" fill={col} />
+      <circle r={2.8} fill="none" stroke={col} strokeWidth={0.4} />
+    </g>
+  ),
+  ring: ({ col }) => (
+    <g>
+      <circle r={2.3} fill="none" stroke={col} strokeWidth={0.8} />
+      <circle r={0.8} fill={col} />
+    </g>
+  ),
+  bands: ({ col }) => <path d="M-2.8 0.6 L0.6 -2.8 M-0.6 2.8 L2.8 -0.6" stroke={col} strokeWidth={1.1} strokeLinecap="round" />,
+  // Jupiter's thunderbolt with wings (the legions' shield device)
+  wingedBolt: ({ col, edge }) => (
+    <g>
+      <path d={BOLT_ZIGZAG} fill="none" stroke={col} strokeWidth={0.5} strokeLinejoin="round" strokeLinecap="round" />
+      <path d={DISC_WING} transform="translate(-0.3 -0.1) scale(0.78)" fill={col} />
+      <path d={DISC_WING} transform="translate(0.3 -0.1) scale(-0.78 0.78)" fill={col} />
+      <ellipse rx={0.55} ry={1.05} fill={col} stroke={edge} strokeWidth={0.2} />
+    </g>
+  ),
+  // the felt cap of a freed slave
+  pileus: ({ col, edge }) => (
+    <g fill={col} stroke={edge} strokeWidth={0.25} strokeLinejoin="round">
+      <path d="M-1.9 1.4 C-2.1 -0.7 -1.2 -2.6 0 -2.9 C1.2 -2.6 2.1 -0.7 1.9 1.4 Z" />
+      <path d="M-2.5 1.2 L2.5 1.2 L2.5 2.4 L-2.5 2.4 Z" />
+    </g>
+  ),
+} satisfies Partial<Record<EmblemKind, DeviceRenderer>>;
 
 // ---------------------------------------------------------------------------------------------
 // Shields: Celtic long oval and long hexagon, Germanic board, the legions' curved oval scutum
@@ -180,41 +169,36 @@ const SCUTUM_OVAL = 'M4.3 -24.1 C7.6 -24.1 9.6 -19.5 9.6 -13.8 C9.6 -8.1 7.6 -3.
 const SCUTUM_SHADE = 'M1.4 -22.6 C-0.2 -20.4 -0.9 -17.2 -0.9 -13.8 C-0.9 -10.4 -0.2 -7.2 1.4 -5 C2 -4.4 2.6 -4 3.2 -3.7 C1.6 -7.2 1.2 -10.8 1.2 -13.8 C1.2 -17.2 1.7 -20.8 3.2 -23.9 C2.5 -23.6 1.9 -23.2 1.4 -22.6 Z';
 const LEGION_BOLTS = 'M0 -2.8 L0.8 -4.6 L-0.6 -5.6 L0.6 -7.4 L0 -9.2 M0 2.8 L-0.8 4.6 L0.6 5.6 L-0.6 7.4 L0 9.2';
 
-/** The shields drawn here: the three long ones of LONG_SHIELDS and the legions' scutum. */
-export type Exp2ShieldKind = LongShieldKind | 'legionOval';
-const EXP2_SHIELDS: ReadonlySet<string> = new Set([...Object.keys(LONG_SHIELDS), 'legionOval']);
-export const isExp2Shield = (kind: ShieldKind): kind is Exp2ShieldKind => EXP2_SHIELDS.has(kind);
-
-export function Exp2Shield({ kind, f, face, faceShade, faceLight, emb, ek, emblem }: {
-  kind: Exp2ShieldKind; f: Fig; face: string; faceShade: string; faceLight: string; emb: string; ek: EmblemKind; emblem: boolean;
-}) {
+/** Curved oval scutum: bronze-bound edge, spine, long boss on an iron strap, wings and thunderbolts round the boss. */
+function LegionScutum({ f, face, faceShade, faceLight, emb, ek, emblem, drawDevice }: ShieldFace) {
   const { p } = f;
-  if (kind === 'legionOval') {
-    // curved oval scutum: bronze-bound edge, spine, long boss on an iron strap, wings and thunderbolts round the boss
-    return (
-      <>
-        <path d={SCUTUM_OVAL} fill={face} stroke={OL} strokeWidth={OW} />
-        <Paint d={SCUTUM_SHADE} f={faceShade} mx={4.3} />
-        <Hi d="M7.9 -20.2 C9 -17.2 9.1 -10.6 7.9 -7.4" c={faceLight} w={1} mx={4.3} />
-        <Hi d="M0.4 -21.2 C2.4 -23.6 6.2 -23.6 8.2 -21.2 M0.4 -6.4 C2.4 -4 6.2 -4 8.2 -6.4" c={p.shieldRim} w={0.75} o={1} />
-        <Hi d="M4.3 -23.4 L4.3 -4.2" c={darken(face, 0.22)} w={0.8} o={0.9} />
-        {emblem && (
-          // the Roman wings round the boss, with thunderbolts or a figure above the boss (the Tenth's bull)
-          <g transform="translate(4.3 -13.8)" fill={emb}>
-            <WingPair spread={1} y={-2.2} />
-            <WingPair spread={1} y={2.2} down />
-            {ABOVE_BOSS.has(ek)
-              ? <Emblem kind={ek} cx={0} cy={-6.6} s={0.95} f={f} c={emb} bg={face} />
-              : <path d={LEGION_BOLTS} fill="none" stroke={emb} strokeWidth={0.75} strokeLinejoin="round" strokeLinecap="round" />}
-          </g>
-        )}
-        <Line2 d="M2.4 -13.8 L6.2 -13.8" w={1.1} c={p.iron} ow={0.35} />
-        <ellipse cx={4.3} cy={-13.8} rx={1.25} ry={2.5} fill={p.metal} stroke={OL} strokeWidth={0.5} />
-        <Hi d="M4 -15.6 C3.7 -14.8 3.7 -13 4 -12.2" c={p.metalLight} w={0.45} o={0.9} mx={4.3} mr={false} />
-      </>
-    );
-  }
-  const s = LONG_SHIELDS[kind];
+  return (
+    <>
+      <path d={SCUTUM_OVAL} fill={face} stroke={OL} strokeWidth={OW} />
+      <Paint d={SCUTUM_SHADE} f={faceShade} mx={4.3} />
+      <Hi d="M7.9 -20.2 C9 -17.2 9.1 -10.6 7.9 -7.4" c={faceLight} w={1} mx={4.3} />
+      <Hi d="M0.4 -21.2 C2.4 -23.6 6.2 -23.6 8.2 -21.2 M0.4 -6.4 C2.4 -4 6.2 -4 8.2 -6.4" c={p.shieldRim} w={0.75} o={1} />
+      <Hi d="M4.3 -23.4 L4.3 -4.2" c={darken(face, 0.22)} w={0.8} o={0.9} />
+      {emblem && (
+        // the Roman wings round the boss, with thunderbolts or a figure above the boss (the Tenth's bull)
+        <g transform="translate(4.3 -13.8)" fill={emb}>
+          <WingPair spread={1} y={-2.2} />
+          <WingPair spread={1} y={2.2} down />
+          {ABOVE_BOSS.has(ek)
+            ? drawDevice(0, -6.6, 0.95)
+            : <path d={LEGION_BOLTS} fill="none" stroke={emb} strokeWidth={0.75} strokeLinejoin="round" strokeLinecap="round" />}
+        </g>
+      )}
+      <Line2 d="M2.4 -13.8 L6.2 -13.8" w={1.1} c={p.iron} ow={0.35} />
+      <ellipse cx={4.3} cy={-13.8} rx={1.25} ry={2.5} fill={p.metal} stroke={OL} strokeWidth={0.5} />
+      <Hi d="M4 -15.6 C3.7 -14.8 3.7 -13 4 -12.2" c={p.metalLight} w={0.45} o={0.9} mx={4.3} mr={false} />
+    </>
+  );
+}
+
+/** A long shield of LONG_SHIELDS, with its device painted to fit the long face. */
+const longShield = (s: LongShield): ShieldRenderer => ({ f, face, faceShade, faceLight, emb, ek, emblem, drawDevice }) => {
+  const { p } = f;
   let device: ReactNode = null;
   if (emblem && ek !== 'none') {
     if (ek === 'halves') device = <path d={s.half} fill={emb} />;
@@ -222,11 +206,11 @@ export function Exp2Shield({ kind, f, face, faceShade, faceLight, emb, ek, emble
     else if (ek === 'scroll') device = <path d={TALL_SCROLL} transform="translate(4.4 -13.6)" fill="none" stroke={emb} strokeWidth={0.85} strokeLinecap="round" />;
     else if (ek === 'crescents') device = <path d={TALL_CRESCENTS} transform="translate(4.4 -13.6)" fill={emb} />;
     else if (ek === 'ring') device = <circle cx={4.4} cy={-13.6} r={3.1} fill="none" stroke={emb} strokeWidth={0.9} />;
-    else if (LONG_ABOVE[ek]) device = <g transform={LONG_ABOVE[ek]}><Emblem kind={ek} cx={0} cy={0} s={1} f={f} c={emb} bg={face} /></g>;
-    else if (ABOVE_BOSS.has(ek)) device = <Emblem kind={ek} cx={4.4} cy={-19.4} s={1.1} f={f} c={emb} bg={face} />;
-    else if (s.boss === 'iron') device = <Emblem kind={ek} cx={4.4} cy={-13.6} s={1.55} f={f} c={emb} bg={face} />;
+    else if (LONG_ABOVE[ek]) device = <g transform={LONG_ABOVE[ek]}>{drawDevice(0, 0, 1)}</g>;
+    else if (ABOVE_BOSS.has(ek)) device = drawDevice(4.4, -19.4, 1.1);
+    else if (s.boss === 'iron') device = drawDevice(4.4, -13.6, 1.55);
     // round devices twice on a long shield, above and below the boss
-    else device = <>{[-19, -8.2].map((y) => <Emblem key={y} kind={ek} cx={4.4} cy={y} s={0.98} f={f} c={emb} bg={face} />)}</>;
+    else device = <>{drawDevice(4.4, -19, 0.98)}{drawDevice(4.4, -8.2, 0.98)}</>;
   }
   return (
     <>
@@ -252,7 +236,16 @@ export function Exp2Shield({ kind, f, face, faceShade, faceLight, emb, ek, emble
       )}
     </>
   );
-}
+};
+
+/** The shields drawn here: the three long ones of LONG_SHIELDS and the legions' scutum. */
+export type Exp2ShieldKind = LongShieldKind | 'legionOval';
+export const EXP2_SHIELDS: Record<Exp2ShieldKind, ShieldRenderer> = {
+  celtOval: longShield(LONG_SHIELDS.celtOval),
+  hex: longShield(LONG_SHIELDS.hex),
+  board: longShield(LONG_SHIELDS.board),
+  legionOval: LegionScutum,
+};
 
 // ---------------------------------------------------------------------------------------------
 // Heads and helmets
@@ -261,11 +254,17 @@ export function Exp2Shield({ kind, f, face, faceShade, faceLight, emb, ek, emble
 const LAUREL = '#4f7d36';
 const LAUREL_LEAVES: [number, number, number][] = [[-2.1, -26.5, -35], [-0.9, -27.3, -50], [0.4, -27.8, -62], [1.7, -28, -72], [3, -27.9, -84], [4.1, -27.5, -96]];
 
-/** The Expansion #2 helmets and the wreath. */
-export function Exp2Helm({ f, helmet, crest, crestEl }: { f: Fig; helmet: Helmet; crest: Crest; crestEl: ReactNode }) {
-  const { p } = f;
-  if (helmet === 'coolus') {
-    // rounded bronze bowl with a top knob, a brow peak and a flat neck guard
+/**
+ * The Expansion #2 headgear: the Coolus helmet of the late Republic (brow peak, neck guard), the Celtic horned helmet, a
+ * laurel wreath (Caesar) and a gladiator's brimmed helmet with a grille visor.
+ */
+export type Exp2Helmet = 'coolus' | 'horned' | 'laurel' | 'gladiator';
+
+/** Their renderers (merged into HELMS in parts.tsx). */
+export const EXP2_HELMS: Record<Exp2Helmet, HelmRenderer> = {
+  // rounded bronze bowl with a top knob, a brow peak and a flat neck guard
+  coolus: ({ f, crest, crestEl }) => {
+    const { p } = f;
     return (
       <>
         {crest === 'horsehair' || crest === 'tall' ? crestEl : null}
@@ -278,9 +277,10 @@ export function Exp2Helm({ f, helmet, crest, crestEl }: { f: Fig; helmet: Helmet
         <circle cx={1.1} cy={-30.2} r={0.65} fill={p.metal} stroke={OL} strokeWidth={0.45} />
       </>
     );
-  }
-  if (helmet === 'horned') {
-    // a bronze cap with two horns ending in knobs (after the Waterloo Bridge helmet)
+  },
+  // a bronze cap with two horns ending in knobs (after the Waterloo Bridge helmet)
+  horned: ({ f }) => {
+    const { p } = f;
     return (
       <>
         <Shape d="M-0.3 -29.4 C-1.6 -30.4 -2.8 -32.2 -3.1 -34.6 L-4 -34.4 C-3.8 -31.8 -2.8 -29.6 -1.4 -28.4 Z" f={p.metalShade} sw={0.55} />
@@ -293,9 +293,10 @@ export function Exp2Helm({ f, helmet, crest, crestEl }: { f: Fig; helmet: Helmet
         <Hi d="M3.3 -29.6 C4.2 -30.6 4.9 -32 5.2 -33.6" c={p.metalLight} w={0.4} o={0.9} />
       </>
     );
-  }
-  if (helmet === 'laurel') {
-    // a laurel wreath on the bare head, its ribbons trailing at the back
+  },
+  // a laurel wreath on the bare head, its ribbons trailing at the back
+  laurel: ({ f }) => {
+    const { p } = f;
     return (
       <>
         <Hi d="M-2.4 -26.2 C-3.4 -25.4 -3.9 -24 -3.7 -22.6 M-2.2 -26 C-2.8 -25 -2.9 -23.8 -2.6 -22.8" c={p.gold} w={0.5} o={1} />
@@ -306,9 +307,10 @@ export function Exp2Helm({ f, helmet, crest, crestEl }: { f: Fig; helmet: Helmet
         <Hi d="M-0.4 -27.5 L0.6 -27.9 M2 -28.1 L3 -28" c={lighten(LAUREL, 0.45)} w={0.3} o={0.9} />
       </>
     );
-  }
-  if (helmet === 'gladiator') {
-    // brimmed bronze helmet with a grille visor and a crest (the Thraex)
+  },
+  // brimmed bronze helmet with a grille visor and a crest (the Thraex)
+  gladiator: ({ f, crestEl }) => {
+    const { p } = f;
     return (
       <>
         {crestEl}
@@ -320,9 +322,8 @@ export function Exp2Helm({ f, helmet, crest, crestEl }: { f: Fig; helmet: Helmet
         <Hi d="M-1.5 -28.6 C-0.8 -29.8 0.4 -30.3 1.4 -30.3" c={p.metalLight} w={0.7} mx={1.1} mr={false} />
       </>
     );
-  }
-  return null;
-}
+  },
+};
 
 /** Hair combed back and up into a knot above the temple (the Suebi, Tacitus' Germania 38). */
 export function SuebianKnot({ f }: { f: Fig }) {
