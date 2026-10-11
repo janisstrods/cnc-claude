@@ -50,5 +50,4 @@ export function fbm(x: number, y: number, seed = 0, octaves = 3): number {
   return sum / norm;
 }
 
-export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 export const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
