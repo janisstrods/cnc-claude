@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   CARD_DEFS, UNIT_STATS, battleReady, battleTargets, cardKind, eligiblePieces, isLeaderId, leaderAt, leaderById, leaderUnit, movablePieces,
-  orderDice, other, pieceHex, pieceMoves, unitAt, unitsOf,
+  orderDice, other, pendingCharge, pieceHex, pieceMoves, unitAt, unitsOf,
   type Answer, type Decision, type GameState, type HexId, type Side,
 } from '../../engine';
 import { UnitIcon, unitTypeName } from '../../art';
@@ -11,7 +11,7 @@ import { BattleResult } from './BattleResult';
 import { Board } from './Board';
 import type { GameController } from './controller';
 import { AssignDialog, DiceTurnPanel, HoverTip, LogPanel } from './panels';
-import { gamePrompt, mustCharge } from './prompts';
+import { gamePrompt } from './prompts';
 import { diceAssignClick, firstOrderDie } from './diceOrders';
 import { bannerCounts, objectiveTipLines } from './objectiveText';
 import {
@@ -91,9 +91,10 @@ export function GameScreen({ controller, onExit, onRematch }: {
       else if (movers.length === 1) setUi((u) => ({ ...u, selPiece: movers[0] }));
     }
     if (d?.kind === 'battle' && d.side === human) {
+      // warriors that charged attack first
+      const charge = pendingCharge(s);
       const ready = battleReady(s);
-      const must = mustCharge(s, ready);
-      if (must.length) setUi((u) => ({ ...u, selPiece: must[0] }));
+      if (charge) setUi((u) => ({ ...u, selPiece: charge }));
       else if (ready.length === 1) setUi((u) => ({ ...u, selPiece: ready[0] }));
     }
     // dice orders (310): nothing assigned yet, the first die that can order something selected

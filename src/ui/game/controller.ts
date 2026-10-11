@@ -1,7 +1,7 @@
 // Game session controller: owns the engine driver, runs the AI, and turns engine events into paced animations.
 import {
   CARD_DEFS, CARD_LIST, GameDriver, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, bannerTotal, cardKind, cloneState, createGame, freshSeed,
-  heldBanners, isLeaderId, leaderById, orderDice, other, randomAnswer, rallyCandidates, unitAt, unitById,
+  heldBanners, isLeaderId, leaderById, orderDice, other, pieceById, randomAnswer, rallyCandidates, unitAt, unitById,
   type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameOptions, type GameState, type HexId, type Leader,
   type QueuedEvent, type RollPurpose, type Side, type Unit,
 } from '../../engine';
@@ -478,9 +478,7 @@ export class GameController {
    * still on the display.
    */
   private piece(id: string, s: GameState): Leader | Unit | undefined {
-    const shown = this.view.display;
-    if (isLeaderId(id)) return leaderById(s, id) ?? shown.leaders.find((x) => x.id === id);
-    return unitById(s, id) ?? shown.units.find((x) => x.id === id);
+    return pieceById(s, id) ?? pieceById(this.view.display, id);
   }
 
   /** "Roman Heavy Infantry", a leader's name ("Leader" when he has none), or "unit"/"Leader" for a piece not found. */

@@ -2,9 +2,9 @@
 // explanation and the buttons; while the computer plays, what it is doing.
 import type { Dispatch, SetStateAction } from 'react';
 import {
-  CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, battleReady, battleTargets, cardKind, eligiblePieces, isLeaderId,
-  leaderById, movablePieces, orderLimit, orderMode, pieceHex, pieceMoves, rollingFirePaths, selectionMode, unitById, validateDiceOrders,
-  validateOrders,
+  CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, battleReady, battleTargets, cardKind, effectiveCard, eligiblePieces,
+  isLeaderId, leaderById, movablePieces, orderLimit, orderMode, pieceHex, pieceMoves, possessive, rollingFirePaths, selectionMode,
+  unitById, validateDiceOrders, validateOrders,
   type Answer, type Decision, type DieFace, type GameState, type RetreatOption, type SectionName, type Side,
 } from '../../engine';
 import { BLOCK_COLORS, unitTypeName } from '../../art';
@@ -12,8 +12,8 @@ import { Button } from '../kit';
 import type { GameController, ViewState } from './controller';
 import { FACE_WORDS, counterAttackNote, diceTurnText, firstOrderDie } from './diceOrders';
 import {
-  ambushTexts, attackDice, commandBlocks, commandById, commandFallbackNote, effectiveKind, expectedHits, leadershipHint,
-  placeUnitPrompt, possessive, retreatEliminates, rollingFireStep, selectAllUnits, type UiSel,
+  ambushTexts, attackDice, commandBlocks, commandById, commandFallbackNote, expectedHits, leadershipHint, placeUnitPrompt,
+  retreatEliminates, rollingFireStep, selectAllUnits, type UiSel,
 } from './uiModel';
 
 /** What the prompt bar shows. `tone`: 'warn' or 'danger' colouring; `dice`: dice drawn before the text (310). */
@@ -61,8 +61,8 @@ function btn(label: string, onClick: () => void, opts: { variant?: 'primary' | '
   );
 }
 
-/** Units that charged (warriors) and still must close combat. */
-export function mustCharge(s: GameState, ready: string[]): string[] {
+/** Units that charged (warriors) and still must close combat, in order (the engine's `pendingCharge` is the first). */
+function mustCharge(s: GameState, ready: string[]): string[] {
   return ready.filter((id) => {
     const op = s.turn.ordered[id];
     return op?.mustBattle && op.battlesLeft > 0 && battleTargets(s, id).some((t) => t.kind === 'close');
@@ -161,7 +161,7 @@ function playCardPrompt(c: PromptCtx): Prompt {
   const def = sel !== null ? CARD_DEFS[cardKind(sel)] : null;
   let note = 'Hover a card to see which troops it can order.';
   if (sel !== null) {
-    const eff = effectiveKind(s, human, sel);
+    const eff = effectiveCard(s, human, sel);
     // an enemy that orders by dice (310) plays no card: Counter Attack copies nothing
     if (cardKind(sel) === 'counterAttack') note = counterAttackNote(s, human) ?? (eff.kind ? `Copies the enemy's ${CARD_DEFS[eff.kind].title}.` : 'The enemy has played nothing to copy.');
     else if (cardKind(sel) === 'firstStrike') note = 'First Strike is a reaction card: playing it now has no effect.';

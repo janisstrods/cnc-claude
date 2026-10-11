@@ -3,9 +3,9 @@
 // tooltips in objectiveText.ts, the dice orders of 310 in diceOrders.ts.
 import {
   ALL_HEXES, CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushEntryHexes, attachedLeader, baselineRow, battleReady,
-  battleTargets, cardKind, closeCombatDice, closeHitChance, commandClash, commandModes, commandOf, eligiblePieces, inCommand,
-  inSection, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces, orderCommander,
-  orderMode, other, pieceHex, pieceMoves, rangeOf, rangedDice, rollingFirePaths, rowOf, selectionCommand, unitAt, unitById,
+  battleTargets, closeCombatDice, closeHitChance, commandClash, commandModes, commandOf, effectiveCard, eligiblePieces, inCommand,
+  inSection, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf, movablePieces, orderCommander, orderMode, other,
+  pieceById, pieceHex, pieceMoves, possessive, rangeOf, rangedDice, rollingFirePaths, rowOf, selectionCommand, unitAt, unitById,
   type Blocks, type CardKind, type CommandDef, type Decision, type GameState, type HexId, type RetreatOption, type SectionName,
   type Side, type Unit,
 } from '../../engine';
@@ -53,16 +53,6 @@ export interface BoardUi extends Omit<BoardMarks, 'pathAt'> {
   pathPreview: HexId[] | null;
 }
 
-/** The card kind a played card would actually execute (Counter Attack copies the opponent's last card). */
-export function effectiveKind(s: GameState, side: Side, cardId: number): { kind: CardKind | null; mirrored: boolean } {
-  const k = cardKind(cardId);
-  if (k !== 'counterAttack') return { kind: k, mirrored: false };
-  const last = s.lastCard[other(side)];
-  if (!last) return { kind: null, mirrored: false };
-  const m = mirrorKind(last);
-  return { kind: m, mirrored: m !== last };
-}
-
 function shadeSections(side: Side, secs: SectionName[]): Set<HexId> {
   const out = new Set<HexId>();
   if (!secs.length || secs.length === 3) return out;
@@ -102,16 +92,12 @@ export function boardMarks(s: GameState, d: Decision | null, ui: Omit<UiSel, 'ho
   const badges = new Map<HexId, string>();
   let sectionShade = new Set<HexId>();
   let pathAt: BoardMarks['pathAt'] = () => null;
+  // a leader with a unit is marked on his own token, any other piece on its hex
   const markPiece = (id: string, h: Highlight) => {
-    if (isLeaderId(id)) {
-      const l = leaderById(s, id);
-      if (!l || l.hex < 0) return;
-      if (leaderUnit(s, l)) leaderHighlights.set(id, h);
-      else highlights.set(l.hex, h);
-    } else {
-      const u = unitById(s, id);
-      if (u && u.hex >= 0) highlights.set(u.hex, h);
-    }
+    const p = pieceById(s, id);
+    if (!p || p.hex < 0) return;
+    if (!('type' in p) && leaderUnit(s, p)) leaderHighlights.set(id, h);
+    else highlights.set(p.hex, h);
   };
 
   if (!d || d.side !== human) {
@@ -122,7 +108,7 @@ export function boardMarks(s: GameState, d: Decision | null, ui: Omit<UiSel, 'ho
     case 'playCard': {
       const card = ui.hoverCard ?? ui.selCard;
       if (card !== null) {
-        const { kind } = effectiveKind(s, human, card);
+        const { kind } = effectiveCard(s, human, card);
         if (kind) {
           sectionShade = shadeSections(human, CARD_DEFS[kind].sections);
           for (const id of eligiblePieces(s, human, kind)) markPiece(id, 'eligible');
@@ -426,11 +412,6 @@ export function retreatEliminates(s: GameState, d: Extract<Decision, { kind: 're
   const u = unitById(s, d.unit);
   return !!u && d.reason === 'retreat' && s.special.lastRowRetreat === u.side && o.losses > 0 && !o.attachLeader && o.end >= 0 &&
     rowOf(o.end) === baselineRow(u.side);
-}
-
-/** "Mago's", "Marcellus'" */
-export function possessive(name: string): string {
-  return name.endsWith('s') ? `${name}'` : `${name}'s`;
 }
 
 /**
