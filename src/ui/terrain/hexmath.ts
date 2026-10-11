@@ -195,17 +195,21 @@ export function polyPath(pts: Pt[], close = true): string {
   return `M${pts.map((p) => `${fmt(p.x)},${fmt(p.y)}`).join('L')}${close ? 'Z' : ''}`;
 }
 
-/** SVG path of the outer boundary of all hexes in ctx (the playing field outline). */
-export function fieldOutline(ctx: PaintCtx): string {
+/**
+ * SVG path (one closed subpath per loop) of the boundary of a set of hexes: `cells` (offset coordinates and centre, in
+ * the order the loops are started from) and `inside`, the set's membership test; every hexside of a cell whose neighbour
+ * is not inside is on the boundary.
+ */
+export function hexOutline(cells: Iterable<Pt & { r: number; c: number }>, inside: (r: number, c: number) => boolean, flipped: boolean): string {
   type E = { a: Pt; b: Pt; used: boolean };
   const edges: E[] = [];
   const key = (p: Pt) => `${Math.round(p.x * 2)},${Math.round(p.y * 2)}`;
   const at = new Map<string, E[]>();
-  for (const h of ctx.hexes) {
+  for (const h of cells) {
     for (const d of DIRS) {
       const [nr, nc] = neighborRC(h.r, h.c, d);
-      if (ctx.get(nr, nc)) continue;
-      const [i, j] = edgeCorners(screenDir(d, ctx.flipped));
+      if (inside(nr, nc)) continue;
+      const [i, j] = edgeCorners(screenDir(d, flipped));
       const e: E = { a: corner(h, i), b: corner(h, j), used: false };
       edges.push(e);
       for (const p of [e.a, e.b]) {
@@ -232,4 +236,9 @@ export function fieldOutline(ctx: PaintCtx): string {
     d += polyPath(pts);
   }
   return d;
+}
+
+/** SVG path of the outer boundary of all hexes in ctx (the playing field outline). */
+export function fieldOutline(ctx: PaintCtx): string {
+  return hexOutline(ctx.hexes, (r, c) => !!ctx.get(r, c), ctx.flipped);
 }

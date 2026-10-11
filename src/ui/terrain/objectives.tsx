@@ -12,7 +12,7 @@ import { BLOCK_COLORS, type SideColors } from '../../art';
 import { colOf, hexId, onBoard, rowOf } from '../../engine/hex';
 import { ROWS, type Blocks, type HexId, type ObjectiveDef, type ObjectiveState, type SectionName, type Side } from '../../engine/types';
 import { BOARD_H, BOARD_W, HEX_R, hexCenter, hexCenterId } from '../geometry';
-import { boardCtx, corner, DIRS, edgeCorners, fieldOutline, fmt, neighborRC, polyPath, screenDir, type Pt } from './hexmath';
+import { boardCtx, corner, DIRS, edgeCorners, fieldOutline, fmt, hexOutline, neighborRC, polyPath, screenDir, type Pt } from './hexmath';
 
 export interface ObjectiveMarkersProps {
   /** `GameState.special.objectives`. */
@@ -35,44 +35,8 @@ const colors = (blocks: Record<Side, Blocks>, side: Side): SideColors => BLOCK_C
 /** Outline (one subpath per loop) of the union of `hexes`: every hexside whose neighbour is not in the set. */
 function areaOutline(hexes: readonly HexId[], flipped: boolean): string {
   const set = new Set(hexes);
-  type E = { a: Pt; b: Pt; used: boolean };
-  const edges: E[] = [];
-  const key = (p: Pt) => `${Math.round(p.x * 2)},${Math.round(p.y * 2)}`;
-  const at = new Map<string, E[]>();
-  for (const h of set) {
-    const r = rowOf(h);
-    const c = colOf(h);
-    const p = hexCenter(r, c, flipped);
-    for (const d of DIRS) {
-      const [nr, nc] = neighborRC(r, c, d);
-      if (onBoard(nr, nc) && set.has(hexId(nr, nc))) continue;
-      const [i, j] = edgeCorners(screenDir(d, flipped));
-      const e: E = { a: corner(p, i), b: corner(p, j), used: false };
-      edges.push(e);
-      for (const q of [e.a, e.b]) {
-        const k = key(q);
-        const l = at.get(k);
-        if (l) l.push(e);
-        else at.set(k, [e]);
-      }
-    }
-  }
-  let d = '';
-  for (const start of edges) {
-    if (start.used) continue;
-    start.used = true;
-    const pts: Pt[] = [start.a, start.b];
-    let cur = start.b;
-    for (;;) {
-      const next = (at.get(key(cur)) ?? []).find((e) => !e.used);
-      if (!next) break;
-      next.used = true;
-      cur = key(next.a) === key(cur) ? next.b : next.a;
-      pts.push(cur);
-    }
-    d += `M${pts.map((p) => `${fmt(p.x)},${fmt(p.y)}`).join('L')}Z`;
-  }
-  return d;
+  const cells = [...set].map((h) => ({ r: rowOf(h), c: colOf(h), ...hexCenterId(h, flipped) }));
+  return hexOutline(cells, (r, c) => onBoard(r, c) && set.has(hexId(r, c)), flipped);
 }
 
 /** A pennant on a pole planted at `base` (screen space): flying, or struck once taken (furled, with a gold check). */
