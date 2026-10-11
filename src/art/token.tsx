@@ -1,6 +1,7 @@
 // UnitToken: base plate + miniatures + class badge + strength pips, centred on (0,0) of a pointy-top hex (R = 50).
 import { memo, type ReactNode } from 'react';
-import type { ArmyLook, Blocks, EliteId, UnitType } from '../engine/types';
+import type { ArmyLook, Blocks, EliteId, UnitClass, UnitType } from '../engine/types';
+import { UNIT_STATS } from '../engine/units';
 import { paletteFor, type Palette } from './palettes';
 import { FootFigure, footKit } from './foot';
 import { MountedFigure } from './mounted';
@@ -13,14 +14,7 @@ import { Emblem, FacingRightCtx, OL, makeFig, type Fig } from './parts';
 
 export type Facing = 'left' | 'right';
 
-export type UnitClassName = 'light' | 'medium' | 'heavy';
-
-export const UNIT_CLASS: Record<UnitType, UnitClassName> = {
-  LI: 'light', LB: 'light', LS: 'light', AX: 'light', LC: 'light', LBC: 'light', BCH: 'light',
-  WA: 'medium', MI: 'medium', MC: 'medium', CAM: 'medium',
-  HI: 'heavy', HC: 'heavy', EL: 'heavy', HCH: 'heavy', HWM: 'heavy',
-};
-
+/** Short type names for the board (the rules' full names are `UNIT_STATS[t].name`). */
 const NAMES: Record<UnitType, string> = {
   LI: 'Light Infantry', LB: 'Light Bow', LS: 'Light Sling', AX: 'Auxilia', WA: 'Warriors', MI: 'Medium Infantry',
   HI: 'Heavy Infantry', LC: 'Light Cavalry', MC: 'Medium Cavalry', HC: 'Heavy Cavalry', EL: 'Elephants',
@@ -31,16 +25,16 @@ export function unitTypeName(t: UnitType): string {
   return NAMES[t];
 }
 
-export const CLASS_COLORS: Record<UnitClassName, string> = { light: '#2f9e44', medium: '#2a6fd8', heavy: '#d0302a' };
+export const CLASS_COLORS: Record<UnitClass, string> = { light: '#2f9e44', medium: '#2a6fd8', heavy: '#d0302a' };
 
 type Kind = 'foot' | 'horse' | 'camel' | 'elephant' | 'chariot' | 'machine';
+/** The miniature each type is drawn with (a new unit type must name its own). */
+const FIGURE_KIND: Record<UnitType, Kind> = {
+  LI: 'foot', LB: 'foot', LS: 'foot', AX: 'foot', WA: 'foot', MI: 'foot', HI: 'foot',
+  LC: 'horse', MC: 'horse', HC: 'horse', LBC: 'horse', CAM: 'camel', EL: 'elephant', HCH: 'chariot', BCH: 'chariot', HWM: 'machine',
+};
 export function figureKind(t: UnitType): Kind {
-  if (t === 'LC' || t === 'MC' || t === 'HC' || t === 'LBC') return 'horse';
-  if (t === 'CAM') return 'camel';
-  if (t === 'EL') return 'elephant';
-  if (t === 'HCH' || t === 'BCH') return 'chariot';
-  if (t === 'HWM') return 'machine';
-  return 'foot';
+  return FIGURE_KIND[t];
 }
 
 interface Slot { x: number; y: number; s: number }
@@ -82,25 +76,32 @@ const MACHINE_SLOTS: Record<number, Slot[]> = {
   1: [{ x: 3, y: 18.5, s: 1.06 }],
 };
 
+/** Each type's slots by remaining strength (1 up to the table's largest; the light foot stand more loosely). */
+const TYPE_SLOTS: Record<UnitType, Record<number, Slot[]>> = {
+  LI: LIGHT_SLOTS, LB: LIGHT_SLOTS, LS: LIGHT_SLOTS, AX: FOOT_SLOTS, WA: FOOT_SLOTS, MI: FOOT_SLOTS, HI: FOOT_SLOTS,
+  LC: HORSE_SLOTS, MC: HORSE_SLOTS, HC: HORSE_SLOTS, LBC: HORSE_SLOTS, CAM: HORSE_SLOTS,
+  EL: BIG_SLOTS, HCH: BIG_SLOTS, BCH: LIGHT_CHARIOT_SLOTS, HWM: MACHINE_SLOTS,
+};
+
 function slotsFor(type: UnitType, n: number): Slot[] {
-  const k = figureKind(type);
-  if (k === 'horse' || k === 'camel') return HORSE_SLOTS[Math.max(1, Math.min(3, n))];
-  if (k === 'machine') return MACHINE_SLOTS[Math.max(1, Math.min(2, n))];
-  if (type === 'BCH') return LIGHT_CHARIOT_SLOTS[Math.max(1, Math.min(3, n))];
-  if (k === 'elephant' || k === 'chariot') return BIG_SLOTS[Math.max(1, Math.min(2, n))];
-  const light = type === 'LI' || type === 'LB' || type === 'LS';
-  return (light ? LIGHT_SLOTS : FOOT_SLOTS)[Math.max(1, Math.min(4, n))];
+  const table = TYPE_SLOTS[type];
+  return table[Math.max(1, Math.min(Object.keys(table).length, n))];
 }
 
+interface MiniatureProps { type: UnitType; p: Palette; i: number; elite?: EliteId }
+
+const FIGURES: Record<Kind, (m: MiniatureProps) => JSX.Element> = {
+  foot: ({ type, p, i, elite }) => <FootFigure kit={footKit(type, p.kit, i)} p={p} i={i} elite={elite} />,
+  horse: ({ type, p, i, elite }) => <MountedFigure type={type} p={p} i={i} elite={elite} />,
+  camel: ({ p, i }) => <CamelFigure p={p} i={i} />,
+  elephant: ({ p, i }) => <ElephantFigure p={p} i={i} />,
+  chariot: ({ type, p, i }) => <ChariotFigure type={type} p={p} i={i} />,
+  machine: ({ p, i }) => <MachineFigure p={p} i={i} />,
+};
+
 /** One miniature of the given type in its local frame (facing right, feet at 0,0); `elite` gives elites their figures. */
-export function Miniature({ type, p, i, elite }: { type: UnitType; p: Palette; i: number; elite?: EliteId }) {
-  const k = figureKind(type);
-  if (k === 'horse') return <MountedFigure type={type} p={p} i={i} elite={elite} />;
-  if (k === 'camel') return <CamelFigure p={p} i={i} />;
-  if (k === 'elephant') return <ElephantFigure p={p} i={i} />;
-  if (k === 'chariot') return <ChariotFigure type={type} p={p} i={i} />;
-  if (k === 'machine') return <MachineFigure p={p} i={i} />;
-  return <FootFigure kit={footKit(type, p.kit, i)} p={p} i={i} elite={elite} />;
+export function Miniature(props: MiniatureProps) {
+  return FIGURES[figureKind(props.type)](props);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -160,7 +161,7 @@ export function BasePlate({ p, rx = 38, ry = 11.5, cy = 11 }: { p: Palette; rx?:
 // ---------------------------------------------------------------------------------------------
 // Class badge
 
-export function ClassSymbol({ cls, white, x, y, s = 1 }: { cls: UnitClassName; white: boolean; x: number; y: number; s?: number }) {
+export function ClassSymbol({ cls, white, x, y, s = 1 }: { cls: UnitClass; white: boolean; x: number; y: number; s?: number }) {
   const c = CLASS_COLORS[cls];
   const st = white ? '#ffffff' : '#0d0906';
   const sw = white ? 1.1 : 0.6;
@@ -182,8 +183,7 @@ export function ClassSymbol({ cls, white, x, y, s = 1 }: { cls: UnitClassName; w
 
 /** Class symbol, type and strength pips under the figures; `elite`: gold rim. */
 export function Badge({ type, blocks, maxBlocks, elite }: { type: UnitType; blocks: number; maxBlocks: number; elite?: boolean }) {
-  const cls = UNIT_CLASS[type];
-  const white = type === 'AX' || type === 'WA' || type === 'BCH';
+  const { cls, whiteBorder: white } = UNIT_STATS[type];
   // the wide letters of CAM and HWM need a tighter label to clear the pips
   const compact = type === 'CAM' || type === 'HWM';
   const cyB = 30.8;
