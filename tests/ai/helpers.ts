@@ -1,11 +1,13 @@
-// Shared plumbing for the AI suites (tests/ai): constructed positions, hands, deterministic options and whole AI turns.
-// Each suite keeps its own armies, banners and seeds (they decide the positions and so the AI's choices).
-import { expect } from 'vitest';
+// Shared plumbing for the AI suites (tests/ai): constructed positions, hands, deterministic options, whole AI turns and
+// the recruit AI-vs-AI games. Each suite keeps its own armies, banners and seeds (they decide the positions and so the AI's
+// choices).
+import { describe, expect, it } from 'vitest';
 import {
   CARD_LIST, GameDriver, createGame, other, type Answer, type ArmyLook, type Blocks, type Decision, type EliteId, type GameEvent,
   type GameState, type LeaderTrait, type ScenarioSetup, type Side, type SpecialRuleId, type TerrainSetup, type UnitType,
 } from '../../src/engine';
-import { PERSONALITIES, chooseAnswer, isLegal, newMemory, type AiOptions } from '../../src/ai';
+import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
+import { SCENARIOS } from '../../src/scenarios';
 
 export interface Army { army: string; blocks: Blocks; look: ArmyLook; commander: string }
 
@@ -100,4 +102,33 @@ export function aiTurn(s: GameState, seed: number, extra: Partial<AiOptions> = {
     for (const { e } of d.drainEvents()) events.push(e);
   }
   return { d, events, decisions, mems };
+}
+
+/**
+ * AI vs AI (recruit, each side its commander's temperament) plays battles to the end with legal answers: part `part` of
+ * `parts` (every parts-th battle of SCENARIOS), so that the parts run in parallel as files of their own
+ * (tests/ai/recruit-games-*.test.ts).
+ */
+export function describeRecruitGames(part: number, parts: number) {
+  describe('AI vs AI (recruit) completes every scenario with legal answers', () => {
+    for (const sc of SCENARIOS.filter((_, i) => i % parts === part)) {
+      it(`${sc.id} ${sc.name}`, () => {
+        const d = new GameDriver(createGame(sc.setup, 4242 + Number(sc.id)));
+        const opts: Record<Side, AiOptions> = {
+          top: { side: 'top', difficulty: 'recruit', personality: personalityFor(sc.setup.top.commander, sc.setup.top.army), seed: 11, budgetScale: 0.3 },
+          bottom: { side: 'bottom', difficulty: 'recruit', personality: personalityFor(sc.setup.bottom.commander, sc.setup.bottom.army), seed: 22, budgetScale: 0.3 },
+        };
+        const mems = { top: newMemory(), bottom: newMemory() };
+        let steps = 0;
+        while (!d.over && steps++ < 20000) {
+          const dec = d.pending!;
+          const r = chooseAnswer(d.state, dec, opts[dec.side], mems[dec.side]);
+          expect(isLegal(d.state, dec, r.answer), `${dec.kind}: ${JSON.stringify(r.answer)}`).toBe(true);
+          const ok = d.answer(r.answer);
+          if (!ok) throw new Error(`answer rejected: ${d.lastError} for ${JSON.stringify(dec)} -> ${JSON.stringify(r.answer)}`);
+        }
+        expect(d.state.winner).not.toBeNull();
+      });
+    }
+  });
 }

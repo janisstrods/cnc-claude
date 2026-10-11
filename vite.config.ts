@@ -1,6 +1,27 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import type { TestSequencer, Vitest, WorkspaceSpec } from 'vitest/node';
+
+/**
+ * Vitest's own file order, except that `*.slow.test.ts` files start first: each holds one long AI test that would
+ * lengthen the whole run if it started late. (vitest/node loads lazily, so vite dev and build never load vitest.)
+ */
+class SlowFilesFirst implements TestSequencer {
+  constructor(private readonly ctx: Vitest) {}
+  private async base() {
+    const { BaseSequencer } = await import('vitest/node');
+    return new BaseSequencer(this.ctx);
+  }
+  async shard(files: WorkspaceSpec[]) {
+    return (await this.base()).shard(files);
+  }
+  async sort(files: WorkspaceSpec[]) {
+    const sorted = await (await this.base()).sort(files);
+    const slow = (f: WorkspaceSpec) => f.moduleId.endsWith('.slow.test.ts');
+    return [...sorted.filter(slow), ...sorted.filter((f) => !slow(f))];
+  }
+}
 
 export default defineConfig({
   // relative asset paths: the site is served from a sub-path on GitHub Pages (routes are hash-based)
@@ -15,5 +36,6 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     environment: 'node',
     testTimeout: 120000,
+    sequence: { sequencer: SlowFilesFirst },
   },
 });

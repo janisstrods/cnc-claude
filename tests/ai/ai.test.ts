@@ -1,15 +1,17 @@
+// Cheap AI checks: reactive policies on constructed positions, hidden information, the in-thread AiClient. The long
+// games are files of their own so that they run in parallel: recruit-games-*.test.ts (AI vs AI, every battle) and
+// tribune-random.slow.test.ts (tribune against a random player).
 import { describe, expect, it } from 'vitest';
 import {
-  CARD_LIST, GameDriver, areAdjacent, createGame, forceDice, forcedDiceLeft, hexId, leaderEvadeOptions, randomAnswer, type Decision, type GameState,
+  CARD_LIST, GameDriver, areAdjacent, createGame, forceDice, forcedDiceLeft, hexId, leaderEvadeOptions, type Decision, type GameState,
   type Side,
 } from '../../src/engine';
-import { SCENARIOS, scenarioById } from '../../src/scenarios';
-import { PERSONALITIES, chooseAnswer, isLegal, newMemory, personalityFor, type AiOptions } from '../../src/ai';
+import { scenarioById } from '../../src/scenarios';
+import { PERSONALITIES, chooseAnswer, isLegal, newMemory, type AiOptions } from '../../src/ai';
 import { AiClient } from '../../src/ai/client';
 import { greedyMoveStep } from '../../src/ai/moves';
 import { chooseLeaderEvade, defendChoice, greedyBattle } from '../../src/ai/policies';
 import { NEUTRAL_W } from '../../src/ai/values';
-import { mulberry32 } from '../support/rng';
 import { positionBuilder } from './helpers';
 import { failOnAiErrors } from './no-ai-errors';
 
@@ -175,58 +177,5 @@ describe('AiClient', () => {
     c.top.dispose();
     await expect(c.top.decide(d.state, d.pending!)).rejects.toThrow();
     c.bottom.dispose();
-  });
-});
-
-describe('AI vs AI (recruit) completes every scenario with legal answers', () => {
-  for (const sc of SCENARIOS) {
-    it(`${sc.id} ${sc.name}`, () => {
-      const d = new GameDriver(createGame(sc.setup, 4242 + Number(sc.id)));
-      const opts: Record<Side, AiOptions> = {
-        top: { side: 'top', difficulty: 'recruit', personality: personalityFor(sc.setup.top.commander, sc.setup.top.army), seed: 11, budgetScale: 0.3 },
-        bottom: { side: 'bottom', difficulty: 'recruit', personality: personalityFor(sc.setup.bottom.commander, sc.setup.bottom.army), seed: 22, budgetScale: 0.3 },
-      };
-      const mems = { top: newMemory(), bottom: newMemory() };
-      let steps = 0;
-      while (!d.over && steps++ < 20000) {
-        const dec = d.pending!;
-        const r = chooseAnswer(d.state, dec, opts[dec.side], mems[dec.side]);
-        expect(isLegal(d.state, dec, r.answer), `${dec.kind}: ${JSON.stringify(r.answer)}`).toBe(true);
-        const ok = d.answer(r.answer);
-        if (!ok) throw new Error(`answer rejected: ${d.lastError} for ${JSON.stringify(dec)} -> ${JSON.stringify(r.answer)}`);
-      }
-      expect(d.state.winner).not.toBeNull();
-    });
-  }
-});
-
-describe('tribune beats a random player', () => {
-  it('wins at least 90% of 20 games across scenarios and sides', () => {
-    const ids = ['001', '002', '003', '004', '005', '006', '007', '008', '010', '013'];
-    let wins = 0;
-    let games = 0;
-    for (const id of ids) {
-      const sc = scenarioById(id);
-      for (const aiSide of ['bottom', 'top'] as Side[]) {
-        const seed = 500 + Number(id) * 2 + (aiSide === 'top' ? 1 : 0);
-        const d = new GameDriver(createGame(sc.setup, seed));
-        const opts: AiOptions = { side: aiSide, difficulty: 'tribune', personality: personalityFor(sc.setup[aiSide].commander, sc.setup[aiSide].army), seed, budgetScale: 0.12 };
-        const mem = newMemory();
-        const rnd = mulberry32(seed);
-        let steps = 0;
-        while (!d.over && steps++ < 20000) {
-          const dec = d.pending!;
-          const a = dec.side === aiSide ? chooseAnswer(d.state, dec, opts, mem).answer : randomAnswer(d.state, dec, rnd);
-          if (!d.answer(a)) {
-            expect(dec.side, `AI answer rejected: ${d.lastError}`).not.toBe(aiSide);
-            d.answer(randomAnswer(d.state, d.pending!, rnd));
-          }
-        }
-        games++;
-        if (d.state.winner === aiSide) wins++;
-      }
-    }
-    expect(games).toBe(20);
-    expect(wins).toBeGreaterThanOrEqual(18);
   });
 });

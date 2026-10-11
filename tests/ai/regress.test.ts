@@ -1,5 +1,6 @@
-// Regression checks from the AI review (cheap and deterministic). Slow win-rate matches against the scripted bots are an
-// opt-in script: npx vite-node scripts/ai-match.ts -- --bot greedy (strength A/Bs need a same-seed baseline).
+// Regression checks from the AI review (cheap and deterministic; the 30-game Castulo check is castulo.slow.test.ts). Slow
+// win-rate matches against the scripted bots are an opt-in script: npx vite-node scripts/ai-match.ts -- --bot greedy
+// (strength A/Bs need a same-seed baseline).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   GameDriver, createGame, distance, forceDice, hexId, newTurn, randomAnswer, type CardKind, type Decision, type GameState, type Side,
@@ -13,7 +14,7 @@ import { Rng } from '../../src/ai/rand';
 import { chooseCavalryExtra } from '../../src/ai/policies';
 import { NEUTRAL_W, weightsFor } from '../../src/ai/values';
 import { mulberry32 } from '../support/rng';
-import { Bot, type Strategy } from './bots';
+import { Bot } from './bots';
 import { detOpts, positionBuilder, setHand, type Pos } from './helpers';
 import { failOnAiErrors } from './no-ai-errors';
 
@@ -91,44 +92,6 @@ describe('Castulo: Publius Scipio (losing him loses the battle)', () => {
       expect(nearest, `seed ${seed}: Scipio ends the turn adjacent to the enemy`).toBeGreaterThan(1);
     }
   });
-
-  it('keeps Scipio out of contact against a greedy attacker over fixed seeds', () => {
-    // The contact rate is about 10% and varies a lot from game to game (7-17% over blocks of 10 games), so it is
-    // measured over 30 games: a real doubling still fails, an unrelated change in the AI's choices does not.
-    const sc = scenarioById('010');
-    let turns = 0;
-    let adjacent = 0;
-    let deaths = 0;
-    for (let g = 0; g < 30; g++) {
-      const seed = 41000 + 97 * g;
-      const d = new GameDriver(createGame(sc.setup, seed));
-      const sid = d.state.special.sacredLeaderId!;
-      const opts: AiOptions = { ...detOpts('bottom', seed * 3 + 1), personality: personalityFor(sc.setup.bottom.commander, sc.setup.bottom.army) };
-      const mem = newMemory();
-      const rnd = mulberry32(seed);
-      const bot = new Bot('greedy' as Strategy, rnd);
-      let wasAi = false;
-      while (!d.over && d.state.turn.number <= 36) {
-        const dec = d.pending!;
-        if (dec.kind === 'playCard') {
-          if (wasAi) {
-            const L = d.state.leaders.find((l) => l.id === sid);
-            if (L) {
-              turns++;
-              if (d.state.units.some((u) => u.side === 'top' && u.hex >= 0 && distance(u.hex, L.hex) <= 1)) adjacent++;
-            }
-          }
-          wasAi = dec.side === 'bottom';
-        }
-        const a = dec.side === 'bottom' ? chooseAnswer(d.state, dec, opts, mem).answer : bot.answer(d.state, dec);
-        if (!d.answer(a)) d.answer(randomAnswer(d.state, d.pending!, rnd));
-        for (const { e } of d.drainEvents()) if (e.t === 'leaderKilled' && e.id === sid) deaths++;
-      }
-    }
-    expect(turns).toBeGreaterThan(150);
-    expect(adjacent / turns).toBeLessThanOrEqual(0.15);
-    expect(deaths).toBeLessThanOrEqual(1);
-  }, 240000);
 });
 
 describe('battle phase', () => {
