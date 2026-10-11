@@ -13,13 +13,13 @@ const history: BattleHistory = {
   sides: {
     top: {
       name: 'Pompeians and Numidians',
-      commanders: ['Titus Labienus', 'the Pacideius brothers', 'Marcus Petreius (arrived late; wounded)', 'Gnaeus Calpurnius Piso (with Petreius)'],
+      commanders: ['Titus Labienus', 'The two Pacideius brothers', 'Marcus Petreius (arrived late; wounded)', 'Gnaeus Calpurnius Piso (with Petreius)'],
       strength: 'c. 9,600 horse and a far larger force of light foot (Bellum Africum); Petreius brought 1,600 more horse',
       forces: 'Numidian horsemen riding without bridles, Gallic and German horse, Numidian light infantry, archers, slingers and mounted archers.',
     },
     bottom: {
       name: 'Caesarians',
-      commanders: ['Gaius Julius Caesar (dictator)'],
+      commanders: ['Gaius Julius Caesar (consul)'],
       strength: 'Thirty cohorts, about 400 horse and 150 archers (Bellum Africum; the cavalry figure may be corrupt)',
       forces: 'Legionaries, many of them raw recruits, with a few veterans; a little cavalry, still worn out by the sea crossing.',
     },
@@ -185,6 +185,7 @@ const history: BattleHistory = {
     'Bellum Africum 7–21',
     'Appian, Civil Wars 2.95',
     'Plutarch, Life of Caesar 52',
+    'Adrian Goldsworthy, Caesar: Life of a Colossus (2006)',
   ],
 };
 

@@ -147,6 +147,7 @@ const history: BattleHistory = {
     'Appian, Civil Wars 1.110',
     "Sallust, Histories 2.51–54 and Pompey's letter, 2.82 (McGushin's numbering)",
     'Orosius, Histories against the Pagans 5.23.9–11',
+    "C. F. Konrad, Plutarch's Sertorius: A Historical Commentary (1994)",
   ],
 };
 

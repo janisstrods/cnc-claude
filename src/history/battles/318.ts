@@ -19,7 +19,7 @@ const history: BattleHistory = {
     },
     bottom: {
       name: 'Caesarians',
-      commanders: ['Gaius Julius Caesar (dictator)', 'Lucius Nonius Asprenas (two legions guarding the camp)'],
+      commanders: ['Gaius Julius Caesar (consul; made dictator for ten years after the victory)', 'Lucius Nonius Asprenas (two legions guarding the camp)'],
       strength: 'Not given; Caesar left two legions in camp and led the rest out',
       forces: 'Veteran legions (the Fifth, Seventh, Eighth, Ninth and Tenth) and newly raised ones, with slingers, archers, cavalry and light troops.',
     },
@@ -150,6 +150,7 @@ const history: BattleHistory = {
     'Appian, Civil Wars 2.96–100',
     'Cassius Dio, Roman History 43.7–12',
     'Florus, Epitome 2.13.64–69',
+    'Adrian Goldsworthy, Caesar: Life of a Colossus (2006)',
   ],
 };
 

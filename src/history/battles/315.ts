@@ -7,7 +7,7 @@ const history: BattleHistory = {
     war: "Caesar's Civil War, 49–45 BC: the campaign in Greece, 48 BC",
     text: [
       "Caesar's retreat from Dyrrhachium gave the Pompeians new heart. He marched into Thessaly, joined Domitius Calvinus, stormed Gomphi when it shut its gates, and camped on the plain of Pharsalus. Pompey, now joined by Metellus Scipio's army from Macedonia, followed and camped on a hill nearby. He would rather have starved Caesar out, but the senators in his camp, already quarrelling over the spoils of victory, pressed him to fight.",
-      "For several days Pompey drew up on the lower slopes, where Caesar would not attack. On 9 August 48 BC, as Caesar was about to march away, Pompey's line moved further out onto the plain, and Caesar seized the chance to fight. The exact site, north or south of the river Enipeus, is still debated.",
+      "For several days Pompey drew up on the lower slopes, where Caesar would not attack. On 9 August 48 BC (by the Roman calendar), as Caesar was about to march away, Pompey's line moved further out onto the plain, and Caesar seized the chance to fight. The exact site, north or south of the river Enipeus, is still debated.",
     ],
   },
   sides: {

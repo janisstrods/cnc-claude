@@ -6,7 +6,7 @@ const history: BattleHistory = {
   context: {
     war: 'Sertorian War, 80–72 BC',
     text: [
-      "Quintus Sertorius, a Marian exile, had led a revolt in Spain since 80 BC with Lusitanian and later Celtiberian support. For three years he baffled Sulla's general Metellus Pius with raids and ambushes, and in 77 BC Marcus Perperna brought him the survivors of Lepidus' failed rising in Italy. The Senate then sent the young Pompey against him with proconsular power, though he had never held a magistracy.",
+      "Quintus Sertorius, a Marian exile, had led a revolt in Spain since 80 BC with Lusitanian and later Celtiberian support. For three years he baffled Sulla's general Metellus Pius with raids and ambushes, and in 77 BC Marcus Perperna (the game's Perpenna) brought him the survivors of Lepidus' failed rising in Italy. The Senate then sent the young Pompey against him with proconsular power, though he had never held a magistracy.",
       "Pompey crossed the Alps by a new route and reached Spain by 76 BC. Sertorius came east to meet him and besieged Lauron, a town probably near Valentia whose site is unknown, and Pompey marched to its relief. Plutarch tells of a race for a hill, Frontinus of an ambush on Pompey's foragers; how the two stories fit together is uncertain.",
     ],
   },
@@ -137,6 +137,7 @@ const history: BattleHistory = {
     'Frontinus, Stratagems 2.5.31',
     'Appian, Civil Wars 1.109',
     'Orosius, Histories against the Pagans 5.23',
+    "C. F. Konrad, Plutarch's Sertorius: A Historical Commentary (1994)",
   ],
 };
 

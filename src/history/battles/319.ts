@@ -7,7 +7,7 @@ const history: BattleHistory = {
     war: "Caesar's Civil War, 49–45 BC: the Spanish campaign of 46–45 BC",
     text: [
       "After Thapsus the last Pompeian hope lay in Further Spain, where the province's legions had already turned against Caesar's governors. Pompey's elder son Gnaeus raised a large army there and was joined by his brother Sextus, Titus Labienus and Attius Varus. Late in 46 BC Caesar hurried from Rome to Spain, in only 27 days according to Appian.",
-      "A winter of sieges and manoeuvres around Corduba, Ategua and Ucubi followed. In March 45 BC Gnaeus drew up his army on the high ground before the hill town of Munda, whose site is still disputed. Caesar, camped five miles away across a plain, accepted battle on 17 March.",
+      "A winter of sieges and manoeuvres around Corduba, Ategua and Ucubi followed. In March 45 BC Gnaeus drew up his army on the high ground before the hill town of Munda, whose site is still disputed. Caesar, camped five miles away across a plain, accepted battle on 17 March (by the Roman calendar).",
     ],
   },
   sides: {
@@ -161,6 +161,7 @@ const history: BattleHistory = {
     'Cassius Dio, Roman History 43.35–40',
     'Plutarch, Life of Caesar 56',
     'Florus, Epitome 2.13.77–86',
+    'Adrian Goldsworthy, Caesar: Life of a Colossus (2006)',
   ],
 };
 

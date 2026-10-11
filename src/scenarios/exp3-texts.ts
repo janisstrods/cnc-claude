@@ -120,7 +120,7 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     hint: 'Pompeian horse ride out of the valley.',
   },
   '312': {
-    blurb: 'Confident after Utica, Curio presses on after Saburra, the Numidian general, who retreats as though he has only a small force. Curio sends his cavalry on a night march to the river Bagradas, where it routs Saburra\'s camp, and next day follows with his weary infantry across the plain. Juba\'s main army, hidden behind Saburra, appears with its horsemen and light troops, and the Romans are surrounded on open ground in the heat of the day. Curio refuses to abandon his men and dies fighting; almost his entire army is destroyed. Africa is lost to Caesar for three years.',
+    blurb: 'Confident after Utica, Curio presses on after Saburra, the Numidian general, who retreats as though he has only a small force. Curio sends his cavalry on a night march to the river Bagradas, where it routs Saburra\'s camp, and follows before dawn with his infantry, pressing on across the plain. Juba\'s main army, hidden behind Saburra, appears with its horsemen and light troops, and the Romans are surrounded on open ground in the heat of the day. Curio refuses to abandon his men and dies fighting; almost his entire army is destroyed. Africa is lost to Caesar for three years.',
     specialText: [
       'Julian legions (both armies): medium and heavy infantry on both sides, the Numidians included, may throw the pilum (range 2, always 1 die, not after moving 2 hexes) and may march: move 2 hexes if they do not battle that turn.',
       'Despite the name, there is no river on the map; the only terrain is three hills at the top right.',
@@ -128,7 +128,7 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     hint: 'Numidian horse spring the trap.',
   },
   '313': {
-    blurb: 'In January 48 BC Caesar has slipped across the Adriatic with part of his army, leaving Mark Antony and Fufius Calenus at Brundisium to bring over the rest. Pompey\'s admiral Libo arrives with fifty ships, seals the harbour mouth and lands marines to seize the transports. Antony has to organise the defence with his men scattered, and the garrison gathers slowly behind the town\'s ramparts. The raid is beaten off, and Libo, short of fresh water, gives up the blockade.',
+    blurb: 'In January 48 BC Caesar has slipped across the Adriatic with part of his army, leaving Mark Antony and Fufius Calenus at Brundisium to bring over the rest. Pompey\'s admiral Libo arrives with fifty ships, seals the harbour mouth from an island in front of it, burns some of the merchant ships and lands troops to drive off a cavalry post. Antony has to organise the defence with his men scattered, and the garrison gathers slowly behind the town\'s ramparts. The raid is beaten off, and Libo, short of fresh water, gives up the blockade.',
     specialText: [
       'Julian legions (both armies): medium and heavy infantry on both sides may throw the pilum (range 2, always 1 die, not after moving 2 hexes) and may march: move 2 hexes if they do not battle that turn.',
       'Hand growth: the Caesarians start with only 2 cards. At the end of each of their turns, while their hand size is below 5, they draw 2 cards instead of 1 and their hand size rises by 1 (2, 3, 4, 5); after that they draw 1 as usual.',
@@ -152,7 +152,7 @@ export const EXTRA_EXP3: Record<string, ScenarioTexts> = {
     hint: "Break out round the end of Caesar's lines.",
   },
   '315': {
-    blurb: 'On the plain of Pharsalus in Thessaly, in August 48 BC, Pompey\'s army, roughly twice the size of Caesar\'s and with far more cavalry, offers battle at last. Pompey masses his horse on his left to ride round Caesar\'s right and take the line in the rear. Caesar, guessing the plan, has placed a hidden fourth line of picked cohorts behind his cavalry, and when the Pompeian horse drive the Caesarian riders back, these cohorts meet and rout them. Caesar\'s third line then rolls up the Pompeian left, the camp is stormed and the army disintegrates. Pompey flees to Egypt, where he is murdered, and the war goes on without its leader.',
+    blurb: 'On the plain of Pharsalus in Thessaly, in August 48 BC, Pompey\'s army, roughly twice the size of Caesar\'s and with far more cavalry, offers battle at last. Pompey masses his horse on his left to ride round Caesar\'s right and take the line in the rear. Caesar, guessing the plan, has placed a hidden fourth line of picked cohorts behind his cavalry, and when the Pompeian horse drive the Caesarian riders back, these cohorts meet and rout them. They swing round onto the exposed Pompeian left while Caesar sends in his fresh third line; the camp is stormed and the army disintegrates. Pompey flees to Egypt, where he is murdered, and the war goes on without its leader.',
     specialText: [
       'Julian legions (both armies): medium and heavy infantry on both sides may throw the pilum (range 2, always 1 die, not after moving 2 hexes) and may march: move 2 hexes if they do not battle that turn.',
       'Caesar: the unit he is attached to rolls 1 extra die in close combat, and an infantry unit that starts its move with him may move 2 hexes and still battle.',

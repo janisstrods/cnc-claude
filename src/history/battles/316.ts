@@ -165,6 +165,7 @@ const history: BattleHistory = {
     'Appian, Civil Wars 2.91–92',
     'Cassius Dio, Roman History 42.45–48',
     'Suetonius, Life of Julius Caesar 35, 37',
+    'Adrian Goldsworthy, Caesar: Life of a Colossus (2006)',
   ],
 };
 
