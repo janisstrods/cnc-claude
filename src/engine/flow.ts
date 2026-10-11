@@ -37,14 +37,27 @@ export type Gen<T = void> = Generator<Decision, T, Answer>;
 // helpers
 // ---------------------------------------------------------------------------
 
-/** Yield decision `d` until a legal answer comes back (`answerError`); each refusal is reported to `ctx.invalid`. */
-function* ask(s: GameState, ctx: FlowCtx, d: Decision): Gen<Answer> {
+/**
+ * Yield decision `d` until a legal answer comes back (`answerError`); each refusal is reported to `ctx.invalid`. `found`
+ * receives the option the accepted answer picked (see `Found`).
+ */
+function* ask(s: GameState, ctx: FlowCtx, d: Decision, found?: Found): Gen<Answer> {
   for (;;) {
     const a = yield d;
-    const err = answerError(s, d, a);
+    const err = answerError(s, d, a, found);
     if (!err) return a;
     ctx.invalid?.(err);
   }
+}
+
+/**
+ * The option a legal answer picked, as `answerError` found it while checking the answer: the move target of a `move`, the
+ * battle target of an `attack`. The movement and battle phases act on it at once, on the same state, instead of working
+ * the piece's options out again.
+ */
+interface Found {
+  move?: MoveTarget;
+  target?: BattleTarget;
 }
 
 /** Is `a` a choice of one of `n` options (`choose` with a whole index in range)? */
@@ -54,8 +67,9 @@ const choosesOneOf = (a: Answer, n: number): boolean => a.kind === 'choose' && N
  * Why answer `a` to decision `d` is refused in state `s` (the message the UI shows), or null when it is legal: the one
  * validator of every decision. `ask` re-asks with it, and the AI's `isLegal` is `answerError(...) === null`, so an answer
  * the AI gives is never refused. It reads only the decision and the state, so an answer can be checked before it is given.
+ * `found` (the flow's own `ask`) receives the move or battle target a legal answer picked.
  */
-export function answerError(s: GameState, d: Decision, a: Answer | null | undefined): string | null {
+export function answerError(s: GameState, d: Decision, a: Answer | null | undefined, found?: Found): string | null {
   if (!a) return 'No answer.';
   switch (d.kind) {
     case 'playCard':
@@ -67,9 +81,9 @@ export function answerError(s: GameState, d: Decision, a: Answer | null | undefi
       }
       return validateOrders(s, d.side, d.card, a.pieces);
     case 'move':
-      return validateMove(s, a, d.stage);
+      return validateMove(s, a, d.stage, found);
     case 'battle':
-      return validateBattle(s, a);
+      return validateBattle(s, a, found);
     case 'defend':
       if (a.kind !== 'defend') return 'Choose how to defend.';
       if (a.choice === 'evade') return d.canEvade ? null : 'This unit cannot evade.';
@@ -1096,10 +1110,10 @@ export function pieceMoves(s: GameState, id: string, stage: 1 | 2 = s.turn.phase
   return unitMoves(s, id);
 }
 
-function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2): Gen {
+/** Piece `id` makes move `target` (one of its `pieceMoves`) to hex `to`. */
+function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2, target: MoveTarget): Gen {
   const t = s.turn;
   const op = t.ordered[id];
-  const target = pieceMoves(s, id, stage).find((m) => m.hex === to)!;
   if (op.isLeader) {
     const l = leaderById(s, id)!;
     const from = l.hex;
@@ -1164,12 +1178,13 @@ function* doMove(s: GameState, ctx: FlowCtx, id: string, to: HexId, stage: 1 | 2
   captureOnStop(s, ctx, u);
 }
 
-function validateMove(s: GameState, a: Answer, stage: 1 | 2): string | null {
+function validateMove(s: GameState, a: Answer, stage: 1 | 2, found?: Found): string | null {
   if (a.kind === 'endMove') return null;
   if (a.kind !== 'move') return 'Move a unit or end movement.';
   if (!s.turn.ordered[a.piece]) return 'That piece is not ordered.';
-  const moves = pieceMoves(s, a.piece, stage);
-  if (!moves.some((m) => m.hex === a.to)) return 'That piece cannot move there.';
+  const move = pieceMoves(s, a.piece, stage).find((m) => m.hex === a.to);
+  if (!move) return 'That piece cannot move there.';
+  if (found) found.move = move;
   return null;
 }
 
@@ -1184,10 +1199,11 @@ function* movePhase(s: GameState, ctx: FlowCtx, stage: 1 | 2): Gen {
   for (;;) {
     if (s.winner) return;
     if (!Object.keys(s.turn.ordered).some((id) => canMove(s, id, stage))) break;
-    const a = yield* ask(s, ctx, { kind: 'move', side: s.active, stage });
+    const found: Found = {};
+    const a = yield* ask(s, ctx, { kind: 'move', side: s.active, stage }, found);
     if (a.kind === 'endMove') break;
     if (a.kind === 'move') {
-      yield* doMove(s, ctx, a.piece, a.to, stage);
+      yield* doMove(s, ctx, a.piece, a.to, stage, found.move!);
       updateHeld(s, ctx); // after every move, an ambush entry or an exit included
     }
   }
@@ -1247,7 +1263,7 @@ export function pendingCharge(s: GameState): string | null {
   return null;
 }
 
-function validateBattle(s: GameState, a: Answer): string | null {
+function validateBattle(s: GameState, a: Answer, found?: Found): string | null {
   if (a.kind === 'endBattle') {
     return pendingCharge(s) ? 'Warriors that charged must close combat.' : null;
   }
@@ -1256,11 +1272,11 @@ function validateBattle(s: GameState, a: Answer): string | null {
     return isRollingFirePath(s, a.unit, a.path) ? null : 'Not a legal Rolling Fire path.';
   }
   if (a.kind !== 'attack') return 'Attack or end the battle phase.';
-  const targets = battleTargets(s, a.unit);
-  const t = targets.find((x) => x.hex === a.target);
+  const t = battleTargets(s, a.unit).find((x) => x.hex === a.target);
   if (!t) return 'Not a legal target.';
   const op = s.turn.ordered[a.unit];
   if (op.mustBattle && t.kind !== 'close') return 'Charging warriors must close combat.';
+  if (found) found.target = t;
   return null;
 }
 
@@ -1268,7 +1284,8 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
   for (;;) {
     if (s.winner) return;
     if (!Object.keys(s.turn.ordered).some((id) => canBattleNow(s, id))) break;
-    const a = yield* ask(s, ctx, { kind: 'battle', side: s.active });
+    const found: Found = {};
+    const a = yield* ask(s, ctx, { kind: 'battle', side: s.active }, found);
     if (a.kind === 'endBattle') break;
     // answerError lets through only endBattle, rollingFire and attack, so nothing else reaches here
     if (a.kind === 'rollingFire') {
@@ -1276,8 +1293,7 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
     } else if (a.kind === 'attack') {
       const u = unitById(s, a.unit)!;
       const op = s.turn.ordered[a.unit];
-      const kind = battleTargets(s, a.unit).find((x) => x.hex === a.target)!.kind;
-      if (kind === 'ranged') {
+      if (found.target!.kind === 'ranged') {
         op.battlesLeft--;
         yield* rangedAttack(s, ctx, u, a.target);
       } else {
