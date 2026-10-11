@@ -322,19 +322,27 @@ describe('forced placement (308)', () => {
       c.answer({ kind: 'hex', hex: hexId(8, 2) });
       await runToHuman(c);
       expect(c.view.pending).toMatchObject({ kind: 'playCard', side: 'bottom' });
-      expect(c.view.canUndo).toBe(true);
+      expect(c.view.undo).toBe('placement');
       expect(c.view.log.map((l) => l.text)).toContain('The Roman Medium Infantry arrives as a reinforcement.');
       c.undo();
       expect(c.view.pending).toMatchObject({ kind: 'placeUnit', side: 'bottom' });
-      expect(c.view.canUndo).toBe(false);
+      expect(c.view.undo).toBeNull();
       expect(c.view.log.map((l) => l.text)).not.toContain('The Roman Medium Infantry arrives as a reinforcement.');
-      // placed again, then the card played: no more undo
+      // placed again, then the card played: the card is taken back first, then the placement
       c.answer({ kind: 'hex', hex: hexId(8, 0) });
       await runToHuman(c);
       expect(c.driver.state.units.find((u) => u.type === 'MI' && u.hex === hexId(8, 0))).toBeDefined();
-      c.answer({ kind: 'playCard', card: c.driver.state.players.bottom.hand[0] });
+      // a section card: its units are chosen next, and it may be taken back meanwhile
+      const card = c.driver.state.players.bottom.hand.find((x) => /^order\d[LCR]$/.test(CARD_LIST[x]))!;
+      c.answer({ kind: 'playCard', card });
       await runToHuman(c);
-      expect(c.view.canUndo).toBe(false);
+      expect(c.view.pending).toMatchObject({ kind: 'orders', side: 'bottom' });
+      expect(c.view.undo).toBe('card');
+      c.undo();
+      expect(c.view.pending).toMatchObject({ kind: 'playCard', side: 'bottom' });
+      expect(c.view.undo).toBe('placement');
+      c.undo();
+      expect(c.view.pending).toMatchObject({ kind: 'placeUnit', side: 'bottom' });
     } finally {
       c.dispose();
     }

@@ -3,7 +3,7 @@ import {
   CARD_DEFS, CARD_LIST, GameDriver, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, bannerTotal, cardKind, cloneState, createGame, freshSeed,
   heldBanners, isLeaderId, leaderById, orderDice, other, pieceById, randomAnswer, rallyCandidates, unitAt, unitById,
   type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameOptions, type GameState, type HexId, type Leader,
-  type QueuedEvent, type RollPurpose, type Side, type Unit,
+  type QueuedEvent, type RollPurpose, type Side, type UndoStep, type Unit,
 } from '../../engine';
 import { SCENARIOS, scenarioById } from '../../scenarios';
 import type { Opponent } from './opponent';
@@ -103,7 +103,8 @@ export interface ViewState {
   error: string | null;
   /** The battle is over: who won, why, and the medal the human's side earned by it, when better than before. */
   over: { winner: Side | 'draw'; reason: string; newMedal?: Medal } | null;
-  canUndo: boolean;
+  /** What the human's Undo takes back now: a move, a placement, or the card just played with its orders; null for none. */
+  undo: UndoStep | null;
   speed: number; // 1 = normal, 2 = fast, 0.6 = slow
   /** Centre-board announcement: 'turn' = "Your turn"; 'notice' = a longer message (a lost command card). */
   toast: { id: number; text: string; kind?: 'turn' | 'notice' } | null;
@@ -181,11 +182,10 @@ export class GameController {
   /** The turn whose "Your turn" toast has been shown: once per turn, also when its first decision is taken back. */
   private toldTurn = -1;
   /**
-   * The human's forced placement (308) while it might be taken back: the answers recorded with it, the dice rolled before
-   * it, and the id the next log line will get (the log is capped, so a line's place in it is no stable index: the lines
-   * of the placement are those with an id from `logId` on).
+   * For each of the human's answers, by its place among the recorded answers, the id the next log line got when it was
+   * given: an undo drops the lines with an id from there on (the log is capped, so a line's place in it is no stable index).
    */
-  private placement: { n: number; rng: number; logId: number } | null = null;
+  private logMarks = new Map<number, number>();
   /**
    * The finished battle as it went into the player's record, with the medal it earned: recorded once, however often the
    * loop comes back to the end.
@@ -219,7 +219,7 @@ export class GameController {
       aiThinking: false,
       error: null,
       over: null,
-      canUndo: false,
+      undo: null,
       speed,
       toast: null,
       diceTurn: null,
@@ -310,7 +310,7 @@ export class GameController {
     if (!this.view.pending || this.busy || this.view.fatal) return;
     const d = this.view.pending;
     const dice = this.diceNote(d, a);
-    const placing = d.kind === 'placeUnit' ? this.driver.state.rngCalls : null;
+    const at = this.driver.answers.length;
     let ok: boolean;
     try {
       ok = this.driver.answer(a);
@@ -319,50 +319,40 @@ export class GameController {
       // the generator is dead: rebuild it from the recorded answers
       this.driver = GameDriver.replay(this.driver.initial, this.driver.answers, { snapshots: true });
       this.syncHeld(this.driver.state);
-      this.set({ error: 'That order could not be resolved — try another.', pending: this.driver.pending, display: cloneState(this.driver.state), canUndo: this.undoable(this.driver.pending) });
+      this.set({ error: 'That order could not be resolved — try another.', pending: this.driver.pending, display: cloneState(this.driver.state), undo: this.undoable(this.driver.pending) });
       return;
     }
     if (!ok) {
       this.set({ error: this.driver.lastError });
       return;
     }
-    this.placement = placing === null ? null : { n: this.driver.answers.length, rng: placing, logId: seq };
+    this.logMarks.set(at, seq);
     this.diceTold(d, a, dice);
-    this.set({ pending: null, error: null });
+    this.set({ pending: null, error: null, undo: null });
     this.save();
     this.run();
   }
 
   /**
-   * May the human take back the last answer now: a move while moving, a leader placement while deploying (Asculum), a
-   * forced placement (308) while choosing the card that follows it?
+   * What the human may take back at decision `d` (`GameDriver.undoStep`): a move, a leader placement (117, 308), a forced
+   * placement (308) while choosing the card that follows it, or the card played until a unit moves or battles.
    */
-  private undoable(d: Decision | null): boolean {
-    return ((d?.kind === 'move' || d?.kind === 'placeLeader') && this.driver.canUndo()) || this.placementUndoable(d);
-  }
-
-  /**
-   * A forced placement (308, §18.9) may be taken back until the card is played: it is a free choice that rolls no dice
-   * and reveals nothing (the turn-start objectives come before it, and the hand was already known), so replaying the game
-   * without it is safe. The driver's `canUndo` covers only moves and leader placements, so the same conditions are checked
-   * here: the placement was the last answer, its side is still deciding, and no die has been rolled since.
-   */
-  private placementUndoable(d: Decision | null): boolean {
-    const p = this.placement;
-    return !!p && !!d && d.side === this.config.humanSide && this.driver.answers.length === p.n && this.driver.state.rngCalls === p.rng;
+  private undoable(d: Decision | null): UndoStep | null {
+    return d?.side === this.config.humanSide ? this.driver.undoStep() : null;
   }
 
   undo() {
-    const placed = this.placementUndoable(this.driver.pending) ? this.placement : null;
-    if (!(this.driver.canUndo() || placed) || this.busy) return;
-    this.placement = null;
-    // the lines the placement logged go with it
-    if (placed) this.set({ log: this.view.log.filter((l) => l.id < placed.logId) });
+    if (!this.view.undo || this.busy || !this.driver.canUndo()) return;
     this.driver = this.driver.undo();
     this.driver.drainEvents();
+    // the lines the step logged go with it ("… plays …", an arrival)
+    const from = this.driver.answers.length;
+    const mark = this.logMarks.get(from);
+    for (const k of this.logMarks.keys()) if (k >= from) this.logMarks.delete(k);
+    if (mark !== undefined) this.set({ log: this.view.log.filter((l) => l.id < mark) });
     this.syncHeld(this.driver.state);
     const p = this.driver.pending;
-    this.set({ display: cloneState(this.driver.state), pending: p && p.side === this.config.humanSide ? p : null, canUndo: this.undoable(p), error: null, walking: {} });
+    this.set({ display: cloneState(this.driver.state), pending: p && p.side === this.config.humanSide ? p : null, undo: this.undoable(p), error: null, walking: {} });
     this.save();
     if (p && p.side !== this.config.humanSide) this.run();
   }
@@ -396,7 +386,7 @@ export class GameController {
           const combat = d.kind === 'defend'
             ? { from: this.hexOf(d.attacker, st), to: this.hexOf(d.target, st) }
             : d.kind === 'battle' || d.kind === 'move' || d.kind === 'playCard' || d.kind === 'orders' ? null : this.view.combat;
-          this.set({ pending: d, display: cloneState(st), canUndo: this.undoable(d), aiThinking: false, combat });
+          this.set({ pending: d, display: cloneState(st), undo: this.undoable(d), aiThinking: false, combat });
           return;
         }
         // AI decision (asked before the animations when it could be: see askAhead); its pacing runs from here

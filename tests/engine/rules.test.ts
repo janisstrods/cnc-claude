@@ -5,6 +5,7 @@ import {
   leaderEvadeOptions, elephantRetreatOptions, answerError, cloneState, createGame, type Answer, type Decision,
 } from '../../src/engine';
 import { scenarioById } from '../../src/scenarios';
+import { giveCard } from '../rules/helpers';
 import { H, drive, dropFirstStrike, must, replaceFirstCard, state } from './helpers';
 
 beforeEach(() => forceDice([]));
@@ -440,6 +441,82 @@ describe('turn flow', () => {
     must(d, { kind: 'move', piece: 'u1', to: H(5, 4) });
     expect(d.pending).toMatchObject({ kind: 'playCard', side: 'top' });
     expect(d.canUndo()).toBe(false);
+  });
+  it('a card is taken back while its units are being ordered: back in hand, the state as before it', () => {
+    const s = state({ units: [{ side: 'bottom', type: 'MI', at: [6, 4] }, { side: 'bottom', type: 'MI', at: [6, 6] }, { side: 'top', type: 'MI', at: [2, 4] }] });
+    const card = replaceFirstCard(s, 'bottom', 'order2C');
+    const d = drive(s);
+    const before = cloneState(d.state);
+    expect(d.undoStep()).toBeNull();
+    must(d, { kind: 'playCard', card });
+    expect(d.pending).toMatchObject({ kind: 'orders', card: 'order2C' });
+    expect(d.undoStep()).toBe('card');
+    const u = d.undo();
+    expect(u.pending).toEqual({ kind: 'playCard', side: 'bottom' });
+    expect(u.answers).toEqual([]);
+    expect(u.state).toEqual(before);
+    expect(u.state.players.bottom.hand).toContain(card);
+  });
+  it('the card goes back with the orders it gave until a unit moves; the moves are taken back first, one by one', () => {
+    const s = state({ units: [{ side: 'bottom', type: 'MI', at: [6, 4] }, { side: 'bottom', type: 'MI', at: [6, 6] }, { side: 'top', type: 'MI', at: [2, 4] }] });
+    const card = replaceFirstCard(s, 'bottom', 'order2C');
+    const d = drive(s);
+    must(d, { kind: 'playCard', card });
+    must(d, { kind: 'orders', pieces: ['u1', 'u2'] });
+    expect(d.pending).toMatchObject({ kind: 'move', side: 'bottom' });
+    expect(d.undoStep()).toBe('card');
+    expect(d.undo().pending).toEqual({ kind: 'playCard', side: 'bottom' });
+    must(d, { kind: 'move', piece: 'u1', to: H(5, 4) });
+    expect(d.undoStep()).toBe('move');
+    const back = d.undo();
+    expect(back.state.units[0].hex).toBe(H(6, 4));
+    expect(back.undoStep()).toBe('card');
+    const none = back.undo();
+    expect(none.pending).toEqual({ kind: 'playCard', side: 'bottom' });
+    expect(none.state.turn.ordered).toEqual({});
+  });
+  it('a card is not taken back once movement has ended', () => {
+    const s = state({ units: [{ side: 'bottom', type: 'MI', at: [6, 4] }, { side: 'top', type: 'MI', at: [5, 4] }] });
+    dropFirstStrike(s);
+    const card = replaceFirstCard(s, 'bottom', 'order2C');
+    const d = drive(s);
+    must(d, { kind: 'playCard', card });
+    must(d, { kind: 'orders', pieces: ['u1'] });
+    must(d, { kind: 'endMove' });
+    expect(d.pending).toMatchObject({ kind: 'battle', side: 'bottom' });
+    expect(d.undoStep()).toBeNull();
+  });
+  it('Rally cannot be taken back: its dice roll as soon as it is played', () => {
+    const s = state({ units: [{ side: 'bottom', type: 'MI', at: [6, 4], blocks: 2 }, { side: 'top', type: 'MI', at: [2, 4] }], leaders: [{ side: 'bottom', at: [6, 4] }] });
+    const card = replaceFirstCard(s, 'bottom', 'rally');
+    forceDice(['medium', 'medium', 'medium', 'medium', 'medium', 'medium']);
+    const d = drive(s);
+    must(d, { kind: 'playCard', card });
+    expect(d.pending).toMatchObject({ kind: 'rally', side: 'bottom' });
+    expect(d.undoStep()).toBeNull();
+  });
+  it('the command named for a card (§18.5) goes back with it; Darken the Sky until its first shot', () => {
+    const s = state({
+      first: 'top',
+      commands: [{ id: 'a', name: 'Alpha', side: 'top' }, { id: 'b', name: 'Beta', side: 'top' }],
+      units: [
+        { side: 'top', type: 'LB', at: [2, 5], command: 'a' }, { side: 'top', type: 'LB', at: [2, 8], command: 'b' },
+        { side: 'bottom', type: 'MI', at: [4, 5] },
+      ],
+    });
+    dropFirstStrike(s);
+    const card = giveCard(s, 'top', 'darken');
+    const d = drive(s);
+    must(d, { kind: 'playCard', card });
+    expect(d.pending).toEqual({ kind: 'chooseCommand', side: 'top', options: ['a', 'b'] });
+    expect(d.undoStep()).toBe('card');
+    must(d, { kind: 'choose', index: 0 });
+    // no movement with Darken the Sky: straight to the battle
+    expect(d.pending).toMatchObject({ kind: 'battle', side: 'top' });
+    expect(d.undoStep()).toBe('card');
+    const u = d.undo();
+    expect(u.pending).toEqual({ kind: 'playCard', side: 'top' });
+    expect(u.state.players.top.hand).toContain(card);
   });
 });
 

@@ -336,15 +336,15 @@ describe('undo during deployment (117 Asculum)', () => {
       await waitHuman(c);
       const first = c.view.pending!;
       expect(first).toMatchObject({ kind: 'placeLeader', side: 'bottom' });
-      expect(c.view.canUndo).toBe(false);
+      expect(c.view.undo).toBeNull();
       c.answer({ kind: 'hex', hex: (first as { options: number[] }).options[0] });
       await waitHuman(c);
       expect(c.view.pending).toMatchObject({ kind: 'placeLeader', side: 'bottom' });
       expect(c.view.pending).not.toEqual(first);
-      expect(c.view.canUndo).toBe(true);
+      expect(c.view.undo).toBe('placement');
       c.undo();
       expect(c.view.pending).toEqual(first);
-      expect(c.view.canUndo).toBe(false);
+      expect(c.view.undo).toBeNull();
       expect(c.driver.answers).toEqual([]);
       // both Roman leaders placed: the Epirotes place theirs, then the first turn; nothing to take back
       for (let k = 0; k < 2; k++) {
@@ -354,7 +354,7 @@ describe('undo during deployment (117 Asculum)', () => {
         await waitHuman(c);
       }
       expect(c.view.pending?.kind).toBe('playCard');
-      expect(c.view.canUndo).toBe(false);
+      expect(c.view.undo).toBeNull();
     } finally {
       c.dispose();
     }

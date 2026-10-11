@@ -5,7 +5,7 @@ import {
   CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushChoices, battleReady, battleTargets, cardKind, effectiveCard, eligiblePieces,
   isLeaderId, leaderById, movablePieces, orderLimit, orderMode, pieceHex, pieceMoves, possessive, rollingFirePaths, selectionMode,
   unitById, validateDiceOrders, validateOrders,
-  type Answer, type Decision, type DieFace, type GameState, type RetreatOption, type SectionName, type Side,
+  type Answer, type Decision, type DieFace, type GameState, type RetreatOption, type SectionName, type Side, type UndoStep,
 } from '../../engine';
 import { BLOCK_COLORS, unitTypeName } from '../../art';
 import { Button } from '../kit';
@@ -93,6 +93,14 @@ export function gamePrompt(c: PromptCtx): Prompt | null {
     return { title: s.active === human ? 'Resolving…' : `${s.players[ai].army} turn`, text: '', buttons: [] };
   }
   if (d.side !== human) return null;
+  const p = decisionPrompt(c, d);
+  const undo = undoButton(c);
+  return p && undo ? { ...p, buttons: [...p.buttons, undo] } : p;
+}
+
+/** The prompt of the human's decision `d`, without the undo button (`gamePrompt` adds it). */
+function decisionPrompt(c: PromptCtx, d: Decision): Prompt | null {
+  const { s } = c;
   switch (d.kind) {
     case 'playCard':
       return playCardPrompt(c);
@@ -148,11 +156,16 @@ export function gamePrompt(c: PromptCtx): Prompt | null {
   }
 }
 
-/** The undo button of a move or a leader placement, when the last answer may be taken back. */
-function undoButton(c: PromptCtx, d: Decision): JSX.Element | null {
-  return c.view.canUndo
-    ? btn(d.kind === 'placeLeader' ? 'Undo placement' : 'Undo move', () => c.controller.undo(), { variant: 'ghost', key: 'undo' })
-    : null;
+const UNDO_LABEL: Record<UndoStep, { label: string; title: string }> = {
+  move: { label: 'Undo move', title: 'Take back your last move' },
+  placement: { label: 'Undo placement', title: 'Take back your last placement' },
+  card: { label: 'Undo card', title: 'Take the card back into your hand and choose again (nothing has moved yet)' },
+};
+
+/** The undo button, when something may be taken back: a move, a placement, or the card played until a unit moves. */
+function undoButton(c: PromptCtx): JSX.Element | null {
+  const step = c.view.undo;
+  return step ? btn(UNDO_LABEL[step].label, () => c.controller.undo(), { variant: 'ghost', key: 'undo', title: UNDO_LABEL[step].title }) : null;
 }
 
 function playCardPrompt(c: PromptCtx): Prompt {
@@ -168,8 +181,6 @@ function playCardPrompt(c: PromptCtx): Prompt {
     else note = def!.text;
   }
   const buttons = sel !== null ? [btn(`Play ${def!.title}`, () => c.answer({ kind: 'playCard', card: sel }))] : [];
-  // a forced placement (308) just made can be taken back until the card is played
-  if (c.view.canUndo) buttons.push(btn('Undo placement', () => c.controller.undo(), { variant: 'ghost', key: 'undo' }));
   return { title: 'Choose a command card', text: note, buttons };
 }
 
@@ -243,8 +254,6 @@ function movePrompt(c: PromptCtx, d: D<'move'>): Prompt {
   if (sel && pieceMoves(s, sel, d.stage).some((m) => m.hex === OFF_BOARD)) {
     buttons.unshift(btn('Exit the battlefield', () => c.answer({ kind: 'move', piece: sel, to: OFF_BOARD }), { variant: 'secondary' }));
   }
-  const undo = undoButton(c, d);
-  if (undo) buttons.push(undo);
   return { title: d.stage === 2 ? 'Move-Fire-Move: second move' : 'Movement', text, buttons };
 }
 
@@ -420,15 +429,14 @@ function diceOrdersPrompt(c: PromptCtx, d: D<'diceOrders'>): Prompt {
 function placeLeaderPrompt(c: PromptCtx, d: D<'placeLeader'>): Prompt {
   const { s, human } = c;
   const l = leaderById(s, d.leader);
-  const undo = undoButton(c, d);
   // 308: a reserve leader joins one of the units of his force that entered this turn
   if (!s.special.unplaced.includes(d.leader)) {
-    return { title: `Place ${l?.name || 'your leader'}`, text: 'Click one of the units that entered (gold) to attach him.', buttons: undo ? [undo] : [] };
+    return { title: `Place ${l?.name || 'your leader'}`, text: 'Click one of the units that entered (gold) to attach him.', buttons: [] };
   }
   const more = s.special.unplaced.filter((id) => id !== d.leader && leaderById(s, id)?.side === human).length;
   return {
     title: `Place ${l?.name || 'your leader'}`,
     text: `Before the battle: click one of your units (gold) to attach him, or any faintly marked empty hex where he stands alone.${more ? ` ${more} more to place after him.` : ''}`,
-    buttons: undo ? [undo] : [],
+    buttons: [],
   };
 }
