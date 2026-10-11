@@ -1,6 +1,6 @@
 // Card knowledge: how valuable it is to keep a card in hand for later, and a quick estimate of what a card can do now.
 import { CARD_DEFS, sectionOrders } from '../engine/cards';
-import { ambushAvailable } from '../engine/flow';
+import { ambushAvailable } from '../engine/options';
 import { inSection } from '../engine/hex';
 import { leaderHas, leadersOf, unitsOf } from '../engine/query';
 import { canShoot, hasPilum } from '../engine/elites';

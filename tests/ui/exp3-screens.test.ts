@@ -454,7 +454,7 @@ describe('a reserve leader entering the board (the controller)', () => {
     const c = new GameController({ ...newSessionConfig(id, lead.side, 'recruit'), seed: 3 }, new SeededOpponent());
     try {
       const animate = await settled(c);
-      // the ambush springs: the reserve leader leaves the reserve and waits off the board among the leaders (flow.ts)
+      // the ambush springs: the reserve leader leaves the reserve and waits off the board among the leaders (phases.ts)
       const off = cloneState(c.driver.state);
       off.leaders.push(...off.special.reserveLeaders);
       off.special.reserveLeaders = [];

@@ -3,7 +3,7 @@
 import { bannerTotal } from '../engine/banners';
 import { cardKind, sectionOrders } from '../engine/cards';
 import { closeCombatDice, retreatPerFlag } from '../engine/combat';
-import { mayAttackInto, wallStrikesFirst } from '../engine/flow';
+import { mayAttackInto, wallStrikesFirst } from '../engine/options';
 import { nextCaptureBanners, stopCaptureAt } from '../engine/objectives';
 import { baselineRow, neighbours, rowOf, sectionsOf } from '../engine/hex';
 import {

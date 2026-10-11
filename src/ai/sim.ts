@@ -1,6 +1,7 @@
 // Simulation harness: run the engine's own turn generator on cloned, determinised states with AI policies.
 import { CARD_LIST } from '../engine/cards';
-import { continueTurn, turnFlow, type Gen } from '../engine/flow';
+import type { Gen } from '../engine/decisions';
+import { continueTurn, turnFlow } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
 import { orderDice } from '../engine/orders';
 import { other } from '../engine/query';

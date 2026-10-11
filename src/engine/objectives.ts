@@ -4,10 +4,11 @@
 // of any passable hex, nothing removed), exits over a side edge and leaders who score by exiting (`exit.leadersScore`), and a
 // removed camp leaves the hill under it. Banner totals and victory live in banners.ts.
 //
-// Hooks (flow.ts): `turnStartObjectives` before the card is played, `turnEndObjectives` before the draw, `captureOnStop`
-// where a unit ends its move or (at the end of its close-combat sequence) a momentum advance it still stands on, and
-// `updateHeld` (banners.ts; held banners, held.ts) after every change of unit positions (moves, momentum advances,
-// retreats, evades, removals; after the move's own losses) and after every battle action.
+// Hooks (the turn flow: flow.ts and the modules it builds on): `turnStartObjectives` before the card is played,
+// `turnEndObjectives` before the draw, `captureOnStop` where a unit ends its move or (at the end of its close-combat
+// sequence) a momentum advance it still stands on, and `updateHeld` (banners.ts; held banners, held.ts) after every
+// change of unit positions (moves, momentum advances, retreats, evades, removals; after the move's own losses) and
+// after every battle action.
 // Every banner scored goes through `gainBanner`, which brings the held banners up to date first.
 import { gainBanner, updateHeld } from './banners';
 import { turnEndHeld } from './held';

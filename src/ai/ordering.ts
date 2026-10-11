@@ -1,6 +1,6 @@
 // Which pieces to order with a card: per-piece benefit estimates and candidate order sets for every order mode.
 import { CARD_DEFS, modsFor } from '../engine/cards';
-import { ambushAvailable, ambushSectionChoices } from '../engine/flow';
+import { ambushAvailable, ambushSectionChoices } from '../engine/options';
 import { areAdjacent, inSection } from '../engine/hex';
 import { leaderMoves, unitMoves } from '../engine/movement';
 import { commandClash, commandModes, inCommand, leadershipChain, orderMode, validateOrders, type OrderMode } from '../engine/orders';

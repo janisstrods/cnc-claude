@@ -7,7 +7,7 @@
 // Battles use rollouts per candidate attack; reactive decisions use fast expected-value heuristics.
 import { bannerTotal } from '../engine/banners';
 import { CARD_DEFS, cardKind, modsFor, sectionOrders } from '../engine/cards';
-import { answerError } from '../engine/flow';
+import { answerError } from '../engine/decisions';
 import { randomAnswer } from '../engine/legal';
 import { orderDice } from '../engine/orders';
 import { other, unitById } from '../engine/query';

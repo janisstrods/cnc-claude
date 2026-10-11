@@ -1,5 +1,6 @@
 // GameDriver: runs the flow generator, records answers (replay / undo / save) and queues events for the UI.
-import { gameFlow, type Gen } from './flow';
+import type { Gen } from './decisions';
+import { gameFlow } from './flow';
 import { cloneState } from './setup';
 import type { Answer, Decision, FlowCtx, GameEvent, GameState, Side } from './types';
 

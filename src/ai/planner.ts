@@ -2,8 +2,11 @@
 // with the engine's own turn generator, evaluated statically, and compared (minus the value of keeping the card).
 import { bannerTotal } from '../engine/banners';
 import { cardKind } from '../engine/cards';
-import { continueTurn, newOrderedPiece, nextTurn, pieceMoves, turnFlow, type Gen } from '../engine/flow';
+import type { Gen } from '../engine/decisions';
+import { continueTurn, nextTurn, turnFlow } from '../engine/flow';
+import { pieceMoves } from '../engine/options';
 import { diceOrdered } from '../engine/orders';
+import { newOrderedPiece } from '../engine/phases';
 import { other } from '../engine/query';
 import { forcedDiceLeft } from '../engine/rng';
 import { cloneState } from '../engine/setup';

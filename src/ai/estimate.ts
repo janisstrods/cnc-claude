@@ -1,6 +1,6 @@
 // Analytic combat estimator: expected value (in banner units) of attacks, battle backs, evades and ranged fire.
 import { CARD_DEFS } from '../engine/cards';
-import { battleTargets, mayAttackInto, rollingFirePaths, rollingFireRoutes, wallStrikesFirst } from '../engine/flow';
+import { battleTargets, mayAttackInto, rollingFirePaths, rollingFireRoutes, wallStrikesFirst } from '../engine/options';
 import {
   canFireAt, closeCombatDice, helmetsCount, rangedDice, retreatPerFlag, swordIgnores, vsMountedIgnores, type StrikeRole,
 } from '../engine/combat';

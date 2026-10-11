@@ -1,6 +1,6 @@
 // Legal-answer helpers: enumerate simple answers and produce random legal answers (used by tests and AI); the greedy dice
 // assignment also suggests the Rally and I Am Spartacus dialog's first choice.
-import { ambushAvailable, ambushSections, battleTargets, movablePieces, pieceMoves, rollingFirePaths } from './flow';
+import { ambushAvailable, ambushSections, battleTargets, movablePieces, pieceMoves, rollingFirePaths } from './options';
 import {
   diceOrderPieces, eligiblePieces, orderMode, rallyCandidates, validateDiceOrders, validateOrders, validateRally, validateSpartacus,
 } from './orders';

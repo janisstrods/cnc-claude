@@ -1,5 +1,5 @@
 // Movement planning: score each reachable hex of an ordered piece by the resulting position plus the attack it enables.
-import { pieceMoves } from '../engine/flow';
+import { pieceMoves } from '../engine/options';
 import { nextCaptureBanners, stopCaptureAt } from '../engine/objectives';
 import { attachedLeader, isLeaderId, leaderById, leaderUnit, other, unitById } from '../engine/query';
 import type { MoveTarget } from '../engine/movement';
