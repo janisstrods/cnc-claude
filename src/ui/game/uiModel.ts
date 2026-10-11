@@ -1,12 +1,14 @@
 // Pure helpers that turn (state, pending decision, local UI selection) into board highlights and badges, plus the unit
 // descriptions shown in tooltips and the rules reference.
 import {
-  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, bannerTotal, baselineRow, battleReady, battleTargets, canMarch,
-  cardKind, closeCombatDice, closeHitChance, commandClash, commandOf, eligiblePieces, inCommand, eliteDef, fireMoveLimit, heldBanners, inSection, isLeaderId, leaderAt,
-  leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces, nextCaptureBanners, orderCommander, orderMode, other, pieceMoves,
-  rangeOf, rangedBaseDice, rangedDice, rollingFirePaths, rowOf, sectionsOf, terrainAt, unitAt, unitById,
-  type Blocks, type CardKind, type CommandDef, type Decision, type EliteAbility, type EvadeRule, type GameState, type HexId, type Leader,
-  type LeaderTrait, type ObjectiveDef, type RetreatOption, type SectionName, type Side, type Unit, type UnitClass, type UnitStats, type UnitType,
+  ALL_HEXES, CARD_DEFS, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, UNIT_TYPES, ambushAvailable, attachedLeader, bannerTotal, baselineRow, battleReady,
+  battleTargets, canMarch, cardKind, closeCombatDice, closeHitChance, commandClash, commandOf, diceOrderPieces, eligiblePieces, inCommand, eliteDef,
+  fireMoveLimit, heldBanners, inSection, isLeaderId, leaderAt, leaderById, leaderHas, leaderUnit, leadersOf, mirrorKind, movablePieces,
+  nextCaptureBanners, orderCommander, orderDice, orderMode, other, pieceMoves, rangeOf, rangedBaseDice, rangedDice, rollingFirePaths, rowOf,
+  sectionsOf, terrainAt, unitAt, unitById, validateDiceOrders,
+  type Blocks, type CardKind, type CommandDef, type Decision, type DieFace, type EliteAbility, type EvadeRule, type GameState, type HexId,
+  type Leader, type LeaderTrait, type ObjectiveDef, type RetreatOption, type SectionName, type Side, type Unit, type UnitClass, type UnitStats,
+  type UnitType,
 } from '../../engine';
 import type { Highlight } from './Board';
 
@@ -18,6 +20,10 @@ export interface UiSel {
   hoverHex: HexId | null;
   /** Rolling Fire (210, §18.5): the path hexes picked so far for the selected unit; absent or null = not rolling. */
   rollPath?: HexId[] | null;
+  /** Dice orders (310, §18.10): the piece each die of the roll orders so far (null = unused); absent = none yet. */
+  diceIds?: (string | null)[];
+  /** Dice orders: the die a click on the board assigns (null = none left to assign). */
+  diceActive?: number | null;
 }
 
 export interface BoardUi {
@@ -107,6 +113,11 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
         if (inCommand({ command: commandOf(s, id) }, cmd)) markPiece(id, 'eligible');
       }
       for (const id of ui.orderSel) markPiece(id, 'selected');
+      // reinforcements with fixed entry hexes (308, §18.9): where they would enter, if this card brings them in
+      for (const h of fixedEntryHexes(s, human, d.card)) {
+        highlights.set(h, 'placeEmpty');
+        badges.set(h, 'Entry');
+      }
       break;
     }
     case 'move': {
@@ -192,12 +203,29 @@ export function boardUi(s: GameState, d: Decision | null, ui: UiSel, human: Side
       break;
     case 'placeUnit':
       // a forced placement (308): the empty hexes the unit may be placed on
-      for (const h of d.options) highlights.set(h, 'option');
+      for (const h of d.options) {
+        highlights.set(h, 'option');
+        badges.set(h, 'Place');
+      }
       break;
     case 'diceVictim':
       // dice orders (310): the units a flag or swords face of the own order roll may fall on
       for (const id of d.options) markPiece(id, 'option');
       break;
+    case 'diceOrders': {
+      // dice orders (310): the pieces the selected die may still order, and those the dice order so far
+      const ids = ui.diceIds ?? d.faces.map(() => null);
+      if (ui.diceActive !== undefined && ui.diceActive !== null) {
+        for (const id of diceSlotChoices(s, human, d.faces, ids, ui.diceActive)) markPiece(id, 'eligible');
+      }
+      ids.forEach((id, i) => {
+        if (!id) return;
+        markPiece(id, 'selected');
+        const h = pieceHexOf(s, id);
+        if (h >= 0) badges.set(h, `Die ${i + 1}`);
+      });
+      break;
+    }
     case 'bonusCombat': {
       const u = unitById(s, d.unit);
       if (u) highlights.set(u.hex, 'focus');
@@ -514,11 +542,15 @@ const aOrAn = (w: string) => `${/^[AEIOU]/i.test(w) ? 'an' : 'a'} ${w}`;
 /** The units an exit objective lets leave: "unit", "foot unit", "cavalry unit". */
 const EXIT_UNITS: Record<'any' | 'foot' | 'cavalry', string> = { any: 'unit', foot: 'foot unit', cavalry: 'cavalry unit' };
 
-/** What a hold or majority hex is called in its tooltip: a camp after its owner, a rampart, a hill, or just an objective. */
+/**
+ * What a hold or majority hex is called in its tooltip: a camp after its owner, a rampart, a city wall (308), a hill, or
+ * just an objective.
+ */
 function placeName(s: GameState, h: HexId, owner: Side | null): string {
   const t = terrainAt(s, h);
   if (t === 'camp') return owner ? `${s.players[owner].army} camp` : 'Camp';
   if (t === 'rampart') return 'Rampart';
+  if (t === 'wall') return 'City wall';
   if (t === 'hill') return 'Hill';
   return 'Objective';
 }
@@ -530,6 +562,13 @@ function objectiveLines(s: GameState, o: ObjectiveDef, i: number, h: HexId): str
   switch (o.kind) {
     case 'capture': {
       if (!o.hexes.includes(h)) return [];
+      // ship markers (313, §18.4): the enemy's ships off this beach; the marker is taken, the hex does not change
+      if (o.marker === 'ship') {
+        const ship = `${army(other(o.side))} ship`;
+        if (st.taken.includes(h)) return [`${ship}: taken by the ${army(o.side)} army`];
+        const n = nextCaptureBanners(s, i);
+        return [`${ship}: ${aOrAn(army(o.side))} unit here at the start of its turn takes the marker — ${plural(n, 'banner')} (the hex does not change)`];
+      }
       const camp = `${army(other(o.side))} camp`;
       if (st.taken.includes(h)) return [`${camp}: captured by the ${army(o.side)} army`];
       if (o.together) {
@@ -543,7 +582,9 @@ function objectiveLines(s: GameState, o: ObjectiveDef, i: number, h: HexId): str
         const k = o.banners.findIndex((b, j) => j >= st.taken.length && b > 0);
         gain = k >= 0 ? `no banner until the ${ORDINAL[k] ?? `${k + 1}th`} camp taken` : 'no banner';
       }
-      return [`${camp}: ${aOrAn(army(o.side))} unit ${who} captures it — ${gain}${o.remove ? '; the camp is then removed' : ''}`];
+      // a camp on a hill (308, §18.7) leaves the hill when it is removed
+      const removed = o.remove ? `; the camp is then removed${s.hillUnder[h] ? ' (the hill remains)' : ''}` : '';
+      return [`${camp}: ${aOrAn(army(o.side))} unit ${who} captures it — ${gain}${removed}`];
     }
     case 'hold': {
       if (!o.hexes.includes(h)) return [];
@@ -554,6 +595,14 @@ function objectiveLines(s: GameState, o: ObjectiveDef, i: number, h: HexId): str
     case 'majority': {
       if (!o.hexes.includes(h)) return [];
       const holder = o.sides.find((side) => st.held[side] > 0);
+      if (o.sides.length === 1) {
+        // one side only (309's hillock, §18.4): it holds the banners while it has strictly more units there than the enemy
+        const side = o.sides[0];
+        return [
+          `${placeName(s, h, null)} objective: ${o.when === 'turnEnd' ? 'at the end of every turn ' : ''}the ${army(side)} army holds ${plural(o.banners, 'banner')} while it has more units on the ${o.hexes.length} marked hexes than the ${army(other(side))} army; the ${army(other(side))} army cannot hold it`,
+          holder ? `Held now by the ${army(holder)} army` : 'Not held now',
+        ];
+      }
       const when = o.when === 'turnEnd' ? 'at the end of every turn the side with' : 'the side with';
       return [
         `${placeName(s, h, null)} objective: ${when} more units on the ${o.hexes.length} marked hexes holds ${plural(o.banners, 'banner')} (a tie: nobody)`,
@@ -567,6 +616,10 @@ function objectiveLines(s: GameState, o: ObjectiveDef, i: number, h: HexId): str
     }
     case 'exit':
       if (!o.hexes.includes(h)) return [];
+      // leaders score too (317, §18.4): a lone leader may leave, and a unit leaving with its leader scores 2
+      if (o.leadersScore) {
+        return [`Exit: ${aOrAn(army(o.side))} ${EXIT_UNITS[o.units]} or lone leader here may leave the battlefield — 1 banner each, 2 for a unit with its leader (they are removed)`];
+      }
       return [`Exit: ${aOrAn(army(o.side))} ${EXIT_UNITS[o.units]} here may leave the battlefield — 1 banner (the unit is removed)`];
   }
 }
@@ -647,17 +700,240 @@ export function possessive(name: string): string {
 }
 
 /**
- * Wording of an ambush reserve (Trebbia 005, Aquae Sextiae 206): the ambush button's tooltip and the move prompt while
- * its pieces enter. `leader` = the reserve's leader (the scenario setup's first reserve leader), if any.
+ * Wording of an ambush reserve (Trebbia 005, Aquae Sextiae 206) or of reinforcements with fixed entry hexes (308 Gergovia,
+ * §18.9): the button's label (`fixed`: one button, whatever the section; otherwise one per section, "Ambush: Left"), its
+ * tooltip and the move prompt while the pieces enter. `leader` = the reserve's leader (the scenario setup's first reserve
+ * leader), if any.
  */
-export function ambushTexts(s: GameState, leader?: string): { button: string; move: string } {
+export function ambushTexts(s: GameState, leader?: string): { button: string; move: string; label: string; fixed: boolean } {
   const side = s.special.reserveSide ?? s.active;
   const enemy = s.players[other(side)].army;
+  const a = s.special.ambush;
+  if (a?.entryHexes) {
+    const force = leader ? `${possessive(leader)} reinforcements` : 'The reinforcements';
+    const after = [
+      a.noMove ? 'They cannot move on this turn, but may battle.' : '',
+      a.attachLeader && leader ? `${leader} joins one of them.` : '',
+    ].filter(Boolean).join(' ');
+    return {
+      fixed: true,
+      label: 'Reinforcements enter',
+      button: `${force} enter on the ${a.entryHexes.length} marked entry hexes, one unit per empty hex, whatever the section. The card orders nothing else.`,
+      move: `${force} enter on the marked entry hexes: pick a piece, then a highlighted hex.${after ? ` ${after}` : ''}`,
+    };
+  }
   const force = leader ? `${possessive(leader)} force` : 'The hidden force';
   return {
+    fixed: false,
+    label: 'Ambush',
     button: leader
       ? `Spring ${possessive(leader)} ambush: his force enters on the ${enemy} baseline in this section`
       : `Spring the ambush: the hidden force enters on the ${enemy} baseline in this section`,
     move: `${force} enters on the ${enemy} baseline: pick a piece, then a highlighted hex. Pieces left off the board return to the reserve.`,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Expansion #3: dice orders (310), forced placement and reinforcements with fixed entry (308), immobile units (306), Caesar's
+// forced march with the legions (§18.3), §18.8–§18.11
+// ---------------------------------------------------------------------------
+
+/** A die face in prompts and the log: "light (green)", "helmet", "flag". */
+export const FACE_WORDS: Record<DieFace, string> = {
+  light: 'light (green)', medium: 'medium (blue)', heavy: 'heavy (red)', leader: 'helmet', flag: 'flag', swords: 'swords',
+};
+
+/** What one die of a dice-order roll does (§18.10): a flag or swords falls on a unit, a symbol orders one, or it is lost. */
+export type DiceSlotRole = 'flag' | 'swords' | 'order' | 'lost';
+
+export interface DiceSlot {
+  face: DieFace;
+  role: DiceSlotRole;
+  /** The pieces the die could order (`diceOrderPieces`), before anything is assigned; empty for the other roles. */
+  options: string[];
+}
+
+/** The dice of a dice-order roll (§18.10) and what each can do now: a symbol with no piece of its kind is lost. */
+export function diceOrderSlots(s: GameState, side: Side, faces: readonly DieFace[]): DiceSlot[] {
+  return faces.map((face): DiceSlot => {
+    if (face === 'flag' || face === 'swords') return { face, role: face, options: [] };
+    const options = diceOrderPieces(s, side, face);
+    return { face, role: options.length ? 'order' : 'lost', options };
+  });
+}
+
+/**
+ * The pieces die `i` may order with the other dice as assigned in `ids` (one entry per die, null = unused): its pieces that
+ * keep the whole assignment legal (`validateDiceOrders`: no piece twice, a helmet's leader with his unit).
+ */
+export function diceSlotChoices(s: GameState, side: Side, faces: readonly DieFace[], ids: readonly (string | null)[], i: number): string[] {
+  const all = [...faces];
+  return diceOrderPieces(s, side, faces[i]).filter((id) => validateDiceOrders(s, side, all, ids.map((x, j) => (j === i ? id : x))) === null);
+}
+
+/** The next die after `from` (wrapping round) that is still unused and could order a piece, or null. */
+function nextFreeDie(s: GameState, side: Side, faces: readonly DieFace[], ids: readonly (string | null)[], from: number): number | null {
+  for (let k = 1; k <= faces.length; k++) {
+    const i = (from + k) % faces.length;
+    if (ids[i] === null && diceSlotChoices(s, side, faces, ids, i).length) return i;
+  }
+  return null;
+}
+
+/** The first die that could order a piece (where the assignment starts), or null when none can. */
+export function firstOrderDie(s: GameState, side: Side, faces: readonly DieFace[]): number | null {
+  return nextFreeDie(s, side, faces, faces.map(() => null), faces.length - 1);
+}
+
+/**
+ * A click on piece `piece` while the dice orders are assigned (310): a piece already ordered frees its die (which becomes the
+ * selected one); otherwise the selected die (`active`) orders it, or else the first free die that can, and the selection
+ * moves on to the next free die. Null: no die can order that piece.
+ */
+export function diceAssignClick(
+  s: GameState, side: Side, faces: readonly DieFace[], ids: readonly (string | null)[], active: number | null, piece: string,
+): { ids: (string | null)[]; active: number | null } | null {
+  const at = ids.indexOf(piece);
+  if (at >= 0) return { ids: ids.map((x, j) => (j === at ? null : x)), active: at };
+  const fits = (i: number) => diceSlotChoices(s, side, faces, ids, i).includes(piece);
+  let die = active !== null && fits(active) ? active : -1;
+  if (die < 0) die = faces.findIndex((_, i) => ids[i] === null && fits(i));
+  if (die < 0) return null;
+  const next = ids.map((x, j) => (j === die ? piece : x));
+  return { ids: next, active: nextFreeDie(s, side, faces, next, die) };
+}
+
+/** Name of a piece in the dice-order texts: "Light Cavalry", "Saburra with his Medium Infantry". */
+export function pieceName(s: GameState, id: string): string {
+  if (isLeaderId(id)) {
+    const l = leaderById(s, id);
+    const own = l && leaderUnit(s, l);
+    return `${l?.name || 'Leader'}${own ? ` with his ${UNIT_STATS[own.type].name}` : ''}`;
+  }
+  const u = unitById(s, id);
+  return u ? UNIT_STATS[u.type].name : 'unit';
+}
+
+/** What a die does before its piece is chosen (the caption under it in the turn panel). */
+export function diceSlotText(slot: DiceSlot): string {
+  switch (slot.role) {
+    case 'flag':
+      return 'A unit falls back';
+    case 'swords':
+      return 'A unit loses a block';
+    case 'order':
+      return slot.face === 'leader' ? 'Orders a leader and his unit' : `Orders a ${slot.face} unit`;
+    case 'lost':
+      return slot.face === 'leader' ? 'No leader: lost' : `No ${slot.face} unit: lost`;
+  }
+}
+
+/**
+ * Subtitle of a dice-order roll in the dice tray (§18.10), from the state right after the roll (`s`): its flags and swords,
+ * then how many pieces it can order. A roll that can order nothing says nothing about orders; `mine`: the human rolled.
+ */
+export function diceRollSummary(s: GameState, side: Side, faces: readonly DieFace[], mine: boolean): string {
+  const count = (f: DieFace) => faces.filter((x) => x === f).length;
+  const flags = count('flag');
+  const swords = count('swords');
+  // pieces it can order: per symbol, at most as many as there are pieces of its kind
+  let orders = 0;
+  for (const f of ['light', 'medium', 'heavy', 'leader'] as const) orders += Math.min(count(f), diceOrderPieces(s, side, f).length);
+  const parts: string[] = [];
+  if (flags) parts.push(flags === 1 ? 'a unit falls back' : `${flags} units fall back`);
+  if (swords) parts.push(swords === 1 ? 'a unit loses a block' : `${swords} units lose a block`);
+  if (orders) {
+    const what = orders === 1 ? '1 unit to order' : `up to ${orders} units to order`;
+    parts.push(mine ? `choose ${what}` : what);
+  }
+  if (!parts.length) return 'No effect';
+  const text = parts.join('; ');
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * A side's dice-order turn as the screen tells it (§18.10): the roll, and for each die the piece it fell on (flag, swords)
+ * or ordered, by name (null: not yet, or unused). `done`: the orders are given.
+ */
+export interface DiceTurn {
+  side: Side;
+  turn: number;
+  faces: DieFace[];
+  used: (string | null)[];
+  done: boolean;
+}
+
+/** The turn after a victim of a flag or swords face was chosen: the first such die without one gets `name`. */
+export function diceTurnVictim(t: DiceTurn, face: 'flag' | 'swords', name: string): DiceTurn {
+  const i = t.faces.findIndex((f, j) => f === face && t.used[j] === null);
+  return i < 0 ? t : { ...t, used: t.used.map((x, j) => (j === i ? name : x)) };
+}
+
+/** The turn after its orders were given (`ids`: the `assign` answer, one entry per die). */
+export function diceTurnOrders(s: GameState, t: DiceTurn, ids: readonly (string | null)[]): DiceTurn {
+  return { ...t, used: t.used.map((x, j) => (t.faces[j] === 'flag' || t.faces[j] === 'swords' ? x : ids[j] ? pieceName(s, ids[j]!) : null)), done: true };
+}
+
+/**
+ * One line telling a dice-order turn (the opponent's turn banner): "Order dice: flag, light (green). Fell back: Light
+ * Cavalry. Ordered: Light Cavalry." `over`: the orders step is past (with nothing to order, no orders were asked).
+ */
+export function diceTurnText(t: DiceTurn, over: boolean): string {
+  const parts = [`Order dice: ${t.faces.map((f) => FACE_WORDS[f]).join(', ')}.`];
+  const named = (face: DieFace) => t.used.filter((x, j) => t.faces[j] === face && x).join(', ');
+  if (named('flag')) parts.push(`Fell back: ${named('flag')}.`);
+  if (named('swords')) parts.push(`Lost a block: ${named('swords')}.`);
+  if (t.done || over) {
+    const ordered = t.used.filter((x, j) => x && t.faces[j] !== 'flag' && t.faces[j] !== 'swords');
+    parts.push(`Ordered: ${ordered.length ? ordered.join(', ') : 'nothing'}.`);
+  }
+  return parts.join(' ');
+}
+
+/** Counter Attack against a side that orders by dice (310): there is no card to copy, so it orders nothing. */
+export function counterAttackNote(s: GameState, side: Side): string | null {
+  const enemy = other(side);
+  if (!orderDice(s, enemy)) return null;
+  return `The ${s.players[enemy].army} army orders by dice and plays no cards: Counter Attack has nothing to copy and orders nothing.`;
+}
+
+/** Prompt of a forced placement (308, §18.9): the unit waiting off the board, and where it may go. */
+export function placeUnitPrompt(s: GameState, d: Extract<Decision, { kind: 'placeUnit' }>): { title: string; text: string } {
+  const p = s.special.placeUnits.find((x) => x.unit.id === d.unit);
+  const name = p ? UNIT_STATS[p.unit.type].name : 'reinforcement';
+  return {
+    title: `Reinforcement: place your ${name}`,
+    text: `Before you play a card, the ${s.players[d.side].army} ${name} waiting off the board must be placed on one of the ${d.options.length} highlighted hexes. It is then an ordinary unit, and this turn's card may order it.`,
+  };
+}
+
+/**
+ * The fixed entry hexes (308, §18.9) where reinforcements could enter now, when `card` lets `side` bring them in: the empty
+ * ones (no unit, no leader). Empty in every other case.
+ */
+export function fixedEntryHexes(s: GameState, side: Side, card: CardKind): HexId[] {
+  const entry = s.special.ambush?.entryHexes;
+  if (!entry || !ambushAvailable(s, side, card)) return [];
+  return entry.filter((h) => !unitAt(s, h) && !leaderAt(s, h));
+}
+
+/** Tooltip line of an immobile unit (306, §18.11). */
+export const IMMOBILE_TIP = 'Immobile: never moves or advances; battles and retreats normally';
+
+/** Tooltip line of a unit that entered from the reserve this turn and may not move again (308, `ambush.noMove`), or null. */
+export function enteredTipLine(s: GameState, u: Unit): string | null {
+  if (u.hex < 0 || !s.turn.ordered[u.id]?.fromReserve || !s.special.ambush?.noMove) return null;
+  return 'Entered this turn: cannot move again until next turn, but may battle';
+}
+
+/**
+ * Tooltip line of Caesar's forced march (§18.3) on the unit he is attached to, when it gains from it: an infantry unit (not
+ * a war machine) that cannot otherwise move 2 hexes and battle. A pilum unit still never throws after 2 hexes (§18.2).
+ */
+export function forcedMarchLine(s: GameState, u: Unit): string | null {
+  const l = attachedLeader(s, u);
+  const st = UNIT_STATS[u.type];
+  if (!l || !leaderHas(l, 'forcedMarch') || st.mounted || st.moveBattle === 0 || st.moveBattle >= 2) return null;
+  const pilum = !!u.legion && rangeOf(u) > 0;
+  return `${possessive(l.name || 'Caesar')} forced march: with him from the start of its move, it may move 2 hexes and still ${pilum ? 'close combat (no pilum after 2 hexes)' : 'battle'}`;
 }

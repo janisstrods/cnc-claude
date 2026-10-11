@@ -1,12 +1,13 @@
 // Game session controller: owns the engine driver, runs the AI, and turns engine events into paced animations.
 import {
   CARD_DEFS, CARD_LIST, GameDriver, OFF_BOARD, TERRAIN_NAMES, UNIT_STATS, bannerTotal, cardKind, cloneState, createGame, freshSeed,
-  heldBanners, leaderById, other, randomAnswer, rallyCandidates, unitById,
+  heldBanners, isLeaderId, leaderById, orderDice, other, randomAnswer, rallyCandidates, unitAt, unitById,
   type Answer, type CardKind, type Decision, type DieFace, type GameEvent, type GameOptions, type GameState, type HexId, type QueuedEvent,
   type RollPurpose, type Side,
 } from '../../engine';
 import { SCENARIOS, scenarioById } from '../../scenarios';
 import type { Opponent } from './opponent';
+import { FACE_WORDS, diceRollSummary, diceTurnOrders, diceTurnVictim, pieceName, type DiceTurn } from './uiModel';
 import { sfx } from '../sound';
 
 export type Difficulty = 'recruit' | 'tribune' | 'consul';
@@ -105,6 +106,10 @@ export interface ViewState {
   lastCombatOdds: string | null;
   /** Centre-board announcement: 'turn' = "Your turn"; 'notice' = a longer message (a lost command card). */
   toast: { id: number; text: string; kind?: 'turn' | 'notice' } | null;
+  /** Dice orders (310, §18.10): the current or last dice-order turn (the roll and what its dice were used for). */
+  diceTurn: DiceTurn | null;
+  /** The computer's order roll shown on the board, as its played cards are (310). */
+  orderShow: { id: number; side: Side; faces: DieFace[] } | null;
   /** The game loop failed and cannot continue. */
   fatal: boolean;
 }
@@ -176,6 +181,13 @@ export class GameController {
    * event, so the display before the second event already has its new count: the change is measured against this.
    */
   private shownHeld: Record<Side, number> = { top: 0, bottom: 0 };
+  /** The turn whose "Your turn" toast has been shown: once per turn, also when its first decision is taken back. */
+  private toldTurn = -1;
+  /**
+   * The human's forced placement (308) while it might be taken back: the answers recorded with it, the dice rolled before
+   * it, and the log's length before its lines.
+   */
+  private placement: { n: number; rng: number; log: number } | null = null;
 
   constructor(config: SessionConfig, opponent: Opponent, answers: Answer[] = [], check?: SavedGame['check']) {
     this.config = config;
@@ -213,6 +225,8 @@ export class GameController {
       speed,
       lastCombatOdds: null,
       toast: null,
+      diceTurn: null,
+      orderShow: null,
       fatal: false,
     };
     // a new game's turn-start events are still queued: they are measured from the opening position
@@ -305,6 +319,9 @@ export class GameController {
   // ---------------------------------------------------------------- human input
   answer(a: Answer) {
     if (!this.view.pending || this.busy || this.view.fatal) return;
+    const d = this.view.pending;
+    const dice = this.diceNote(d, a);
+    const placing = d.kind === 'placeUnit' ? this.driver.state.rngCalls : null;
     let ok: boolean;
     try {
       ok = this.driver.answer(a);
@@ -320,18 +337,38 @@ export class GameController {
       this.set({ error: this.driver.lastError });
       return;
     }
+    this.placement = placing === null ? null : { n: this.driver.answers.length, rng: placing, log: this.view.log.length };
+    this.diceTold(d, a, dice);
     this.set({ pending: null, error: null });
     this.save();
     this.run();
   }
 
-  /** May the human take back the last answer now: a move while moving, a leader placement while deploying (Asculum)? */
+  /**
+   * May the human take back the last answer now: a move while moving, a leader placement while deploying (Asculum), a
+   * forced placement (308) while choosing the card that follows it?
+   */
   private undoable(d: Decision | null): boolean {
-    return (d?.kind === 'move' || d?.kind === 'placeLeader') && this.driver.canUndo();
+    return ((d?.kind === 'move' || d?.kind === 'placeLeader') && this.driver.canUndo()) || this.placementUndoable(d);
+  }
+
+  /**
+   * A forced placement (308, §18.9) may be taken back until the card is played: it is a free choice that rolls no dice
+   * and reveals nothing (the turn-start objectives come before it, and the hand was already known), so replaying the game
+   * without it is safe. The driver's `canUndo` covers only moves and leader placements, so the same conditions are checked
+   * here: the placement was the last answer, its side is still deciding, and no die has been rolled since.
+   */
+  private placementUndoable(d: Decision | null): boolean {
+    const p = this.placement;
+    return !!p && !!d && d.side === this.config.humanSide && this.driver.answers.length === p.n && this.driver.state.rngCalls === p.rng;
   }
 
   undo() {
-    if (!this.driver.canUndo() || this.busy) return;
+    const placed = this.placementUndoable(this.driver.pending) ? this.placement : null;
+    if (!(this.driver.canUndo() || placed) || this.busy) return;
+    this.placement = null;
+    // the lines the placement logged go with it
+    if (placed) this.set({ log: this.view.log.slice(0, placed.log) });
     this.driver = this.driver.undo();
     this.driver.drainEvents();
     this.syncHeld(this.driver.state);
@@ -361,10 +398,8 @@ export class GameController {
         }
         const d = this.driver.pending;
         if (d.side === this.config.humanSide) {
-          if (d.kind === 'playCard') {
-            sfx.turn();
-            this.toast('Your turn', 'turn', 1400);
-          }
+          // a forced placement (308) comes before the card: the turn starts with it
+          if (d.kind === 'playCard' || d.kind === 'placeUnit') this.yourTurn(st.turn.number);
           const combat = d.kind === 'defend'
             ? { from: this.hexOf(d.attacker, st), to: this.hexOf(d.target, st) }
             : d.kind === 'battle' || d.kind === 'move' || d.kind === 'playCard' || d.kind === 'orders' ? null : this.view.combat;
@@ -408,10 +443,17 @@ export class GameController {
         if (spent < this.dur(minThink)) await sleep(this.dur(minThink) - spent);
         if (this.disposed) return;
         if (res.say) this.addLog({ text: res.say, side: d.side, kind: 'say' });
-        if (!this.driver.answer(res.answer)) {
+        const dice = this.diceNote(d, res.answer);
+        if (this.driver.answer(res.answer)) this.diceTold(d, res.answer, dice);
+        else {
           console.warn('AI answer rejected', this.driver.lastError, res.answer, d);
           let ok = false;
-          for (let i = 0; i < 30 && !ok; i++) ok = this.driver.answer(randomAnswer(this.driver.state, this.driver.pending!, Math.random));
+          for (let i = 0; i < 30 && !ok; i++) {
+            const a = randomAnswer(this.driver.state, this.driver.pending!, Math.random);
+            const note = this.diceNote(d, a);
+            ok = this.driver.answer(a);
+            if (ok) this.diceTold(d, a, note);
+          }
           if (!ok) throw new Error('AI could not produce a legal answer');
         }
         this.save();
@@ -471,6 +513,38 @@ export class GameController {
     this.toast(text, 'notice', 2000);
   }
 
+  /** "Your turn", once per turn: at the human's first decision of it, or as a dice side's turn begins (310). */
+  private yourTurn(turn: number) {
+    if (this.toldTurn === turn) return;
+    this.toldTurn = turn;
+    sfx.turn();
+    this.toast('Your turn', 'turn', 1400);
+  }
+
+  /**
+   * Dice orders (310, §18.10): the dice-order turn as it will stand once `a` answers `d` (the victim of a flag or swords,
+   * or the orders given), named from the state before the answer; null for any other decision.
+   */
+  private diceNote(d: Decision, a: Answer): DiceTurn | null {
+    const t = this.view.diceTurn;
+    if (!t || t.side !== d.side || t.turn !== this.driver.state.turn.number) return null;
+    if (d.kind === 'diceVictim' && a.kind === 'choose') {
+      const id = d.options[a.index];
+      return id ? diceTurnVictim(t, d.face, pieceName(this.driver.state, id)) : null;
+    }
+    if (d.kind === 'diceOrders' && a.kind === 'assign' && Array.isArray(a.ids)) return diceTurnOrders(this.driver.state, t, a.ids);
+    return null;
+  }
+
+  /** After an accepted answer: keep the dice-order turn up to date; dice left unused are told in the log. */
+  private diceTold(d: Decision, a: Answer, note: DiceTurn | null) {
+    if (!note) return;
+    this.set({ diceTurn: note });
+    if (d.kind === 'diceOrders' && a.kind === 'assign' && !a.ids.some(Boolean)) {
+      this.addLog({ text: `The ${this.driver.state.players[d.side].army} army leaves its order dice unused.`, side: d.side, kind: 'info' });
+    }
+  }
+
   private showToast(text: string, kind: 'turn' | 'notice', ms: number) {
     const toast = { id: seq++, text, kind };
     this.set({ toast });
@@ -514,11 +588,15 @@ export class GameController {
         const p = after.players[e.side];
         this.addLog({ text: `Turn ${e.turn} — ${p.army}${e.side === human ? ' (you)' : ''}`, side: e.side, kind: 'turn' });
         this.set({ display: after, combat: null });
+        // a side with dice orders (310) has no card to choose: its turn starts with the roll
+        if (e.side === human && orderDice(after, human)) this.yourTurn(e.turn);
         break;
       }
       case 'cardPlayed': {
         const def = CARD_DEFS[e.kind];
-        const eff = e.effective !== e.kind ? ` → ${CARD_DEFS[e.effective].title}` : '';
+        let eff = e.effective !== e.kind ? ` → ${CARD_DEFS[e.effective].title}` : '';
+        // Counter Attack against a side that orders by dice (310): no card to copy
+        if (e.kind === 'counterAttack' && after.turn.effective === null && orderDice(after, other(e.side))) eff = ': nothing to copy, no orders';
         this.addLog({ text: `${after.players[e.side].commander} plays ${def.title}${eff}.`, side: e.side, kind: 'card' });
         sfx.card();
         if (e.side !== human) {
@@ -530,6 +608,11 @@ export class GameController {
       }
       case 'ordered': {
         if (e.ids.length === 0 && e.side !== human) this.addLog({ text: 'No units could be ordered.', side: e.side, kind: 'info' });
+        // dice orders (310): what the dice ordered
+        if (e.ids.length && orderDice(after, e.side)) {
+          const names = e.ids.map((id) => (isLeaderId(id) ? leaderById(after, id)?.name || 'a leader' : UNIT_STATS[unitById(after, id)?.type ?? 'LI'].name));
+          this.addLog({ text: `The ${after.players[e.side].army} army orders: ${names.join(', ')}.`, side: e.side, kind: 'info' });
+        }
         this.set({ display: after });
         if (e.side !== human) await sleep(this.dur(350));
         break;
@@ -546,6 +629,8 @@ export class GameController {
         const walking = { ...this.view.walking };
         delete walking[e.id];
         this.set({ display: after, walking });
+        // a reserve leader (308) placed straight onto a unit of his force that entered
+        if (e.t === 'move' && isLeaderId(e.id) && (leaderById(before, e.id)?.hex ?? OFF_BOARD) < 0 && path.length === 1) this.arrives(e.id, path[0], after);
         if (e.t === 'retreat' && path.length > 1) this.addLog({ text: `${this.name(e.id, after)} retreats ${Math.max(0, path.length - 1)} hex${path.length === 2 ? '' : 'es'}.`, side: this.sideOf(e.id, after), kind: 'result' });
         if (e.t === 'evade') this.flash(path[path.length - 1], 'Evaded', 'info');
         if (e.t === 'leaderEvade' && e.offBoard) this.addLog({ text: `${this.name(e.id, before)} escapes the battlefield.`, kind: 'result' });
@@ -553,7 +638,8 @@ export class GameController {
       }
       case 'reserveEnter': {
         this.set({ display: after });
-        this.flash(e.hex, 'Ambush!', 'banner');
+        // reinforcements on fixed entry hexes (308) are no ambush
+        this.flash(e.hex, after.special.ambush?.entryHexes ? 'Arrives!' : 'Ambush!', 'banner');
         break;
       }
       case 'combat': {
@@ -574,12 +660,14 @@ export class GameController {
       case 'roll': {
         const title = this.rollTitle(e.purpose, e.by, e.against, after);
         const id = seq++;
-        const sub = this.rollSummary(e.purpose, e.faces, e.scoring);
+        const sub = this.rollSummary(e.purpose, e.faces, e.scoring, after);
+        if (e.purpose === 'diceOrders') this.orderRoll(e.faces, after);
         sfx.dice(e.faces.length);
         this.set({ dice: { id, title, subtitle: 'Rolling…', faces: e.faces, scoring: e.scoring, rolling: true, purpose: e.purpose } });
         await sleep(this.dur(650));
         this.set({ dice: { id, title, subtitle: sub, faces: e.faces, scoring: e.scoring, rolling: false, purpose: e.purpose }, display: after });
         await sleep(this.dur(e.purpose === 'marsh' || e.purpose === 'leaderCheck' ? 750 : 1050));
+        if (this.view.orderShow) this.set({ orderShow: null });
         break;
       }
       case 'damage': {
@@ -640,7 +728,13 @@ export class GameController {
       case 'unitPlaced': {
         // Asculum: a leader placed before the first turn; 308: a reserve leader placed with an entered unit, a forced placement
         const side = this.sideOf(e.id, after);
-        this.addLog({ text: `${this.name(e.id, after)} takes position.`, side, kind: 'info' });
+        if (e.t === 'leaderPlaced' && !before.special.unplaced.includes(e.id)) {
+          this.arrives(e.id, e.hex, after);
+          if (side !== human) await sleep(this.dur(450));
+          break;
+        }
+        const text = e.t === 'unitPlaced' ? `The ${this.name(e.id, after)} arrives as a reinforcement.` : `${this.name(e.id, after)} takes position.`;
+        this.addLog({ text, side, kind: 'info' });
         this.set({ display: after });
         if (side !== human) {
           this.flash(e.hex, this.name(e.id, after), 'info');
@@ -693,7 +787,9 @@ export class GameController {
         const tornDown = was === 'rampart' && !isCamp;
         const what = isCamp ? 'camp' : TERRAIN_NAMES[was].toLowerCase();
         this.flash(e.hex, tornDown ? 'Torn down' : 'Razed', 'info');
-        this.addLog({ text: `The ${what} ${tornDown ? 'is torn down' : 'is razed'}: open ground now.`, kind: 'info' });
+        // a camp on a hill (308, §18.7) leaves the hill
+        const left = e.terrain === 'hill' ? 'the hill remains' : 'open ground now';
+        this.addLog({ text: `The ${what} ${tornDown ? 'is torn down' : 'is razed'}: ${left}.`, kind: 'info' });
         this.set({ display: after });
         await sleep(this.dur(450));
         break;
@@ -732,6 +828,23 @@ export class GameController {
     }
   }
 
+  /** A reserve leader arriving with a unit of his force (308, `ambush.attachLeader`): log it and show it on the board. */
+  private arrives(id: string, hex: HexId, after: GameState) {
+    const u = unitAt(after, hex);
+    const side = this.sideOf(id, after);
+    this.addLog({ text: `${this.name(id, after)} arrives with the ${u ? this.name(u.id, after) : 'reinforcements'}.`, side, kind: 'info' });
+    this.set({ display: after });
+    this.flash(hex, this.name(id, after), 'banner');
+  }
+
+  /** A dice-order roll (310): a new dice-order turn, the faces in the log, and the computer's roll on the board. */
+  private orderRoll(faces: DieFace[], after: GameState) {
+    const side = after.active;
+    const turn: DiceTurn = { side, turn: after.turn.number, faces, used: faces.map(() => null), done: false };
+    this.set({ diceTurn: turn, orderShow: side === this.config.humanSide ? null : { id: seq++, side, faces } });
+    this.addLog({ text: `${after.players[side].commander} rolls the order dice: ${faces.map((f) => FACE_WORDS[f]).join(', ')}.`, side, kind: 'card' });
+  }
+
   private sideOf(id: string, s: GameState): Side | undefined {
     if (id.startsWith('L')) return (leaderById(s, id) ?? this.view.display.leaders.find((x) => x.id === id))?.side;
     return (unitById(s, id) ?? this.view.display.units.find((x) => x.id === id))?.side;
@@ -758,22 +871,14 @@ export class GameController {
     }
   }
 
-  private rollSummary(p: RollPurpose, faces: DieFace[], scoring: boolean[]): string {
+  /** Subtitle of a roll in the dice tray; `after`: the state right after the roll. */
+  private rollSummary(p: RollPurpose, faces: DieFace[], scoring: boolean[], after: GameState): string {
     if (p === 'spartacus') {
       if (faces.every((f) => f === 'flag' || f === 'swords')) return 'No effect';
       return this.driver.state.active === this.config.humanSide ? 'Choose units for each symbol' : 'Units ordered';
     }
-    if (p === 'diceOrders') {
-      // dice orders (310): flags and swords fall on units of the rolling side, the symbols order units
-      const flags = faces.filter((f) => f === 'flag').length;
-      const swords = faces.filter((f) => f === 'swords').length;
-      const parts: string[] = [];
-      if (faces.length > flags + swords) parts.push(this.driver.state.active === this.config.humanSide ? 'Choose units to order' : 'Units ordered');
-      if (flags) parts.push(flags === 1 ? 'a unit falls back' : `${flags} units fall back`);
-      if (swords) parts.push(swords === 1 ? 'a unit loses a block' : `${swords} blocks lost`);
-      const text = parts.join('; ');
-      return text.charAt(0).toUpperCase() + text.slice(1);
-    }
+    // dice orders (310): flags and swords fall on units of the rolling side, the symbols order what they can (§18.10)
+    if (p === 'diceOrders') return diceRollSummary(after, after.active, faces, after.active === this.config.humanSide);
     if (p === 'rally') {
       if (!rallyCandidates(this.driver.state, this.driver.state.active).length) return 'No damaged units near a leader';
       return this.driver.state.active === this.config.humanSide ? 'Choose units for each symbol' : 'Blocks restored';
@@ -799,7 +904,7 @@ export class GameController {
 
 /**
  * Dev shortcut `#/play/<scenario>/<top|bottom>/<recruit|tribune|consul>[/<seed>][?cards=k1,k2]`: the session it starts
- * (any scenario id: base game 001–015, Expansion #1 101–124, Expansion #2 201–223), or null when the hash is not such a
+ * (any scenario id: base game 001–015, Expansion #1 101–124, Expansion #2 201–223, Expansion #3 301–319), or null when the hash is not such a
  * route or names no known battle.
  */
 export function devRouteConfig(hash: string): SessionConfig | null {

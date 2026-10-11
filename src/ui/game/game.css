@@ -100,6 +100,9 @@ body {
 .army-name .you { font-size: 11px; color: rgba(240, 227, 194, .6); }
 .army-cmd { font-size: 13px; color: rgba(240, 227, 194, .7); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ai-hand { display: flex; flex-wrap: nowrap; flex: none; padding-top: 2px; }
+/* dice orders (310): an enemy that holds no cards shows its last order roll instead */
+.ai-dice { display: flex; align-items: center; gap: 4px; flex: none; padding-top: 2px; }
+.ai-dice-label { font-family: var(--kit-font-title); font-size: 11px; letter-spacing: .06em; color: rgba(240, 227, 194, .65); margin-right: 2px; white-space: nowrap; }
 .ai-hand .kit-cardback { pointer-events: none; box-shadow: -1px 1px 3px rgba(0, 0, 0, .55); }
 .divider { height: 1px; background: rgba(226, 189, 114, .25); margin: 8px 0; }
 .deck-row { margin-top: 6px; font-size: 12px; color: rgba(240, 227, 194, .55); text-align: right; }
@@ -155,6 +158,51 @@ body {
   animation: fadein .15s ease-out;
   filter: drop-shadow(0 14px 24px rgba(0, 0, 0, .7));
 }
+
+/* ---------- dice orders (310): the turn panel in place of the hand */
+.dice-panel {
+  flex: none;
+  align-self: flex-end;
+  box-sizing: border-box;
+  min-height: 66px;
+  max-width: 330px;
+  padding: 5px 10px 6px;
+  background: linear-gradient(180deg, rgba(43, 26, 14, .95), rgba(28, 16, 8, .95));
+  border: 1px solid rgba(226, 189, 114, .55);
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .55);
+}
+.dice-panel-head { font-family: var(--kit-font-title); font-size: 12px; letter-spacing: .08em; color: var(--kit-bronze-light); text-transform: uppercase; margin-bottom: 3px; }
+.dice-panel-head small { font-family: var(--kit-font-body); font-size: 12px; letter-spacing: 0; text-transform: none; color: rgba(240, 227, 194, .55); margin-left: 6px; }
+.dice-panel-dice { display: flex; gap: 6px; }
+.dice-panel-die {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  width: 150px;
+  padding: 3px 7px 3px 4px;
+  font-family: var(--kit-font-body);
+  font-size: 13px;
+  line-height: 1.15;
+  text-align: left;
+  color: rgba(240, 227, 194, .85);
+  background: rgba(20, 12, 6, .55);
+  border: 1px solid rgba(226, 189, 114, .22);
+  border-radius: 8px;
+}
+.dice-panel-die:not(:disabled) { cursor: pointer; }
+.dice-panel-die:not(:disabled):hover { border-color: rgba(226, 189, 114, .6); }
+.dice-panel-die:focus-visible { outline: 2px solid var(--kit-gold); outline-offset: 2px; }
+.dice-panel-die.is-active { border-color: var(--kit-gold); box-shadow: 0 0 0 1px var(--kit-gold), 0 0 10px rgba(232, 196, 90, .35); }
+.dice-panel-die.is-now .dice-panel-text { color: #ffe08a; font-weight: 600; }
+.dice-panel-die.is-done .dice-panel-text { color: #bfe3b0; }
+.dice-panel-die.is-lost { opacity: .6; }
+.dice-panel-die .kit-die { flex: none; }
+.dice-panel-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.dice-panel-wait { max-width: 300px; font-size: 13px; line-height: 1.2; color: rgba(240, 227, 194, .7); font-style: italic; }
+.prompt-dice { display: flex; gap: 5px; flex: none; }
+.order-show-dice { display: flex; gap: 14px; padding: 12px 18px; background: rgba(20, 12, 6, .7); border: 1px solid rgba(226, 189, 114, .55); border-radius: 12px; }
 
 /* ---------- prompt */
 .prompt-bar {
@@ -262,6 +310,8 @@ body {
 /* Expansion #2: battle objectives on the hex (§18.4) and a unit's separate command (210) */
 .tip-objective { color: #f6d27a; margin-top: 3px; }
 .tip-command { color: #c9d3ee; margin-top: 3px; }
+/* Expansion #3: immobile, entered this turn, Caesar's forced march */
+.tip-state { color: #bfe3b0; }
 .command-badge { pointer-events: none; }
 .cmd-swatch { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 7px; vertical-align: -1px; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, .55), inset 0 1px 1px rgba(255, 255, 255, .35); }
 

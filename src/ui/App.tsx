@@ -42,7 +42,7 @@ export function App() {
   const [screen, setScreen] = useState<Screen>({ kind: 'menu' });
   const devStarted = useRef(false);
   useEffect(() => {
-    // Dev shortcut: #/play/<scenario>/<top|bottom>/<difficulty>[/<seed>] starts a battle directly (001–015, 101–124, 201–223).
+    // Dev shortcut: #/play/<scenario>/<top|bottom>/<difficulty>[/<seed>] starts a battle directly (001–015, 101–124, 201–223, 301–319).
     if (devStarted.current) return;
     const cfg = devRouteConfig(window.location.hash);
     if (!cfg) return;

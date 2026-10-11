@@ -3,8 +3,8 @@ import {
   CARD_DEFS, OFF_BOARD, UNIT_STATS, ambushAvailable, ambushSections, cardKind, isLeaderId, leaderAt, leaderById, leaderUnit,
   other, pieceMoves, rallyCandidates, unitAt, unitById, validateOrders, validateRally, validateSpartacus,
   battleTargets, movablePieces, battleReady, eligiblePieces, unitsOf, leadersOf, sectionsOf, orderMode, orderLimit, rollingFirePaths, inCommand,
-  diceOrderPieces, orderDice, validateDiceOrders,
-  type Answer, type DieFace, type GameState, type HexId, type RetreatOption, type SectionName, type Side,
+  orderDice, validateDiceOrders,
+  type Answer, type Decision, type DieFace, type GameState, type HexId, type RetreatOption, type SectionName, type Side,
 } from '../../engine';
 import { BLOCK_COLORS, UnitIcon, unitTypeName } from '../../art';
 import { BannerTrack, Button, CardBack, CardView, DiceTray, DieView, Modal, Panel } from '../kit';
@@ -13,9 +13,10 @@ import { BattleResult } from './BattleResult';
 import { Board } from './Board';
 import type { GameController, LogLine } from './controller';
 import {
-  ambushTexts, attackDice, bannerCounts, boardUi, commandBlocks, commandById, commandTipLine, deploymentSide, effectiveKind, expectedHits,
-  leaderTraitLines, leadershipHint, objectiveTipLines, pieceHexOf, possessive, retreatEliminates, rollingFireStep, selectAllUnits,
-  unitSummary, type UiSel,
+  FACE_WORDS, IMMOBILE_TIP, ambushTexts, attackDice, bannerCounts, boardUi, commandBlocks, commandById, commandTipLine, counterAttackNote,
+  deploymentSide, diceAssignClick, diceOrderSlots, diceSlotText, diceTurnText, effectiveKind, enteredTipLine, expectedHits, firstOrderDie,
+  forcedMarchLine, leaderTraitLines, leadershipHint, objectiveTipLines, pieceHexOf, pieceName, placeUnitPrompt, possessive, retreatEliminates,
+  rollingFireStep, selectAllUnits, unitSummary, type DiceTurn, type UiSel,
 } from './uiModel';
 import { TerrainTipBlock } from './TerrainTipBlock';
 import { terrainTip } from './terrainTips';
@@ -100,6 +101,10 @@ export function GameScreen({ controller, onExit, onRematch }: {
       if (must.length) setUi((u) => ({ ...u, selPiece: must[0] }));
       else if (ready.length === 1) setUi((u) => ({ ...u, selPiece: ready[0] }));
     }
+    // dice orders (310): nothing assigned yet, the first die that can order something selected
+    if (d?.kind === 'diceOrders' && d.side === human) {
+      setUi((u) => ({ ...u, diceIds: d.faces.map(() => null), diceActive: firstOrderDie(s, human, d.faces) }));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d]);
 
@@ -110,7 +115,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
 
   const bui = useMemo(() => {
     const b = boardUi(s, d, ui, human);
-    if (d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus' || d.kind === 'diceOrders')) {
+    if (d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus')) {
       for (const id of assignFocus) {
         const h = pieceHexOf(s, id);
         if (h >= 0) b.highlights.set(h, 'selected');
@@ -219,11 +224,28 @@ export function GameScreen({ controller, onExit, onRematch }: {
         // dice orders (310): the unit a flag or swords face of the own order roll falls on
         const i = u ? d.options.indexOf(u.id) : -1;
         if (i >= 0) answer({ kind: 'choose', index: i });
+        else if (u || l) controller.notice('Choose one of your units (purple).');
+        return;
+      }
+      case 'diceOrders': {
+        // dice orders (310): the selected die orders the piece clicked (a leader first when it is a helmet)
+        const helmet = ui.diceActive !== undefined && ui.diceActive !== null && d.faces[ui.diceActive] === 'leader';
+        const ids = [u?.side === human ? u.id : null, l?.side === human ? l.id : null];
+        for (const id of helmet ? [...ids].reverse() : ids) if (id && assignDie(d, id)) return;
+        if (ids.some(Boolean)) controller.notice('None of the dice can order that piece.');
         return;
       }
       default:
         return;
     }
+  };
+
+  /** Dice orders (310): assign (or free) a die for piece `id`; false when no die can order it. */
+  const assignDie = (d: Extract<Decision, { kind: 'diceOrders' }>, id: string): boolean => {
+    const r = diceAssignClick(s, human, d.faces, ui.diceIds ?? d.faces.map(() => null), ui.diceActive ?? null, id);
+    if (!r) return false;
+    setUi({ ...ui, diceIds: r.ids, diceActive: r.active });
+    return true;
   };
 
   const onLeaderClick = (id: string): boolean => {
@@ -238,6 +260,7 @@ export function GameScreen({ controller, onExit, onRematch }: {
       setUi({ ...ui, selPiece: id });
       return true;
     }
+    if (d.kind === 'diceOrders') return assignDie(d, id);
     return false;
   };
 
@@ -262,13 +285,23 @@ export function GameScreen({ controller, onExit, onRematch }: {
   // ------------------------------------------------------------------ prompt
   const prompt = renderPrompt();
 
-  function renderPrompt(): { title: string; text: string; buttons: JSX.Element[]; tone?: string } | null {
+  function renderPrompt(): { title: string; text: string; buttons: JSX.Element[]; tone?: string; dice?: DieFace[] } | null {
     if (view.over) return null;
     if (!d && view.fatal) {
       return { title: 'The battle stalled', text: view.error ?? 'An unexpected error occurred.', buttons: [<Button key="menu" onClick={onExit}>Return to menu</Button>], tone: 'danger' };
     }
     if (!d) {
       if (deploying) return { title: deploying === human ? 'Deployment' : `${s.players[deploying].commander} is placing his leaders…`, text: '', buttons: [] };
+      // the computer's dice-order turn (310): what it rolled, and what it did with the dice
+      const dt = view.diceTurn;
+      if (dt && dt.side === ai && s.active === ai && dt.turn === s.turn.number) {
+        return {
+          title: view.aiThinking ? `${s.players[ai].commander} is considering…` : `${s.players[ai].army} turn`,
+          text: diceTurnText(dt, s.turn.phase !== 'orders'),
+          buttons: [],
+          dice: dt.faces,
+        };
+      }
       if (view.aiThinking) return { title: `${s.players[ai].commander} is considering…`, text: '', buttons: [] };
       return { title: s.active === human ? 'Resolving…' : `${s.players[ai].army} turn`, text: '', buttons: [] };
     }
@@ -288,20 +321,20 @@ export function GameScreen({ controller, onExit, onRematch }: {
         let note = 'Hover a card to see which troops it can order.';
         if (sel !== null) {
           const eff = effectiveKind(s, human, sel);
-          if (cardKind(sel) === 'counterAttack') note = eff.kind ? `Copies the enemy's ${CARD_DEFS[eff.kind].title}.` : 'The enemy has played nothing to copy.';
+          // an enemy that orders by dice (310) plays no card: Counter Attack copies nothing
+          if (cardKind(sel) === 'counterAttack') note = counterAttackNote(s, human) ?? (eff.kind ? `Copies the enemy's ${CARD_DEFS[eff.kind].title}.` : 'The enemy has played nothing to copy.');
           else if (cardKind(sel) === 'firstStrike') note = 'First Strike is a reaction card: playing it now has no effect.';
           else note = def!.text;
         }
-        return {
-          title: 'Choose a command card',
-          text: note,
-          buttons: sel !== null ? [btn(`Play ${def!.title}`, () => answer({ kind: 'playCard', card: sel }))] : [],
-        };
+        const buttons = sel !== null ? [btn(`Play ${def!.title}`, () => answer({ kind: 'playCard', card: sel }))] : [];
+        // a forced placement (308) just made can be taken back until the card is played
+        if (view.canUndo) buttons.push(btn('Undo placement', () => controller.undo(), { variant: 'ghost', key: 'undo' }));
+        return { title: 'Choose a command card', text: note, buttons };
       }
       case 'orders': {
         const def = CARD_DEFS[d.card];
         const err = validateOrders(s, human, d.card, ui.orderSel);
-        const amb = ambushAvailable(s, human, d.card);
+        const ambush = ambushAvailable(s, human, d.card);
         const mode = orderMode(s, human, d.card).mode;
         const all = eligiblePieces(s, human, d.card);
         const n = ui.orderSel.length;
@@ -314,13 +347,19 @@ export function GameScreen({ controller, onExit, onRematch }: {
         if (n) buttons.push(btn('Clear', () => setUi({ ...ui, orderSel: [] }), { variant: 'ghost' }));
         const allUnits = n === 0 ? selectAllUnits(s, human, d.card) : null;
         if (allUnits) buttons.push(btn('Select all', () => setUi({ ...ui, orderSel: allUnits }), { variant: 'secondary' }));
+        const amb = ambush ? ambushTexts(s, ambushLeader) : null;
         if (amb) {
-          const title = ambushTexts(s, ambushLeader).button;
-          for (const sec of ambushSections(d.card)) buttons.push(btn(`Ambush: ${SECTION_LABEL[sec]}`, () => answer({ kind: 'orders', pieces: [], ambushSection: sec }), { variant: 'secondary', key: `amb-${sec}`, title }));
+          // reinforcements with fixed entry hexes (308) enter whatever the section: one button (the engine still takes a section)
+          const secs = amb.fixed ? ambushSections(d.card).slice(0, 1) : ambushSections(d.card);
+          for (const sec of secs) {
+            const label = amb.fixed ? amb.label : `${amb.label}: ${SECTION_LABEL[sec]}`;
+            buttons.push(btn(label, () => answer({ kind: 'orders', pieces: [], ambushSection: sec }), { variant: 'secondary', key: `amb-${sec}`, title: amb.button }));
+          }
         }
         let text = `${def.text} Click your units to order them.`;
         if (mode === 'one') text = `None of your troops fit ${def.title}: order 1 unit of your choice (a normal order, no card bonus).`;
         else if (def.group === 'leadership') text = leadershipHint(s, human, d.card, ui.orderSel);
+        if (amb?.fixed && !n) text = `${text} Or bring in the reinforcements (Entry).`;
         // separate commands (210, §18.5)
         const myCommands = s.special.commands.filter((c) => c.side === human);
         if (myCommands.length > 1) text = `${text} One card orders one army only: ${myCommands.map((c) => c.name).join(' or ')}.`;
@@ -497,18 +536,39 @@ export function GameScreen({ controller, onExit, onRematch }: {
       }
       case 'rally':
       case 'spartacus':
-      case 'diceOrders':
-        return { title: d.kind === 'rally' ? 'Rally' : d.kind === 'spartacus' ? 'I Am Spartacus' : 'Order dice', text: 'Assign the dice in the dialog.', buttons: [] };
+        return { title: d.kind === 'rally' ? 'Rally' : 'I Am Spartacus', text: 'Assign the dice in the dialog.', buttons: [] };
+      case 'diceOrders': {
+        // dice orders (310, §18.10): each die orders a piece clicked on the board, or is left unused
+        const ids = ui.diceIds ?? d.faces.map(() => null);
+        const err = validateDiceOrders(s, human, d.faces, ids);
+        const n = ids.filter(Boolean).length;
+        const i = ui.diceActive ?? null;
+        const text = i !== null
+          ? `Die ${i + 1}, ${FACE_WORDS[d.faces[i]]}: click a highlighted ${d.faces[i] === 'leader' ? 'leader (his unit comes with him)' : 'unit'} to order it. Click an ordered piece again to free its die; unused dice are lost.`
+          : n
+            ? 'Every die that can order is used. Click an ordered piece to free its die, or confirm.'
+            : 'No die can order anything now. Confirm to go on.';
+        const buttons = [
+          btn(n ? `Confirm ${n} order${n > 1 ? 's' : ''}` : 'Order nothing', () => answer({ kind: 'assign', ids }), { disabled: !!err, key: 'confirm' }),
+        ];
+        if (n) buttons.push(btn('Clear', () => setUi({ ...ui, diceIds: d.faces.map(() => null), diceActive: firstOrderDie(s, human, d.faces) }), { variant: 'ghost', key: 'clear' }));
+        return { title: 'Order dice: choose the units', text: err && n ? err : text, buttons, tone: err && n ? 'warn' : undefined };
+      }
       case 'diceVictim':
         // dice orders (310, §18.10): the side chooses the victims of its own flags and swords
-        return {
-          title: d.face === 'flag' ? 'Order dice: a flag' : 'Order dice: crossed swords',
-          text: d.face === 'flag'
-            ? 'Click one of your units (purple): it falls back as for one flag, which cannot be ignored.'
-            : 'Click one of your units (purple): it loses one block.',
-          buttons: [],
-          tone: 'warn',
-        };
+        return d.face === 'flag'
+          ? {
+            title: 'Flag rolled: choose a unit to retreat',
+            text: 'Click one of your units (purple). It falls back as for one flag, which cannot be ignored; each hex it cannot take costs a block.',
+            buttons: [],
+            tone: 'warn',
+          }
+          : {
+            title: 'Swords rolled: choose a unit to lose a block',
+            text: 'Click one of your units (purple). It loses one block; a leader with it checks for a casualty.',
+            buttons: [],
+            tone: 'warn',
+          };
       case 'placeLeader': {
         const l = leaderById(s, d.leader);
         // 308: a reserve leader joins one of the units of his force that entered this turn
@@ -522,15 +582,9 @@ export function GameScreen({ controller, onExit, onRematch }: {
           buttons: undoBtn ? [undoBtn] : [],
         };
       }
-      case 'placeUnit': {
-        // a forced placement (308): the reinforcement waits off the board
-        const p = s.special.placeUnits.find((x) => x.unit.id === d.unit);
-        return {
-          title: `Place your ${p ? unitTypeName(p.unit.type) : 'reinforcement'}`,
-          text: 'Reinforcements arrive before you play a card: click a highlighted hex to place the unit.',
-          buttons: [],
-        };
-      }
+      case 'placeUnit':
+        // a forced placement (308): the reinforcement waits off the board until it is placed
+        return { ...placeUnitPrompt(s, d), buttons: [] };
       default:
         return null;
     }
@@ -627,6 +681,15 @@ export function GameScreen({ controller, onExit, onRematch }: {
               <CardView kind={view.cardShow.kind} size="lg" />
             </div>
           )}
+          {view.orderShow && (
+            // dice orders (310): the computer's order roll, shown as its played cards are
+            <div className="card-show order-show" key={view.orderShow.id}>
+              <div className="card-show-label">{s.players[view.orderShow.side].commander} rolls the order dice</div>
+              <div className="order-show-dice">
+                {view.orderShow.faces.map((f, i) => <DieView key={i} face={f} size={64} />)}
+              </div>
+            </div>
+          )}
         </section>
 
         <aside className="side-col">
@@ -636,9 +699,17 @@ export function GameScreen({ controller, onExit, onRematch }: {
                 <div className="army-name them">{them.army}</div>
                 <div className="army-cmd" title={`${them.commander} — ${persona.name}: ${persona.epithet} · ${DIFF_LABEL[controller.config.difficulty]} · ${commandLabel(s, ai)}`}>{them.commander} · {persona.name} · {DIFF_LABEL[controller.config.difficulty]}</div>
               </div>
-              <div className="ai-hand" title={orderDice(s, ai) ? commandLabel(s, ai) : `${them.hand.length} command cards`}>
-                {Array.from({ length: them.hand.length }).map((_, i) => <CardBack key={i} size="sm" style={{ fontSize: '1.7px', marginLeft: i ? -9 : 0 }} />)}
-              </div>
+              {orderDice(s, ai) ? (
+                // dice orders (310): the enemy holds no cards at all, so no Counter Attack can copy its turn
+                <div className="ai-dice" title={`The ${them.army} army holds no cards: it rolls ${orderDice(s, ai)} order dice each turn. Counter Attack has nothing to copy.`}>
+                  <span className="ai-dice-label">No cards</span>
+                  {(view.diceTurn?.side === ai ? view.diceTurn.faces : []).map((f, i) => <DieView key={i} face={f} size={20} />)}
+                </div>
+              ) : (
+                <div className="ai-hand" title={`${them.hand.length} command cards`}>
+                  {Array.from({ length: them.hand.length }).map((_, i) => <CardBack key={i} size="sm" style={{ fontSize: '1.7px', marginLeft: i ? -9 : 0 }} />)}
+                </div>
+              )}
             </div>
             <BannerTrack count={themBanners.total} held={themBanners.held} target={s.bannersToWin} blockColor={s.players[human].blocks} label="Banners won" />
             <div className="divider" />
@@ -663,6 +734,18 @@ export function GameScreen({ controller, onExit, onRematch }: {
       </div>
 
       <footer className="bottom-strip">
+        {orderDice(s, human) > 0 && (
+          <DiceTurnPanel
+            state={s}
+            side={human}
+            dice={orderDice(s, human)}
+            turn={view.diceTurn}
+            pending={d}
+            ids={ui.diceIds}
+            active={ui.diceActive ?? null}
+            onSelect={(i) => setUi({ ...ui, diceActive: i })}
+          />
+        )}
         <div className="hand-cards">
           {me.hand.map((c) => {
             const playable = d?.kind === 'playCard' && d.side === human;
@@ -688,6 +771,11 @@ export function GameScreen({ controller, onExit, onRematch }: {
         )}
         {prompt && (
             <div className={`prompt-bar ${prompt.tone ? `tone-${prompt.tone}` : ''}`}>
+              {prompt.dice && (
+                <div className="prompt-dice" aria-hidden>
+                  {prompt.dice.map((f, i) => <DieView key={i} face={f} size={30} />)}
+                </div>
+              )}
               <div className="prompt-text">
                 <div className="prompt-title">{prompt.title}</div>
                 {prompt.text && <div className="prompt-sub" title={prompt.text}>{prompt.text}</div>}
@@ -709,20 +797,22 @@ export function GameScreen({ controller, onExit, onRematch }: {
               </div>
             </div>
             {unitSummary(hoverInfo.u).map((x) => <div key={x} className="tip-line">{x}</div>)}
+            {unitStateLines(s, hoverInfo.u).map((x) => <div key={x} className="tip-line tip-state">{x}</div>)}
             {commandTipLine(s, hoverInfo.u) && <div className="tip-line tip-command">{commandTipLine(s, hoverInfo.u)}</div>}
           </>
         )}
         {hoverInfo?.l && <div className="tip-line tip-leader">Leader: {hoverInfo.l.name || 'unnamed'}{leaderUnit(s, hoverInfo.l) ? ' (attached)' : ' (alone)'}</div>}
         {hoverInfo?.l && leaderTraitLines(hoverInfo.l).map((x) => <div key={x} className="tip-line tip-leader">{x}</div>)}
+        {/* a leader of a separate command (304): his command, as a unit's (said once when his unit is of the same command) */}
+        {hoverInfo?.l && commandTipLine(s, hoverInfo.l) && hoverInfo.l.command !== hoverInfo.u?.command && (
+          <div className="tip-line tip-command">{commandTipLine(s, hoverInfo.l)}</div>
+        )}
         {hoverInfo?.terr && <TerrainTipBlock tip={hoverInfo.terr} alone={!hoverInfo.u && !hoverInfo.l} />}
         {hoverInfo?.obj.map((x) => <div key={x} className="tip-line tip-objective">{x}</div>)}
       </HoverTip>
 
       {d && d.side === human && (d.kind === 'rally' || d.kind === 'spartacus') && (
         <AssignDialog state={s} side={human} kind={d.kind} faces={d.faces} command={d.command} onChange={setAssignFocus} onDone={(ids) => answer({ kind: 'assign', ids })} error={view.error} />
-      )}
-      {d && d.side === human && d.kind === 'diceOrders' && (
-        <AssignDialog state={s} side={human} kind="diceOrders" faces={d.faces} onChange={setAssignFocus} onDone={(ids) => answer({ kind: 'assign', ids })} error={view.error} />
       )}
 
       <Modal open={showRules} title="Rules Reference" onClose={() => setShowRules(false)} width={880}>
@@ -744,6 +834,14 @@ export function GameScreen({ controller, onExit, onRematch }: {
       </Modal>
     </div>
   );
+}
+
+/**
+ * Tooltip lines of a unit's Expansion #3 state: immobile (306), entered from the reserve this turn (308), Caesar's forced
+ * march with it (§18.3).
+ */
+function unitStateLines(s: GameState, u: NonNullable<ReturnType<typeof unitAt>>): string[] {
+  return [u.immobile ? IMMOBILE_TIP : null, enteredTipLine(s, u), forcedMarchLine(s, u)].filter((x): x is string => !!x);
 }
 
 /** A side's Command, or its order dice when it orders by dice (310, §18.10). */
@@ -810,7 +908,80 @@ const LogPanel = memo(function LogPanel({ log, human }: { log: LogLine[]; human:
   );
 });
 
-function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'spartacus' | 'diceOrders'; faces: DieFace[]; command?: string; error: string | null; onChange: (ids: string[]) => void; onDone: (ids: (string | null)[]) => void }) {
+/**
+ * Dice orders (310, §18.10): the turn panel of a side that orders by dice, in place of the hand. It shows the order dice of
+ * the current turn (the faces the combat dice use) and what each did or does: the unit a flag or swords fell on, the piece
+ * each symbol orders (while the orders are given, a die is selected by a click and orders the piece clicked on the board),
+ * or that it is lost. Before the first roll, and on the enemy's turn, it says how the side orders.
+ */
+function DiceTurnPanel(p: {
+  state: GameState;
+  side: Side;
+  dice: number;
+  turn: DiceTurn | null;
+  pending: Decision | null;
+  ids?: (string | null)[];
+  active: number | null;
+  onSelect: (i: number) => void;
+}) {
+  const { state: s, side, pending: d } = p;
+  // a battle resumed from its save during the orders has no roll on record: the decision has the dice
+  const resumed = d?.kind === 'diceOrders' && d.side === side ? { side, turn: s.turn.number, faces: d.faces, used: d.faces.map(() => null), done: false } : null;
+  const t = p.turn && p.turn.side === side && p.turn.turn === s.turn.number ? p.turn : resumed;
+  const mine = !!t && s.active === side;
+  const assigning = mine && d?.kind === 'diceOrders' && d.side === side;
+  const slots = mine ? diceOrderSlots(s, side, t!.faces) : [];
+  const caption = (i: number): { text: string; tone?: 'now' | 'done' | 'lost' } => {
+    const slot = slots[i];
+    const used = t!.used[i];
+    if (slot.role === 'flag' || slot.role === 'swords') {
+      if (used) return { text: slot.role === 'flag' ? `${used} fell back` : `${used} lost a block`, tone: 'done' };
+      const next = t!.faces.findIndex((f, j) => f === slot.face && !t!.used[j]) === i;
+      return d?.kind === 'diceVictim' && d.face === slot.role && next ? { text: 'Choose the unit', tone: 'now' } : { text: diceSlotText(slot) };
+    }
+    if (assigning) {
+      const id = p.ids?.[i];
+      if (id) return { text: pieceName(s, id), tone: 'done' };
+      if (slot.role === 'lost') return { text: diceSlotText(slot), tone: 'lost' };
+      if (p.active !== i) return { text: 'Unused' };
+      return { text: slot.face === 'leader' ? 'Click a leader' : 'Click a unit', tone: 'now' };
+    }
+    if (t!.done || s.turn.phase !== 'orders') return used ? { text: `Orders ${used}`, tone: 'done' } : { text: slot.role === 'lost' ? diceSlotText(slot) : 'Unused', tone: 'lost' };
+    return { text: diceSlotText(slot), tone: slot.role === 'lost' ? 'lost' : undefined };
+  };
+  return (
+    <div className="dice-panel" role="group" aria-label="Order dice">
+      <div className="dice-panel-head">
+        Order dice <small>No cards: {p.dice} dice a turn</small>
+      </div>
+      {mine ? (
+        <div className="dice-panel-dice">
+          {t!.faces.map((f, i) => {
+            const c = caption(i);
+            const pick = assigning && slots[i].role === 'order';
+            return (
+              <button
+                key={i}
+                type="button"
+                className={`dice-panel-die ${pick && p.active === i ? 'is-active' : ''} ${c.tone ? `is-${c.tone}` : ''}`}
+                disabled={!pick}
+                onClick={() => pick && p.onSelect(i)}
+                title={pick ? `Die ${i + 1}: click it, then a unit on the board` : undefined}
+              >
+                <DieView face={f} size={30} />
+                <span className="dice-panel-text">{c.text}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="dice-panel-wait">You roll {p.dice} order dice at the start of your turn: flags and swords fall on your own units, symbols order units of their kind.</div>
+      )}
+    </div>
+  );
+}
+
+function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'spartacus'; faces: DieFace[]; command?: string; error: string | null; onChange: (ids: string[]) => void; onDone: (ids: (string | null)[]) => void }) {
   const { state: s, side, faces, command } = p;
   // separate commands (§18.5): only the named command's pieces, and those with no command, can be chosen
   const free = (x: { command?: string }) => inCommand(x, command);
@@ -832,18 +1003,6 @@ function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'sparta
         .filter((u) => face === 'leader' || UNIT_STATS[u.type].cls === face)
         .map((u) => ({ id: u.id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) — ${where(u.hex)}` }));
     }
-    if (p.kind === 'diceOrders') {
-      // dice orders (310): a symbol orders a unit of its type, a helmet a leader with his unit
-      return diceOrderPieces(s, side, face).map((id) => {
-        if (isLeaderId(id)) {
-          const l = leaderById(s, id)!;
-          const own = leaderUnit(s, l);
-          return { id, label: `Leader ${l.name || ''}${own ? ` with his ${unitTypeName(own.type)}` : ''} — ${where(l.hex)}` };
-        }
-        const u = unitById(s, id)!;
-        return { id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) — ${where(u.hex)}` };
-      });
-    }
     if (face === 'flag' || face === 'swords') return [];
     const units = unitsOf(s, side).filter((u) => free(u) && (face === 'leader' || UNIT_STATS[u.type].cls === face)).map((u) => ({ id: u.id, label: `${unitTypeName(u.type)} (${u.blocks}/${u.maxBlocks}) — ${where(u.hex)}` }));
     const leaders = face === 'leader' ? leadersOf(s, side).filter(free).map((l) => ({ id: l.id, label: `Leader ${l.name || ''} — ${where(l.hex)}` })) : [];
@@ -864,19 +1023,16 @@ function AssignDialog(p: { state: GameState; side: Side; kind: 'rally' | 'sparta
   }
   function validate(list: (string | null)[]): string | null {
     if (p.kind === 'rally') return validateRally(s, side, faces, list, command);
-    if (p.kind === 'diceOrders') return validateDiceOrders(s, side, faces, list);
     return validateSpartacus(s, side, faces, list, command);
   }
   const err = validate(ids);
   return (
     <div className="assign-float">
-      <div className="assign-title">{p.kind === 'rally' ? 'Rally your troops' : p.kind === 'diceOrders' ? 'Order dice' : 'I Am Spartacus'}</div>
+      <div className="assign-title">{p.kind === 'rally' ? 'Rally your troops' : 'I Am Spartacus'}</div>
       <p className="modal-p">
         {p.kind === 'rally'
           ? 'Each unit symbol restores one block to a damaged unit of that type in or next to a leader\'s hex. Helmets restore any type.'
-          : p.kind === 'diceOrders'
-            ? 'Each unit symbol orders one unit of that type, anywhere; a helmet orders a leader with his unit. Flags and swords order nothing.'
-            : 'Each unit symbol orders one unit of that type; helmets order any unit or leader. Ordered units roll one extra die this turn.'}
+          : 'Each unit symbol orders one unit of that type; helmets order any unit or leader. Ordered units roll one extra die this turn.'}
       </p>
       <div className="assign-list">
         {faces.map((f, i) => {
