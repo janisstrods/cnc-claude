@@ -16,7 +16,7 @@ export * from './combat';
 export * from './retreat';
 export {
   gameFlow, turnFlow, nextTurn, battleTargets, closeTargets, pieceMoves, movablePieces, battleReady, ambushAvailable, ambushSections,
-  ambushSectionAllowed, placementOptions, rollingFirePaths, rollingFireRoutes, isRollingFirePath, continueTurn,
+  ambushSectionAllowed, placementOptions, rollingFirePaths, rollingFireRoutes, isRollingFirePath, continueTurn, answerError, pendingCharge,
 } from './flow';
 export type { BattleTarget, Gen } from './flow';
 export * from './driver';

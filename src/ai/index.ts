@@ -7,9 +7,9 @@
 // Battles use rollouts per candidate attack; reactive decisions use fast expected-value heuristics.
 import { bannerTotal } from '../engine/banners';
 import { CARD_DEFS, cardKind, modsFor, sectionOrders } from '../engine/cards';
-import { ambushAvailable, ambushSectionAllowed, battleTargets, isRollingFirePath, pieceMoves } from '../engine/flow';
+import { answerError } from '../engine/flow';
 import { randomAnswer } from '../engine/legal';
-import { orderDice, validateDiceOrders, validateOrders, validateRally, validateSpartacus } from '../engine/orders';
+import { orderDice } from '../engine/orders';
 import { other, unitById } from '../engine/query';
 import { isWall } from '../engine/terrain';
 import { cloneState, newTurn } from '../engine/setup';
@@ -129,63 +129,9 @@ const now = (): number => (globalThis.performance ? globalThis.performance.now()
 const RECRUIT_HASTY = 0.5;
 const RECRUIT_SCATTER = 0.4;
 
-// ---------------------------------------------------------------------------
-// legality (mirrors the engine's validators so an answer is never rejected)
-// ---------------------------------------------------------------------------
-
-function pendingMustBattle(s: GameState): boolean {
-  for (const op of Object.values(s.turn.ordered)) {
-    if (op.mustBattle && op.battlesLeft > 0 && unitById(s, op.id) && battleTargets(s, op.id).some((t) => t.kind === 'close')) return true;
-  }
-  return false;
-}
-
+/** Would the engine accept answer `a` to decision `d` (its one validator, `answerError`)? */
 export function isLegal(s: GameState, d: Decision, a: Answer): boolean {
-  switch (d.kind) {
-    case 'playCard':
-      return a.kind === 'playCard' && s.players[d.side].hand.includes(a.card);
-    case 'orders':
-      if (a.kind !== 'orders') return false;
-      if (a.ambushSection) return ambushAvailable(s, d.side, d.card) && ambushSectionAllowed(s, d.card, a.ambushSection);
-      return !validateOrders(s, d.side, d.card, a.pieces);
-    case 'move':
-      if (a.kind === 'endMove') return true;
-      return a.kind === 'move' && !!s.turn.ordered[a.piece] && pieceMoves(s, a.piece, d.stage).some((m) => m.hex === a.to);
-    case 'battle': {
-      if (a.kind === 'endBattle') return !pendingMustBattle(s);
-      if (a.kind === 'rollingFire') return isRollingFirePath(s, a.unit, a.path); // Rolling Fire (210): one of the unit's legal paths
-      if (a.kind !== 'attack') return false;
-      const t = battleTargets(s, a.unit).find((x) => x.hex === a.target);
-      if (!t) return false;
-      return !(s.turn.ordered[a.unit].mustBattle && t.kind !== 'close');
-    }
-    case 'defend':
-      return a.kind === 'defend' && (a.choice === 'stand' || (a.choice === 'evade' && d.canEvade) || (a.choice === 'firstStrike' && d.canFirstStrike));
-    case 'ignoreFlags':
-      return a.kind === 'ignoreFlags' && Number.isInteger(a.count) && a.count >= 0 && a.count <= d.max;
-    case 'retreat':
-    case 'leaderEvade':
-      return a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < d.options.length;
-    case 'momentum':
-      return a.kind === 'yesno';
-    case 'cavalryExtra':
-      return a.kind === 'hex' && (a.hex === null || d.options.includes(a.hex));
-    case 'bonusCombat':
-      return a.kind === 'hex' && (a.hex === null || d.targets.includes(a.hex));
-    case 'chooseCommand':
-      return a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < d.options.length;
-    case 'rally':
-      return a.kind === 'assign' && !validateRally(s, d.side, d.faces, a.ids, d.command);
-    case 'spartacus':
-      return a.kind === 'assign' && !validateSpartacus(s, d.side, d.faces, a.ids, d.command);
-    case 'placeLeader':
-    case 'placeUnit':
-      return a.kind === 'hex' && a.hex !== null && d.options.includes(a.hex);
-    case 'diceVictim':
-      return a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < d.options.length;
-    case 'diceOrders':
-      return a.kind === 'assign' && !validateDiceOrders(s, d.side, d.faces, a.ids);
-  }
+  return answerError(s, d, a) === null;
 }
 
 function fallback(s: GameState, d: Decision, rng: Rng): Answer {

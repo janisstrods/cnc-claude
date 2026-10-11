@@ -35,12 +35,72 @@ export type Gen<T = void> = Generator<Decision, T, Answer>;
 // helpers
 // ---------------------------------------------------------------------------
 
-function* ask(ctx: FlowCtx, d: Decision, validate: (a: Answer) => string | null): Gen<Answer> {
+/** Yield decision `d` until a legal answer comes back (`answerError`); each refusal is reported to `ctx.invalid`. */
+function* ask(s: GameState, ctx: FlowCtx, d: Decision): Gen<Answer> {
   for (;;) {
     const a = yield d;
-    const err = a ? validate(a) : 'No answer.';
+    const err = answerError(s, d, a);
     if (!err) return a;
     ctx.invalid?.(err);
+  }
+}
+
+/** Is `a` a choice of one of `n` options (`choose` with a whole index in range)? */
+const choosesOneOf = (a: Answer, n: number): boolean => a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < n;
+
+/**
+ * Why answer `a` to decision `d` is refused in state `s` (the message the UI shows), or null when it is legal: the one
+ * validator of every decision. `ask` re-asks with it, and the AI's `isLegal` is `answerError(...) === null`, so an answer
+ * the AI gives is never refused. It reads only the decision and the state, so an answer can be checked before it is given.
+ */
+export function answerError(s: GameState, d: Decision, a: Answer | null | undefined): string | null {
+  if (!a) return 'No answer.';
+  switch (d.kind) {
+    case 'playCard':
+      return a.kind === 'playCard' && s.players[d.side].hand.includes(a.card) ? null : 'Play a card from your hand.';
+    case 'orders':
+      if (a.kind !== 'orders') return 'Choose the units to order.';
+      if (a.ambushSection) {
+        return ambushAvailable(s, d.side, d.card) && ambushSectionAllowed(s, d.card, a.ambushSection) ? null : 'The ambush is not available.';
+      }
+      return validateOrders(s, d.side, d.card, a.pieces);
+    case 'move':
+      return validateMove(s, a, d.stage);
+    case 'battle':
+      return validateBattle(s, a);
+    case 'defend':
+      if (a.kind !== 'defend') return 'Choose how to defend.';
+      if (a.choice === 'evade') return d.canEvade ? null : 'This unit cannot evade.';
+      if (a.choice === 'firstStrike') return d.canFirstStrike ? null : 'You do not hold First Strike.';
+      return a.choice === 'stand' ? null : 'Choose how to defend.';
+    case 'ignoreFlags':
+      return a.kind === 'ignoreFlags' && Number.isInteger(a.count) && a.count >= 0 && a.count <= d.max ? null : `Ignore between 0 and ${d.max} flags.`;
+    case 'retreat':
+      return choosesOneOf(a, d.options.length) ? null : 'Choose a destination.';
+    case 'leaderEvade':
+      return choosesOneOf(a, d.options.length) ? null : 'Choose an evade destination.';
+    case 'momentum':
+      return a.kind === 'yesno' ? null : 'Advance or not?';
+    case 'cavalryExtra':
+      return a.kind === 'hex' && (a.hex === null || d.options.includes(a.hex)) ? null : 'Choose a hex or decline.';
+    case 'bonusCombat':
+      return a.kind === 'hex' && (a.hex === null || d.targets.includes(a.hex)) ? null : 'Choose a target or decline.';
+    case 'chooseCommand':
+      return choosesOneOf(a, d.options.length) ? null : 'Choose a command.';
+    case 'rally':
+      return a.kind === 'assign' ? validateRally(s, d.side, d.faces, a.ids, d.command) : 'Assign the rally dice.';
+    case 'spartacus':
+      return a.kind === 'assign' ? validateSpartacus(s, d.side, d.faces, a.ids, d.command) : 'Choose the pieces to order.';
+    case 'placeLeader':
+      if (a.kind === 'hex' && a.hex !== null && d.options.includes(a.hex)) return null;
+      // before the battle (117 Asculum) any highlighted hex; a reserve leader at the end of the movement (308) joins a unit
+      return s.special.unplaced.includes(d.leader) ? 'Place the leader on a highlighted hex.' : 'Place the leader with one of the units that entered.';
+    case 'placeUnit':
+      return a.kind === 'hex' && a.hex !== null && d.options.includes(a.hex) ? null : 'Place the unit on a highlighted hex.';
+    case 'diceVictim':
+      return choosesOneOf(a, d.options.length) ? null : 'Choose one of your units.';
+    case 'diceOrders':
+      return a.kind === 'assign' ? validateDiceOrders(s, d.side, d.faces, a.ids) : 'Assign the order dice.';
   }
 }
 
@@ -205,8 +265,7 @@ function* leaderEvade(s: GameState, ctx: FlowCtx, l: Leader): Gen {
   }
   let opt = opts[0];
   if (opts.length > 1) {
-    const a = yield* ask(ctx, { kind: 'leaderEvade', side: l.side, leader: l.id, options: opts }, (a) =>
-      a.kind === 'choose' && a.index >= 0 && a.index < opts.length ? null : 'Choose an evade destination.');
+    const a = yield* ask(s, ctx, { kind: 'leaderEvade', side: l.side, leader: l.id, options: opts });
     opt = opts[(a as { index: number }).index];
   }
   const walked: HexId[] = [l.hex];
@@ -324,10 +383,11 @@ function* rampage(s: GameState, ctx: FlowCtx, el: Unit): Gen {
   }
 }
 
-function* chooseOption<T extends RetreatOption>(ctx: FlowCtx, side: Side, unit: string, opts: T[], reason: 'retreat' | 'evade'): Gen<T> {
+function* chooseOption<T extends RetreatOption>(
+  s: GameState, ctx: FlowCtx, side: Side, unit: string, opts: T[], reason: 'retreat' | 'evade',
+): Gen<T> {
   if (opts.length === 1) return opts[0];
-  const a = yield* ask(ctx, { kind: 'retreat', side, unit, options: opts, reason }, (a) =>
-    a.kind === 'choose' && a.index >= 0 && a.index < opts.length ? null : 'Choose a destination.');
+  const a = yield* ask(s, ctx, { kind: 'retreat', side, unit, options: opts, reason });
   return opts[(a as { index: number }).index];
 }
 
@@ -411,7 +471,7 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
     yield* rampage(s, ctx, u);
     if (s.winner || !unitById(s, u.id)) return { eliminated: !unitById(s, u.id), vacated: true };
     const opts = elephantRetreatOptions(s, u, hexes);
-    const opt = yield* chooseOption<ElephantRetreatOption>(ctx, u.side, u.id, opts, 'retreat');
+    const opt = yield* chooseOption<ElephantRetreatOption>(s, ctx, u.side, u.id, opts, 'retreat');
     if (yield* walkPath(s, ctx, u, opt, 'retreat', leaderChecked)) return { eliminated: true, vacated: true };
     if (opt.blockers.length) yield* elephantBlockerLosses(s, ctx, opt.blockers);
     if (opt.losses > 0 && unitById(s, u.id)) {
@@ -425,7 +485,7 @@ function* retreatUnit(s: GameState, ctx: FlowCtx, u: Unit, hexes: number, leader
     return { eliminated: false, vacated: u.hex !== start };
   }
   const opts = retreatOptions(s, u, hexes);
-  const opt = yield* chooseOption(ctx, u.side, u.id, opts, 'retreat');
+  const opt = yield* chooseOption(s, ctx, u.side, u.id, opts, 'retreat');
   if (yield* walkPath(s, ctx, u, opt, 'retreat', leaderChecked)) return { eliminated: true, vacated: true };
   if (opt.losses > 0) {
     const l = attachedLeader(s, u);
@@ -470,8 +530,7 @@ function* applyHits(
     : Math.min(flags, ignorableFlags(s, target, { kind: info.kind, striker: info.striker, leaderAlive, fullAtStart: info.fullAtStart, role: info.role }));
   let ignored = 0;
   if (max > 0) {
-    const a = yield* ask(ctx, { kind: 'ignoreFlags', side: target.side, unit: target.id, flags, max }, (a) =>
-      a.kind === 'ignoreFlags' && a.count >= 0 && a.count <= max ? null : `Ignore between 0 and ${max} flags.`);
+    const a = yield* ask(s, ctx, { kind: 'ignoreFlags', side: target.side, unit: target.id, flags, max });
     ignored = (a as { count: number }).count;
   }
   ctx.emit({ t: 'flags', id: target.id, flags, ignored });
@@ -679,11 +738,8 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
   type DefendChoice = 'stand' | 'evade' | 'firstStrike';
   let choice = 'stand' as DefendChoice;
   if (canEvade || fsCard !== null) {
-    const a = yield* ask(ctx, { kind: 'defend', side: tu.side, attacker: attacker.id, target: tu.id, canEvade, canFirstStrike: fsCard !== null, bonus: role === 'bonus' }, (a) => {
-      if (a.kind !== 'defend') return 'Choose how to defend.';
-      if (a.choice === 'evade' && !canEvade) return 'This unit cannot evade.';
-      if (a.choice === 'firstStrike' && fsCard === null) return 'You do not hold First Strike.';
-      return null;
+    const a = yield* ask(s, ctx, {
+      kind: 'defend', side: tu.side, attacker: attacker.id, target: tu.id, canEvade, canFirstStrike: fsCard !== null, bonus: role === 'bonus',
     });
     choice = (a as { choice: DefendChoice }).choice;
   }
@@ -707,7 +763,7 @@ function* closeCombat(s: GameState, ctx: FlowCtx, attacker: Unit, targetHex: Hex
     }
     const opts = evadeOptions(s, tu);
     if (opts.length) {
-      const opt = yield* chooseOption(ctx, tu.side, tu.id, opts, 'evade');
+      const opt = yield* chooseOption(s, ctx, tu.side, tu.id, opts, 'evade');
       yield* walkPath(s, ctx, tu, opt, 'evade', checked);
     }
     // §15: a war machine that survived the roll is abandoned after its evade move (no banner, no leader casualty check);
@@ -756,7 +812,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   const op = s.turn.ordered[u.id];
   const fromT = terrainAt(s, u.hex);
   if ((fromT === 'marsh' || isFord(s, u.hex)) && op?.enteredHexThisTurn) return;
-  const a = yield* ask(ctx, { kind: 'momentum', side: u.side, unit: u.id, hex, bonus: role === 'bonus' }, (a) => (a.kind === 'yesno' ? null : 'Advance or not?'));
+  const a = yield* ask(s, ctx, { kind: 'momentum', side: u.side, unit: u.id, hex, bonus: role === 'bonus' });
   if (!(a as { yes: boolean }).yes) return;
   const from = u.hex;
   relocate(s, u, hex);
@@ -781,8 +837,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
       return true;
     });
     if (opts.length) {
-      const b = yield* ask(ctx, { kind: 'cavalryExtra', side: u.side, unit: u.id, options: opts }, (b) =>
-        b.kind === 'hex' && (b.hex === null || opts.includes(b.hex)) ? null : 'Choose a hex or decline.');
+      const b = yield* ask(s, ctx, { kind: 'cavalryExtra', side: u.side, unit: u.id, options: opts });
       const to = (b as { hex: HexId | null }).hex;
       if (to !== null) {
         const f2 = u.hex;
@@ -810,8 +865,7 @@ function* momentum(s: GameState, ctx: FlowCtx, u: Unit, hex: HexId, role: 'attac
   if (!eligible) return;
   const targets = closeTargets(s, u);
   if (!targets.length) return;
-  const c = yield* ask(ctx, { kind: 'bonusCombat', side: u.side, unit: u.id, targets }, (c) =>
-    c.kind === 'hex' && (c.hex === null || targets.includes(c.hex)) ? null : 'Choose a target or decline.');
+  const c = yield* ask(s, ctx, { kind: 'bonusCombat', side: u.side, unit: u.id, targets });
   const t = (c as { hex: HexId | null }).hex;
   if (t === null) return;
   yield* closeCombat(s, ctx, u, t, 'bonus', adv);
@@ -953,9 +1007,7 @@ function returnUnplacedReserves(s: GameState) {
 function* chooseCommandStep(s: GameState, ctx: FlowCtx, side: Side, kind: CardKind): Gen<string | undefined> {
   const options = commandChoices(s, side, kind);
   if (!options.length) return undefined;
-  const a = (yield* ask(ctx, { kind: 'chooseCommand', side, options }, (a) =>
-    a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < options.length ? null : 'Choose a command.',
-  )) as Extract<Answer, { kind: 'choose' }>;
+  const a = (yield* ask(s, ctx, { kind: 'chooseCommand', side, options })) as Extract<Answer, { kind: 'choose' }>;
   const id = options[a.index];
   log(ctx, `Orders go to the ${s.special.commands.find((c) => c.id === id)!.name} command.`, side);
   return id;
@@ -970,10 +1022,7 @@ function* rallyStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
     log(ctx, 'No damaged units are near a leader: nothing to rally.', side);
     return [];
   }
-  const a = yield* ask(
-    ctx, { kind: 'rally', side, faces, ...(command !== undefined ? { command } : {}) },
-    (a) => (a.kind === 'assign' ? validateRally(s, side, faces, a.ids, command) : 'Assign the rally dice.'),
-  );
+  const a = yield* ask(s, ctx, { kind: 'rally', side, faces, ...(command !== undefined ? { command } : {}) });
   const ids = (a as { ids: (string | null)[] }).ids;
   const rallied = new Map<string, number>();
   for (const id of ids) if (id) rallied.set(id, (rallied.get(id) ?? 0) + 1);
@@ -991,10 +1040,7 @@ function* spartacusStep(s: GameState, ctx: FlowCtx, side: Side): Gen<string[]> {
   const faces = rollDice(s, spartacusDiceCount(s, side));
   emitRoll(ctx, 'spartacus', faces, faces.map((f) => f !== 'flag' && f !== 'swords'), null, null);
   if (faces.every((f) => f === 'flag' || f === 'swords')) return [];
-  const a = yield* ask(
-    ctx, { kind: 'spartacus', side, faces, ...(command !== undefined ? { command } : {}) },
-    (a) => (a.kind === 'assign' ? validateSpartacus(s, side, faces, a.ids, command) : 'Choose the pieces to order.'),
-  );
+  const a = yield* ask(s, ctx, { kind: 'spartacus', side, faces, ...(command !== undefined ? { command } : {}) });
   return (a as { ids: (string | null)[] }).ids.filter((x): x is string => !!x);
 }
 
@@ -1013,12 +1059,7 @@ function* ordersStep(s: GameState, ctx: FlowCtx, kind: CardKind | null, mirrored
     else ids = autoOrders(s, side, kind, command);
   } else if (mode.mode === 'dice') ids = kind === 'rally' ? yield* rallyStep(s, ctx, side) : yield* spartacusStep(s, ctx, side);
   if (select) {
-    const ambush = ambushAvailable(s, side, kind);
-    const a = (yield* ask(ctx, { kind: 'orders', side, card: kind, mirrored }, (a) => {
-      if (a.kind !== 'orders') return 'Choose the units to order.';
-      if (a.ambushSection) return ambush && ambushSectionAllowed(s, kind, a.ambushSection) ? null : 'The ambush is not available.';
-      return validateOrders(s, side, kind, a.pieces);
-    })) as Extract<Answer, { kind: 'orders' }>;
+    const a = (yield* ask(s, ctx, { kind: 'orders', side, card: kind, mirrored })) as Extract<Answer, { kind: 'orders' }>;
     if (a.ambushSection) {
       releaseAmbush(s, ctx, side, a.ambushSection);
       return;
@@ -1157,7 +1198,7 @@ function* movePhase(s: GameState, ctx: FlowCtx, stage: 1 | 2): Gen {
   for (;;) {
     if (s.winner) return;
     if (!movablePieces(s, stage).length) break;
-    const a = yield* ask(ctx, { kind: 'move', side: s.active, stage }, (a) => validateMove(s, a, stage));
+    const a = yield* ask(s, ctx, { kind: 'move', side: s.active, stage });
     if (a.kind === 'endMove') break;
     if (a.kind === 'move') {
       yield* doMove(s, ctx, a.piece, a.to, stage);
@@ -1188,8 +1229,7 @@ function* attachReserveLeaders(s: GameState, ctx: FlowCtx): Gen {
       .map((u) => u.hex)
       .sort((a, b) => a - b);
     if (!options.length) continue;
-    const a = yield* ask(ctx, { kind: 'placeLeader', side: l.side, leader: l.id, options }, (a) =>
-      a.kind === 'hex' && a.hex !== null && options.includes(a.hex) ? null : 'Place the leader with one of the units that entered.');
+    const a = yield* ask(s, ctx, { kind: 'placeLeader', side: l.side, leader: l.id, options });
     const hex = (a as { hex: HexId }).hex;
     l.hex = hex;
     op.moveDone = true;
@@ -1207,19 +1247,20 @@ export function battleReady(s: GameState): string[] {
   return Object.keys(s.turn.ordered).filter((id) => battleTargets(s, id).length > 0 || rollingFirePaths(s, id).length > 0);
 }
 
-function pendingMustBattle(s: GameState): string | null {
+/**
+ * An ordered unit that must still close combat this battle phase, or null: warriors that charged (§7, `mustBattle`) with
+ * their battle unused and a close-combat target. The battle phase may not end while there is one.
+ */
+export function pendingCharge(s: GameState): string | null {
   for (const op of Object.values(s.turn.ordered)) {
-    if (op.mustBattle && op.battlesLeft > 0) {
-      const u = unitById(s, op.id);
-      if (u && battleTargets(s, op.id).some((t) => t.kind === 'close')) return op.id;
-    }
+    if (op.mustBattle && op.battlesLeft > 0 && unitById(s, op.id) && battleTargets(s, op.id).some((t) => t.kind === 'close')) return op.id;
   }
   return null;
 }
 
 function validateBattle(s: GameState, a: Answer): string | null {
   if (a.kind === 'endBattle') {
-    return pendingMustBattle(s) ? 'Warriors that charged must close combat.' : null;
+    return pendingCharge(s) ? 'Warriors that charged must close combat.' : null;
   }
   if (a.kind === 'rollingFire') {
     if (!rollingFirePaths(s, a.unit).length) return 'This unit cannot use Rolling Fire.';
@@ -1238,9 +1279,9 @@ function* battlePhase(s: GameState, ctx: FlowCtx): Gen {
   for (;;) {
     if (s.winner) return;
     if (!battleReady(s).length) break;
-    const a = yield* ask(ctx, { kind: 'battle', side: s.active }, (a) => validateBattle(s, a));
+    const a = yield* ask(s, ctx, { kind: 'battle', side: s.active });
     if (a.kind === 'endBattle') break;
-    // validateBattle lets through only endBattle, rollingFire and attack, so nothing else reaches here
+    // answerError lets through only endBattle, rollingFire and attack, so nothing else reaches here
     if (a.kind === 'rollingFire') {
       yield* rollingFire(s, ctx, unitById(s, a.unit)!, a.path);
     } else if (a.kind === 'attack') {
@@ -1325,8 +1366,7 @@ export function* turnFlow(s: GameState, ctx: FlowCtx): Gen {
 /** The card of a card-playing side's turn: it is played (a Counter Attack resolved to its copy) and gives its orders. */
 function* cardStep(s: GameState, ctx: FlowCtx, side: Side): Gen {
   const t = s.turn;
-  const pa = yield* ask(ctx, { kind: 'playCard', side }, (a) =>
-    a.kind === 'playCard' && s.players[side].hand.includes(a.card) ? null : 'Play a card from your hand.');
+  const pa = yield* ask(s, ctx, { kind: 'playCard', side });
   const cardId = (pa as { card: number }).card;
   const hand = s.players[side].hand;
   hand.splice(hand.indexOf(cardId), 1);
@@ -1367,9 +1407,7 @@ function* diceOrdersStep(s: GameState, ctx: FlowCtx, side: Side): Gen {
       if (f !== face) continue;
       const options = unitsOf(s, side).map((u) => u.id);
       if (!options.length) continue;
-      const a = (yield* ask(ctx, { kind: 'diceVictim', side, face, options }, (a) =>
-        a.kind === 'choose' && Number.isInteger(a.index) && a.index >= 0 && a.index < options.length ? null : 'Choose one of your units.',
-      )) as Extract<Answer, { kind: 'choose' }>;
+      const a = (yield* ask(s, ctx, { kind: 'diceVictim', side, face, options })) as Extract<Answer, { kind: 'choose' }>;
       const u = unitById(s, options[a.index])!;
       if (face === 'flag') {
         log(ctx, `A flag on the order dice: the ${sideName(s, side)} ${unitName(u)} falls back.`, side);
@@ -1385,9 +1423,7 @@ function* diceOrdersStep(s: GameState, ctx: FlowCtx, side: Side): Gen {
     }
   }
   if (!faces.some((f) => diceOrderPieces(s, side, f).length)) return;
-  const a = (yield* ask(ctx, { kind: 'diceOrders', side, faces }, (a) =>
-    a.kind === 'assign' ? validateDiceOrders(s, side, faces, a.ids) : 'Assign the order dice.',
-  )) as Extract<Answer, { kind: 'assign' }>;
+  const a = (yield* ask(s, ctx, { kind: 'diceOrders', side, faces })) as Extract<Answer, { kind: 'assign' }>;
   const ids = diceOrdered(s, a.ids);
   if (!ids.length) return;
   for (const id of ids) addOrdered(s, id);
@@ -1445,8 +1481,7 @@ function* forcedPlacements(s: GameState, ctx: FlowCtx, side: Side): Gen {
       i++;
       continue;
     }
-    const a = yield* ask(ctx, { kind: 'placeUnit', side, unit: p.unit.id, options }, (a) =>
-      a.kind === 'hex' && a.hex !== null && options.includes(a.hex) ? null : 'Place the unit on a highlighted hex.');
+    const a = yield* ask(s, ctx, { kind: 'placeUnit', side, unit: p.unit.id, options });
     const hex = (a as { hex: HexId }).hex;
     sp.placeUnits.splice(i, 1);
     const u = p.unit;
@@ -1491,8 +1526,7 @@ function* placementPhase(s: GameState, ctx: FlowCtx): Gen {
     if (!l) throw new Error(`unknown leader to place: ${sp.unplaced[0]}`);
     const options = placementOptions(s, l.side);
     if (!options.length) throw new Error(`no hex to place ${l.name || l.id}`);
-    const a = yield* ask(ctx, { kind: 'placeLeader', side: l.side, leader: l.id, options }, (a) =>
-      a.kind === 'hex' && a.hex !== null && options.includes(a.hex) ? null : 'Place the leader on a highlighted hex.');
+    const a = yield* ask(s, ctx, { kind: 'placeLeader', side: l.side, leader: l.id, options });
     const hex = (a as { hex: HexId }).hex;
     l.hex = hex;
     sp.unplaced.shift();
